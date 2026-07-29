@@ -1,0 +1,126 @@
+.pc-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.pc-card-sober {
+  position: relative;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  z-index: 2;
+}
+
+.pc-card-sober:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  border-color: var(--border-light);
+}
+
+/* Spotlight Effect */
+.pc-card-sober::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--x, 50%) var(--y, 50%),
+    color-mix(in srgb, var(--accent) 12%, transparent),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pc-card-sober:hover::before {
+  opacity: 1;
+}
+
+.pc-card-content {
+  position: relative;
+  z-index: 2;
+}
+
+.pc-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-light);
+}
+
+.pc-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.pc-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.pc-handle {
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.pc-status-badge {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  border: 1px solid var(--border-light);
+}
+
+.pc-chevron {
+  color: var(--text-muted);
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Accordion */
+.pc-accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  background-color: var(--bg-primary);
+  border: 1px solid transparent;
+  border-radius: 0 0 16px 16px;
+  margin-top: -12px; /* Pull up behind the card */
+  padding-top: 12px;
+}
+
+.pc-accordion.aberto {
+  grid-template-rows: 1fr;
+  border-color: var(--border-color);
+  border-top-color: transparent;
+}
+
+.pc-accordion-content {
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  transition-delay: 0s;
+}
+
+.pc-accordion.aberto .pc-accordion-content {
+  opacity: 1;
+  transition-delay: 0.1s;
+  padding: 16px;
+}
