@@ -68,7 +68,7 @@ export function ProjectDashboard() {
         ) : (
           <>
             {abaAtiva === 'dashboard' && <DashboardGeral projetoId={projeto.id} onNovaDiaria={() => setAbaAtiva('despesas')} />}
-            {abaAtiva === 'producao' && <InfoProducao projetoId={projeto.id} onSelectUsuario={(id) => abrirUsuario(id, 'producao')} />}
+            {abaAtiva === 'producao' && <InfoProducao projetoId={projeto.id} />}
             {abaAtiva === 'despesas' && <DespesasList projetoId={projeto.id} />}
             {abaAtiva === 'acertos' && <ResumoList projetoId={projeto.id} onVerFicha={verFichaCompleta} />}
             {abaAtiva === 'config' && <Configuracoes projetoId={projeto.id} />}
