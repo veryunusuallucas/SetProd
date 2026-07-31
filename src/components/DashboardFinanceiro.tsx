@@ -136,7 +136,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                <RechartsTooltip formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -152,7 +152,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
               <BarChart data={dataDepto} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <XAxis type="number" tickFormatter={(v) => `R$${v}`} />
                 <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                <RechartsTooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                <RechartsTooltip formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`} />
                 <Bar dataKey="Gasto" fill="#8884d8" radius={[0, 4, 4, 0]}>
                   {dataDepto.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

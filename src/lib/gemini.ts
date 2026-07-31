@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { Projeto, Diaria, Perfil, Locacao, Departamento } from '../types';
+import type { Projeto, Diaria, Perfil, Locacao, Departamento, Cena } from '../types';
 
 export const gerarOrdemDoDia = async (
   apiKey: string,

@@ -6,7 +6,6 @@ import type { Projeto } from '../types';
 import { Settings, Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import Stepper, { Step } from '../components/ui/Stepper';
-import { BugReportModal } from '../components/BugReportModal';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
 import { ChangelogModal } from '../components/ChangelogModal';

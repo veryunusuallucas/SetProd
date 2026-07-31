@@ -1,5 +1,5 @@
 import type { Perfil, Projeto } from '../types';
-import { Smartphone, Wallet, FileText, UserCircle, Edit2, Trash2, Copy, X } from 'lucide-react';
+import { UserCircle, Edit2, Trash2, Copy, X } from 'lucide-react';
 
 interface FichaCompletaProps {
   perfil: Perfil;
