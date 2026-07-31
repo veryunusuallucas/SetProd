@@ -13,7 +13,7 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
   const tasks = useLiveQuery(() => db.tasks.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const aportes = useLiveQuery(() => db.aportes.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
 
-  const [diariaAtual, setDiariaAtual] = useState(() => {
+  const [diariaAtual] = useState(() => {
     const salva = localStorage.getItem(`diaria_atual_${projetoId}`);
     return salva ? parseInt(salva.replace(/\D/g, '')) || 1 : 1;
   });

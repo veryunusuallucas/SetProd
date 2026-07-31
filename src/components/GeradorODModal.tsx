@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Sparkles, Printer } from 'lucide-react';
 import { gerarOrdemDoDia } from '../lib/gemini';
 import { db } from '../db/db';
-import type { Diaria, Projeto, Perfil, Locacao, Departamento } from '../types';
+import type { Diaria, Projeto, Perfil, Locacao, Departamento, Cena } from '../types';
 
 interface GeradorODModalProps {
   onClose: () => void;

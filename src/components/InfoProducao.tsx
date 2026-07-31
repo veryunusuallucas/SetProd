@@ -6,11 +6,11 @@ import { DepartamentosList } from './DepartamentosList';
 import { Film, Users, LayoutList, Download, Plus, Trash2 } from 'lucide-react';
 import { useLayoutContext } from '../pages/ProjectLayout';
 import { DetalhesUsuario } from './DetalhesUsuario';
-import type { Projeto, Credito, Perfil } from '../types';
+import type { Projeto, Credito } from '../types';
 
 type SubAba = 'producao' | 'departamentos' | 'equipe';
 
-export function InfoProducao({ projetoId, onSelectUsuario }: { projetoId: string, onSelectUsuario?: (id: string) => void }) {
+export function InfoProducao({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const [abaAtiva, setAbaAtiva] = useState<SubAba>('producao');
   const [editMode, setEditMode] = useState(false);

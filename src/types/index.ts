@@ -268,16 +268,18 @@ export interface RoteiroPDF {
   projeto_id: string;
   nome: string;
   dados: string; // base64 do pdf
-  atualizado_em: number;
+  data_upload: number;
 }
 
 export interface RoteiroTag {
   id: string;
   projeto_id: string;
+  roteiro_id: string;
   pagina: number;
-  texto: string;
+  texto_selecionado: string;
   categoria: string; // ex: 'Arte', 'Elenco'
   cor: string;
+  cena_id?: string;
   pos_x?: number; // Opcionais se formos renderizar caixa em cima
   pos_y?: number;
 }

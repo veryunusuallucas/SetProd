@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { db } from '../db/db';
-import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Diaria, Cena, Plano } from '../types';
+import { Clapperboard, Plus, Trash2 } from 'lucide-react';
+import type { Diaria, Cena } from '../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[] }) {
-  const [expandida, setExpandida] = useState<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
 
   // Busca as cenas e planos globais

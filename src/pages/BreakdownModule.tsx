@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useParams } from 'react-router-dom';
 import { pdfjs, Document, Page } from 'react-pdf';
 import { FileUp, FileText, Trash2, Tag, CheckSquare, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { RoteiroPDF, RoteiroTag } from '../types';
+import type { RoteiroTag } from '../types';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';

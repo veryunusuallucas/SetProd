@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Copy, Smartphone, Wallet, FileText, UserCircle, Link2, RefreshCw, Edit2, Trash2, Upload, Settings2 } from 'lucide-react';
+import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2 } from 'lucide-react';
 import { syncPerfisDeCadastro } from '../lib/sync';
 import { useRole } from '../hooks/useRole';
 import Stepper, { Step } from './ui/Stepper';
@@ -10,7 +10,6 @@ import { FormBuilder } from './FormBuilder';
 import { FichaCompleta } from './FichaCompleta';
 import { RelatorioTransversal } from './RelatorioTransversal';
 import { useLayoutContext } from '../pages/ProjectLayout';
-import type { Perfil } from '../types';
 
 export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string, onSelectUsuario?: (id: string) => void }) {
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
