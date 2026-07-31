@@ -7,6 +7,8 @@ import type { DiariaTask, HorarioOD, AnexoOD } from '../types';
 import { logAction } from '../lib/audit';
 import { parseCoords, buscarClima, descreverClima, type ClimaDia } from '../lib/clima';
 import { ShotList } from '../components/ShotList';
+import { GeradorODModal } from '../components/GeradorODModal';
+import { Sparkles } from 'lucide-react';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -22,6 +24,7 @@ export function DiariaModule() {
     const todas = await db.despesas.where('projeto_id').equals(projetoId!).toArray();
     return todas.filter(d => d.diaria_id === diariaId);
   }, [projetoId, diariaId]) || [];
+  const cenasGlobais = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
 
   const [newTask, setNewTask] = useState('');
   const [selecionandoEquipe, setSelecionandoEquipe] = useState(false);
@@ -33,6 +36,7 @@ export function DiariaModule() {
   const [climaStatus, setClimaStatus] = useState<'idle' | 'carregando' | 'ok' | 'erro' | 'sem_coords'>('idle');
 
   const [exportModalAberto, setExportModalAberto] = useState(false);
+  const [geradorAberto, setGeradorAberto] = useState(false);
   const [exportConfig, setExportConfig] = useState({
     clima: true, horarios: true, locacoes: true, equipe: true,
     transporte: true, checklist: true, observacoes: true, shotlist: true
@@ -141,7 +145,7 @@ export function DiariaModule() {
   else if (valorIdeal > 0 && totalGasto > valorIdeal) statusOrc = { texto: 'Acima do ideal (dentro do máximo)', cor: 'var(--color-warning)' };
   else if (valorIdeal > 0 || limiteGasto > 0) statusOrc = { texto: '✓ Dentro do previsto', cor: 'var(--color-success)' };
 
-  const formataData = (d: string) => { const [a, m, dia] = d.split('-'); return `${dia}/${m}/${a}`; };
+  const formataData = (d: string) => { const [a, m, dia] = d.split('-'); return `${dia}/${m}/${a.slice(-2)}`; };
 
   // ---- Exportar OD em PDF (via impressão do navegador) ----
   const exportarPDF = async () => {
@@ -203,8 +207,13 @@ export function DiariaModule() {
           <h1 className="text-xl font-bold">Diária {String(diaria.numero).padStart(2, '0')}</h1>
           <p className="text-sm text-secondary">{formataData(diaria.data)}</p>
         </div>
-        <button onClick={() => setExportModalAberto(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FileDown size={16} /> Exportar OD (PDF)
+        
+        <button onClick={() => setGeradorAberto(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#673ab7' }}>
+          <Sparkles size={16} /> Gerar OD com IA
+        </button>
+
+        <button onClick={() => setExportModalAberto(true)} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)' }}>
+          <FileDown size={16} /> OD Simples
         </button>
       </div>
 
@@ -491,6 +500,19 @@ export function DiariaModule() {
           </div>
         </div>
       )}
+
+      {geradorAberto && projeto && (
+        <GeradorODModal 
+          onClose={() => setGeradorAberto(false)}
+          projeto={projeto}
+          diaria={diaria}
+          equipe={perfis}
+          locacoes={locacoes}
+          departamentos={departamentos}
+          cenasGlobais={cenasGlobais}
+        />
+      )}
+
     </div>
   );
 }

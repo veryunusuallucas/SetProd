@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, createContext, useContext, useEffect } from 'react';
 import { useParams, useNavigate, Outlet, useLocation, Link, NavLink } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -7,8 +7,17 @@ import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, Camera, CheckSquare, CalendarDays, Search,
-  LogOut, Calendar, DollarSign, ListTodo, Shield
+  LogOut, Calendar, DollarSign, ListTodo, Shield, X
 } from 'lucide-react';
+
+export const LayoutContext = createContext<{
+  openPanel: (content: React.ReactNode) => void;
+  closePanel: () => void;
+}>({ openPanel: () => {}, closePanel: () => {} });
+
+export function useLayoutContext() {
+  return useContext(LayoutContext);
+}
 
 export function ProjectLayout() {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +26,8 @@ export function ProjectLayout() {
 
   const projeto = useLiveQuery(() => db.projetos.get(id!), [id]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(id!).toArray(), [id]) || [];
+  
+  const [rightPanelContent, setRightPanelContent] = useState<React.ReactNode | null>(null);
   
   const [meuPerfilId, setMeuPerfilId] = useState(() => localStorage.getItem('mock_perfil_id') || '');
   
@@ -32,9 +43,14 @@ export function ProjectLayout() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  if (!projeto) return <div>Carregando...</div>;
-
   const currentPath = location.pathname;
+
+  // Clear right panel on navigation
+  useEffect(() => {
+    setRightPanelContent(null);
+  }, [currentPath]);
+
+  if (!projeto) return <div>Carregando...</div>;
 
   const navItems = [
     { name: 'Dashboard', path: `/projeto/${id}`, icon: LayoutDashboard, exact: true },
@@ -138,7 +154,27 @@ export function ProjectLayout() {
         </header>
 
         <div className="screen-padding" style={{ paddingTop: '24px' }}>
-          <Outlet />
+          <LayoutContext.Provider value={{
+            openPanel: (content) => setRightPanelContent(content),
+            closePanel: () => setRightPanelContent(null)
+          }}>
+            <div className="master-detail-container">
+              <div className="master-detail-master">
+                <Outlet />
+              </div>
+              
+              {rightPanelContent && (
+                <div className="master-detail-detail">
+                  <div style={{ padding: '8px', display: 'flex', justifyContent: 'flex-end', backgroundColor: 'var(--bg-primary)', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <button onClick={() => setRightPanelContent(null)} className="btn-icon">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  {rightPanelContent}
+                </div>
+              )}
+            </div>
+          </LayoutContext.Provider>
         </div>
 
       </main>

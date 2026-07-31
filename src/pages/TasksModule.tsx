@@ -12,6 +12,7 @@ export function TasksModule() {
 
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const tasks = useLiveQuery(() => db.tasks.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
 
   // Puxar mock do Perfil Atual (pra "Minhas Tasks")
   const meuPerfilId = localStorage.getItem('mock_perfil_id') || '';
@@ -131,8 +132,25 @@ export function TasksModule() {
 
   const renderColuna = (status: Task['status'], titulo: string, cor: string) => {
     const ts = tasksFiltradas.filter(t => t.status === status);
+    
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault(); // Necessário para permitir o drop
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      const taskId = e.dataTransfer.getData('taskId');
+      if (taskId) {
+        mudarStatus(taskId, status);
+      }
+    };
+    
     return (
-      <div style={{ flex: 1, minWidth: '280px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: `1px solid var(--border-light)` }}>
+      <div 
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        style={{ flex: 1, minWidth: '280px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: `1px solid var(--border-light)` }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="font-bold text-sm uppercase tracking-widest" style={{ color: cor }}>{titulo} ({ts.length})</h3>
         </div>
@@ -142,24 +160,36 @@ export function TasksModule() {
             const numSubs = (t.subtarefas || []).length;
             const subsFeitas = (t.subtarefas || []).filter(s => s.concluida).length;
             const locked = isTaskLocked(t);
+            const depto = departamentos.find(d => d.id === t.departamento_id);
 
             return (
               <div 
                 key={t.id} 
                 className="card" 
+                draggable={!locked}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('taskId', t.id);
+                }}
                 style={{ 
-                  padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', 
+                  padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'grab', 
                   borderLeft: `3px solid ${cor}`,
                   opacity: locked ? 0.6 : 1,
-                  backgroundColor: locked ? 'var(--bg-default)' : 'var(--bg-surface)'
+                  backgroundColor: locked ? 'var(--bg-default)' : 'var(--bg-surface)',
+                  position: 'relative'
                 }} 
-                onClick={() => setEditandoTask(t)}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div className="font-bold" style={{ fontSize: '14px', textDecoration: locked ? 'line-through' : 'none', color: locked ? 'var(--text-muted)' : 'inherit' }}>
+                {/* Tag do Departamento */}
+                {depto && (
+                  <div style={{ position: 'absolute', top: '-10px', right: '12px', backgroundColor: depto.cor || '#8884d8', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px', zIndex: 1 }}>
+                    {depto.nome}
+                  </div>
+                )}
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }} onClick={() => setEditandoTask(t)}>
+                  <div className="font-bold" style={{ fontSize: '14px', textDecoration: locked ? 'line-through' : 'none', color: locked ? 'var(--text-muted)' : 'inherit', marginTop: depto ? '4px' : '0' }}>
                     {t.titulo}
                   </div>
-                  {locked && <span title={`Aguardando: ${getDependenciesNames(t)}`} style={{ display: 'inline-flex' }}><Lock size={14} className="text-warning" /></span>}
+                  {locked && <span title={`Aguardando: ${getDependenciesNames(t)}`} style={{ display: 'inline-flex', marginTop: depto ? '4px' : '0' }}><Lock size={14} className="text-warning" /></span>}
                 </div>
                 
                 {locked && (
@@ -178,6 +208,18 @@ export function TasksModule() {
                     </div>
                   )}
                 </div>
+
+                {/* Setas para mover no Mobile (Ocultas no Desktop via CSS, mas faremos visível se a tela for pequena, ou apenas deixaremos sutis) */}
+                {!locked && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '4px' }}>
+                    {status !== 'todo' ? (
+                      <button onClick={(e) => { e.stopPropagation(); mudarStatus(t.id, status === 'done' ? 'doing' : 'todo'); }} className="text-muted" style={{ background: 'none', border: 'none', fontSize: '16px', padding: '0 8px', cursor: 'pointer' }}>&larr;</button>
+                    ) : <span />}
+                    {status !== 'done' ? (
+                      <button onClick={(e) => { e.stopPropagation(); mudarStatus(t.id, status === 'todo' ? 'doing' : 'done'); }} className="text-muted" style={{ background: 'none', border: 'none', fontSize: '16px', padding: '0 8px', cursor: 'pointer' }}>&rarr;</button>
+                    ) : <span />}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -261,17 +303,29 @@ export function TasksModule() {
             </div>
 
             <div>
-              <div className="text-xs text-muted uppercase tracking-widest mb-1">Responsável</div>
-              <select 
-                value={editandoTask.responsavel_id || ''} 
-                onChange={e => db.tasks.update(editandoTask.id, { responsavel_id: e.target.value || undefined })}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', width: '100%' }}
-              >
-                <option value="">Sem dono</option>
-                {perfis.filter(p => p.id !== 'caixa_central').map(p => (
-                  <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
-                ))}
-              </select>
+              <div className="text-xs text-muted uppercase tracking-widest mb-1">Responsável & Departamento</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select 
+                  value={editandoTask.responsavel_id || ''} 
+                  onChange={e => db.tasks.update(editandoTask.id, { responsavel_id: e.target.value || undefined })}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', flex: 1 }}
+                >
+                  <option value="">Sem dono</option>
+                  {perfis.filter(p => p.id !== 'caixa_central').map(p => (
+                    <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
+                  ))}
+                </select>
+                <select 
+                  value={editandoTask.departamento_id || ''} 
+                  onChange={e => db.tasks.update(editandoTask.id, { departamento_id: e.target.value || undefined })}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', flex: 1 }}
+                >
+                  <option value="">Geral (Sem Depto)</option>
+                  {departamentos.map(d => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>
@@ -352,7 +406,7 @@ export function TasksModule() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
               <button onClick={() => { deletarTask(editandoTask.id); setEditandoTask(null); }} className="text-danger font-bold text-sm" style={{ background: 'none', border: 'none' }}>Excluir Task</button>
-              <button onClick={() => setEditandoTask(null)} className="btn-primary" style={{ padding: '8px 24px' }}>Fechar</button>
+              <button onClick={() => setEditandoTask(null)} className="btn-primary" style={{ padding: '8px 24px' }}>Salvar</button>
             </div>
           </div>
         </div>

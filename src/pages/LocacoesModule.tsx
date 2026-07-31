@@ -155,8 +155,8 @@ export function LocacoesModule() {
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderLeft: '4px solid var(--accent)' }}>
           <h2 className="text-sm font-bold uppercase tracking-widest text-muted">{editId ? 'Editar Locação' : 'Nova Locação'}</h2>
           
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <input required placeholder="Nome do Set (ex: Mansão do Vilão)" value={nome} onChange={e => setNome(e.target.value)} style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <input required placeholder="Nome do Set (ex: Mansão do Vilão)" value={nome} onChange={e => setNome(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
             <select value={status} onChange={e => setStatus(e.target.value as any)} style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontWeight: 'bold', color: status === 'conversa' ? 'var(--text-secondary)' : status === 'temos' ? 'var(--color-success)' : 'var(--color-danger)' }}>
               <option value="conversa">🟡 Em Conversa</option>
               <option value="temos">🟢 Temos a Locação</option>
@@ -164,8 +164,8 @@ export function LocacoesModule() {
             </select>
           </div>
           
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input required placeholder="Endereço para buscar (ex: Av Paulista, 1000)" value={endereco} onChange={e => setEndereco(e.target.value)} style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input required placeholder="Endereço para buscar (ex: Av Paulista, 1000)" value={endereco} onChange={e => setEndereco(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
             <button onClick={buscarOSM} disabled={buscandoOSM} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
               {buscandoOSM ? 'Buscando...' : 'Buscar OSM'}
             </button>

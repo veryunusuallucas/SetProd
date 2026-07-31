@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { PessoasList } from './PessoasList';
 import { DepartamentosList } from './DepartamentosList';
-import { Film, Users, LayoutList } from 'lucide-react';
-import type { Projeto } from '../types';
+import { Film, Users, LayoutList, Download, Plus, Trash2 } from 'lucide-react';
+import { useLayoutContext } from '../pages/ProjectLayout';
+import { DetalhesUsuario } from './DetalhesUsuario';
+import type { Projeto, Credito, Perfil } from '../types';
 
 type SubAba = 'producao' | 'departamentos' | 'equipe';
 
@@ -13,6 +15,14 @@ export function InfoProducao({ projetoId, onSelectUsuario }: { projetoId: string
   const [abaAtiva, setAbaAtiva] = useState<SubAba>('producao');
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState<Projeto | null>(null);
+  
+  const { openPanel, closePanel } = useLayoutContext();
+
+  const [novoCreditoNome, setNovoCreditoNome] = useState('');
+  const [novoCreditoPapel, setNovoCreditoPapel] = useState('');
+  
+  // Puxar perfis para exportação
+  const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
 
   useEffect(() => {
     if (projeto && !editMode) setForm(projeto);
@@ -27,6 +37,60 @@ export function InfoProducao({ projetoId, onSelectUsuario }: { projetoId: string
   };
 
   const num = (v: string) => (v === '' ? undefined : Number(v));
+
+  const adicionarCredito = async () => {
+    if (!novoCreditoNome || !novoCreditoPapel) return;
+    const novo: Credito = { id: crypto.randomUUID(), nome: novoCreditoNome, papel: novoCreditoPapel };
+    await db.projetos.update(projeto.id, {
+      creditos: [...(projeto.creditos || []), novo]
+    });
+    setNovoCreditoNome('');
+    setNovoCreditoPapel('');
+  };
+
+  const removerCredito = async (id: string) => {
+    await db.projetos.update(projeto.id, {
+      creditos: (projeto.creditos || []).filter(c => c.id !== id)
+    });
+  };
+
+  const exportarEnxuta = () => {
+    if (!perfis) return;
+    let txt = `CRÉDITOS - ${projeto.nome}\n\nEQUIPE:\n`;
+    perfis.filter(p => p.id !== 'caixa_central').forEach(p => {
+      txt += `${p.nome} ${p.sobrenome || ''} - ${p.funcao || 'Membro'}\n`;
+    });
+    if (projeto.creditos && projeto.creditos.length > 0) {
+      txt += `\nAPOIOS E EXTRAS:\n`;
+      projeto.creditos.forEach(c => {
+        txt += `${c.nome} - ${c.papel}\n`;
+      });
+    }
+    const blob = new Blob([txt], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Creditos_${projeto.nome}.txt`;
+    a.click();
+  };
+
+  const exportarCSVCompleto = () => {
+    if (!perfis) return;
+    const headers = ['Nome', 'Sobrenome', 'CPF', 'Telefone', 'Email', 'Função', 'PIX', 'Valor Diária'];
+    const linhas = perfis.filter(p => p.id !== 'caixa_central').map(p => {
+      return [
+        p.nome, p.sobrenome || '', p.cpf || '', p.telefone || '', p.email || '', 
+        p.funcao || '', p.chave_pix || '', p.valor_diaria || ''
+      ].map(v => `"${v}"`).join(';');
+    });
+    const csv = [headers.join(';'), ...linhas].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Equipe_Completa_${projeto.nome}.csv`;
+    a.click();
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -89,7 +153,7 @@ export function InfoProducao({ projetoId, onSelectUsuario }: { projetoId: string
               <Linha label="Período" valor={projeto.data_inicio || projeto.data_fim ? `${fmtData(projeto.data_inicio)} — ${fmtData(projeto.data_fim)}` : undefined} />
               <div style={{ height: '1px', backgroundColor: 'var(--border-light)', margin: '4px 0' }}></div>
               <Linha label="Nº de Diárias" valor={projeto.num_diarias != null ? `${projeto.num_diarias}` : undefined} />
-              <Linha label="Criado em" valor={new Date(projeto.data_criacao).toLocaleDateString()} />
+              <Linha label="Criado em" valor={new Date(projeto.data_criacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })} />
               {projeto.obs && (
                 <>
                   <div style={{ height: '1px', backgroundColor: 'var(--border-light)', margin: '4px 0' }}></div>
@@ -102,12 +166,72 @@ export function InfoProducao({ projetoId, onSelectUsuario }: { projetoId: string
         </div>
       )}
 
+      {/* SEÇÃO DE CRÉDITOS E EXPORTAÇÃO */}
+      {abaAtiva === 'producao' && form && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          <div className="card">
+            <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-4">Créditos, Apoios e Extras</div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {(projeto.creditos || []).map(c => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                  <div>
+                    <div className="font-bold">{c.nome}</div>
+                    <div className="text-xs text-muted">{c.papel}</div>
+                  </div>
+                  <button onClick={() => removerCredito(c.id)} className="btn-icon text-danger" style={{ padding: '4px' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              {(projeto.creditos || []).length === 0 && (
+                <div className="text-sm text-muted text-center py-4">Nenhum apoio registrado.</div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', borderTop: '1px dashed var(--border-light)', paddingTop: '16px' }}>
+              <input placeholder="Nome da Empresa/Pessoa" value={novoCreditoNome} onChange={e => setNovoCreditoNome(e.target.value)} style={{ flex: 1, backgroundColor: 'var(--bg-primary)' }} />
+              <input placeholder="O que fez (Ex: Patrocínio)" value={novoCreditoPapel} onChange={e => setNovoCreditoPapel(e.target.value)} style={{ flex: 1, backgroundColor: 'var(--bg-primary)' }} />
+              <button onClick={adicionarCredito} className="btn-primary" style={{ padding: '0 16px' }}>
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-4">Exportar Dados</div>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button onClick={exportarEnxuta} className="btn-secondary" style={{ flex: 1, justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
+                <Download size={16} /> Exportar Créditos (Txt Enxuto)
+              </button>
+              <button onClick={exportarCSVCompleto} className="btn-secondary" style={{ flex: 1, justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
+                <Download size={16} /> Exportar Equipe (CSV Completo)
+              </button>
+            </div>
+          </div>
+
+        </div>
+      )}
+
       {abaAtiva === 'departamentos' && (
         <DepartamentosList projetoId={projetoId} />
       )}
 
       {abaAtiva === 'equipe' && (
-        <PessoasList projetoId={projetoId} onSelectUsuario={onSelectUsuario} />
+        <PessoasList 
+          projetoId={projetoId} 
+          onSelectUsuario={(uid) => {
+            openPanel(
+              <DetalhesUsuario 
+                projetoId={projetoId} 
+                usuarioId={uid} 
+                origem="producao" 
+                onVoltar={closePanel} 
+              />
+            );
+          }} 
+        />
       )}
 
     </div>

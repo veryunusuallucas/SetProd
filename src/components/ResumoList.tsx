@@ -280,7 +280,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                           const recebeu = a.para.id_ref === p.id;
                           return (
                             <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                              <span className="text-muted">{recebeu ? 'Recebeu' : 'Pagou'} · {new Date(a.data).toLocaleDateString()}</span>
+                              <span className="text-muted">{recebeu ? 'Recebeu' : 'Pagou'} · {new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 R$ {a.valor.toFixed(2)}
                                 <button onClick={(e) => { e.stopPropagation(); estornarPagamento(a.id); }} className="btn-icon" style={{ width: '26px', height: '26px' }} title="Estornar"><RotateCcw size={12} /></button>
@@ -310,7 +310,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                 <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                   <div>
                     <div>{nomePorId(a.de.id_ref)} → {nomePorId(a.para.id_ref)}</div>
-                    <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString()}</div>
+                    <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
                   </div>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="font-bold">R$ {a.valor.toFixed(2)}</span>

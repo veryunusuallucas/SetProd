@@ -71,7 +71,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Layout & Containers */
 .app-container {
-  max-width: 500px;
+  width: 100%;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
@@ -156,9 +156,8 @@ button {
   position: fixed;
   bottom: 0;
   left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   width: 100%;
-  max-width: 500px;
   background-color: var(--bg-surface);
   border-top: 1px solid var(--border-color);
   height: 64px;
@@ -301,7 +300,6 @@ input[type="checkbox"]:checked::before {
 /* ===================== RESPONSIVO / WEB (desktop) ===================== */
 @media (min-width: 900px) {
   .app-container {
-    max-width: none;
     padding-bottom: 0;
   }
 
@@ -348,9 +346,10 @@ input[type="checkbox"]:checked::before {
   }
   .dash-shell > .screen-padding {
     margin-left: 240px;
-    max-width: 900px;
     padding-left: 40px;
     padding-right: 40px;
+    max-width: 1200px; /* Centered max limit for ultra-wide */
+    margin-right: auto;
   }
 
   /* Home centralizado e cards em grade */

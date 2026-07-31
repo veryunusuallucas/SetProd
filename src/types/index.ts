@@ -24,6 +24,14 @@ export interface Projeto {
   campos_customizados?: CampoCustomizado[];
   data_criacao: number;
   moeda: string;
+  campos_obrigatorios?: string[]; // IDs ou nomes dos campos obrigatórios
+  creditos?: Credito[]; // Apoios e extras da Fase 3
+}
+
+export interface Credito {
+  id: string;
+  nome: string;
+  papel: string; // "Apoio de Alimentação", "Patrocínio", etc
 }
 
 export type TipoCampo = 'texto' | 'numero' | 'data' | 'valor' | 'selecao' | 'telefone';
@@ -41,6 +49,7 @@ export interface Departamento {
   projeto_id: string;
   nome: string;
   orcamento_departamento?: number;
+  cor?: string; // Fase 5
 }
 
 export interface Perfil {
@@ -102,6 +111,16 @@ export interface Despesa {
   devedores: QuemValor[];
   tipo_divisao: TipoDivisao;
   comprovante?: string;
+  reembolsavel?: boolean; // Fase 4: Sinaliza se a despesa foi um adiantamento
+}
+
+export interface Aporte {
+  id: string;
+  projeto_id: string;
+  origem: string; // ex: "Sócio", "Patrocínio", ou ID de um perfil
+  valor: number;
+  data: number; // timestamp
+  obs?: string;
 }
 
 export type StatusAcerto = 'pendente' | 'confirmado';
@@ -122,6 +141,7 @@ export interface Configuracao {
   template_cobranca: string;
   template_pagamento: string;
   template_geral: string;
+  gemini_api_key?: string; // Fase 7
 }
 
 export type AcaoLog = 'criar' | 'editar' | 'deletar';
@@ -191,8 +211,9 @@ export interface Diaria {
   transporte?: string; // Logística: vans, quem vai com quem, pontos de encontro
   anexos?: AnexoOD[]; // Roteiro do dia, decupagem, referências (armazenados como data URL, offline)
   confirmacoes?: string[]; // IDs dos perfis que confirmaram presença
-  cenas?: Cena[]; // Cenas do dia
-  planos?: Plano[]; // Shot list
+  cena_ids?: string[]; // IDs das cenas globais escaladas para o dia
+  cenas?: Cena[]; // DEPRECATED: manter para não quebrar antigas
+  planos?: Plano[]; // DEPRECATED
 }
 
 export interface HorarioOD {
@@ -219,6 +240,7 @@ export interface DiariaTask {
 
 export interface Cena {
   id: string;
+  projeto_id: string;
   numero: string;
   descricao: string;
   locacao_id?: string;
@@ -228,16 +250,36 @@ export interface Cena {
 
 export interface Plano {
   id: string;
+  projeto_id: string;
   cena_id: string;
   numero: string;
   descricao: string;
-  tamanho?: string; // plano aberto, plano medio, close...
+  tamanho?: string; // ex: Plano Aberto, Close
+  movimento?: string; // ex: Pan, Tilt, Fixo
+  lente?: string; // ex: 35mm
   angulo?: string; // normal, plongee, contra-plongee
-  movimento?: string; // fixo, pan, tilt, tracking...
-  lente?: string;
   equipamento?: string;
   elenco?: string;
   notas?: string;
+}
+
+export interface RoteiroPDF {
+  id: string;
+  projeto_id: string;
+  nome: string;
+  dados: string; // base64 do pdf
+  atualizado_em: number;
+}
+
+export interface RoteiroTag {
+  id: string;
+  projeto_id: string;
+  pagina: number;
+  texto: string;
+  categoria: string; // ex: 'Arte', 'Elenco'
+  cor: string;
+  pos_x?: number; // Opcionais se formos renderizar caixa em cima
+  pos_y?: number;
 }
 
 // ---- Fase 5D: Kanban de Tasks Gerais ----
@@ -248,6 +290,7 @@ export interface Task {
   descricao?: string;
   status: 'todo' | 'doing' | 'done';
   responsavel_id?: string;
+  departamento_id?: string; // Fase 5
   subtarefas?: { id: string, titulo: string, concluida: boolean }[];
   depends_on?: string[]; // IDs das tasks de que esta depende
   data_criacao: number;

@@ -2,195 +2,123 @@ import { useState } from 'react';
 import { db } from '../db/db';
 import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Diaria, Cena, Plano } from '../types';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[] }) {
   const [expandida, setExpandida] = useState<string | null>(null);
+  const [showSelector, setShowSelector] = useState(false);
 
-  const addCena = async () => {
-    const novaCena: Cena = {
-      id: crypto.randomUUID(),
-      numero: String((diaria.cenas || []).length + 1),
-      descricao: 'Nova cena...',
-      ambiente: 'ext',
-      periodo: 'dia'
-    };
-    await db.diarias.update(diaria.id, {
-      cenas: [...(diaria.cenas || []), novaCena]
+  // Busca as cenas e planos globais
+  const cenasGlobais = useLiveQuery(() => db.cenas.where('projeto_id').equals(diaria.projeto_id).toArray(), [diaria.projeto_id]) || [];
+  const planosGlobais = useLiveQuery(() => db.planos.where('projeto_id').equals(diaria.projeto_id).toArray(), [diaria.projeto_id]) || [];
+
+  const cenasSelecionadas = (diaria.cena_ids || []).map(id => cenasGlobais.find(c => c.id === id)).filter(Boolean) as Cena[];
+  
+  // Para manter compatibilidade com projetos antigos (que tinham 'cenas' embutido na diaria)
+  const cenasAntigas = diaria.cenas || [];
+  const todasCenas = [...cenasSelecionadas, ...cenasAntigas];
+
+  const addCena = async (cenaId: string) => {
+    if (!diaria.cena_ids?.includes(cenaId)) {
+      await db.diarias.update(diaria.id, {
+        cena_ids: [...(diaria.cena_ids || []), cenaId]
+      });
+    }
+  };
+
+  const removeCena = async (cenaId: string) => {
+    // Remove tanto da nova estrutura (cena_ids) quanto da antiga (cenas) para limpeza
+    const novosCenaIds = (diaria.cena_ids || []).filter(id => id !== cenaId);
+    const novasCenasAntigas = (diaria.cenas || []).filter(c => c.id !== cenaId);
+    
+    await db.diarias.update(diaria.id, { 
+      cena_ids: novosCenaIds,
+      cenas: novasCenasAntigas
     });
   };
-
-  const updateCena = async (id: string, updates: Partial<Cena>) => {
-    const novasCenas = (diaria.cenas || []).map(c => c.id === id ? { ...c, ...updates } : c);
-    await db.diarias.update(diaria.id, { cenas: novasCenas });
-  };
-
-  const removeCena = async (id: string) => {
-    const novasCenas = (diaria.cenas || []).filter(c => c.id !== id);
-    const novosPlanos = (diaria.planos || []).filter(p => p.cena_id !== id);
-    await db.diarias.update(diaria.id, { cenas: novasCenas, planos: novosPlanos });
-  };
-
-  const addPlano = async (cenaId: string) => {
-    const planosDaCena = (diaria.planos || []).filter(p => p.cena_id === cenaId);
-    const novoPlano: Plano = {
-      id: crypto.randomUUID(),
-      cena_id: cenaId,
-      numero: String(planosDaCena.length + 1),
-      descricao: '',
-    };
-    await db.diarias.update(diaria.id, {
-      planos: [...(diaria.planos || []), novoPlano]
-    });
-    setExpandida(novoPlano.id);
-  };
-
-  const updatePlano = async (id: string, updates: Partial<Plano>) => {
-    const novosPlanos = (diaria.planos || []).map(p => p.id === id ? { ...p, ...updates } : p);
-    await db.diarias.update(diaria.id, { planos: novosPlanos });
-  };
-
-  const removePlano = async (id: string) => {
-    const novosPlanos = (diaria.planos || []).filter(p => p.id !== id);
-    await db.diarias.update(diaria.id, { planos: novosPlanos });
-  };
-
-  const selectStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px' };
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Clapperboard size={16} /> Shot List
+          <Clapperboard size={16} /> Cenas Programadas
         </h2>
-        <button onClick={addCena} className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)', padding: '4px 12px', width: 'auto', gap: '6px' }}>
-          <Plus size={16} /> <span className="text-xs">Cena</span>
+        <button onClick={() => setShowSelector(!showSelector)} className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)', padding: '4px 12px', width: 'auto', gap: '6px' }}>
+          <Plus size={16} /> <span className="text-xs">Adicionar Cena</span>
         </button>
       </div>
 
-      {(diaria.cenas || []).length === 0 && (
-        <div className="text-muted text-sm text-center" style={{ padding: '16px' }}>
-          Adicione as cenas que serão gravadas nesta diária.
-        </div>
-      )}
-
-      {(diaria.cenas || []).map(cena => {
-        const planos = (diaria.planos || []).filter(p => p.cena_id === cena.id);
-        
-        return (
-          <div key={cena.id} style={{ border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden' }}>
-            {/* Header da Cena */}
-            <div style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <input 
-                  value={cena.numero} 
-                  onChange={e => updateCena(cena.id, { numero: e.target.value })} 
-                  style={{ width: '40px', fontWeight: 'bold', textAlign: 'center', padding: '4px' }}
-                  placeholder="Nº"
-                />
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <input 
-                  value={cena.descricao} 
-                  onChange={e => updateCena(cena.id, { descricao: e.target.value })} 
-                  style={{ fontWeight: 'bold', border: 'none', background: 'transparent', padding: 0 }}
-                  placeholder="Descrição da cena..."
-                />
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <select value={cena.ambiente || 'ext'} onChange={e => updateCena(cena.id, { ambiente: e.target.value as any })} style={selectStyle}>
-                    <option value="int">INT.</option>
-                    <option value="ext">EXT.</option>
-                  </select>
-                  <select value={cena.locacao_id || ''} onChange={e => updateCena(cena.id, { locacao_id: e.target.value })} style={selectStyle}>
-                    <option value="">(Sem Locação)</option>
-                    {locacoes.filter(l => (diaria.locacoes_ids || []).includes(l.id)).map(l => (
-                      <option key={l.id} value={l.id}>{l.nome}</option>
-                    ))}
-                  </select>
-                  <select value={cena.periodo || 'dia'} onChange={e => updateCena(cena.id, { periodo: e.target.value as any })} style={selectStyle}>
-                    <option value="dia">DIA</option>
-                    <option value="noite">NOITE</option>
-                  </select>
-                </div>
-              </div>
-              <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted" style={{ padding: '6px', border: 'none', background: 'transparent' }}><Trash2 size={14} /></button>
-            </div>
-
-            {/* Lista de Planos */}
-            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {planos.map(plano => {
-                const isExpanded = expandida === plano.id;
+      {showSelector && (
+        <div style={{ padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--accent)', marginBottom: '16px' }}>
+          <div className="text-sm font-bold mb-2">Selecione as cenas decupadas:</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+            {cenasGlobais.length === 0 ? (
+              <div className="text-xs text-muted">Vá em "Decupagem" no menu inicial para criar cenas.</div>
+            ) : (
+              cenasGlobais.map(c => {
+                const isSelected = diaria.cena_ids?.includes(c.id);
                 return (
-                  <div key={plano.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderBottom: '1px solid var(--border-light)' }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <input 
-                        value={plano.numero} 
-                        onChange={e => updatePlano(plano.id, { numero: e.target.value })} 
-                        style={{ width: '40px', textAlign: 'center', padding: '4px', fontSize: '13px' }}
-                        placeholder="Plano"
-                      />
-                      <input 
-                        value={plano.descricao} 
-                        onChange={e => updatePlano(plano.id, { descricao: e.target.value })} 
-                        style={{ flex: 1, padding: '4px 8px', fontSize: '13px', backgroundColor: 'transparent', border: '1px solid var(--border-light)' }}
-                        placeholder="O que acontece no plano..."
-                      />
-                      <button onClick={() => setExpandida(isExpanded ? null : plano.id)} className="btn-icon" style={{ padding: '6px', border: 'none', background: 'transparent' }}>
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </button>
-                      <button onClick={() => removePlano(plano.id)} className="btn-icon text-muted" style={{ padding: '6px', border: 'none', background: 'transparent' }}><Trash2 size={14} /></button>
+                      <span className="font-bold text-xs" style={{ width: '24px' }}>{c.numero}</span>
+                      <span className="text-sm">{c.descricao}</span>
                     </div>
-
-                    {isExpanded && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span className="text-xs text-muted uppercase">Tamanho</span>
-                          <select value={plano.tamanho || ''} onChange={e => updatePlano(plano.id, { tamanho: e.target.value })} style={selectStyle}>
-                            <option value="">-</option>
-                            <option value="Wide">Wide (Aberto)</option>
-                            <option value="Medium">Medium (Médio)</option>
-                            <option value="Close">Close</option>
-                            <option value="Detail">Detail (Detalhe)</option>
-                          </select>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span className="text-xs text-muted uppercase">Ângulo</span>
-                          <select value={plano.angulo || ''} onChange={e => updatePlano(plano.id, { angulo: e.target.value })} style={selectStyle}>
-                            <option value="">-</option>
-                            <option value="Nível">Nível</option>
-                            <option value="Plongée (Alto)">Plongée (Alto)</option>
-                            <option value="Contra-plongée (Baixo)">Contra-plongée (Baixo)</option>
-                          </select>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span className="text-xs text-muted uppercase">Movimento</span>
-                          <select value={plano.movimento || ''} onChange={e => updatePlano(plano.id, { movimento: e.target.value })} style={selectStyle}>
-                            <option value="">-</option>
-                            <option value="Estático">Estático</option>
-                            <option value="Pan">Pan</option>
-                            <option value="Tilt">Tilt</option>
-                            <option value="Dolly/Track">Dolly / Track</option>
-                            <option value="Handheld">Handheld (Mão)</option>
-                          </select>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span className="text-xs text-muted uppercase">Lente / Info</span>
-                          <input 
-                            value={plano.lente || ''} 
-                            onChange={e => updatePlano(plano.id, { lente: e.target.value })} 
-                            style={selectStyle} 
-                            placeholder="ex: 35mm"
-                          />
-                        </div>
-                      </div>
+                    {isSelected ? (
+                      <button onClick={() => removeCena(c.id)} className="btn-icon text-danger" style={{ padding: '4px 8px', fontSize: '10px' }}>Remover</button>
+                    ) : (
+                      <button onClick={() => addCena(c.id)} className="btn-primary" style={{ padding: '4px 8px', fontSize: '10px' }}>Adicionar</button>
                     )}
                   </div>
                 );
-              })}
+              })
+            )}
+          </div>
+        </div>
+      )}
 
-              <button onClick={() => addPlano(cena.id)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '8px', backgroundColor: 'transparent', border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
-                <Camera size={14} /> Novo Plano
-              </button>
+      {todasCenas.length === 0 && (
+        <div className="text-muted text-sm text-center" style={{ padding: '16px' }}>
+          Nenhuma cena programada para esta diária.
+        </div>
+      )}
+
+      {todasCenas.map(cena => {
+        // Se for cena antiga, os planos estão em diaria.planos. Se for nova, estão em planosGlobais
+        const isAntiga = !!cena.ambiente && !cena.projeto_id;
+        const planosDaCena = isAntiga 
+          ? (diaria.planos || []).filter(p => p.cena_id === cena.id)
+          : planosGlobais.filter(p => p.cena_id === cena.id);
+        
+        const loc = locacoes.find(l => l.id === cena.locacao_id);
+        
+        return (
+          <div key={cena.id} style={{ border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ width: '40px', fontWeight: 'bold', textAlign: 'center', fontSize: '14px' }}>
+                {cena.numero}
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <span className="font-bold">{cena.descricao}</span>
+                <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                  <span style={{ textTransform: 'uppercase' }}>{cena.ambiente} · {cena.periodo}</span>
+                  {loc && <span>· {loc.nome}</span>}
+                </div>
+              </div>
+              <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted" style={{ padding: '6px' }} title="Remover da Diária"><Trash2 size={16} /></button>
             </div>
+
+            {planosDaCena.length > 0 && (
+              <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">Planos ({planosDaCena.length})</div>
+                {planosDaCena.map(plano => (
+                  <div key={plano.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                    <span className="font-bold text-muted" style={{ width: '20px' }}>{plano.numero}</span>
+                    <span style={{ flex: 1 }}>{plano.descricao}</span>
+                    <span className="text-xs text-secondary">{plano.tamanho} {plano.movimento ? `/ ${plano.movimento}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}

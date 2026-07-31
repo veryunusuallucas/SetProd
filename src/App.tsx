@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { ProjectLayout } from './pages/ProjectLayout';
 import { DashboardGeral } from './components/DashboardGeral';
@@ -12,7 +12,12 @@ import { DiariasList } from './pages/DiariasList';
 import { DiariaModule } from './pages/DiariaModule';
 import { FinanceiroModule } from './pages/FinanceiroModule';
 import { TasksModule } from './pages/TasksModule';
+import { DecupagemModule } from './pages/DecupagemModule';
+import { BreakdownModule } from './pages/BreakdownModule';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { BugReportModal } from './components/BugReportModal';
+import { useState } from 'react';
+import { Bug } from 'lucide-react';
 
 // Placeholder components for new v3 modules
 const EquipamentosModule = () => <div className="screen-padding">Módulo de Equipamentos - Em breve</div>;
@@ -55,16 +60,54 @@ function App() {
               <Route path="locacoes" element={<LocacoesModule />} />
               <Route path="equipamentos" element={<EquipamentosModule />} />
               <Route path="tasks" element={<TasksModule />} />
+              <Route path="decupagem" element={<DecupagemModule />} />
+              <Route path="breakdown" element={<BreakdownModule />} />
             </Route>
           </Routes>
+          <GlobalBugButton />
         </div>
       </BrowserRouter>
     </AuthProvider>
   );
 }
 
+function GlobalBugButton() {
+  const [show, setShow] = useState(false);
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+
+  return (
+    <>
+      <button
+        onClick={() => setShow(true)}
+        className="btn-primary"
+        style={{
+          position: 'fixed',
+          bottom: isHome ? '96px' : '24px',
+          right: '24px',
+          zIndex: 9999,
+          borderRadius: '50px',
+          width: '48px',
+          height: '48px',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--bg-surface)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--border-color)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+        }}
+        title="Relatar Bug ou Sugestão"
+      >
+        <Bug size={24} className="text-danger" />
+      </button>
+      {show && <BugReportModal onClose={() => setShow(false)} />}
+    </>
+  );
+}
+
 // Wrappers to pass projetoId from context/params since previously they received it via props
-import { useParams, useLocation } from 'react-router-dom';
 
 function CommandPaletteWrapper() {
   const location = useLocation();

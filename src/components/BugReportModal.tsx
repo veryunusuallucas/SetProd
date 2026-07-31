@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { db } from '../db/db';
+import { supabase } from '../lib/supabase';
 
 export function BugReportModal({ onClose }: { onClose: () => void }) {
   const [tipo, setTipo] = useState<'bug' | 'sugestao' | 'duvida'>('bug');
@@ -23,6 +24,10 @@ export function BugReportModal({ onClose }: { onClose: () => void }) {
       const dump = {
         tipo,
         descricao,
+        url_atual: window.location.pathname,
+        resolucao: `${window.innerWidth}x${window.innerHeight}`,
+        user_agent: navigator.userAgent,
+        erros_console: window.lastConsoleErrors || [],
         data: new Date().toISOString(),
         stats: {
           projetos: projetos.length,
@@ -32,7 +37,23 @@ export function BugReportModal({ onClose }: { onClose: () => void }) {
         }
       };
 
-      console.log('Feedback gerado:', dump);
+      console.log('Enviando report para Supabase:', dump);
+      
+      const { error: supaError } = await supabase.from('bug_reports').insert([
+        {
+          tipo: dump.tipo,
+          descricao: dump.descricao,
+          url_atual: dump.url_atual,
+          resolucao: dump.resolucao,
+          user_agent: dump.user_agent,
+          erros_console: dump.erros_console,
+          stats: dump.stats
+        }
+      ]);
+
+      if (supaError) {
+        console.warn('Erro ao salvar no Supabase (tabela pode não existir). Salvo apenas local.', supaError);
+      }
       
       setEnviado(true);
       setTimeout(() => {

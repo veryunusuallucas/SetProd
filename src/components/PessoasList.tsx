@@ -7,6 +7,10 @@ import { useRole } from '../hooks/useRole';
 import Stepper, { Step } from './ui/Stepper';
 import { ProfileCard } from './ui/ProfileCard';
 import { FormBuilder } from './FormBuilder';
+import { FichaCompleta } from './FichaCompleta';
+import { RelatorioTransversal } from './RelatorioTransversal';
+import { useLayoutContext } from '../pages/ProjectLayout';
+import type { Perfil } from '../types';
 
 export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string, onSelectUsuario?: (id: string) => void }) {
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
@@ -18,8 +22,9 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const [showForm, setShowForm] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [showRelatorio, setShowRelatorio] = useState(false);
   
-  const [showBuilder, setShowBuilder] = useState(false);
+  const { openPanel, closePanel } = useLayoutContext();
   
   // States para o form de Novo Membro
   const [nome, setNome] = useState('');
@@ -114,42 +119,6 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
     return d ? d.nome : 'S/ Depto';
   };
 
-  const copiar = (texto: string | undefined, _label?: string) => {
-    if (!texto) return;
-    navigator.clipboard.writeText(texto);
-  };
-
-  const copiarFichaInteira = (p: any) => {
-    const texto = `FICHA CADASTRAL - ${p.nome} ${p.sobrenome || ''}
-Nome Social: ${p.nome_social || '-'}
-CPF: ${p.cpf || '-'} | RG: ${p.rg || '-'}
-Nascimento: ${p.data_nascimento || '-'}
-Telefone: ${p.telefone || '-'} | E-mail: ${p.email || '-'}
-Instagram: ${p.instagram || '-'}
-Endereço: ${p.endereco || '-'}
-
-MÉDICA / EMERGÊNCIA
-Contato: ${p.contato_emergencia || '-'}
-Sanguíneo: ${p.tipo_sanguineo || '-'}
-Alergias: ${p.alergias || '-'} | Restrições: ${p.restricao_alimentar || '-'}
-Plano Saúde: ${p.plano_saude || '-'}
-
-SET
-Função: ${p.funcao || '-'}
-Depto: ${getDeptoNome(p.departamento_id)}
-DRT: ${p.drt || '-'}
-
-FINANCEIRO
-Diária: R$ ${p.valor_diaria || '-'} | Vínculo: ${p.tipo_vinculo || '-'}
-PIX: ${p.chave_pix || '-'}
-Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
-    const extras = camposCustom.filter(c => p.custom?.[c.id]);
-    const textoFinal = extras.length > 0
-      ? texto + '\n\nPERSONALIZADOS\n' + extras.map(c => `${c.nome}: ${p.custom?.[c.id]}`).join('\n')
-      : texto;
-    navigator.clipboard.writeText(textoFinal);
-  };
-
   const copiarLinkCadastro = () => {
     const url = `${window.location.origin}/cadastro/${projetoId}`;
     navigator.clipboard.writeText(url);
@@ -224,14 +193,16 @@ Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span className="text-xs text-secondary font-bold uppercase tracking-widest">Equipe {!canEditProducao && '(Somente Leitura)'}</span>
         <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setShowRelatorio(true)} className="btn-secondary" title="Relatório Geral" style={{ backgroundColor: showRelatorio ? 'var(--accent)' : 'var(--bg-surface)' }}>
+            <FileText size={16} color={showRelatorio ? '#000' : 'currentColor'} />
+          </button>
           {canEditProducao && (
             <>
-              <button onClick={() => setShowBuilder(!showBuilder)} className="btn-secondary" title="Configurar Ficha de Cadastro" style={{ backgroundColor: showBuilder ? 'var(--accent)' : 'var(--bg-surface)' }}>
-                <Settings2 size={16} color={showBuilder ? '#000' : 'currentColor'} />
+              <button onClick={() => openPanel(<FormBuilder projeto={projeto!} onClose={closePanel} />)} className="btn-secondary" title="Configurar Ficha de Cadastro" style={{ backgroundColor: 'var(--bg-surface)' }}>
+                <Settings2 size={16} color={'currentColor'} />
               </button>
               <label className="btn-icon" title="Importar CSV (Google Forms)" style={{ backgroundColor: 'var(--bg-surface)', cursor: 'pointer' }}>
                 <Upload size={16} />
@@ -263,96 +234,54 @@ Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
             )}
 
             {perfis?.filter(p => p.id !== 'caixa_central').map(p => (
-              <ProfileCard
-                key={p.id}
-                name={`${p.nome} ${p.sobrenome || ''}`}
-                title={p.funcao || 'Membro'}
-                status={getDeptoNome(p.departamento_id)}
-                handle={p.nome_social || p.nome.toLowerCase()}
-                avatarUrl={`https://ui-avatars.com/api/?name=${p.nome}+${p.sobrenome || ''}&background=random`}
+              <div 
+                key={p.id} 
+                onClick={() => {
+                  openPanel(
+                    <FichaCompleta
+                      perfil={p}
+                      projeto={projeto!}
+                      departamentoNome={getDeptoNome(p.departamento_id)}
+                      canEdit={canEditProducao}
+                      onClose={closePanel}
+                      onEdit={(perfilEditado) => {
+                        closePanel();
+                        handleEdit(perfilEditado);
+                      }}
+                      onDelete={async (id, nomeDeletado) => {
+                        await handleDelete(id, nomeDeletado);
+                        closePanel();
+                      }}
+                      onViewTransacoes={(id) => {
+                        if (onSelectUsuario) onSelectUsuario(id);
+                      }}
+                    />
+                  );
+                }} 
+                style={{ cursor: 'pointer', transition: 'transform 0.2s ease' }} 
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} 
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }} className="hide-scrollbar">
-                <button onClick={(e) => { e.stopPropagation(); copiar(p.telefone, 'Telefone'); }} className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }} title="Copiar Tel"><Smartphone size={16} /></button>
-                <button onClick={(e) => { e.stopPropagation(); copiar(p.chave_pix, 'PIX'); }} className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }} title="Copiar PIX"><Wallet size={16} /></button>
-                <button onClick={(e) => { e.stopPropagation(); copiar(p.cpf, 'CPF'); }} className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }} title="Copiar CPF"><FileText size={16} /></button>
-                <button onClick={(e) => { e.stopPropagation(); copiarFichaInteira(p); }} className="btn-primary" style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', padding: '0 12px' }}>
-                  <Copy size={14} style={{ marginRight: '8px' }}/> Ficha Completa
-                </button>
-                {canEditProducao && (
-                  <>
-                    <div style={{ flex: 1 }}></div>
-                    <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="btn-icon text-muted" style={{ padding: '4px' }} title="Editar"><Edit2 size={16} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id, `${p.nome} ${p.sobrenome || ''}`); }} className="btn-icon text-danger" style={{ padding: '4px' }} title="Excluir"><Trash2 size={16} /></button>
-                  </>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
-                <div>
-                  <div className="text-xs text-muted font-bold uppercase tracking-widest">PIX</div>
-                  <div>{p.chave_pix || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted font-bold uppercase tracking-widest">Telefone</div>
-                  <div>{p.telefone || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted font-bold uppercase tracking-widest">CPF</div>
-                  <div>{p.cpf || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-danger font-bold uppercase tracking-widest">Alergias</div>
-                  <div className="text-danger font-bold">{p.alergias || '-'}</div>
-                </div>
-              </div>
-
-              {camposCustom.filter(c => p.custom?.[c.id]).length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
-                  {camposCustom.filter(c => p.custom?.[c.id]).map(c => (
-                    <div key={c.id}>
-                      <div className="text-xs text-muted font-bold uppercase tracking-widest">{c.nome}</div>
-                      <div>{c.tipo === 'valor' ? `R$ ${p.custom?.[c.id]}` : p.custom?.[c.id]}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {onSelectUsuario && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onSelectUsuario(p.id); }}
-                  className="btn-primary" 
-                  style={{ width: '100%', marginTop: '8px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                <ProfileCard
+                  name={`${p.nome} ${p.sobrenome || ''}`}
+                  title={p.funcao || 'Membro'}
+                  status={getDeptoNome(p.departamento_id)}
+                  handle={p.nome_social || p.nome.toLowerCase()}
+                  avatarUrl={`https://ui-avatars.com/api/?name=${p.nome}+${p.sobrenome || ''}&background=random`}
                 >
-                  <UserCircle size={16} style={{ marginRight: '8px' }}/> Extrato de Transações
-                </button>
-              )}
-
-            </div>
-          </ProfileCard>
-        ))}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+                      {p.telefone && <span className="text-xs text-secondary bg-surface" style={{ padding: '4px 8px', borderRadius: '4px' }}><Smartphone size={12} style={{ display: 'inline', marginRight: '4px' }}/> Tel</span>}
+                      {p.alergias && <span className="text-xs text-danger bg-surface" style={{ padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>Alergia</span>}
+                      {p.chave_pix && <span className="text-xs text-accent bg-surface" style={{ padding: '4px 8px', borderRadius: '4px' }}><Wallet size={12} style={{ display: 'inline', marginRight: '4px' }}/> PIX</span>}
+                    </div>
+                    <div className="text-xs font-bold text-accent">Abrir Ficha &rarr;</div>
+                  </div>
+                </ProfileCard>
+              </div>
+            ))}
           </div>
         </div>
-
-        {/* Builder Panel (Desktop Fixado à Direita, Mobile Modal) */}
-        {showBuilder && projeto && (
-          <div className="form-builder-container" style={{
-            width: window.innerWidth > 768 ? '350px' : '100%',
-            position: window.innerWidth > 768 ? 'sticky' : 'fixed',
-            top: window.innerWidth > 768 ? '90px' : 0,
-            left: window.innerWidth > 768 ? 'auto' : 0,
-            height: window.innerWidth > 768 ? 'calc(100vh - 120px)' : '100%',
-            zIndex: 100,
-            backgroundColor: 'var(--bg-primary)',
-            borderRadius: window.innerWidth > 768 ? '16px' : 0,
-            border: '1px solid var(--border-color)',
-            overflow: 'hidden',
-            boxShadow: window.innerWidth <= 768 ? '0 0 20px rgba(0,0,0,0.5)' : 'none'
-          }}>
-            <FormBuilder projeto={projeto} onClose={() => setShowBuilder(false)} />
-          </div>
-        )}
 
       </div>
 
@@ -486,6 +415,15 @@ Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL: RELATÓRIO TRANSVERSAL */}
+      {showRelatorio && projeto && perfis && (
+        <RelatorioTransversal
+          perfis={perfis}
+          projeto={projeto}
+          onClose={() => setShowRelatorio(false)}
+        />
       )}
 
     </div>

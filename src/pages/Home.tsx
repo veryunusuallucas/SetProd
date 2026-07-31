@@ -3,22 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { Projeto } from '../types';
-import { Settings, Search, Film, Trash2 } from 'lucide-react';
+import { Settings, Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { BugReportModal } from '../components/BugReportModal';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
+import { ChangelogModal } from '../components/ChangelogModal';
 
 export function Home() {
   const projetos = useLiveQuery(() => db.projetos.toArray());
+  const aportesGlobais = useLiveQuery(() => db.aportes.toArray());
+  const despesasGlobais = useLiveQuery(() => db.despesas.toArray());
   const navigate = useNavigate();
 
   const [modoDeletar, setModoDeletar] = useState(false);
   const [projetoParaDeletar, setProjetoParaDeletar] = useState<Projeto | null>(null);
 
   const [mostrarStepper, setMostrarStepper] = useState(false);
-  const [mostrarBug, setMostrarBug] = useState(false);
+  const [mostrarChangelog, setMostrarChangelog] = useState(false);
   const [termoBusca, setTermoBusca] = useState('');
   
   // Stepper State
@@ -26,7 +29,6 @@ export function Home() {
     nome: '',
     diretor: '',
     produtor: '',
-    saldo_inicial: 0,
     limite_gasto: 0,
     modo_acerto: 'centralizado'
   });
@@ -43,7 +45,6 @@ export function Home() {
       nome: novoProjeto.nome,
       diretor: novoProjeto.diretor || '',
       produtor: novoProjeto.produtor || '',
-      saldo_inicial: novoProjeto.saldo_inicial || 0,
       limite_gasto: novoProjeto.limite_gasto || 0,
       data_criacao: Date.now(),
       modo_acerto: novoProjeto.modo_acerto || 'centralizado',
@@ -95,7 +96,15 @@ export function Home() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <div style={{ fontSize: '10px', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Bem-vindo</div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Produtor</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Produtor</h1>
+            <button 
+              onClick={() => setMostrarChangelog(true)}
+              style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Sparkles size={12} /> v2.0
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <HelpButton />
@@ -148,8 +157,10 @@ export function Home() {
               </div>
               
               <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
-                <div className="text-xs text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Saldo Inicial</div>
-                <div className="text-success font-bold text-lg">R$ {(projeto.saldo_inicial || 0).toFixed(2)}</div>
+                <div className="text-xs text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Saldo Atual</div>
+                <div className="font-bold text-lg" style={{ color: ((aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) - (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                  R$ {((aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) - (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)).toFixed(2)}
+                </div>
               </div>
             </div>
           ))
@@ -165,7 +176,6 @@ export function Home() {
 
       <FloatingActionMenu 
         onCriarProjeto={() => setMostrarStepper(true)}
-        onRelatarBug={() => setMostrarBug(true)}
       />
 
       {/* MODAL STEPPER (CRIAR PROJETO) */}
@@ -207,10 +217,6 @@ export function Home() {
                   <h2 style={{ marginBottom: '16px', fontSize: '20px', fontWeight: 'bold' }}>Financeiro</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
-                      <label className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'block', marginBottom: '8px' }}>Saldo Inicial (R$)</label>
-                      <input type="number" value={novoProjeto.saldo_inicial} onChange={e => setNovoProjeto({...novoProjeto, saldo_inicial: Number(e.target.value)})} placeholder="0.00" />
-                    </div>
-                    <div>
                       <label className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'block', marginBottom: '8px' }}>Gasto Limite (R$)</label>
                       <input type="number" value={novoProjeto.limite_gasto} onChange={e => setNovoProjeto({...novoProjeto, limite_gasto: Number(e.target.value)})} placeholder="0.00" />
                     </div>
@@ -244,9 +250,6 @@ export function Home() {
         </div>
       )}
 
-      {mostrarBug && (
-        <BugReportModal onClose={() => setMostrarBug(false)} />
-      )}
 
       {/* MODAL DE CONFIRMAÇÃO DE DELEÇÃO */}
       {projetoParaDeletar && (
@@ -273,6 +276,10 @@ export function Home() {
         </div>
       )}
 
+      {/* MODAL DE CHANGELOG */}
+      {mostrarChangelog && (
+        <ChangelogModal onClose={() => setMostrarChangelog(false)} />
+      )}
     </div>
   );
 }

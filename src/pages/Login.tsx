@@ -34,22 +34,7 @@ export function Login() {
     setLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      alert('Cadastro realizado! Verifique seu email ou tente fazer login.');
-    }
-    setLoading(false);
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
@@ -88,9 +73,6 @@ export function Login() {
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-            <button type="button" onClick={handleSignUp} disabled={loading} className="btn-primary" style={{ flex: 1, backgroundColor: 'var(--bg-active)', color: 'var(--text-primary)' }}>
-              Criar Conta
-            </button>
             <button type="submit" disabled={loading} className="btn-primary" style={{ flex: 1 }}>
               {loading ? 'Entrando...' : 'Entrar'}
             </button>

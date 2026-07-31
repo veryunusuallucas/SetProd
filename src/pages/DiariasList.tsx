@@ -11,7 +11,10 @@ export function DiariasList() {
   const navigate = useNavigate();
 
   const diarias = useLiveQuery(
-    () => db.diarias.where('projeto_id').equals(projetoId!).reverse().sortBy('numero'),
+    async () => {
+      const arr = await db.diarias.where('projeto_id').equals(projetoId!).toArray();
+      return arr.sort((a, b) => a.numero - b.numero);
+    },
     [projetoId]
   ) || [];
 
@@ -44,7 +47,7 @@ export function DiariasList() {
 
   const formataData = (d: string) => {
     const [a, m, dia] = d.split('-');
-    return `${dia}/${m}/${a}`;
+    return `${dia}/${m}/${a.slice(-2)}`;
   };
 
   return (
@@ -82,7 +85,7 @@ export function DiariasList() {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {
           const despesasDaDiaria = despesas.filter(dx => dx.diaria === d.id);
           const totalDespesas = despesasDaDiaria.reduce((acc, curr) => acc + curr.valor_total, 0);
@@ -91,7 +94,7 @@ export function DiariasList() {
             <div 
               key={d.id} 
               className="card" 
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s ease', flexWrap: 'wrap', gap: '16px' }}
               onClick={() => navigate(`/projeto/${projetoId}/diaria/${d.id}`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

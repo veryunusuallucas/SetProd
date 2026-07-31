@@ -399,7 +399,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                     <div key={a.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px' }}>
                       <div>
                         <div className="text-sm">{recebeu ? 'Recebeu da Produção' : 'Pagou à Produção'}</div>
-                        <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString()}</div>
+                        <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="font-bold" style={{ color: recebeu ? 'var(--color-success)' : 'var(--text-primary)' }}>R$ {a.valor.toFixed(2)}</span>
