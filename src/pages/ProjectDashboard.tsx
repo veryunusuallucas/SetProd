@@ -23,10 +23,7 @@ export function ProjectDashboard() {
   const [usuarioSelecionadoId, setUsuarioSelecionadoId] = useState<string | null>(null);
   const [origemDetalhe, setOrigemDetalhe] = useState<'producao' | 'acertos'>('acertos');
 
-  const abrirUsuario = (id: string, origem: 'producao' | 'acertos') => {
-    setOrigemDetalhe(origem);
-    setUsuarioSelecionadoId(id);
-  };
+
 
   // Trocar de aba pelo menu SEMPRE fecha qualquer detalhe/sub-tela aberto (§6.1)
   const irParaAba = (aba: Aba) => {
