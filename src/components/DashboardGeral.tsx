@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import { useNavigate } from 'react-router-dom';
+import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText } from 'lucide-react';
+
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
+  const navigate = useNavigate();
+  
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
+  const tasks = useLiveQuery(() => db.tasks.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
+  const aportes = useLiveQuery(() => db.aportes.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
 
   const [diariaAtual, setDiariaAtual] = useState(() => {
     const salva = localStorage.getItem(`diaria_atual_${projetoId}`);
     return salva ? parseInt(salva.replace(/\D/g, '')) || 1 : 1;
   });
-
-  const alterarDiaria = (nova: number) => {
-    setDiariaAtual(nova);
-    localStorage.setItem(`diaria_atual_${projetoId}`, `Diária ${nova}`);
-  };
 
   // Contadores animados
   const [animatedSaldo, setAnimatedSaldo] = useState(0);
@@ -28,12 +30,12 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
   }, [projeto, editMode]);
 
   useEffect(() => {
-    if (!projeto || !despesas) return;
+    if (!projeto || !despesas || !aportes) return;
     
     const totalGasto = despesas.reduce((acc, d) => acc + d.valor_total, 0);
-    const saldoAtual = (projeto.saldo_inicial || 0) - totalGasto;
+    const totalAportes = aportes.reduce((acc, a) => acc + a.valor, 0);
+    const saldoAtual = totalAportes - totalGasto;
 
-    // Animação simples de counter
     let start: number | null = null;
     const duration = 600;
     const initialGasto = animatedGasto;
@@ -57,60 +59,28 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
     window.requestAnimationFrame(step);
   }, [projeto, despesas]);
 
-
-  if (!projeto || !despesas) return <div style={{ padding: '24px' }}>Carregando dashboard...</div>;
+  if (!projeto || !despesas || !aportes) return <div style={{ padding: '24px' }}>Carregando panorama...</div>;
 
   const totalGasto = despesas.reduce((acc, d) => acc + d.valor_total, 0);
-  const saldoAtual = (projeto.saldo_inicial || 0) - totalGasto;
+  const totalAportes = aportes.reduce((acc, a) => acc + a.valor, 0);
+  const saldoAtual = totalAportes - totalGasto;
   const isEstourado = totalGasto > (projeto.limite_gasto || Infinity);
-
-  // Maior gasto
-  let topSpenderId = '';
-  let topSpenderValue = 0;
-  const gastosPorPessoa: Record<string, number> = {};
-  despesas.forEach(d => {
-    d.pagadores.forEach(pg => {
-      const pagador = pg.id_ref || 'caixa_central';
-      gastosPorPessoa[pagador] = (gastosPorPessoa[pagador] || 0) + pg.valor;
-      if (gastosPorPessoa[pagador] > topSpenderValue) {
-        topSpenderValue = gastosPorPessoa[pagador];
-        topSpenderId = pagador;
-      }
-    });
-  });
-
-  const getNomeMembro = (id: string) => {
-    if (id === 'caixa_central') return 'Caixa';
-    const p = perfis?.find(x => x.id === id);
-    return p ? p.nome : 'Desconhecido';
-  };
-
-  // Último gasto
-  const gastoRecente = despesas.length > 0 ? despesas.sort((a,b) => b.data - a.data)[0] : null;
-
-  // Montar Faixa de Diárias
   const totalPlanejado = projeto.num_diarias || 0;
-  
-  // Agrupar gastos por diária
-  const gastosPorDiaria: Record<string, number> = {};
-  despesas.forEach(d => {
-    const nomeD = d.diaria || 'Geral';
-    gastosPorDiaria[nomeD] = (gastosPorDiaria[nomeD] || 0) + d.valor_total;
-  });
-
-  // Gerar lista de diárias para a faixa (Pré-produção + 1 até N)
-  const listaDiarias = ['Pré-produção'];
-  for (let i = 1; i <= Math.max(totalPlanejado, diariaAtual); i++) {
-    listaDiarias.push(`Diária ${i}`);
-  }
 
   const salvarConfig = async () => {
     if (!form) return;
     await db.projetos.put(form);
     setEditMode(false);
   };
-
   const num = (v: string) => (v === '' ? undefined : Number(v));
+
+  // Últimas Tasks (Pendentes)
+  const recentes = (tasks || [])
+    .filter(t => t.status !== 'done')
+    .sort((a, b) => b.data_criacao - a.data_criacao)
+    .slice(0, 3);
+
+  const progressoDiaria = totalPlanejado > 0 ? Math.min((diariaAtual / totalPlanejado) * 100, 100) : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '16px' }}>
@@ -119,12 +89,6 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>{projeto.nome}</h2>
-          {totalPlanejado > 0 && (
-            <div className="text-sm text-secondary" style={{ marginTop: '4px' }}>
-              Diária {diariaAtual} de {totalPlanejado}
-              {diariaAtual > totalPlanejado && <span className="text-danger" style={{ marginLeft: '8px' }}>⚠️ Excedido</span>}
-            </div>
-          )}
         </div>
         <button
           onClick={() => editMode ? salvarConfig() : setEditMode(true)}
@@ -143,7 +107,6 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
             <div style={{ flex: 1 }}><label className="text-xs text-muted font-bold uppercase">Produtor Executivo</label><input value={form.produtor_executivo || ''} onChange={e => setForm({ ...form, produtor_executivo: e.target.value })} /></div>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ flex: 1 }}><label className="text-xs text-muted font-bold uppercase">Saldo Inicial / Caixa</label><input type="number" value={form.saldo_inicial ?? ''} onChange={e => setForm({ ...form, saldo_inicial: num(e.target.value) })} /></div>
             <div style={{ flex: 1 }}><label className="text-xs text-muted font-bold uppercase">Orçamento Máximo</label><input type="number" value={form.limite_gasto ?? ''} onChange={e => setForm({ ...form, limite_gasto: num(e.target.value) })} /></div>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -173,101 +136,121 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
           {projeto.fonte_orcamento && <span className="text-xs text-muted"><strong>Fonte:</strong> {projeto.fonte_orcamento}</span>}
           {projeto.produtor_executivo && <span className="text-xs text-muted"><strong>Executivo:</strong> {projeto.produtor_executivo}</span>}
           <span className="text-xs text-muted"><strong>Colaboradores:</strong> {perfis?.length || 0} pessoas</span>
-          <span className="text-xs text-muted"><strong>Modo de Acerto:</strong> {projeto.modo_acerto === 'centralizado' ? 'Banco do Projeto' : 'Compensado (Líquido)'}</span>
         </div>
       )}
 
-      {/* Grid de Cards Principais */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-        gap: '16px' 
-      }}>
-        {/* Saldo Disponível */}
-        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
-          <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Saldo Disp.</span>
-          <span className="text-2xl font-bold" style={{ color: saldoAtual < 0 ? 'var(--color-danger)' : 'var(--text-primary)', transition: 'color 0.3s ease' }}>
-            R$ {animatedSaldo.toFixed(2)}
-          </span>
-          <span className="text-xs text-muted" style={{ marginTop: '4px' }}>
-            Inicial: R$ {(projeto.saldo_inicial || 0).toFixed(2)}
-          </span>
-        </div>
-
-        {/* Total Gasto (ou Gasto Recente) */}
-        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', borderColor: isEstourado ? 'var(--color-danger)' : 'var(--border-color)', transition: 'border-color 0.3s ease' }}>
-          <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px', color: isEstourado ? 'var(--color-danger)' : 'var(--text-secondary)' }}>Total Gasto</span>
-          <span className="text-lg font-bold" style={{ color: isEstourado ? 'var(--color-danger)' : 'var(--text-primary)' }}>R$ {animatedGasto.toFixed(2)}</span>
-          <span className="text-xs text-muted" style={{ marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {gastoRecente ? `Último: ${gastoRecente.descricao}` : 'Nenhum gasto'}
-          </span>
-        </div>
-
-        {/* Top Spender */}
-        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
-          <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Maior Gasto</span>
-          <span className="text-lg font-bold text-accent">R$ {topSpenderValue.toFixed(2)}</span>
-          <span className="text-xs text-muted" style={{ marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {getNomeMembro(topSpenderId)}
-          </span>
-        </div>
+      {/* ATALHOS RÁPIDOS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px' }}>
+        <button onClick={() => navigate('producao')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <Users size={24} className="text-accent" />
+          <span className="text-xs font-bold uppercase tracking-widest">Equipe</span>
+        </button>
+        <button onClick={() => navigate('financeiro')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <DollarSign size={24} className="text-success" />
+          <span className="text-xs font-bold uppercase tracking-widest">Dinheiro</span>
+        </button>
+        <button onClick={() => navigate('diarias')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <Calendar size={24} style={{ color: '#9d4edd' }} />
+          <span className="text-xs font-bold uppercase tracking-widest">Diárias</span>
+        </button>
+        <button onClick={() => navigate('locacoes')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <MapPin size={24} style={{ color: '#ff6b6b' }} />
+          <span className="text-xs font-bold uppercase tracking-widest">Locações</span>
+        </button>
+        <button onClick={() => navigate('tasks')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <CheckSquare size={24} style={{ color: '#4cc9f0' }} />
+          <span className="text-xs font-bold uppercase tracking-widest">Tarefas</span>
+        </button>
+        <button onClick={() => navigate('decupagem')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <Film size={24} style={{ color: '#fca311' }} />
+          <span className="text-xs font-bold uppercase tracking-widest">Decupagem</span>
+        </button>
+        <button onClick={() => navigate('breakdown')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <FileText size={24} style={{ color: '#e85d04' }} />
+          <span className="text-xs font-bold uppercase tracking-widest">Roteiro</span>
+        </button>
       </div>
 
-      {/* Faixa de Diárias */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <span className="text-xs text-secondary font-bold uppercase tracking-widest">Faixa de Diárias</span>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         
-        <div style={{ 
-          display: 'flex', 
-          gap: '12px', 
-          overflowX: 'auto', 
-          paddingBottom: '12px',
-          scrollBehavior: 'smooth'
-        }} className="hide-scrollbar">
+        {/* PROGRESSO DE DIÁRIAS */}
+        <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Clock size={14} /> Andamento do Projeto
+            </span>
+            {totalPlanejado > 0 && (
+              <span className="text-sm font-bold text-accent">{Math.round(progressoDiaria)}%</span>
+            )}
+          </div>
           
-          {listaDiarias.map((dStr) => {
-            // Se for Pré-produção, o index p/ alterar não é número simples. Vamos tratar.
-            const isPre = dStr === 'Pré-produção';
-            const numDaDiaria = isPre ? 0 : parseInt(dStr.replace(/\D/g, '')) || 1;
-            
-            // Ativo se for a diária atual selecionada
-            const isActive = isPre ? (diariaAtual === 0) : (diariaAtual === numDaDiaria);
-            
-            const gastoNesta = gastosPorDiaria[dStr] || 0;
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span className="text-3xl font-bold">Diária {diariaAtual}</span>
+            {totalPlanejado > 0 && <span className="text-secondary font-bold">de {totalPlanejado}</span>}
+          </div>
 
-            return (
-              <div 
-                key={dStr} 
-                onClick={() => alterarDiaria(numDaDiaria)}
-                style={{ 
-                  flex: '0 0 auto', 
-                  minWidth: '120px',
-                  padding: '12px', 
-                  borderRadius: '16px', 
-                  backgroundColor: isActive ? 'var(--bg-active)' : 'var(--bg-surface)',
-                  border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border-light)'}`,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  transform: isActive ? 'translateY(-2px)' : 'none',
-                  boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                <span className="text-sm font-bold" style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                  {isPre ? 'Pré-prod.' : dStr}
-                </span>
-                <span className="text-xs font-bold" style={{ color: gastoNesta > 0 ? 'var(--color-danger)' : 'var(--text-muted)' }}>
-                  R$ {gastoNesta.toFixed(2)}
-                </span>
-              </div>
-            );
-          })}
-
+          <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: `${progressoDiaria}%`, height: '100%', backgroundColor: 'var(--accent)', transition: 'width 0.5s ease-out' }}></div>
+          </div>
+          
+          {diariaAtual > totalPlanejado && totalPlanejado > 0 && (
+            <div className="text-xs text-danger font-bold">⚠️ Número de diárias ultrapassou o planejado.</div>
+          )}
         </div>
+
+        {/* RESUMO FINANCEIRO */}
+        <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', borderColor: isEstourado ? 'var(--color-danger)' : 'var(--border-color)' }}>
+          <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <DollarSign size={14} /> Resumo Financeiro
+          </span>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Saldo Disponível</span>
+              <span className="text-2xl font-bold" style={{ color: saldoAtual < 0 ? 'var(--color-danger)' : 'var(--text-primary)', transition: 'color 0.3s ease' }}>
+                R$ {animatedSaldo.toFixed(2)}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px', color: isEstourado ? 'var(--color-danger)' : 'var(--text-secondary)' }}>Total Gasto</span>
+              <span className="text-lg font-bold" style={{ color: isEstourado ? 'var(--color-danger)' : 'var(--text-primary)' }}>
+                R$ {animatedGasto.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* TAREFAS RECENTES */}
+      <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <CheckSquare size={14} /> Tarefas Pendentes
+          </span>
+          <button onClick={() => navigate('tasks')} className="text-xs text-accent font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+            Ver Todas
+          </button>
+        </div>
+
+        {recentes.length === 0 ? (
+          <div className="text-sm text-secondary" style={{ textAlign: 'center', padding: '16px' }}>
+            Nenhuma tarefa pendente no momento.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {recentes.map(task => (
+              <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: task.status === 'doing' ? 'var(--accent)' : 'var(--text-muted)' }}></div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <span className="text-sm font-bold">{task.titulo}</span>
+                  {task.descricao && <span className="text-xs text-secondary">{task.descricao.substring(0, 50)}{task.descricao.length > 50 ? '...' : ''}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
     </div>

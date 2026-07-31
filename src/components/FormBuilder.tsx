@@ -8,6 +8,32 @@ export function FormBuilder({ projeto, onClose }: { projeto: Projeto, onClose?: 
   const [novoTipo, setNovoTipo] = useState<TipoCampo>('texto');
   
   const campos = projeto.campos_customizados || [];
+  const obrigatorios = projeto.campos_obrigatorios || [];
+
+  const camposFixos = [
+    { id: 'cpf', nome: 'CPF' },
+    { id: 'rg', nome: 'RG' },
+    { id: 'telefone', nome: 'Telefone' },
+    { id: 'email', nome: 'E-mail' },
+    { id: 'endereco', nome: 'Endereço' },
+    { id: 'funcao', nome: 'Função / Cargo' },
+    { id: 'drt', nome: 'DRT' },
+    { id: 'contato_emergencia', nome: 'Contato de Emergência' },
+    { id: 'tipo_sanguineo', nome: 'Tipo Sanguíneo' },
+    { id: 'alergias', nome: 'Alergias' },
+    { id: 'restricao_alimentar', nome: 'Restrições Alimentares' },
+    { id: 'plano_saude', nome: 'Plano de Saúde' },
+    { id: 'valor_diaria', nome: 'Valor Diária' },
+    { id: 'tipo_vinculo', nome: 'Tipo Vínculo' },
+    { id: 'chave_pix', nome: 'Chave PIX' }
+  ];
+
+  const toggleObrigatorioFixo = async (id: string) => {
+    const novos = obrigatorios.includes(id) 
+      ? obrigatorios.filter(i => i !== id) 
+      : [...obrigatorios, id];
+    await db.projetos.update(projeto.id, { campos_obrigatorios: novos });
+  };
 
   const adicionarCampo = async () => {
     if (!novoCampo.trim()) return;
@@ -56,6 +82,24 @@ export function FormBuilder({ projeto, onClose }: { projeto: Projeto, onClose?: 
         
         {/* Lista de Campos */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          
+          <div className="text-xs font-bold text-muted uppercase tracking-widest mb-1 mt-2">Campos Padrão do Sistema</div>
+          
+          {camposFixos.map((campo) => (
+            <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{campo.nome}</div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={obrigatorios.includes(campo.id)} 
+                  onChange={() => toggleObrigatorioFixo(campo.id)}
+                />
+                Obrigatório
+              </label>
+            </div>
+          ))}
+
+          <div className="text-xs font-bold text-muted uppercase tracking-widest mb-1 mt-4">Campos Personalizados</div>
           {campos.map((campo) => (
             <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

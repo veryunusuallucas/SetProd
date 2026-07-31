@@ -13,12 +13,16 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
 
   const [nomeDepto, setNomeDepto] = useState('');
   const [orcamento, setOrcamento] = useState('');
+  const [corDepto, setCorDepto] = useState('#8884d8');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  const CORES_DISPONIVEIS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ffc658', '#d0ed57', '#a4de6c', '#ff5722', '#673ab7'];
 
   const limparForm = () => {
     setNomeDepto('');
     setOrcamento('');
+    setCorDepto('#8884d8');
     setEditId(null);
   };
 
@@ -29,7 +33,8 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
     const payload = {
       projeto_id: projetoId,
       nome: nomeDepto,
-      orcamento_departamento: parseFloat(orcamento) || 0
+      orcamento_departamento: parseFloat(orcamento) || 0,
+      cor: corDepto
     };
 
     if (editId) {
@@ -46,6 +51,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
     setEditId(d.id);
     setNomeDepto(d.nome);
     setOrcamento(d.orcamento_departamento ? String(d.orcamento_departamento) : '');
+    setCorDepto(d.cor || '#8884d8');
     setShowForm(true);
   };
 
@@ -130,7 +136,25 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
               value={orcamento} 
               onChange={e => setOrcamento(e.target.value)} 
             />
-            <div style={{ display: 'flex', gap: '8px' }}>
+            
+            <div>
+              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Cor do Departamento (Mural de Tarefas)</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {CORES_DISPONIVEIS.map(cor => (
+                  <div 
+                    key={cor} 
+                    onClick={() => setCorDepto(cor)}
+                    style={{ 
+                      width: '32px', height: '32px', borderRadius: '50%', backgroundColor: cor, cursor: 'pointer',
+                      border: corDepto === cor ? '3px solid white' : 'none',
+                      boxShadow: corDepto === cor ? '0 0 0 2px var(--text-primary)' : 'none'
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
               <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editId ? 'Salvar Alterações' : 'Criar Departamento'}</button>
               <button type="button" onClick={() => setShowForm(false)} className="btn-icon" style={{ backgroundColor: 'var(--bg-primary)' }}>Cancelar</button>
             </div>
@@ -154,7 +178,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
               title={`Equipe: ${stats.numMembros} pessoa(s)`}
               status="Ativo"
               handle={`depto_${d.nome.replace(/\s+/g, '').toLowerCase()}`}
-              avatarUrl={`https://ui-avatars.com/api/?name=${d.nome}&background=random`}
+              avatarUrl={`https://ui-avatars.com/api/?name=${d.nome}&background=${(d.cor || '8884d8').replace('#', '')}&color=fff`}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

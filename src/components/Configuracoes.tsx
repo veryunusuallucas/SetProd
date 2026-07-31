@@ -108,7 +108,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Templates de Mensagem</h3>
         <p className="text-xs text-muted" style={{ marginBottom: '8px' }}>

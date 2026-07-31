@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { DashboardGeral } from '../components/DashboardGeral';
 import { DespesasList } from '../components/DespesasList';
 import { ResumoList } from '../components/ResumoList';
+import { DashboardFinanceiro } from '../components/DashboardFinanceiro';
 import { LayoutDashboard, Receipt, HandCoins } from 'lucide-react';
+import { useLayoutContext } from './ProjectLayout';
+import { DetalhesUsuario } from '../components/DetalhesUsuario';
 
 type AbaFinanceiro = 'visao' | 'despesas' | 'acertos';
 
 export function FinanceiroModule() {
   const { id } = useParams<{ id: string }>();
   const [abaAtiva, setAbaAtiva] = useState<AbaFinanceiro>('visao');
+  const { openPanel, closePanel } = useLayoutContext();
 
   if (!id) return <div>ID do projeto não encontrado.</div>;
 
@@ -39,9 +42,23 @@ export function FinanceiroModule() {
       </div>
 
       {/* Conteúdo Dinâmico */}
-      {abaAtiva === 'visao' && <DashboardGeral projetoId={id} />}
+      {abaAtiva === 'visao' && <DashboardFinanceiro projetoId={id} />}
       {abaAtiva === 'despesas' && <DespesasList projetoId={id} />}
-      {abaAtiva === 'acertos' && <ResumoList projetoId={id} />}
+      {abaAtiva === 'acertos' && (
+        <ResumoList 
+          projetoId={id} 
+          onVerFicha={(uid) => {
+            openPanel(
+              <DetalhesUsuario 
+                projetoId={id} 
+                usuarioId={uid} 
+                origem="acertos" 
+                onVoltar={closePanel} 
+              />
+            );
+          }} 
+        />
+      )}
       
     </div>
   );
