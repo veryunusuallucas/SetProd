@@ -8,6 +8,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
+      workbox: {
+        // As fontes base do pdf.js (.pfb/.ttf) entram no cache offline: sem
+        // elas o roteiro abre com a camada de texto desalinhada, e no set não
+        // há internet para buscá-las depois.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,pfb,ttf}'],
+      },
       manifest: {
         name: 'SetProd',
         short_name: 'SetProd',
