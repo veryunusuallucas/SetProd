@@ -9,6 +9,7 @@ import { ResumoList } from '../components/ResumoList';
 import { Configuracoes } from '../components/Configuracoes';
 import { DetalhesUsuario } from '../components/DetalhesUsuario';
 import { HelpButton } from '../components/HelpButton';
+import { CalendarioDashboard } from '../components/CalendarioDashboard';
 
 import { LayoutDashboard, Film, Receipt, HandCoins, Settings, ChevronLeft } from 'lucide-react';
 
@@ -24,6 +25,8 @@ export function ProjectDashboard() {
   const [origemDetalhe, setOrigemDetalhe] = useState<'producao' | 'acertos'>('acertos');
 
 
+
+  const [subAbaDashboard, setSubAbaDashboard] = useState<'geral' | 'calendario'>('geral');
 
   // Trocar de aba pelo menu SEMPRE fecha qualquer detalhe/sub-tela aberto (§6.1)
   const irParaAba = (aba: Aba) => {
@@ -64,7 +67,31 @@ export function ProjectDashboard() {
           <DetalhesUsuario projetoId={projeto.id} usuarioId={usuarioSelecionadoId} origem={origemDetalhe} onVoltar={() => setUsuarioSelecionadoId(null)} onVerFicha={verFichaCompleta} />
         ) : (
           <>
-            {abaAtiva === 'dashboard' && <DashboardGeral projetoId={projeto.id} onNovaDiaria={() => setAbaAtiva('despesas')} />}
+            {abaAtiva === 'dashboard' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px', padding: '0 16px' }}>
+                  <button 
+                    onClick={() => setSubAbaDashboard('geral')}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAbaDashboard === 'geral' ? 'var(--accent)' : 'var(--bg-surface)', color: subAbaDashboard === 'geral' ? '#fff' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+                  >
+                    Visão Geral
+                  </button>
+                  <button 
+                    onClick={() => setSubAbaDashboard('calendario')}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAbaDashboard === 'calendario' ? 'var(--accent)' : 'var(--bg-surface)', color: subAbaDashboard === 'calendario' ? '#fff' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+                  >
+                    Calendário
+                  </button>
+                </div>
+                {subAbaDashboard === 'geral' ? (
+                  <DashboardGeral projetoId={projeto.id} onNovaDiaria={() => setAbaAtiva('despesas')} />
+                ) : (
+                  <div style={{ padding: '0 16px' }}>
+                    <CalendarioDashboard projetoId={projeto.id} />
+                  </div>
+                )}
+              </div>
+            )}
             {abaAtiva === 'producao' && <InfoProducao projetoId={projeto.id} />}
             {abaAtiva === 'despesas' && <DespesasList projetoId={projeto.id} />}
             {abaAtiva === 'acertos' && <ResumoList projetoId={projeto.id} onVerFicha={verFichaCompleta} />}

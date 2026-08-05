@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HelpCircle, X, Info, Sparkles } from 'lucide-react';
+import { HelpCircle, X, Info } from 'lucide-react';
 
 const SECOES: { titulo: string, texto: string }[] = [
   {
@@ -28,28 +28,9 @@ const SECOES: { titulo: string, texto: string }[] = [
   },
 ];
 
-const CHANGELOG = [
-  {
-    titulo: '🐛 Bug Report (Novo)',
-    texto: 'Adicionamos um botão flutuante de relatar problemas presente em todas as páginas. Ele já captura automaticamente sua rota e os erros do sistema para facilitar o diagnóstico.',
-  },
-  {
-    titulo: '📋 Construtor de Fichas e Importação',
-    texto: 'Agora é possível criar campos customizados ilimitados para o projeto, e a Ficha de Cadastro (Pública) se ajusta automaticamente. Também suporta importação rápida de CSV do Google Forms.',
-  },
-  {
-    titulo: '🗺️ Locações com Mapa',
-    texto: 'O controle de locações foi totalmente reformulado, com busca automática de endereços (Google Maps), contatos de múltiplos responsáveis e status de negociação visual.',
-  },
-  {
-    titulo: '🔗 Dependências de Tasks',
-    texto: 'No Kanban, você agora pode configurar tarefas que "dependem" de outras. As tarefas bloqueadas ficam congeladas visualmente até que as anteriores sejam concluídas.',
-  },
-];
 
 export function HelpButton({ style }: { style?: React.CSSProperties }) {
   const [aberto, setAberto] = useState(false);
-  const [abaAtiva, setAbaAtiva] = useState<'ajuda' | 'changelog'>('ajuda');
 
   return (
     <>
@@ -68,16 +49,9 @@ export function HelpButton({ style }: { style?: React.CSSProperties }) {
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <button 
-                  onClick={() => setAbaAtiva('ajuda')}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '18px', fontWeight: abaAtiva === 'ajuda' ? 'bold' : 'normal', color: abaAtiva === 'ajuda' ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', cursor: 'default', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Info size={18} className={abaAtiva === 'ajuda' ? 'text-accent' : ''} /> Manual do Usuário
-                </button>
-                <button 
-                  onClick={() => setAbaAtiva('changelog')}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '18px', fontWeight: abaAtiva === 'changelog' ? 'bold' : 'normal', color: abaAtiva === 'changelog' ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Sparkles size={18} className={abaAtiva === 'changelog' ? 'text-accent' : ''} /> Novidades (v3)
+                  <Info size={18} className="text-accent" /> Manual do Usuário
                 </button>
               </div>
               <button onClick={() => setAberto(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -86,15 +60,9 @@ export function HelpButton({ style }: { style?: React.CSSProperties }) {
             </div>
 
             <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {abaAtiva === 'ajuda' && SECOES.map(s => (
+              {SECOES.map(s => (
                 <div key={s.titulo}>
                   <h3 className="font-bold" style={{ marginBottom: '6px' }}>{s.titulo}</h3>
-                  <p className="text-sm text-secondary" style={{ lineHeight: 1.6 }}>{s.texto}</p>
-                </div>
-              ))}
-              {abaAtiva === 'changelog' && CHANGELOG.map(s => (
-                <div key={s.titulo} style={{ padding: '16px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-                  <h3 className="font-bold" style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>{s.titulo}</h3>
                   <p className="text-sm text-secondary" style={{ lineHeight: 1.6 }}>{s.texto}</p>
                 </div>
               ))}
