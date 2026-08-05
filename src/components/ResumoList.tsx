@@ -30,8 +30,6 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
 
   // Números do Caixa (entidade, não pessoa)
   const confirmados = acertos.filter(a => a.status === 'confirmado');
-  const entrou = confirmados.filter(a => a.para.id_ref === 'caixa_central').reduce((s, a) => s + a.valor, 0);
-  const saiu = confirmados.filter(a => a.de.id_ref === 'caixa_central').reduce((s, a) => s + a.valor, 0);
   const aReceberPend = transacoesSugeridas.filter(t => t.para.id_ref === 'caixa_central').reduce((s, t) => s + t.valor, 0);
   const aPagarPend = transacoesSugeridas.filter(t => t.de.id_ref === 'caixa_central').reduce((s, t) => s + t.valor, 0);
 
@@ -128,11 +126,34 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <Stat label="Entrou (recebido)" valor={entrou} cor="var(--color-success)" />
-              <Stat label="Saiu (pago)" valor={saiu} cor="var(--text-primary)" />
-              <Stat label="A receber (pend.)" valor={aReceberPend} cor="var(--color-warning)" />
-              <Stat label="A pagar (pend.)" valor={aPagarPend} cor="var(--color-danger)" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="text-xs text-muted uppercase tracking-widest font-bold">1. A Receber (Pendências da Equipe)</span>
+                  <span className="text-sm text-secondary">Soma do que as pessoas devem à Produção</span>
+                </div>
+                <div className="font-bold text-success text-lg">+ R$ {aReceberPend.toFixed(2)}</div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="text-xs text-muted uppercase tracking-widest font-bold">2. A Pagar (Dívidas da Produção)</span>
+                  <span className="text-sm text-secondary">Soma do que a Produção deve repassar/reembolsar</span>
+                </div>
+                <div className="font-bold text-danger text-lg">- R$ {aPagarPend.toFixed(2)}</div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: '12px', border: '1px solid var(--accent)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="text-xs text-accent uppercase tracking-widest font-bold">3. Resultado Projetado</span>
+                  <span className="text-sm text-secondary">Depois de receber tudo e pagar todos</span>
+                </div>
+                <div className={`font-bold text-lg ${aReceberPend - aPagarPend >= 0 ? 'text-success' : 'text-danger'}`}>
+                  R$ {(aReceberPend - aPagarPend).toFixed(2)}
+                </div>
+              </div>
+
             </div>
 
             <button onClick={gerarRelatorioCaixa} className="btn-primary" style={{ width: '100%', marginTop: '16px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
@@ -327,11 +348,3 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
   );
 }
 
-function Stat({ label, valor, cor }: { label: string, valor: number, cor: string }) {
-  return (
-    <div style={{ padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-      <div className="text-xs text-muted uppercase tracking-widest" style={{ marginBottom: '4px' }}>{label}</div>
-      <div className="font-bold" style={{ color: cor }}>R$ {valor.toFixed(2)}</div>
-    </div>
-  );
-}

@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { MapPin, Plus, Edit2, Trash2, Cross, Shield } from 'lucide-react';
+import { MapPin, Plus, Edit2, Trash2, Cross, Shield, Phone, X } from 'lucide-react';
 import { logAction } from '../lib/audit';
+import { parseCoords } from '../lib/clima';
+import { buscarHospitaisProximos, formatarDistancia, linkRota, type HospitalOSM } from '../lib/osm';
 
 export interface LocacaoContato {
   id: string;
@@ -21,6 +23,9 @@ export interface Locacao {
   contatos?: LocacaoContato[];
   coordenadas?: string;
   hospital_proximo?: string;
+  hospital_telefone?: string;
+  hospital_distancia?: number;
+  hospital_coordenadas?: string;
   contato_seguranca?: string;
   obs?: string;
 }
@@ -39,6 +44,10 @@ export function LocacoesModule() {
   const [endereco, setEndereco] = useState('');
   const [coordenadas, setCoordenadas] = useState('');
   const [hospital, setHospital] = useState('');
+  const [hospitalTelefone, setHospitalTelefone] = useState('');
+  const [hospitalDistancia, setHospitalDistancia] = useState<number | undefined>();
+  const [hospitalCoords, setHospitalCoords] = useState('');
+  const [candidatosHospital, setCandidatosHospital] = useState<HospitalOSM[] | null>(null);
   const [seguranca, setSeguranca] = useState('');
   const [status, setStatus] = useState<'conversa' | 'temos' | 'caiu'>('conversa');
   const [contatos, setContatos] = useState<LocacaoContato[]>([]);
@@ -55,7 +64,6 @@ export function LocacoesModule() {
       if (data && data.length > 0) {
         const place = data[0];
         setCoordenadas(`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`);
-        alert('Endereço encontrado e link gerado!');
       } else {
         alert('Endereço não encontrado no OpenStreetMap.');
       }
@@ -64,6 +72,38 @@ export function LocacoesModule() {
     } finally {
       setBuscandoOSM(false);
     }
+  };
+
+  const [buscandoHospital, setBuscandoHospital] = useState(false);
+
+  /**
+   * Busca candidatos no OSM e mostra a lista — a escolha do que vai para a OD é
+   * sempre do usuário, porque isso é informação de segurança (v4 §4.2).
+   */
+  const buscarHospitalOSM = async () => {
+    const coords = parseCoords(coordenadas);
+    if (!coords) return alert('Use o "Buscar OSM" (ou cole um link do Maps com coordenadas) antes de procurar hospitais.');
+    setBuscandoHospital(true);
+    try {
+      const achados = await buscarHospitaisProximos(coords.lat, coords.lng);
+      if (achados.length === 0) {
+        alert('Nenhum hospital encontrado num raio de 8km. Você pode digitar um manualmente.');
+        return;
+      }
+      setCandidatosHospital(achados);
+    } catch (e) {
+      alert('Erro na busca de hospital (Overpass API). Tente de novo em alguns segundos.');
+    } finally {
+      setBuscandoHospital(false);
+    }
+  };
+
+  const confirmarHospital = (h: HospitalOSM) => {
+    setHospital(h.nome);
+    setHospitalTelefone(h.telefone || '');
+    setHospitalDistancia(h.distancia);
+    setHospitalCoords(`${h.lat},${h.lng}`);
+    setCandidatosHospital(null);
   };
 
   const addContato = () => {
@@ -81,6 +121,8 @@ export function LocacoesModule() {
   const limparForm = () => {
     setNome(''); setEndereco(''); setCoordenadas('');
     setHospital(''); setSeguranca(''); setObs('');
+    setHospitalTelefone(''); setHospitalDistancia(undefined); setHospitalCoords('');
+    setCandidatosHospital(null);
     setStatus('conversa'); setContatos([]);
     setEditId(null);
   };
@@ -91,6 +133,9 @@ export function LocacoesModule() {
     setEndereco(loc.endereco);
     setCoordenadas(loc.coordenadas || '');
     setHospital(loc.hospital_proximo || '');
+    setHospitalTelefone(loc.hospital_telefone || '');
+    setHospitalDistancia(loc.hospital_distancia);
+    setHospitalCoords(loc.hospital_coordenadas || '');
     setSeguranca(loc.contato_seguranca || '');
     setObs(loc.obs || '');
     setStatus(loc.status || 'conversa');
@@ -111,6 +156,9 @@ export function LocacoesModule() {
       endereco,
       coordenadas,
       hospital_proximo: hospital,
+      hospital_telefone: hospitalTelefone,
+      hospital_distancia: hospitalDistancia,
+      hospital_coordenadas: hospitalCoords,
       contato_seguranca: seguranca,
       obs,
       status,
@@ -177,9 +225,27 @@ export function LocacoesModule() {
               <input placeholder="Link Maps / Coordenadas" value={coordenadas} onChange={e => setCoordenadas(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
             </div>
             
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-              <Cross size={16} className="text-danger" />
-              <input placeholder="Hospital Mais Próximo" value={hospital} onChange={e => setHospital(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <Cross size={16} className="text-danger" />
+                <input placeholder="Hospital Mais Próximo" value={hospital} onChange={e => setHospital(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  placeholder="Telefone do hospital"
+                  value={hospitalTelefone}
+                  onChange={e => setHospitalTelefone(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px' }}
+                />
+                {hospitalDistancia !== undefined && (
+                  <span className="text-xs text-muted" style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}>
+                    {formatarDistancia(hospitalDistancia)}
+                  </span>
+                )}
+              </div>
+              <button onClick={buscarHospitalOSM} disabled={buscandoHospital} className="btn-secondary text-xs" style={{ padding: '6px' }}>
+                {buscandoHospital ? 'Buscando Hospital...' : 'Achar Hospital Próximo (OSM)'}
+              </button>
             </div>
             
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
@@ -211,6 +277,38 @@ export function LocacoesModule() {
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button onClick={() => setShowForm(false)} className="btn-icon" style={{ backgroundColor: 'var(--bg-primary)' }}>Cancelar</button>
             <button onClick={salvar} className="btn-primary">Salvar Locação</button>
+          </div>
+        </div>
+      )}
+
+      {/* Candidatos de hospital — o usuário confirma qual vai para a OD */}
+      {candidatosHospital && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '520px', maxHeight: '80vh', backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="font-bold text-lg">Hospitais próximos</h3>
+                <p className="text-xs text-muted">Sugestões do OpenStreetMap. Confirme qual entra na OD — você pode editar depois.</p>
+              </div>
+              <button onClick={() => setCandidatosHospital(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {candidatosHospital.map(h => (
+                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                  <Cross size={18} className="text-danger" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="font-bold text-sm">{h.nome}</div>
+                    <div className="text-xs text-muted">
+                      {formatarDistancia(h.distancia)}
+                      {h.telefone ? ` · ${h.telefone}` : ' · sem telefone no OSM'}
+                      {h.endereco ? ` · ${h.endereco}` : ''}
+                    </div>
+                  </div>
+                  <button onClick={() => confirmarHospital(h)} className="btn-primary" style={{ fontSize: '12px', padding: '8px 14px' }}>Usar</button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -256,8 +354,34 @@ export function LocacoesModule() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
               {loc.hospital_proximo && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-                  <Cross size={14} className="text-danger" /> <strong>Hospital:</strong> {loc.hospital_proximo}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <Cross size={14} className="text-danger" /> <strong>Hospital:</strong> {loc.hospital_proximo}
+                    {loc.hospital_distancia !== undefined && (
+                      <span className="text-muted">({formatarDistancia(loc.hospital_distancia)})</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '22px', flexWrap: 'wrap' }}>
+                    {loc.hospital_telefone && (
+                      <a href={`tel:${loc.hospital_telefone}`} className="text-accent" style={{ display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                        <Phone size={12} /> {loc.hospital_telefone}
+                      </a>
+                    )}
+                    {loc.hospital_coordenadas && parseCoords(loc.coordenadas) && (
+                      <a
+                        href={linkRota(parseCoords(loc.coordenadas)!, {
+                          lat: Number(loc.hospital_coordenadas.split(',')[0]),
+                          lng: Number(loc.hospital_coordenadas.split(',')[1]),
+                        })}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-accent"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        Ver rota →
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
               {loc.contato_seguranca && (
