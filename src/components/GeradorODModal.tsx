@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Sparkles, Printer } from 'lucide-react';
 import { gerarOrdemDoDia } from '../lib/gemini';
-import { db } from '../db/db';
+import { AIButton } from './ui/AIButton';
+import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import type { Diaria, Projeto, Perfil, Locacao, Departamento, Cena } from '../types';
 
 interface GeradorODModalProps {
@@ -15,40 +16,16 @@ interface GeradorODModalProps {
 }
 
 export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, departamentos, cenasGlobais }: GeradorODModalProps) {
-  const [apiKey, setApiKey] = useState('');
   const [htmlGerado, setHtmlGerado] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
 
-  useEffect(() => {
-    db.configuracoes.get('global_config').then(conf => {
-      if (conf?.gemini_api_key) {
-        setApiKey(conf.gemini_api_key);
-      }
-    });
-  }, []);
-
   const handleGerar = async () => {
-    if (!apiKey) {
-      setErro('Por favor, insira a chave da API do Gemini.');
-      return;
-    }
-    
-    const conf = await db.configuracoes.get('global_config');
-    await db.configuracoes.put({
-      id: 'global_config',
-      projeto_id: 'global',
-      template_cobranca: conf?.template_cobranca || '',
-      template_pagamento: conf?.template_pagamento || '',
-      template_geral: conf?.template_geral || '',
-      gemini_api_key: apiKey
-    });
-
     setCarregando(true);
     setErro('');
 
     try {
-      const resultado = await gerarOrdemDoDia(apiKey, projeto, diaria, equipe, locacoes, departamentos, cenasGlobais);
+      const resultado = await gerarOrdemDoDia(projeto, diaria, equipe, locacoes, departamentos, cenasGlobais);
       setHtmlGerado(resultado);
     } catch (err: any) {
       console.error(err);
@@ -59,30 +36,13 @@ export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, dep
   };
 
   const handleImprimir = () => {
-    const w = window.open('', '_blank');
-    if (!w) {
-      alert('Permita pop-ups para imprimir.');
-      return;
-    }
-    // Cria uma janela com o HTML para imprimir
-    w.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Ordem do Dia - Diária ${diaria.numero}</title>
-          <style>
-            body { font-family: Arial, sans-serif; }
-            /* Se o usuário alterar algo, garante que os inputs fiquem bonitos na impressão */
-            textarea, input { border: none; background: transparent; font-family: inherit; font-size: inherit; resize: none; overflow: hidden; }
-          </style>
-        </head>
-        <body onload="window.print(); window.close();">
-          ${htmlGerado}
-        </body>
-      </html>
-    `);
-    w.document.close();
+    const html = montarPaginaRelatorio(
+      `Ordem do Dia - Diária ${diaria.numero}`,
+      htmlGerado,
+      // Se a pessoa editou algo no preview, os campos precisam sair limpos no papel.
+      'textarea, input { border: none; background: transparent; font-family: inherit; font-size: inherit; resize: none; overflow: hidden; }'
+    );
+    if (!imprimirHtml(html)) baixarHtml(html, `ordem-do-dia-${diaria.numero}`);
   };
 
   return (
@@ -104,23 +64,13 @@ export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, dep
                 A Inteligência Artificial vai pegar todos os dados da <b>Diária {diaria.numero}</b> (Cenas, Equipe, Locações, Clima) e diagramar em um formato profissional para impressão.
               </p>
               
-              <div style={{ textAlign: 'left', marginBottom: '24px' }}>
-                <label className="text-xs font-bold text-muted uppercase tracking-widest block mb-2">Chave API do Gemini</label>
-                <input 
-                  type="password" 
-                  value={apiKey} 
-                  onChange={e => setApiKey(e.target.value)} 
-                  placeholder="AIzaSy..." 
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}
-                />
-                <div className="text-xs text-muted mt-2">A chave ficará salva no banco de dados (Supabase) para todos os usuários usarem.</div>
-              </div>
-
               {erro && <div className="text-danger font-bold text-sm" style={{ marginBottom: '16px' }}>{erro}</div>}
 
-              <button onClick={handleGerar} disabled={carregando} className="btn-primary" style={{ width: '100%', padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '16px' }}>
-                {carregando ? 'Gerando diagrama (aguarde)...' : <><Sparkles size={18} /> Gerar Ordem do Dia</>}
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <AIButton onClick={handleGerar} loading={carregando} loadingText="Diagramando a OD...">
+                  Gerar Ordem do Dia
+                </AIButton>
+              </div>
             </div>
           ) : (
             <div>

@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { ArrowLeft, Users, MapPin, CheckSquare, SplitSquareHorizontal, Plus, Trash2, Clock, Bus, Paperclip, UserCheck, FileDown, CloudSun, Wallet } from 'lucide-react';
+import { ArrowLeft, Users, MapPin, CheckSquare, SplitSquareHorizontal, Plus, Trash2, Clock, Bus, Paperclip, UserCheck, FileDown, CloudSun, Wallet, Cross, Phone, Archive, Lock } from 'lucide-react';
 import type { DiariaTask, HorarioOD, AnexoOD } from '../types';
 import { logAction } from '../lib/audit';
 import { parseCoords, buscarClima, descreverClima, type ClimaDia } from '../lib/clima';
+import { formatarDistancia, linkRota } from '../lib/osm';
+import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
 import { ShotList } from '../components/ShotList';
 import { GeradorODModal } from '../components/GeradorODModal';
-import { Sparkles } from 'lucide-react';
+import { AIButton } from '../components/ui/AIButton';
+import { imprimirHtml, baixarHtml } from '../lib/impressao';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -25,6 +28,8 @@ export function DiariaModule() {
     return todas.filter(d => d.diaria_id === diariaId);
   }, [projetoId, diariaId]) || [];
   const cenasGlobais = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const veiculos = useLiveQuery(() => db.veiculos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const motoristas = useLiveQuery(() => db.motoristas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
 
   const [newTask, setNewTask] = useState('');
   const [selecionandoEquipe, setSelecionandoEquipe] = useState(false);
@@ -39,7 +44,8 @@ export function DiariaModule() {
   const [geradorAberto, setGeradorAberto] = useState(false);
   const [exportConfig, setExportConfig] = useState({
     clima: true, horarios: true, locacoes: true, equipe: true,
-    transporte: true, checklist: true, observacoes: true, shotlist: true
+    transporte: true, checklist: true, observacoes: true, shotlist: true,
+    hospital: true
   });
 
   // Locação da diária que tenha coordenadas parseáveis
@@ -90,6 +96,14 @@ export function DiariaModule() {
     membrosDepto.forEach(id => equipeAtual.add(id));
     await db.diarias.update(diariaId!, { equipe_escalada: Array.from(equipeAtual) });
   };
+  /** Grupos/times reutilizáveis (v4 §4.4): escala todo mundo de uma vez. */
+  const escalarGrupo = async (grupoId: string) => {
+    const grupo = (projeto?.grupos || []).find(g => g.id === grupoId);
+    if (!grupo) return;
+    const equipeAtual = new Set(diaria.equipe_escalada || []);
+    grupo.perfis_ids.forEach(id => equipeAtual.add(id));
+    await db.diarias.update(diariaId!, { equipe_escalada: Array.from(equipeAtual) });
+  };
   const toggleLocacao = async (locId: string) => {
     const locs = diaria.locacoes_ids || [];
     const novas = locs.includes(locId) ? locs.filter(id => id !== locId) : [...locs, locId];
@@ -109,9 +123,59 @@ export function DiariaModule() {
     await db.diarias.update(diariaId!, { horarios: (diaria.horarios || []).filter(h => h.id !== hid) });
   };
 
-  // ---- Transporte ----
+  // ---- Transporte & Comboios ----
   const salvarTransporte = async (valor: string) => {
     await db.diarias.update(diariaId!, { transporte: valor });
+  };
+  
+  const addComboio = async () => {
+    const novo = { id: crypto.randomUUID(), veiculo: '', motorista: '', saida: '', passageiros_ids: [], ponto_encontro: '' };
+    await db.diarias.update(diariaId!, { comboios: [...(diaria.comboios || []), novo] });
+  };
+
+  const updateComboio = async (cid: string, campo: string, valor: any) => {
+    const atualizados = (diaria.comboios || []).map(c => c.id === cid ? { ...c, [campo]: valor } : c);
+    await db.diarias.update(diariaId!, { comboios: atualizados });
+  };
+
+  /** Puxa veículo do cadastro de Transporte, já trazendo o motorista padrão. */
+  const vincularVeiculo = async (cid: string, veiculoId: string) => {
+    const v = veiculos.find(x => x.id === veiculoId);
+    const motPadrao = v?.motorista_id ? motoristas.find(m => m.id === v.motorista_id) : undefined;
+    const atualizados = (diaria.comboios || []).map(c => c.id === cid ? {
+      ...c,
+      veiculo_id: veiculoId || undefined,
+      veiculo: v ? [v.nome, v.placa].filter(Boolean).join(' · ') : c.veiculo,
+      ...(motPadrao && !c.motorista_id ? { motorista_id: motPadrao.id, motorista: motPadrao.nome } : {}),
+    } : c);
+    await db.diarias.update(diariaId!, { comboios: atualizados });
+  };
+
+  const vincularMotorista = async (cid: string, motoristaId: string) => {
+    const m = motoristas.find(x => x.id === motoristaId);
+    const atualizados = (diaria.comboios || []).map(c => c.id === cid ? {
+      ...c,
+      motorista_id: motoristaId || undefined,
+      motorista: m ? [m.nome, m.telefone].filter(Boolean).join(' · ') : c.motorista,
+    } : c);
+    await db.diarias.update(diariaId!, { comboios: atualizados });
+  };
+
+  const removeComboio = async (cid: string) => {
+    await db.diarias.update(diariaId!, { comboios: (diaria.comboios || []).filter(c => c.id !== cid) });
+  };
+  
+  const togglePassageiro = async (cid: string, pid: string) => {
+    const atualizados = (diaria.comboios || []).map(c => {
+      if (c.id === cid) {
+        const pids = c.passageiros_ids.includes(pid) 
+          ? c.passageiros_ids.filter(id => id !== pid) 
+          : [...c.passageiros_ids, pid];
+        return { ...c, passageiros_ids: pids };
+      }
+      return c;
+    });
+    await db.diarias.update(diariaId!, { comboios: atualizados });
   };
 
   // ---- Anexos (data URL, offline) ----
@@ -122,10 +186,22 @@ export function DiariaModule() {
     const dados = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(file); });
     const anexo: AnexoOD = { id: crypto.randomUUID(), nome: file.name, tipo: file.type, dados };
     await db.diarias.update(diariaId!, { anexos: [...(diaria.anexos || []), anexo] });
+    // Índice central: o anexo também aparece na página Documentos, pasta "Diárias".
+    await registrarDocumento({
+      projetoId: projetoId!,
+      origem: 'diaria',
+      refId: anexo.id,
+      nome: `D${String(diaria.numero).padStart(2, '0')} — ${file.name}`,
+      url: dados,
+      tipo: 'upload',
+      tamanho: file.size,
+      previewUrl: file.type.startsWith('image/') ? dados : undefined,
+    });
     e.target.value = '';
   };
   const removeAnexo = async (aid: string) => {
     await db.diarias.update(diariaId!, { anexos: (diaria.anexos || []).filter(a => a.id !== aid) });
+    await removerDocumentoDeOrigem(projetoId!, 'diaria', aid);
   };
 
   // ---- Confirmação de presença ----
@@ -147,6 +223,106 @@ export function DiariaModule() {
 
   const formataData = (d: string) => { const [a, m, dia] = d.split('-'); return `${dia}/${m}/${a.slice(-2)}`; };
 
+  // Locações da diária que têm hospital confirmado (v4 §4.2)
+  const locsDaDiaria = (diaria.locacoes_ids || []).map(lid => locacoes.find(l => l.id === lid)).filter(Boolean) as typeof locacoes;
+  const locsComHospital = locsDaDiaria.filter(l => l.hospital_proximo);
+
+  const rotaHospital = (loc: typeof locacoes[number]) => {
+    const origem = parseCoords(loc.coordenadas);
+    if (!origem || !loc.hospital_coordenadas) return null;
+    const [hLat, hLng] = loc.hospital_coordenadas.split(',').map(Number);
+    if (Number.isNaN(hLat) || Number.isNaN(hLng)) return null;
+    return linkRota(origem, { lat: hLat, lng: hLng });
+  };
+
+  // ---- Fechar / arquivar diária (v4 §4.5) ----
+  // Arquivar = gerar o documento de prestação de contas. Os dados CONTINUAM no banco.
+  const fecharDiaria = async () => {
+    const jaFechada = !!diaria.fechada;
+    if (jaFechada) {
+      if (!confirm('Reabrir esta diária para edição?')) return;
+      await db.diarias.update(diariaId!, { fechada: false, data_fechamento: undefined });
+      if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Reabriu a Diária ${diaria.numero}`);
+      return;
+    }
+
+    if (!confirm('Fechar a diária? Será gerado o resumo em PDF para impressão. Os dados continuam salvos e a diária pode ser reaberta depois.')) return;
+
+    await db.diarias.update(diariaId!, { fechada: true, data_fechamento: Date.now() });
+    if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Fechou a Diária ${diaria.numero}`);
+    gerarResumoFechamento();
+  };
+
+  const gerarResumoFechamento = () => {
+    const tarefasFeitas = tasks.filter(t => t.status === 'concluido').length;
+    const confirmados = (diaria.confirmacoes || []).filter(cid => (diaria.equipe_escalada || []).includes(cid)).length;
+
+    const linhasDespesas = despesasDiaria.map(d => {
+      const quemPagou = d.pagadores.map(p => {
+        if (p.tipo === 'producao') return 'Produção';
+        if (p.tipo === 'departamento') return departamentos.find(x => x.id === p.id_ref)?.nome || 'Departamento';
+        const pf = perfis.find(x => x.id === p.id_ref);
+        return pf ? `${pf.nome} ${pf.sobrenome || ''}`.trim() : '—';
+      }).join(', ');
+      return `<tr><td>${d.descricao}</td><td>${d.categoria || '-'}</td><td>${quemPagou}</td><td style="text-align:right"><b>R$ ${d.valor_total.toFixed(2)}</b></td></tr>`;
+    }).join('');
+
+    const linhasCenas = (diaria.cena_ids || []).map(cid => {
+      const c = cenasGlobais.find(x => x.id === cid);
+      if (!c) return '';
+      return `<li><b>Cena ${c.numero}</b> — ${c.descricao} (${(c.ambiente || 'ext').toUpperCase()} / ${c.periodo || 'dia'})</li>`;
+    }).join('');
+
+    const linhasEquipe = escalados
+      .map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔' : ''}</li>`)
+      .join('');
+
+    const estouro = limiteGasto > 0 && totalGasto > limiteGasto;
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Fechamento — Diária ${diaria.numero}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;padding:40px;max-width:820px;margin:0 auto}
+        h1{margin:0;font-size:26px}
+        h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:28px;font-size:14px;text-transform:uppercase;letter-spacing:.08em}
+        table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+        td,th{border-bottom:1px solid #ddd;padding:6px 4px;text-align:left}
+        li{margin:3px 0}
+        .muted{color:#666}
+        .kpis{display:flex;gap:16px;margin-top:16px;flex-wrap:wrap}
+        .kpi{border:1px solid #ddd;border-radius:10px;padding:12px 16px;min-width:130px}
+        .kpi .rot{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#666}
+        .kpi .val{font-size:20px;font-weight:bold;margin-top:2px}
+        .alerta{color:#c0392b}
+      </style></head><body>
+      <h1>${projeto?.nome || 'Produção'}</h1>
+      <div class="muted">Fechamento da Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="rot">Gasto do dia</div><div class="val ${estouro ? 'alerta' : ''}">R$ ${totalGasto.toFixed(2)}</div></div>
+        <div class="kpi"><div class="rot">Valor ideal</div><div class="val">${valorIdeal > 0 ? `R$ ${valorIdeal.toFixed(2)}` : '—'}</div></div>
+        <div class="kpi"><div class="rot">Valor máximo</div><div class="val">${limiteGasto > 0 ? `R$ ${limiteGasto.toFixed(2)}` : '—'}</div></div>
+        <div class="kpi"><div class="rot">Equipe</div><div class="val">${confirmados}/${escalados.length}</div></div>
+        <div class="kpi"><div class="rot">Checklist</div><div class="val">${tarefasFeitas}/${tasks.length}</div></div>
+      </div>
+      ${estouro ? '<p class="alerta"><b>Atenção:</b> o gasto do dia passou do valor máximo definido.</p>' : ''}
+
+      ${linhasCenas ? `<h2>Cenas programadas</h2><ul>${linhasCenas}</ul>` : ''}
+      ${linhasEquipe ? `<h2>Equipe do dia (✔ = presença confirmada)</h2><ul>${linhasEquipe}</ul>` : ''}
+
+      <h2>Prestação de contas</h2>
+      ${linhasDespesas
+        ? `<table><tr><th>Descrição</th><th>Categoria</th><th>Quem pagou</th><th style="text-align:right">Valor</th></tr>${linhasDespesas}
+           <tr><td colspan="3"><b>Total</b></td><td style="text-align:right"><b>R$ ${totalGasto.toFixed(2)}</b></td></tr></table>`
+        : '<p class="muted">Nenhuma despesa lançada nesta diária.</p>'}
+
+      ${diaria.observacoes ? `<h2>Observações</h2><p>${diaria.observacoes.replace(/\n/g, '<br>')}</p>` : ''}
+
+      <p class="muted" style="margin-top:40px;font-size:11px">Gerado pelo SetProd em ${new Date().toLocaleString('pt-BR')}. Os dados permanecem salvos no projeto.</p>
+      </body></html>`;
+
+    if (!imprimirHtml(html)) baixarHtml(html, `resumo-diaria-${diaria.numero}`);
+  };
+
   // ---- Exportar OD em PDF (via impressão do navegador) ----
   const exportarPDF = async () => {
     const nomeLoc = (diaria.locacoes_ids || []).map(id => locacoes.find(l => l.id === id)).filter(Boolean);
@@ -154,6 +330,14 @@ export function DiariaModule() {
     const linhaHorarios = (diaria.horarios || []).map(h => `<tr><td style="padding:4px 12px;font-weight:bold">${h.hora}</td><td style="padding:4px 12px">${h.evento}</td></tr>`).join('');
     const linhaLoc = nomeLoc.map((l: any) => `<li><b>${l.nome}</b> — ${l.endereco}${l.hospital_proximo ? ` · Hospital: ${l.hospital_proximo}` : ''}</li>`).join('');
     const linhaTasks = tasks.map(t => `<li>${t.status === 'concluido' ? '☑' : '☐'} ${t.descricao}</li>`).join('');
+
+    const linhaComboios = (diaria.comboios || []).map(c => {
+      const pNomes = c.passageiros_ids.map(id => {
+        const p = perfis.find(per => per.id === id);
+        return p ? `${p.nome} ${p.sobrenome || ''}` : '';
+      }).filter(Boolean).join(', ');
+      return `<tr><td style="padding:4px 12px;font-weight:bold">${c.veiculo || 'Veículo'}</td><td style="padding:4px 12px">${c.motorista || '-'}</td><td style="padding:4px 12px">${c.ponto_encontro || '-'}</td><td style="padding:4px 12px;font-weight:bold">${c.saida || '-'}</td><td style="padding:4px 12px;font-size:12px">${pNomes}</td></tr>`;
+    }).join('');
 
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>OD - Diária ${diaria.numero}</title>
       <style>body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:800px;margin:0 auto}
@@ -165,7 +349,17 @@ export function DiariaModule() {
       ${exportConfig.horarios && linhaHorarios ? `<h2>Horários</h2><table>${linhaHorarios}</table>` : ''}
       ${exportConfig.locacoes && linhaLoc ? `<h2>Locações</h2><ul>${linhaLoc}</ul>` : ''}
       ${exportConfig.equipe && linhaEquipe ? `<h2>Equipe Escalada</h2><ul>${linhaEquipe}</ul>` : ''}
-      ${exportConfig.transporte && diaria.transporte ? `<h2>Transporte / Logística</h2><p>${diaria.transporte.replace(/\n/g, '<br>')}</p>` : ''}
+      ${exportConfig.transporte && ((diaria.comboios && diaria.comboios.length > 0) || diaria.transporte) ? `
+        <h2>Transporte / Logística</h2>
+        ${diaria.transporte ? `<p>${diaria.transporte.replace(/\n/g, '<br>')}</p>` : ''}
+        ${linhaComboios ? `<table style="width:100%;font-size:13px;margin-top:8px"><tr style="text-align:left;background:#eee"><th>Veículo</th><th>Motorista</th><th>Ponto de encontro</th><th>Saída</th><th>Passageiros</th></tr>${linhaComboios}</table>` : ''}
+      ` : ''}
+      ${exportConfig.hospital && locsComHospital.length > 0 ? `<h2>Emergência — Hospital mais próximo</h2><ul>${
+        locsComHospital.map(l => {
+          const rota = rotaHospital(l);
+          return `<li><b>${l.hospital_proximo}</b>${l.hospital_distancia !== undefined ? ` — ${formatarDistancia(l.hospital_distancia)}` : ''}${l.hospital_telefone ? ` · Tel: ${l.hospital_telefone}` : ''} <span class="muted">(a partir de ${l.nome})</span>${rota ? `<br><span style="font-size:11px">Rota: ${rota}</span>` : ''}</li>`;
+        }).join('')
+      }</ul>` : ''}
       ${exportConfig.checklist && linhaTasks ? `<h2>Checklist</h2><ul>${linhaTasks}</ul>` : ''}
       ${exportConfig.observacoes && diaria.observacoes ? `<h2>Observações</h2><p>${diaria.observacoes}</p>` : ''}
       
@@ -186,12 +380,7 @@ export function DiariaModule() {
       ` : ''}
       </body></html>`;
 
-    const w = window.open('', '_blank');
-    if (!w) { alert('Permita pop-ups para exportar o PDF.'); return; }
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+    if (!imprimirHtml(html)) baixarHtml(html, `ordem-do-dia-${diaria.numero}`);
     setExportModalAberto(false);
     if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Exportou OD da Diária ${diaria.numero}`);
   };
@@ -208,14 +397,38 @@ export function DiariaModule() {
           <p className="text-sm text-secondary">{formataData(diaria.data)}</p>
         </div>
         
-        <button onClick={() => setGeradorAberto(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#673ab7' }}>
-          <Sparkles size={16} /> Gerar OD com IA
-        </button>
+        <AIButton onClick={() => setGeradorAberto(true)}>
+          Gerar OD com IA
+        </AIButton>
 
         <button onClick={() => setExportModalAberto(true)} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)' }}>
           <FileDown size={16} /> OD Simples
         </button>
+
+        <button
+          onClick={fecharDiaria}
+          className="btn-icon"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)' }}
+          title={diaria.fechada ? 'Reabrir a diária para edição' : 'Gerar o resumo de fechamento (os dados continuam salvos)'}
+        >
+          {diaria.fechada ? <><Lock size={16} /> Reabrir</> : <><Archive size={16} /> Fechar Diária</>}
+        </button>
       </div>
+
+      {diaria.fechada && (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '4px solid var(--color-success)' }}>
+          <Archive size={18} className="text-success" />
+          <div style={{ flex: 1 }}>
+            <div className="font-bold text-sm">Diária fechada</div>
+            <div className="text-xs text-muted">
+              Arquivada em {diaria.data_fechamento ? new Date(diaria.data_fechamento).toLocaleString('pt-BR') : '—'}. Os dados continuam no banco.
+            </div>
+          </div>
+          <button onClick={gerarResumoFechamento} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border-light)', padding: '6px 12px' }}>
+            <FileDown size={14} /> <span className="text-xs">Resumo</span>
+          </button>
+        </div>
+      )}
 
       {/* Overview */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
@@ -266,6 +479,11 @@ export function DiariaModule() {
                 {departamentos.map(dep => (
                   <button key={dep.id} onClick={() => escalarDepartamento(dep.id)} className="text-xs" style={{ padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', whiteSpace: 'nowrap' }}>
                     + {dep.nome}
+                  </button>
+                ))}
+                {(projeto?.grupos || []).map(g => (
+                  <button key={g.id} onClick={() => escalarGrupo(g.id)} className="text-xs" style={{ padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--accent)', backgroundColor: 'var(--bg-primary)', color: 'var(--accent)', whiteSpace: 'nowrap', fontWeight: 'bold' }} title={`Grupo com ${g.perfis_ids.length} pessoa(s)`}>
+                    + {g.nome}
                   </button>
                 ))}
               </div>
@@ -385,18 +603,179 @@ export function DiariaModule() {
         )}
       </div>
 
-      {/* Transporte */}
+      {/* Emergência — hospital mais próximo das locações do dia */}
       <div className="card">
         <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <Bus size={16} /> Transporte / Logística
+          <Cross size={16} className="text-danger" /> Emergência — Hospital Mais Próximo
         </h2>
-        <textarea
-          defaultValue={diaria.transporte || ''}
-          onBlur={e => salvarTransporte(e.target.value)}
-          placeholder="Vans, quem vai com quem, pontos e horários de encontro..."
-          rows={3}
-        />
-        <div className="text-xs text-muted" style={{ marginTop: '4px' }}>Salva automaticamente ao sair do campo.</div>
+        {locsDaDiaria.length === 0 ? (
+          <div className="text-sm text-muted">Defina as locações da diária para ver o hospital de referência.</div>
+        ) : locsComHospital.length === 0 ? (
+          <div className="text-sm text-muted">
+            Nenhuma locação do dia tem hospital confirmado. Abra o módulo Locações e use "Achar Hospital Próximo (OSM)".
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {locsComHospital.map(l => {
+              const rota = rotaHospital(l);
+              return (
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <div className="font-bold">{l.hospital_proximo}</div>
+                    <div className="text-xs text-muted">
+                      a partir de {l.nome}
+                      {l.hospital_distancia !== undefined ? ` · ${formatarDistancia(l.hospital_distancia)}` : ''}
+                    </div>
+                  </div>
+                  {l.hospital_telefone && (
+                    <a href={`tel:${l.hospital_telefone}`} className="text-sm text-accent font-bold" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                      <Phone size={14} /> {l.hospital_telefone}
+                    </a>
+                  )}
+                  {rota && (
+                    <a href={rota} target="_blank" rel="noreferrer" className="btn-icon" style={{ padding: '6px 12px', border: '1px solid var(--border-light)', fontSize: '12px', textDecoration: 'none', color: 'var(--text-primary)' }}>
+                      Abrir rota
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Transporte */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Bus size={16} /> Transporte / Logística
+          </h2>
+          <button onClick={addComboio} className="btn-primary" style={{ padding: '4px 12px', fontSize: '12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <Plus size={14} /> Novo Comboio/Van
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {(diaria.comboios || []).length === 0 && (
+            <div className="text-muted text-sm text-center" style={{ padding: '16px 0' }}>
+              Nenhum veículo cadastrado. Adicione um comboio para distribuir a equipe.
+            </div>
+          )}
+          
+          {(diaria.comboios || []).map((comboio) => (
+            <div key={comboio.id} style={{ padding: '16px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+              
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Veículo / Van</div>
+                  {veiculos.length > 0 && (
+                    <select
+                      value={comboio.veiculo_id || ''}
+                      onChange={e => vincularVeiculo(comboio.id, e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', marginBottom: '6px' }}
+                    >
+                      <option value="">-- Do cadastro de Transporte --</option>
+                      {veiculos.map(v => (
+                        <option key={v.id} value={v.id}>{v.nome}{v.placa ? ` (${v.placa})` : ''}</option>
+                      ))}
+                    </select>
+                  )}
+                  <input
+                    type="text"
+                    value={comboio.veiculo}
+                    onChange={e => updateComboio(comboio.id, 'veiculo', e.target.value)}
+                    placeholder="Ex: Van Elenco"
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Motorista / Ref</div>
+                  {motoristas.length > 0 && (
+                    <select
+                      value={comboio.motorista_id || ''}
+                      onChange={e => vincularMotorista(comboio.id, e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', marginBottom: '6px' }}
+                    >
+                      <option value="">-- Do cadastro de Transporte --</option>
+                      {motoristas.map(m => (
+                        <option key={m.id} value={m.id}>{m.nome}</option>
+                      ))}
+                    </select>
+                  )}
+                  <input
+                    type="text"
+                    value={comboio.motorista}
+                    onChange={e => updateComboio(comboio.id, 'motorista', e.target.value)}
+                    placeholder="Ex: João (Placa XYZ)"
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Ponto de Encontro</div>
+                  <input
+                    type="text"
+                    value={comboio.ponto_encontro || ''}
+                    onChange={e => updateComboio(comboio.id, 'ponto_encontro', e.target.value)}
+                    placeholder="Ex: Metrô Faria Lima"
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                  />
+                </div>
+                <div style={{ width: '100px' }}>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Saída</div>
+                  <input
+                    type="time"
+                    value={comboio.saida}
+                    onChange={e => updateComboio(comboio.id, 'saida', e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button onClick={() => removeComboio(comboio.id)} className="btn-icon hover-danger" style={{ padding: '8px', marginBottom: '2px' }} title="Excluir Comboio">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted font-bold uppercase mb-2">Passageiros ({comboio.passageiros_ids.length})</div>
+              
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {escalados.length === 0 && <span className="text-xs text-muted">Ninguém escalado na diária ainda.</span>}
+                {escalados.map(p => {
+                  const noComboio = comboio.passageiros_ids.includes(p.id);
+                  return (
+                    <button 
+                      key={p.id}
+                      onClick={() => togglePassageiro(comboio.id, p.id)}
+                      style={{ 
+                        padding: '4px 8px', 
+                        fontSize: '12px', 
+                        borderRadius: '12px', 
+                        cursor: 'pointer',
+                        border: noComboio ? '1px solid var(--accent)' : '1px solid var(--border-light)',
+                        backgroundColor: noComboio ? 'var(--accent)' : 'var(--bg-surface)',
+                        color: noComboio ? '#fff' : 'var(--text-primary)',
+                        opacity: !noComboio && (diaria.comboios || []).some(c => c.id !== comboio.id && c.passageiros_ids.includes(p.id)) ? 0.3 : 1
+                      }}
+                      title={!noComboio && (diaria.comboios || []).some(c => c.id !== comboio.id && c.passageiros_ids.includes(p.id)) ? 'Já alocado em outro veículo' : ''}
+                    >
+                      {p.nome}
+                    </button>
+                  );
+                })}
+              </div>
+
+            </div>
+          ))}
+          
+          <div style={{ borderTop: '1px dashed var(--border-light)', margin: '8px 0' }}></div>
+          <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Informações Adicionais (Transporte)</div>
+          <textarea
+            defaultValue={diaria.transporte || ''}
+            onBlur={e => salvarTransporte(e.target.value)}
+            placeholder="Anotações extras sobre logística..."
+            rows={2}
+          />
+        </div>
       </div>
 
       {/* Anexos */}
