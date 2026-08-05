@@ -1,26 +1,181 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useParams } from 'react-router-dom';
-import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp, GripVertical, FileDown, CalendarPlus, X } from 'lucide-react';
 import type { Cena, Plano } from '../types';
+
+import { AnexoInput } from '../components/AnexoInput';
+import { BreakdownModule } from './BreakdownModule';
+import { ElementosManager } from '../components/ElementosManager';
+import { sincronizarElementos } from '../lib/elementos';
+import { registrarDocumento } from '../lib/documentos';
+import { acharLocacao, getStripboardColor, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
+import { imprimirHtml, baixarHtml } from '../lib/impressao';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
   const [expandida, setExpandida] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'roteiro' | 'shotlist' | 'stripboard' | 'storyboard' | 'elementos'>('roteiro');
 
+  // Drag & drop do stripboard
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+
+  // Envio da ordem de filmagem para uma diária
+  const [modalDiaria, setModalDiaria] = useState(false);
+  const [exportAberto, setExportAberto] = useState(false);
+  const [exportConfig, setExportConfig] = useState({ stripboard: true, shotlist: true, elementos: true });
+
+  const projeto = useLiveQuery(() => db.projetos.get(projetoId!), [projetoId]);
   const locacoes = useLiveQuery(() => db.locacoes.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const cenas = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const planos = useLiveQuery(() => db.planos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
+  const diarias = useLiveQuery(() => db.diarias.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const taskMae = useLiveQuery(
+    () => db.tasks.where('projeto_id').equals(projetoId!).filter(t => t.titulo === 'Análise Técnica / Decupagem').first(),
+    [projetoId]
+  );
+
+  /**
+   * Adota as marcações gravadas antes do inventário existir e mantém as
+   * categorias do projeto disponíveis para o destaque no PDF.
+   *
+   * Roda uma vez por projeto: `sincronizarElementos` é idempotente, então
+   * reabrir a decupagem não duplica nada.
+   */
+  useEffect(() => {
+    if (!projetoId) return;
+    registrarCategoriasExtras(projeto?.categorias_extras);
+    sincronizarElementos(projetoId).catch(e =>
+      console.warn('[SetProd] Falha ao sincronizar o inventário de elementos', e)
+    );
+  }, [projetoId, projeto?.categorias_extras]);
+
+  /**
+   * Vincula sozinha a cena à locação cadastrada que corresponde ao cabeçalho.
+   *
+   * As cenas vindas do roteiro já trazem o lugar no nome ("QUARTO DA CASA DE
+   * MARCOS, BELVEDERE"), então pedir para escolher de novo numa lista era
+   * digitar duas vezes a mesma informação.
+   */
+  useEffect(() => {
+    if (!cenas || !locacoes || locacoes.length === 0) return;
+
+    const pendentes = cenas.filter(c => !c.locacao_id && c.descricao?.trim());
+    if (pendentes.length === 0) return;
+
+    (async () => {
+      for (const c of pendentes) {
+        const achada = acharLocacao(c.descricao, locacoes);
+        if (achada) await db.cenas.update(c.id, { locacao_id: achada.id });
+      }
+    })();
+  }, [cenas, locacoes]);
+
+  /** Cria a locação a partir do cabeçalho da cena e já deixa vinculada. */
+  const criarLocacaoDaCena = async (cena: Cena) => {
+    const nome = cena.descricao.trim();
+    if (!nome) return;
+    const id = crypto.randomUUID();
+    await db.locacoes.add({ id, projeto_id: projetoId!, nome, endereco: '' });
+    await db.cenas.update(cena.id, { locacao_id: id });
+  };
 
   if (!cenas || !planos || !locacoes) return <div style={{ padding: '24px' }}>Carregando decupagem...</div>;
 
-  // Ordenar cenas por numero (tentar parsear int para ordenação numérica)
-  const cenasOrdenadas = [...cenas].sort((a, b) => {
-    const numA = parseInt(a.numero.replace(/\D/g, '')) || 0;
-    const numB = parseInt(b.numero.replace(/\D/g, '')) || 0;
-    return numA - numB;
-  });
+  // Ordem de filmagem: usa `ordem` quando definida no stripboard; senão, o número da cena.
+  const chaveOrdem = (c: Cena) =>
+    c.ordem !== undefined ? c.ordem : (parseInt(c.numero.replace(/\D/g, '')) || 0);
+  const cenasOrdenadas = [...cenas].sort((a, b) => chaveOrdem(a) - chaveOrdem(b));
+
+  /** Move a cena arrastada para a posição da cena alvo e regrava a ordem de todas. */
+  const reordenarCenas = async (origemId: string, destinoId: string) => {
+    if (origemId === destinoId) return;
+    const lista = [...cenasOrdenadas];
+    const de = lista.findIndex(c => c.id === origemId);
+    const para = lista.findIndex(c => c.id === destinoId);
+    if (de === -1 || para === -1) return;
+
+    const [movida] = lista.splice(de, 1);
+    lista.splice(para, 0, movida);
+
+    await Promise.all(lista.map((c, i) => db.cenas.update(c.id, { ordem: i })));
+  };
+
+  /** Manda a ordem de filmagem atual para uma diária (v4 §2.4/§2.6). */
+  const enviarParaDiaria = async (diariaId: string) => {
+    const diaria = diarias.find(d => d.id === diariaId);
+    if (!diaria) return;
+    const atuais = diaria.cena_ids || [];
+    const novos = cenasOrdenadas.map(c => c.id).filter(id => !atuais.includes(id));
+    await db.diarias.update(diariaId, { cena_ids: [...atuais, ...novos] });
+    setModalDiaria(false);
+    alert(
+      novos.length > 0
+        ? `${novos.length} cena(s) adicionadas à Diária ${diaria.numero}, na ordem do stripboard.`
+        : 'Essa diária já tinha todas as cenas.'
+    );
+  };
+
+  /**
+   * Soma as páginas em oitavos (padrão da indústria).
+   * A versão anterior exigia espaço depois do número inteiro, então uma cena
+   * marcada só como "2" era ignorada na conta.
+   */
+  const totalPaginas = () =>
+    oitavosParaPaginas(cenas.reduce((soma, c) => soma + paginasParaOitavos(c.paginas), 0));
+
+  const exportarDecupagem = () => {
+    const linhaStrip = cenasOrdenadas.map((c, i) => {
+      const loc = locacoes.find(l => l.id === c.locacao_id);
+      return `<tr>
+        <td style="text-align:center">${i + 1}</td>
+        <td style="font-weight:bold">${c.numero}</td>
+        <td>${c.descricao}</td>
+        <td>${(c.ambiente || '').toUpperCase()}</td>
+        <td>${c.periodo || ''}</td>
+        <td>${loc?.nome || '—'}</td>
+        <td>${c.paginas || '—'}</td>
+        <td style="text-align:center">${c.unidade || 'A'}</td>
+        <td>${c.estimativa || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    const blocosShotlist = cenasOrdenadas.map(c => {
+      const pl = planos.filter(p => p.cena_id === c.id).sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
+      if (pl.length === 0) return '';
+      const trs = pl.map(p => `<tr><td style="width:40px;text-align:center"><b>${p.numero}</b></td><td>${p.descricao || '—'}</td><td>${p.tamanho || '-'}</td><td>${p.angulo || '-'}</td><td>${p.movimento || '-'}</td><td>${p.lente || '-'}</td></tr>`).join('');
+      return `<div style="margin-top:16px;page-break-inside:avoid">
+        <strong>Cena ${c.numero}</strong> — ${c.descricao}
+        <table><tr style="background:#eee"><th>Plano</th><th>Ação</th><th>Tamanho</th><th>Ângulo</th><th>Movimento</th><th>Lente</th></tr>${trs}</table>
+      </div>`;
+    }).join('');
+
+    const elementos = (taskMae?.subtarefas || []).map(s => `<li>${s.concluida ? '☑' : '☐'} ${s.titulo}</li>`).join('');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Decupagem</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:960px;margin:0 auto}
+        h1{margin:0;font-size:24px}
+        h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:28px;font-size:14px;text-transform:uppercase;letter-spacing:.08em}
+        table{border-collapse:collapse;width:100%;font-size:12px;margin-top:8px}
+        td,th{border-bottom:1px solid #ddd;padding:5px 4px;text-align:left}
+        .muted{color:#666}
+        li{margin:2px 0;font-size:13px}
+      </style></head><body>
+      <h1>Decupagem</h1>
+      <div class="muted">${cenas.length} cena(s) · ${planos.length} plano(s) · ${totalPaginas()} páginas</div>
+      ${exportConfig.stripboard && linhaStrip ? `<h2>Stripboard — ordem de filmagem</h2>
+        <table><tr style="background:#eee"><th>#</th><th>Cena</th><th>Descrição</th><th>Amb.</th><th>Período</th><th>Locação</th><th>Págs</th><th>Un.</th><th>Estimativa</th></tr>${linhaStrip}</table>` : ''}
+      ${exportConfig.shotlist && blocosShotlist ? `<h2>Shot list por cena</h2>${blocosShotlist}` : ''}
+      ${exportConfig.elementos && elementos ? `<h2>Elementos levantados (Análise Técnica)</h2><ul>${elementos}</ul>` : ''}
+      </body></html>`;
+
+    if (!imprimirHtml(html)) baixarHtml(html, 'decupagem');
+    setExportAberto(false);
+  };
 
   const addCena = async () => {
     const novaCena: Cena = {
@@ -45,6 +200,26 @@ export function DecupagemModule() {
     for (const p of planosDaCena) {
       await db.planos.delete(p.id);
     }
+  };
+
+  const handleAddAnexo = async (cena: Cena, url: string, nome?: string) => {
+    const novosAnexos = [...(cena.anexos || []), url];
+    await updateCena(cena.id, { anexos: novosAnexos });
+    // Índice central: a referência de storyboard também aparece em Documentos.
+    await registrarDocumento({
+      projetoId: projetoId!,
+      origem: 'storyboard',
+      refId: `${cena.id}:${novosAnexos.length - 1}`,
+      nome: nome || `Cena ${cena.numero} — referência ${novosAnexos.length}`,
+      url,
+      previewUrl: url,
+    });
+  };
+
+  const removerAnexo = async (cena: Cena, index: number) => {
+    if (!confirm('Remover esta referência?')) return;
+    const novosAnexos = (cena.anexos || []).filter((_, i) => i !== index);
+    await updateCena(cena.id, { anexos: novosAnexos });
   };
 
   const addPlano = async (cenaId: string) => {
@@ -74,21 +249,240 @@ export function DecupagemModule() {
     <div style={{ paddingBottom: '32px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Clapperboard size={20} /> Decupagem Geral (Master Shot List)
+          <Clapperboard size={20} /> Decupagem Geral
         </h2>
-        <button onClick={addCena} className="btn-icon" style={{ backgroundColor: 'var(--accent)', color: '#000', padding: '8px 16px', width: 'auto', gap: '6px', borderRadius: '12px' }}>
-          <Plus size={16} /> <span className="font-bold text-sm">Cena</span>
-        </button>
+        
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {([
+            ['roteiro', 'Roteiro'],
+            ['shotlist', 'Master Shot List'],
+            ['stripboard', 'Stripboard'],
+            ['storyboard', 'Storyboard'],
+            ['elementos', 'Elementos'],
+          ] as const).map(([modo, rotulo]) => (
+            <button
+              key={modo}
+              onClick={() => setViewMode(modo)}
+              style={{
+                position: 'relative', padding: '8px 16px', borderRadius: '10px', border: 'none',
+                background: 'transparent', color: viewMode === modo ? '#000' : 'var(--text-primary)',
+                fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+              }}
+            >
+              {viewMode === modo && (
+                <motion.span
+                  layoutId="aba-decupagem"
+                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  style={{ position: 'absolute', inset: 0, borderRadius: '10px', backgroundColor: 'var(--accent)', zIndex: 0 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 1 }}>{rotulo}</span>
+            </button>
+          ))}
+        </div>
+
+        {viewMode !== 'roteiro' && viewMode !== 'elementos' && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={() => setExportAberto(true)} className="btn-chip">
+              <FileDown size={16} /> <span className="font-bold text-sm">Exportar</span>
+            </button>
+            <button onClick={addCena} className="btn-chip">
+              <Plus size={16} /> <span className="font-bold text-sm">Cena</span>
+            </button>
+          </div>
+        )}
       </div>
 
+      {viewMode === 'roteiro' && <BreakdownModule />}
+      {viewMode === 'elementos' && <ElementosManager projetoId={projetoId!} />}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {cenasOrdenadas.length === 0 && (
+        {viewMode !== 'roteiro' && viewMode !== 'elementos' && cenasOrdenadas.length === 0 && (
           <div className="card text-muted text-center" style={{ padding: '40px 16px' }}>
-            Nenhuma cena decupada. Crie sua primeira cena para começar o shot list.
+            Nenhuma cena ainda. Crie na mão ou envie o roteiro na aba <strong>Roteiro</strong> e deixe a IA separar.
           </div>
         )}
 
-        {cenasOrdenadas.map(cena => {
+        {viewMode === 'stripboard' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+              <div className="text-xs text-muted">
+                Arraste as tiras para definir a ordem de filmagem · <strong>{totalPaginas()}</strong> páginas no total
+              </div>
+              <button
+                onClick={() => setModalDiaria(true)}
+                className="btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
+                disabled={cenasOrdenadas.length === 0}
+              >
+                <CalendarPlus size={16} /> Enviar ordem para uma diária
+              </button>
+            </div>
+
+            {/* Legenda das cores da tira */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '0 4px 10px' }}>
+              {[['INT', 'dia'], ['EXT', 'dia'], ['INT', 'noite'], ['EXT', 'noite']].map(([a, p]) => {
+                const c = getStripboardColor(a, p);
+                return (
+                  <span key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-muted)' }}>
+                    <span style={{ width: '14px', height: '10px', borderRadius: '2px', backgroundColor: c.bg, border: '1px solid var(--border-light)' }} />
+                    {c.label}
+                  </span>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', padding: '8px 16px', fontWeight: 'bold', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <div style={{ width: '12px', flexShrink: 0 }}></div>
+              <div style={{ width: '16px', flexShrink: 0 }} className="desktop-only"></div>
+              <div style={{ width: '40px', flexShrink: 0 }}>Cena</div>
+              <div style={{ flex: 1, minWidth: 0 }}>Descrição</div>
+              <div style={{ width: '78px', flexShrink: 0 }}>Amb./Per.</div>
+              <div style={{ width: '130px', flexShrink: 0 }}>Locação</div>
+              <div style={{ width: '64px', flexShrink: 0 }}>Págs</div>
+              <div style={{ width: '48px', flexShrink: 0 }}>Un.</div>
+              <div style={{ width: '76px', flexShrink: 0 }}>Estim.</div>
+            </div>
+
+            {cenasOrdenadas.map((cena, indice) => {
+              const loc = locacoes.find(l => l.id === cena.locacao_id);
+              // Cor da tira pelo par ambiente + período (padrão de stripboard).
+              const strip = getStripboardColor(cena.ambiente, cena.periodo);
+              const bgColor = strip.bg;
+              const textColor = strip.text;
+              const alvoDoDrop = sobre === cena.id && arrastando !== cena.id;
+
+              const campoTira: React.CSSProperties = {
+                width: '100%', padding: '4px 6px', fontSize: '12px', borderRadius: '4px',
+                border: '1px solid rgba(0,0,0,0.15)', backgroundColor: 'rgba(255,255,255,0.25)',
+                color: textColor, fontWeight: 'bold'
+              };
+
+              return (
+                <div
+                  key={cena.id}
+                  draggable
+                  onDragStart={() => setArrastando(cena.id)}
+                  onDragEnd={() => { setArrastando(null); setSobre(null); }}
+                  onDragOver={e => { e.preventDefault(); setSobre(cena.id); }}
+                  onDragLeave={() => setSobre(s => (s === cena.id ? null : s))}
+                  onDrop={e => {
+                    e.preventDefault();
+                    if (arrastando) reordenarCenas(arrastando, cena.id);
+                    setArrastando(null);
+                    setSobre(null);
+                  }}
+                  style={{
+                    display: 'flex', gap: '12px', alignItems: 'center', padding: '8px 16px',
+                    backgroundColor: bgColor, color: textColor, borderRadius: '4px', cursor: 'grab',
+                    opacity: arrastando === cena.id ? 0.4 : 1,
+                    borderTop: alvoDoDrop ? '3px solid var(--accent)' : '3px solid transparent',
+                    transition: 'opacity 0.15s'
+                  }}
+                >
+                  {/* No celular arrastar não funciona: as setas resolvem. */}
+                  <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, width: '12px', alignItems: 'center' }}>
+                    <button
+                      onClick={() => indice > 0 && reordenarCenas(cena.id, cenasOrdenadas[indice - 1].id)}
+                      disabled={indice === 0}
+                      title="Subir"
+                      style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: 0, lineHeight: 0.9, opacity: indice === 0 ? 0.25 : 0.75, fontSize: '11px' }}
+                    >▲</button>
+                    <button
+                      onClick={() => indice < cenasOrdenadas.length - 1 && reordenarCenas(cena.id, cenasOrdenadas[indice + 1].id)}
+                      disabled={indice === cenasOrdenadas.length - 1}
+                      title="Descer"
+                      style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: 0, lineHeight: 0.9, opacity: indice === cenasOrdenadas.length - 1 ? 0.25 : 0.75, fontSize: '11px' }}
+                    >▼</button>
+                  </div>
+                  <GripVertical size={16} style={{ opacity: 0.5, flexShrink: 0 }} className="desktop-only" />
+                  <div style={{ width: '40px', fontWeight: 'bold' }}>{cena.numero}</div>
+                  <div style={{ flex: 1, fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cena.descricao}</div>
+                  <div style={{ width: '78px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.04em', opacity: 0.85 }}>{strip.label}</div>
+                  <div style={{ width: '130px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '12px' }}>{loc?.nome || '—'}</div>
+
+                  <input
+                    value={cena.paginas || ''}
+                    onChange={e => updateCena(cena.id, { paginas: e.target.value })}
+                    onDragStart={e => e.preventDefault()}
+                    placeholder="1 2/8"
+                    title="Páginas em oitavos (padrão da indústria)"
+                    style={{ ...campoTira, width: '64px' }}
+                  />
+                  <select
+                    value={cena.unidade || 'A'}
+                    onChange={e => updateCena(cena.id, { unidade: e.target.value as 'A' | 'B' })}
+                    style={{ ...campoTira, width: '48px' }}
+                  >
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                  </select>
+                  <input
+                    value={cena.estimativa || ''}
+                    onChange={e => updateCena(cena.id, { estimativa: e.target.value })}
+                    onDragStart={e => e.preventDefault()}
+                    placeholder="45min"
+                    style={{ ...campoTira, width: '76px' }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {viewMode === 'storyboard' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="text-xs text-muted">
+              Anexe imagens de referência por cena — upload local ou link do Drive. Elas também aparecem em Documentos.
+            </div>
+            {cenasOrdenadas.map(cena => (
+              <div key={cena.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div>
+                    <div className="font-bold">Cena {cena.numero} — {cena.descricao}</div>
+                    <div className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>{cena.ambiente} · {cena.periodo}</div>
+                  </div>
+                  <AnexoInput
+                    accept="image/*"
+                    label="Referência"
+                    onAddLink={() => {}}
+                    onAddAnexo={info => handleAddAnexo(cena, info.url, info.nome)}
+                  />
+                </div>
+
+                {(cena.anexos || []).length === 0 ? (
+                  <div className="text-sm text-muted">Nenhuma referência anexada.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+                    {(cena.anexos || []).map((url, i) => (
+                      <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', height: '110px' }}>
+                          <img
+                            src={url}
+                            alt={`Referência ${i + 1} da cena ${cena.numero}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={e => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        </a>
+                        <button
+                          onClick={() => removerAnexo(cena, i)}
+                          className="btn-icon"
+                          style={{ position: 'absolute', top: '4px', right: '4px', padding: '4px', backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none' }}
+                          title="Remover referência"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {viewMode === 'shotlist' && cenasOrdenadas.map(cena => {
           const planosDaCena = planos.filter(p => p.cena_id === cena.id).sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
           
           return (
@@ -115,8 +509,20 @@ export function DecupagemModule() {
                       <option value="int">INT.</option>
                       <option value="ext">EXT.</option>
                     </select>
-                    <select value={cena.locacao_id || ''} onChange={e => updateCena(cena.id, { locacao_id: e.target.value })} style={selectStyle}>
+                    <select
+                      value={cena.locacao_id || ''}
+                      onChange={e => {
+                        if (e.target.value === '__criar__') criarLocacaoDaCena(cena);
+                        else updateCena(cena.id, { locacao_id: e.target.value });
+                      }}
+                      style={selectStyle}
+                    >
                       <option value="">(Sem Locação definida)</option>
+                      {/* Nada cadastrado bate com o cabeçalho: em vez de deixar
+                          a pessoa travada, oferece cadastrar com esse nome. */}
+                      {!cena.locacao_id && cena.descricao.trim() && (
+                        <option value="__criar__">+ Cadastrar "{cena.descricao.trim()}"</option>
+                      )}
                       {locacoes.map(l => (
                         <option key={l.id} value={l.id}>{l.nome}</option>
                       ))}
@@ -126,8 +532,27 @@ export function DecupagemModule() {
                       <option value="noite">NOITE</option>
                     </select>
                   </div>
+                  
+                  {/* Storyboard Anexos */}
+                  {cena.anexos && cena.anexos.length > 0 && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      {cena.anexos.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '60px', height: '60px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                          <img src={url} alt={`Storyboard ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  
                 </div>
-                <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted hover-danger" style={{ padding: '8px', border: 'none', background: 'transparent' }} title="Excluir Cena"><Trash2 size={18} /></button>
+                {/* O botão de IA que existia aqui mandava só o TÍTULO da cena
+                    para o modelo e despejava o resultado em Tasks — não era o
+                    breakdown de ninguém. A análise de verdade acontece na aba
+                    Roteiro, cena a cena e com o texto da cena. */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <AnexoInput onAddLink={(url) => handleAddAnexo(cena, url)} />
+                  <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted hover-danger" style={{ padding: '8px', border: 'none', background: 'transparent' }} title="Excluir Cena"><Trash2 size={18} /></button>
+                </div>
               </div>
 
               {/* Lista de Planos */}
@@ -207,6 +632,67 @@ export function DecupagemModule() {
           );
         })}
       </div>
+
+      {/* Enviar a ordem de filmagem para uma diária */}
+      {modalDiaria && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px', backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '80vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="font-bold text-lg">Montar o dia</h3>
+                <p className="text-xs text-muted">As {cenasOrdenadas.length} cenas entram na diária escolhida, na ordem atual do stripboard.</p>
+              </div>
+              <button onClick={() => setModalDiaria(false)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {diarias.length === 0 && <div className="text-sm text-muted">Nenhuma diária criada ainda.</div>}
+              {[...diarias].sort((a, b) => a.numero - b.numero).map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => enviarParaDiaria(d.id)}
+                  className="btn-icon"
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', width: '100%' }}
+                >
+                  <span className="font-bold">Diária {String(d.numero).padStart(2, '0')}</span>
+                  <span className="text-xs text-muted">{(d.cena_ids || []).length} cena(s)</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exportação seletiva */}
+      {exportAberto && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="font-bold text-lg">Exportar decupagem</h3>
+              <button onClick={() => setExportAberto(false)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {([
+                ['stripboard', 'Stripboard (ordem de filmagem)'],
+                ['shotlist', 'Shot list por cena'],
+                ['elementos', 'Relatório de elementos (Análise Técnica)'],
+              ] as const).map(([chave, rotulo]) => (
+                <label key={chave} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={exportConfig[chave]}
+                    onChange={e => setExportConfig({ ...exportConfig, [chave]: e.target.checked })}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
+                  />
+                  <span className="text-sm">{rotulo}</span>
+                </label>
+              ))}
+            </div>
+            <button onClick={exportarDecupagem} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <FileDown size={16} /> Gerar PDF
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

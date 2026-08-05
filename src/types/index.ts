@@ -26,12 +26,29 @@ export interface Projeto {
   moeda: string;
   campos_obrigatorios?: string[]; // IDs ou nomes dos campos obrigatórios
   creditos?: Credito[]; // Apoios e extras da Fase 3
+  /** Categorias de breakdown criadas pelo usuário, além das padrão da indústria. */
+  categorias_extras?: CategoriaCustomizada[];
+  grupos?: { id: string; nome: string; perfis_ids: string[] }[]; // Fase 4: Times/Grupos reutilizáveis
 }
 
 export interface Credito {
   id: string;
   nome: string;
-  papel: string; // "Apoio de Alimentação", "Patrocínio", etc
+  papel: string; // "Diretor", "Operador de Câmera", "Apoio de Alimentação"...
+
+  // ---- v4.1: créditos organizados por departamento ----
+  departamento_id?: string; // vínculo com o departamento do projeto
+  perfil_id?: string;       // quando o crédito é um membro da equipe cadastrado
+  ordem?: number;           // posição dentro do departamento (chefe primeiro)
+  /** true = veio do catálogo padrão da indústria; false = adicionado pelo usuário */
+  padrao?: boolean;
+}
+
+/** Categoria de breakdown criada pelo usuário (a cor vira o destaque no PDF). */
+export interface CategoriaCustomizada {
+  chave: string;   // gerado a partir do rótulo, em maiúsculas
+  rotulo: string;
+  cor: string;     // hex; o fundo translúcido do destaque sai daqui
 }
 
 export type TipoCampo = 'texto' | 'numero' | 'data' | 'valor' | 'selecao' | 'telefone';
@@ -185,6 +202,10 @@ export interface Locacao {
   contatos?: ContatoLocacao[];
   coordenadas?: string;
   hospital_proximo?: string;
+  // Dados do hospital confirmados pelo usuário (busca via Overpass/OSM)
+  hospital_telefone?: string;
+  hospital_distancia?: number; // metros em linha reta a partir da locação
+  hospital_coordenadas?: string; // "lat,lng" para montar a rota
   contato_seguranca?: string;
   obs?: string;
 }
@@ -209,11 +230,49 @@ export interface Diaria {
   // ---- Blocos da Ordem do Dia ----
   horarios?: HorarioOD[]; // Cronograma do dia (chamada, refeições, wrap...)
   transporte?: string; // Logística: vans, quem vai com quem, pontos de encontro
+  comboios?: Comboio[];
+
+  // ---- Fechamento / arquivamento (v4) ----
+  fechada?: boolean;
+  data_fechamento?: number;
   anexos?: AnexoOD[]; // Roteiro do dia, decupagem, referências (armazenados como data URL, offline)
   confirmacoes?: string[]; // IDs dos perfis que confirmaram presença
   cena_ids?: string[]; // IDs das cenas globais escaladas para o dia
   cenas?: Cena[]; // DEPRECATED: manter para não quebrar antigas
   planos?: Plano[]; // DEPRECATED
+}
+
+export interface Comboio {
+  id: string;
+  veiculo: string; // texto livre (mantido para diárias antigas)
+  motorista: string; // texto livre (mantido para diárias antigas)
+  saida: string; // HH:MM
+  passageiros_ids: string[];
+  veiculo_id?: string; // vínculo com o cadastro de Transporte
+  motorista_id?: string;
+  ponto_encontro?: string;
+}
+
+// ---- Logística: cadastro geral de Transporte (v4) ----
+export interface Veiculo {
+  id: string;
+  projeto_id: string;
+  nome: string; // "Van Elenco", "Kombi Arte"
+  placa?: string;
+  tipo?: string; // van, carro, caminhão, moto
+  capacidade?: number;
+  motorista_id?: string; // motorista padrão
+  obs?: string;
+}
+
+export interface Motorista {
+  id: string;
+  projeto_id: string;
+  nome: string;
+  telefone?: string;
+  cnh?: string;
+  perfil_id?: string; // quando o motorista também é membro da equipe
+  obs?: string;
 }
 
 export interface HorarioOD {
@@ -246,6 +305,16 @@ export interface Cena {
   locacao_id?: string;
   periodo?: 'dia' | 'noite';
   ambiente?: 'int' | 'ext';
+  anexos?: string[]; // URLs ou Base64 (Storyboard)
+
+  // ---- Stripboard (v4) ----
+  /** true = veio da extração do roteiro (é substituída ao reprocessar o PDF). */
+  origem_roteiro?: boolean;
+  ordem?: number; // posição na ordem de filmagem
+  paginas?: string; // "1 2/8"
+  unidade?: 'A' | 'B';
+  estimativa?: string; // "45min", "2h"
+  elenco_ids?: string[]; // perfis presentes na cena
 }
 
 export interface Plano {
@@ -271,17 +340,77 @@ export interface RoteiroPDF {
   data_upload: number;
 }
 
+/**
+ * A coisa única que a produção precisa providenciar — "Renata", "arma do
+ * Marcos", "chuva".
+ *
+ * Uma RoteiroTag é uma OCORRÊNCIA (este trecho, nesta página). O Elemento é a
+ * entidade por trás de várias ocorrências. Essa separação é o que permite
+ * contar cenas por ator, dar Cast ID e mesclar "sua mulher" com "Renata".
+ */
+export interface Elemento {
+  id: string;
+  projeto_id: string;
+  /** Nome canônico, o que aparece nos relatórios. */
+  nome: string;
+  categoria: string; // chave de DEPARTMENT_THEMES
+  /** Numeração de elenco (1, 2, 3...), atribuída por ordem de entrada no roteiro. */
+  cast_id?: number;
+  /** Outros nomes que o roteiro usa para a mesma coisa ("sua mulher"). */
+  aliases?: string[];
+  notas?: string;
+  /** Referências visuais: data URL ou link. */
+  imagens?: string[];
+  /** Agrupamento livre ("kit detetive"). */
+  grupo?: string;
+  /** Vínculo com a equipe, quando o elemento de elenco é alguém cadastrado. */
+  perfil_id?: string;
+}
+
 export interface RoteiroTag {
   id: string;
   projeto_id: string;
   roteiro_id: string;
   pagina: number;
   texto_selecionado: string;
-  categoria: string; // ex: 'Arte', 'Elenco'
+  categoria: string; // chave de DEPARTMENT_THEMES (ex: 'ELENCO')
   cor: string;
   cena_id?: string;
-  pos_x?: number; // Opcionais se formos renderizar caixa em cima
+  /** Elemento a que esta ocorrência pertence (ver Elemento). */
+  elemento_id?: string;
+  /**
+   * true = destaca o trecho em TODAS as páginas do roteiro.
+   * Personagem e veículo se repetem em muitas cenas; som e efeito são pontuais.
+   */
+  global?: boolean;
+  pos_x?: number;
   pos_y?: number;
+}
+
+// ---- Fase 2: Documentos e Pastas ----
+export interface Pasta {
+  id: string;
+  projeto_id: string;
+  nome: string;
+  cor: string;
+  data_criacao: number;
+}
+
+export type OrigemDocumento = 'manual' | 'roteiro' | 'comprovante' | 'diaria' | 'storyboard';
+
+export interface Documento {
+  id: string;
+  projeto_id: string;
+  pasta_id?: string;
+  nome: string;
+  tipo: 'link' | 'upload';
+  url: string; // link do drive ou data URL do arquivo
+  preview_url?: string;
+  tamanho?: number;
+  data_criacao: number;
+  // Índice central: o documento nasceu em outro lugar do app e se reflete aqui
+  origem?: OrigemDocumento;
+  ref_id?: string; // id da entidade de origem (despesa, diária, cena...)
 }
 
 // ---- Fase 5D: Kanban de Tasks Gerais ----
@@ -296,6 +425,7 @@ export interface Task {
   subtarefas?: { id: string, titulo: string, concluida: boolean }[];
   depends_on?: string[]; // IDs das tasks de que esta depende
   data_criacao: number;
+  data_conclusao?: string; // YYYY-MM-DD (Fase 4/6)
 }
 
 // ---- Fase 5: Notificações in-app (sino) ----
