@@ -310,6 +310,15 @@ export interface Cena {
   // ---- Stripboard (v4) ----
   /** true = veio da extração do roteiro (é substituída ao reprocessar o PDF). */
   origem_roteiro?: boolean;
+  /**
+   * Texto da cena, guardado na importação.
+   *
+   * É o que permite saber em quais cenas um personagem aparece sem depender de
+   * ter uma marcação por ocorrência. As marcações de elenco são únicas por
+   * texto (para o destaque valer no roteiro todo), então contar cenas por elas
+   * daria "1 dia de trabalho" para o protagonista.
+   */
+  corpo?: string;
   ordem?: number; // posição na ordem de filmagem
   paginas?: string; // "1 2/8"
   unidade?: 'A' | 'B';
@@ -364,6 +373,15 @@ export interface RoteiroPDF {
   nome: string;
   dados: string; // base64 do pdf
   data_upload: number;
+  /**
+   * Versões do roteiro (v4 §2.7).
+   *
+   * Trocar o PDF por uma revisão arquivava a versão anterior — e junto ia todo
+   * o trabalho de marcação feito em cima dela. Agora a antiga fica guardada com
+   * suas tags intactas, e dá para voltar.
+   */
+  versao?: number;
+  arquivado?: boolean;
 }
 
 /**
