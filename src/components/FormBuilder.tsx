@@ -1,38 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Trash2, GripVertical, Settings2, X } from 'lucide-react';
-import type { Projeto, CampoCustomizado, TipoCampo } from '../types';
+import { Plus, Trash2, GripVertical, Settings2, X, CloudUpload, CloudOff, Check, RefreshCw } from 'lucide-react';
+import type { CampoCustomizado, TipoCampo } from '../types';
+import { CAMPOS_PADRAO, CAMPOS_SEMPRE_OBRIGATORIOS, ROTULO_GRUPO } from '../lib/camposFicha';
+import { publicarFichaPublica } from '../lib/sync';
 
-export function FormBuilder({ projeto, onClose }: { projeto: Projeto, onClose?: () => void }) {
+/**
+ * Recebe o ID e lê o projeto ao vivo — antes recebia o objeto por prop, e como o
+ * painel lateral guarda o elemento React em estado, o retrato do projeto ficava
+ * congelado: cada alteração era gravada por cima de uma lista desatualizada e só
+ * "aparecia" ao fechar e reabrir o construtor.
+ */
+export function FormBuilder({ projetoId, onClose }: { projetoId: string, onClose?: () => void }) {
   const [novoCampo, setNovoCampo] = useState('');
   const [novoTipo, setNovoTipo] = useState<TipoCampo>('texto');
-  
-  const campos = projeto.campos_customizados || [];
-  const obrigatorios = projeto.campos_obrigatorios || [];
 
-  const camposFixos = [
-    { id: 'cpf', nome: 'CPF' },
-    { id: 'rg', nome: 'RG' },
-    { id: 'telefone', nome: 'Telefone' },
-    { id: 'email', nome: 'E-mail' },
-    { id: 'endereco', nome: 'Endereço' },
-    { id: 'funcao', nome: 'Função / Cargo' },
-    { id: 'drt', nome: 'DRT' },
-    { id: 'contato_emergencia', nome: 'Contato de Emergência' },
-    { id: 'tipo_sanguineo', nome: 'Tipo Sanguíneo' },
-    { id: 'alergias', nome: 'Alergias' },
-    { id: 'restricao_alimentar', nome: 'Restrições Alimentares' },
-    { id: 'plano_saude', nome: 'Plano de Saúde' },
-    { id: 'valor_diaria', nome: 'Valor Diária' },
-    { id: 'tipo_vinculo', nome: 'Tipo Vínculo' },
-    { id: 'chave_pix', nome: 'Chave PIX' }
-  ];
+  const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
+
+  const campos = projeto?.campos_customizados || [];
+  const obrigatorios = projeto?.campos_obrigatorios || [];
+
+  /**
+   * O link público roda no navegador de outra pessoa e só enxerga o Supabase.
+   * Toda mudança aqui é publicada lá, senão o formulário enviado continuaria
+   * com os campos antigos.
+   */
+  const [statusPub, setStatusPub] = useState<'idle' | 'publicando' | 'ok' | 'erro'>('idle');
+  const [erroPub, setErroPub] = useState('');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const publicar = async () => {
+    setStatusPub('publicando');
+    try {
+      await publicarFichaPublica(projetoId);
+      setStatusPub('ok');
+      setErroPub('');
+    } catch (e: any) {
+      setStatusPub('erro');
+      setErroPub(e?.message || 'Falha ao publicar.');
+    }
+  };
+
+  const assinatura = JSON.stringify([campos, obrigatorios]);
+  useEffect(() => {
+    if (!projeto) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(publicar, 800);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assinatura, !!projeto]);
+
+  // Parte dos campos que já existem no app (§6.2) — mesma fonte usada pela ficha,
+  // pelo link público e pela importação.
+  const camposFixos = CAMPOS_PADRAO;
 
   const toggleObrigatorioFixo = async (id: string) => {
-    const novos = obrigatorios.includes(id) 
-      ? obrigatorios.filter(i => i !== id) 
+    if (CAMPOS_SEMPRE_OBRIGATORIOS.includes(id)) return; // nome é sempre exigido
+    const novos = obrigatorios.includes(id)
+      ? obrigatorios.filter(i => i !== id)
       : [...obrigatorios, id];
-    await db.projetos.update(projeto.id, { campos_obrigatorios: novos });
+    await db.projetos.update(projetoId, { campos_obrigatorios: novos });
   };
 
   const adicionarCampo = async () => {
@@ -44,7 +72,7 @@ export function FormBuilder({ projeto, onClose }: { projeto: Projeto, onClose?: 
       obrigatorio: false,
       opcoes: novoTipo === 'selecao' ? ['Opção 1'] : undefined
     };
-    await db.projetos.update(projeto.id, {
+    await db.projetos.update(projetoId, {
       campos_customizados: [...campos, campo]
     });
     setNovoCampo('');
@@ -52,13 +80,13 @@ export function FormBuilder({ projeto, onClose }: { projeto: Projeto, onClose?: 
 
   const atualizarCampo = async (id: string, updates: Partial<CampoCustomizado>) => {
     const novos = campos.map(c => c.id === id ? { ...c, ...updates } : c);
-    await db.projetos.update(projeto.id, { campos_customizados: novos });
+    await db.projetos.update(projetoId, { campos_customizados: novos });
   };
 
   const removerCampo = async (id: string, nome: string) => {
     if (confirm(`Tem certeza que deseja remover o campo "${nome}"? Os dados preenchidos pela equipe continuarão salvos, mas não serão mais exibidos.`)) {
       const novos = campos.filter(c => c.id !== id);
-      await db.projetos.update(projeto.id, { campos_customizados: novos });
+      await db.projetos.update(projetoId, { campos_customizados: novos });
     }
   };
 
@@ -78,26 +106,58 @@ export function FormBuilder({ projeto, onClose }: { projeto: Projeto, onClose?: 
         )}
       </div>
 
+      {/* Estado da publicação para o link público */}
+      <div style={{
+        padding: '10px 16px', borderBottom: '1px solid var(--border-light)',
+        display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+        backgroundColor: statusPub === 'erro' ? 'rgba(239,68,68,0.08)' : 'var(--bg-primary)',
+      }}>
+        {statusPub === 'publicando' && <><RefreshCw size={13} className="spinning text-muted" /><span className="text-xs text-muted">Publicando para o link...</span></>}
+        {statusPub === 'ok' && <><Check size={13} className="text-success" /><span className="text-xs text-muted">Ficha publicada — quem abrir o link já vê estes campos.</span></>}
+        {statusPub === 'idle' && <><CloudUpload size={13} className="text-muted" /><span className="text-xs text-muted">As alterações são publicadas automaticamente no link.</span></>}
+        {statusPub === 'erro' && (
+          <>
+            <CloudOff size={13} className="text-danger" />
+            <span className="text-xs text-danger" style={{ flex: 1, minWidth: '160px' }}>
+              Não publicou: {erroPub} O link público continuará com os campos antigos.
+            </span>
+            <button onClick={publicar} className="btn-icon" style={{ padding: '4px 10px', border: '1px solid var(--border-light)', fontSize: '11px' }}>
+              Tentar de novo
+            </button>
+          </>
+        )}
+      </div>
+
       <div style={{ padding: '16px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        
+
         {/* Lista de Campos */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           
           <div className="text-xs font-bold text-muted uppercase tracking-widest mb-1 mt-2">Campos Padrão do Sistema</div>
-          
-          {camposFixos.map((campo) => (
-            <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{campo.nome}</div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={obrigatorios.includes(campo.id)} 
-                  onChange={() => toggleObrigatorioFixo(campo.id)}
-                />
-                Obrigatório
-              </label>
-            </div>
-          ))}
+          <div className="text-xs text-muted" style={{ marginBottom: '4px' }}>
+            Marcar como obrigatório bloqueia o cadastro (aqui e no link público) enquanto o campo estiver vazio.
+          </div>
+
+          {camposFixos.map((campo) => {
+            const sempre = CAMPOS_SEMPRE_OBRIGATORIOS.includes(campo.id);
+            return (
+              <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{campo.nome}</div>
+                  <div className="text-xs text-muted">{ROTULO_GRUPO[campo.grupo]}</div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: sempre ? 'not-allowed' : 'pointer', opacity: sempre ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={sempre || obrigatorios.includes(campo.id)}
+                    disabled={sempre}
+                    onChange={() => toggleObrigatorioFixo(campo.id)}
+                  />
+                  Obrigatório
+                </label>
+              </div>
+            );
+          })}
 
           <div className="text-xs font-bold text-muted uppercase tracking-widest mb-1 mt-4">Campos Personalizados</div>
           {campos.map((campo) => (
