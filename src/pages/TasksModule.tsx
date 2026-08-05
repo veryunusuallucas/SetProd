@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle, CalendarClock } from 'lucide-react';
 import type { Task } from '../types';
 import { logAction } from '../lib/audit';
 import { notificar } from '../lib/notificacoes';
@@ -130,6 +130,28 @@ export function TasksModule() {
 
   const tasksFiltradas = tasks.filter(t => filtro === 'todas' || t.responsavel_id === meuPerfilId);
 
+  /**
+   * Card inteiro na cor do departamento (estilo ClickUp, v4 §5.3).
+   * A cor vem como hex do cadastro de departamentos; usamos ela em opacidade baixa
+   * no fundo para o texto continuar legível nos dois temas.
+   */
+  const corDeFundo = (hex?: string, locked?: boolean) => {
+    if (locked) return 'var(--bg-default)';
+    if (!hex) return 'var(--bg-surface)';
+    const m = hex.replace('#', '').match(/^([0-9a-f]{6})$/i);
+    if (!m) return 'var(--bg-surface)';
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, 0.18)`;
+  };
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const formataPrazo = (iso: string) => {
+    const [a, m, d] = iso.split('-');
+    return `${d}/${m}/${a.slice(-2)}`;
+  };
+
   const renderColuna = (status: Task['status'], titulo: string, cor: string) => {
     const ts = tasksFiltradas.filter(t => t.status === status);
     
@@ -170,13 +192,13 @@ export function TasksModule() {
                 onDragStart={(e) => {
                   e.dataTransfer.setData('taskId', t.id);
                 }}
-                style={{ 
-                  padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'grab', 
-                  borderLeft: `3px solid ${cor}`,
+                style={{
+                  padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'grab',
+                  borderLeft: `3px solid ${depto?.cor || cor}`,
                   opacity: locked ? 0.6 : 1,
-                  backgroundColor: locked ? 'var(--bg-default)' : 'var(--bg-surface)',
+                  backgroundColor: corDeFundo(depto?.cor, locked),
                   position: 'relative'
-                }} 
+                }}
               >
                 {/* Tag do Departamento */}
                 {depto && (
@@ -195,6 +217,20 @@ export function TasksModule() {
                 {locked && (
                   <div className="text-xs text-warning" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <AlertTriangle size={12} /> Aguardando dependências
+                  </div>
+                )}
+
+                {t.data_conclusao && (
+                  <div
+                    className="text-xs"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      color: t.status !== 'done' && t.data_conclusao < hoje ? 'var(--color-danger)' : 'var(--text-secondary)',
+                      fontWeight: t.status !== 'done' && t.data_conclusao < hoje ? 'bold' : 'normal'
+                    }}
+                  >
+                    <CalendarClock size={12} /> {formataPrazo(t.data_conclusao)}
+                    {t.status !== 'done' && t.data_conclusao < hoje ? ' · atrasada' : ''}
                   </div>
                 )}
 
@@ -326,6 +362,21 @@ export function TasksModule() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <div className="text-xs text-muted uppercase tracking-widest mb-1">Prazo / Data de Conclusão</div>
+              <input
+                type="date"
+                value={editandoTask.data_conclusao || ''}
+                onChange={e => {
+                  const valor = e.target.value || undefined;
+                  db.tasks.update(editandoTask.id, { data_conclusao: valor });
+                  setEditandoTask({ ...editandoTask, data_conclusao: valor });
+                }}
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', width: '100%' }}
+              />
+              <div className="text-xs text-muted mt-1">Aparece no calendário do Dashboard.</div>
             </div>
 
             <div>
