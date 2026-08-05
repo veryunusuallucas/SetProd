@@ -2,32 +2,36 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Save, Trash2, Download, Archive, Bug } from 'lucide-react';
+import { Save, Trash2, Bug, Info, X, ShieldCheck } from 'lucide-react';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
+import type { Projeto } from '../types';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
   const configuracao = useLiveQuery(() => db.configuracoes.get(projetoId), [projetoId]);
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
-  const qtdDespesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).count(), [projetoId]) || 0;
 
-  const trocarModoAcerto = async (novo: 'centralizado' | 'direto') => {
-    if (!projeto || projeto.modo_acerto === novo) return;
-    if (qtdDespesas > 0) {
-      const ok = confirm(`Já existem ${qtdDespesas} despesa(s) lançadas. Trocar o modo de acerto vai RECALCULAR todos os saldos e pendências. Deseja continuar?`);
-      if (!ok) return;
-    }
-    await db.projetos.update(projetoId, { modo_acerto: novo });
-  };
-  
   const [templateCobranca, setTemplateCobranca] = useState('');
   const [templatePagamento, setTemplatePagamento] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const [confirmNome, setConfirmNome] = useState('');
   const [showBug, setShowBug] = useState(false);
-  const [novoCampoNome, setNovoCampoNome] = useState('');
-  const [novoCampoTipo, setNovoCampoTipo] = useState<'texto' | 'numero' | 'data' | 'valor'>('texto');
+  const [showSobre, setShowSobre] = useState(false);
+
+  // Edição dos dados do projeto (movidos da aba Créditos)
+  const [editandoProjeto, setEditandoProjeto] = useState(false);
+  const [form, setForm] = useState<Projeto | null>(null);
+
+  useEffect(() => {
+    if (projeto && !editandoProjeto) setForm(projeto);
+  }, [projeto, editandoProjeto]);
+
+  const salvarProjeto = async () => {
+    if (!form) return;
+    await db.projetos.put(form);
+    setEditandoProjeto(false);
+  };
 
   useEffect(() => {
     if (configuracao) {
@@ -62,50 +66,6 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
 
   const nomeProjeto = projeto?.nome || '';
   const nomeConfere = confirmNome.trim() === nomeProjeto.trim() && nomeProjeto !== '';
-
-  const camposCustom = projeto?.campos_customizados || [];
-
-  const adicionarCampo = async () => {
-    if (!projeto || !novoCampoNome.trim()) return;
-    const novo = { id: crypto.randomUUID(), nome: novoCampoNome.trim(), tipo: novoCampoTipo };
-    await db.projetos.put({ ...projeto, campos_customizados: [...camposCustom, novo] });
-    setNovoCampoNome('');
-    setNovoCampoTipo('texto');
-  };
-
-  const removerCampo = async (id: string) => {
-    if (!projeto) return;
-    await db.projetos.put({ ...projeto, campos_customizados: camposCustom.filter(c => c.id !== id) });
-  };
-
-  const exportarDados = async () => {
-    try {
-      const proj = await db.projetos.get(projetoId);
-      const perfis = await db.perfis.where('projeto_id').equals(projetoId).toArray();
-      const despesas = await db.despesas.where('projeto_id').equals(projetoId).toArray();
-      const acertos = await db.acertos.where('projeto_id').equals(projetoId).toArray();
-      const config = await db.configuracoes.get(projetoId);
-
-      const data = { proj, perfis, despesas, acertos, config };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `backup_projeto_${projetoId}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert('Erro ao exportar: ' + e);
-    }
-  };
-
-  const arquivarDespesas = async () => {
-    if (confirm('Deseja arquivar (zerar) o financeiro? O projeto e a equipe serão mantidos, mas as despesas e acertos serão apagados. É recomendado exportar os dados antes!')) {
-      await db.despesas.where('projeto_id').equals(projetoId).delete();
-      await db.acertos.where('projeto_id').equals(projetoId).delete();
-      alert('Financeiro zerado com sucesso!');
-    }
-  };
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -143,45 +103,66 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
         </div>
       </div>
 
+      {/* Dados da produção — veio da aba Créditos, onde não fazia mais sentido */}
       <div className="card">
-        <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Gestão de Dados</h3>
-        <p className="text-xs text-secondary" style={{ marginBottom: '24px' }}>
-          Você pode exportar os dados do projeto para um arquivo JSON ou arquivar (zerar) as despesas atuais.
-        </p>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button onClick={exportarDados} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
-            <Download size={16} /> Exportar Relatório (JSON)
-          </button>
-          
-          <button onClick={arquivarDespesas} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: 'var(--color-warning)', border: 'none', color: '#000' }}>
-            <Archive size={16} /> Arquivar Despesas e Acertos
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h3 className="text-lg font-bold">Dados da Produção</h3>
+            <p className="text-xs text-secondary">Nome, produtora, local e período do projeto.</p>
+          </div>
+          <button
+            onClick={() => editandoProjeto ? salvarProjeto() : setEditandoProjeto(true)}
+            className="text-xs font-bold"
+            style={{ backgroundColor: editandoProjeto ? 'var(--accent)' : 'var(--bg-surface)', color: editandoProjeto ? '#000' : 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '6px 14px' }}
+          >
+            {editandoProjeto ? 'Salvar' : 'Editar'}
           </button>
         </div>
-      </div>
 
-      <div className="card">
-        <h3 className="text-lg font-bold" style={{ marginBottom: '8px' }}>Modo de Acerto</h3>
-        <p className="text-xs text-secondary" style={{ marginBottom: '16px' }}>
-          Como o app calcula os pagamentos entre a equipe.
-          {qtdDespesas > 0 && <span className="text-warning"> Trocar agora recalcula os {qtdDespesas} lançamento(s) existentes.</span>}
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: projeto?.modo_acerto === 'centralizado' ? 'var(--bg-active)' : 'transparent' }}>
-            <input type="checkbox" checked={projeto?.modo_acerto === 'centralizado'} onChange={() => trocarModoAcerto('centralizado')} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className="font-bold">Banco do Projeto (centralizado)</span>
-              <span className="text-xs text-muted">Todos pagam/recebem do caixa central; o banco redistribui.</span>
+        {editandoProjeto && form ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <CampoProjeto label="Nome do Projeto">
+              <input value={form.nome || ''} onChange={e => setForm({ ...form, nome: e.target.value })} />
+            </CampoProjeto>
+            <CampoProjeto label="Produtora">
+              <input value={form.produtora || ''} onChange={e => setForm({ ...form, produtora: e.target.value })} />
+            </CampoProjeto>
+            <CampoProjeto label="Cidade / Local">
+              <input value={form.local || ''} onChange={e => setForm({ ...form, local: e.target.value })} />
+            </CampoProjeto>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <CampoProjeto label="Início">
+                <input type="date" value={form.data_inicio || ''} onChange={e => setForm({ ...form, data_inicio: e.target.value })} />
+              </CampoProjeto>
+              <CampoProjeto label="Fim">
+                <input type="date" value={form.data_fim || ''} onChange={e => setForm({ ...form, data_fim: e.target.value })} />
+              </CampoProjeto>
             </div>
-          </label>
-          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: projeto?.modo_acerto === 'direto' ? 'var(--bg-active)' : 'transparent' }}>
-            <input type="checkbox" checked={projeto?.modo_acerto === 'direto'} onChange={() => trocarModoAcerto('direto')} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className="font-bold">Compensado (direto entre membros)</span>
-              <span className="text-xs text-muted">O app compensa o que a pessoa deve com o que tem a receber; menos transações.</span>
-            </div>
-          </label>
-        </div>
+            <CampoProjeto label="Observações">
+              <textarea rows={3} value={form.obs || ''} onChange={e => setForm({ ...form, obs: e.target.value })} />
+            </CampoProjeto>
+            <p className="text-xs text-muted">
+              Diretor, produtor e o resto da equipe agora vivem na ficha de créditos, em Produção → Créditos.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+            <LinhaProjeto label="Nome" valor={projeto?.nome} />
+            <LinhaProjeto label="Produtora" valor={projeto?.produtora} />
+            <LinhaProjeto label="Local" valor={projeto?.local} />
+            <LinhaProjeto
+              label="Período"
+              valor={projeto?.data_inicio || projeto?.data_fim ? `${fmtData(projeto?.data_inicio)} — ${fmtData(projeto?.data_fim)}` : undefined}
+            />
+            {projeto?.obs && (
+              <>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-light)', margin: '4px 0' }} />
+                <div className="text-muted text-xs uppercase tracking-widest">Observações</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{projeto.obs}</div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -208,41 +189,26 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
       </div>
 
       <div className="card">
-        <h3 className="text-lg font-bold" style={{ marginBottom: '8px' }}>Campos Personalizados da Ficha</h3>
-        <p className="text-xs text-secondary" style={{ marginBottom: '16px' }}>
-          Crie campos extras que aparecerão no cadastro de cada membro (além dos padrão).
-        </p>
-
-        {camposCustom.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-            {camposCustom.map(c => (
-              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-                <span className="text-sm">{c.nome} <span className="text-xs text-muted">· {c.tipo}</span></span>
-                <button onClick={() => removerCampo(c.id)} className="btn-icon text-danger" style={{ width: '30px', height: '30px' }} title="Remover"><Trash2 size={14} /></button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input placeholder="Nome do campo (ex: Tamanho de camiseta)" value={novoCampoNome} onChange={e => setNovoCampoNome(e.target.value)} style={{ flex: 1 }} />
-          <select value={novoCampoTipo} onChange={e => setNovoCampoTipo(e.target.value as any)} style={{ width: 'auto' }}>
-            <option value="texto">Texto</option>
-            <option value="numero">Número</option>
-            <option value="data">Data</option>
-            <option value="valor">Valor (R$)</option>
-          </select>
-          <button onClick={adicionarCampo} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>Adicionar</button>
-        </div>
-      </div>
-
-      <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Suporte</h3>
         <p className="text-xs text-secondary" style={{ marginBottom: '24px' }}>
           Encontrou um erro ou tem uma sugestão? Nos conte.
         </p>
         <button onClick={() => setShowBug(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
           <Bug size={16} className="text-danger" /> Relatar Problema
+        </button>
+      </div>
+
+      <div className="card">
+        <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Sobre</h3>
+        <p className="text-xs text-secondary" style={{ marginBottom: '24px' }}>
+          Quem fez este aplicativo, com que ajuda e por quanto tempo ele será gratuito.
+        </p>
+        <button
+          onClick={() => setShowSobre(true)}
+          className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+        >
+          <Info size={16} className="text-accent" /> Sobre o SetProd
         </button>
       </div>
 
@@ -296,7 +262,95 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
         </div>
       )}
 
+      {/* MODAL SOBRE */}
+      {showSobre && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '560px', maxHeight: '85vh', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Info size={20} className="text-accent" />
+                <h3 className="text-lg font-bold">Sobre o SetProd</h3>
+              </div>
+              <button onClick={() => setShowSobre(false)} className="btn-icon"><X size={20} /></button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px', lineHeight: 1.7 }}>
+              <p>
+                Este aplicativo surgiu por uma grande causa: a falta de dinheiro no set e a completa
+                ausência de organização financeira. Não vamos mais fazer contas no Word, beleza,
+                Lages? Amo você.
+              </p>
+
+              <p>
+                A ideia é do <strong>Lucas Viol</strong>, com a colaboração do{' '}
+                <strong>Pedro Simões</strong>, e a execução técnica foi pura parceria com o{' '}
+                <strong>Claudio</strong> e o <strong>Geminos</strong>. Nós dois dominamos a nobre
+                arte do <em>bitch code</em>: basicamente mandar a inteligência artificial trabalhar,
+                ficar esperando ela fazer o código pra gente e reclamar quando dá errado. E assim
+                nasceu o app.
+              </p>
+
+              <p>
+                A proposta é simples: uma ferramenta útil de verdade pra quem vive o caos do set,
+                100% gratuita. <strong>Sempre*</strong>.
+              </p>
+
+              <p className="text-secondary" style={{ fontSize: '13px', borderLeft: '3px solid var(--accent)', paddingLeft: '14px' }}>
+                * Vai ser gratuito até essa bosta dessa bolha de IA estourar. Quando isso acontecer,
+                fudeu o cu da bunda e a gente vai ter que ou rebolar lentinho pros crias ou bancar
+                essa bomba do próprio bolso. Até lá, é grátis :)
+              </p>
+
+              <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <ShieldCheck size={18} className="text-success" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <p style={{ margin: 0, fontSize: '13px' }}>
+                  <strong>Importante:</strong> seus dados são seus e jamais serão vendidos ou
+                  compartilhados com ninguém.
+                  <span className="text-muted"> .... mas se pedirem com carinho.........</span>
+                </p>
+              </div>
+
+              <div className="text-xs text-muted">
+                SetProd v4 · Feito para produção audiovisual.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSobre(false)}
+              className="btn-primary"
+              style={{ width: '100%', marginTop: '24px' }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       {showBug && <BugReportModal onClose={() => setShowBug(false)} />}
     </div>
   );
+}
+
+function CampoProjeto({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <label className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'block', marginBottom: '6px' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function LinhaProjeto({ label, valor }: { label: string; valor?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+      <span className="text-muted">{label}:</span>
+      <span className="font-bold" style={{ textAlign: 'right' }}>{valor || '-'}</span>
+    </div>
+  );
+}
+
+function fmtData(d?: string) {
+  if (!d) return '...';
+  const [ano, mes, dia] = d.split('-');
+  return `${dia}/${mes}/${ano}`;
 }

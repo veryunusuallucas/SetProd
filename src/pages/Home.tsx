@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { Projeto } from '../types';
-import { Settings, Search, Film, Trash2, Sparkles } from 'lucide-react';
+import { Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
+import { criarDepartamentosPadrao } from '../lib/creditos';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
 import { ChangelogModal } from '../components/ChangelogModal';
+import { useAuth } from '../hooks/useAuth';
+import { LogOut } from 'lucide-react';
 
 export function Home() {
+  const { logout } = useAuth();
   const projetos = useLiveQuery(() => db.projetos.toArray());
   const aportesGlobais = useLiveQuery(() => db.aportes.toArray());
   const despesasGlobais = useLiveQuery(() => db.despesas.toArray());
@@ -52,7 +56,7 @@ export function Home() {
     };
 
     await db.projetos.add(projetoCriado);
-    
+
     // Adiciona o "Caixa Central" como usuário fantasma sempre
     await db.perfis.add({
       id: 'caixa_central',
@@ -60,6 +64,9 @@ export function Home() {
       nome: 'Caixa da Produção',
       funcao: 'Caixa'
     });
+
+    // Departamentos básicos já saem criados — são a base dos Créditos e das despesas.
+    await criarDepartamentosPadrao(id);
 
     setMostrarStepper(false);
     navigate(`/projeto/${id}`);
@@ -101,14 +108,22 @@ export function Home() {
               onClick={() => setMostrarChangelog(true)}
               style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
-              <Sparkles size={12} /> v2.0
+              <Sparkles size={12} /> v4.0
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <HelpButton />
-          <button className="btn-icon">
-            <Settings size={20} />
+          <button 
+            className="btn-icon" 
+            onClick={() => {
+              if (confirm('Tem certeza que deseja sair?')) {
+                logout();
+              }
+            }}
+            title="Sair"
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </header>
@@ -180,7 +195,7 @@ export function Home() {
       {/* MODAL STEPPER (CRIAR PROJETO) */}
       {mostrarStepper && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--bg-primary)', borderRadius: '24px', overflow: 'hidden', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--bg-primary)', borderRadius: '24px', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             
             <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 className="text-lg font-bold">Nova Produção</h2>

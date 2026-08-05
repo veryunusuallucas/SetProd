@@ -13,7 +13,9 @@ import { DiariaModule } from './pages/DiariaModule';
 import { FinanceiroModule } from './pages/FinanceiroModule';
 import { TasksModule } from './pages/TasksModule';
 import { DecupagemModule } from './pages/DecupagemModule';
-import { BreakdownModule } from './pages/BreakdownModule';
+import { DocumentosModule } from './pages/DocumentosModule';
+import { TransporteModule } from './pages/TransporteModule';
+import { GestaoDados } from './pages/GestaoDados';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { BugReportModal } from './components/BugReportModal';
 import { useState } from 'react';
@@ -61,7 +63,11 @@ function App() {
               <Route path="equipamentos" element={<EquipamentosModule />} />
               <Route path="tasks" element={<TasksModule />} />
               <Route path="decupagem" element={<DecupagemModule />} />
-              <Route path="breakdown" element={<BreakdownModule />} />
+              {/* Roteiro virou uma aba dentro de Decupagem; link antigo redireciona */}
+              <Route path="breakdown" element={<Navigate to="../decupagem" replace />} />
+              <Route path="documentos" element={<DocumentosModule />} />
+              <Route path="transporte" element={<TransporteModule />} />
+              <Route path="dados" element={<GestaoDados />} />
             </Route>
           </Routes>
           <GlobalBugButton />
@@ -73,8 +79,6 @@ function App() {
 
 function GlobalBugButton() {
   const [show, setShow] = useState(false);
-  const location = useLocation();
-  const isHome = location.pathname === '/';
 
   return (
     <>
@@ -83,7 +87,7 @@ function GlobalBugButton() {
         className="btn-primary"
         style={{
           position: 'fixed',
-          bottom: isHome ? '96px' : '24px',
+          bottom: '96px',
           right: '24px',
           zIndex: 9999,
           borderRadius: '50px',

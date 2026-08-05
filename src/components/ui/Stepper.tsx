@@ -50,9 +50,12 @@ export default function Stepper({
     }
   };
 
+  // Concluir NÃO avança para um "passo fantasma". Antes, o Stepper ia para
+  // totalSteps + 1, o conteúdo colapsava para altura 0 e o rodapé sumia — se o
+  // pai cancelasse o salvamento (ex: campo obrigatório vazio), o usuário ficava
+  // preso numa caixa vazia. Agora quem fecha é o pai, depois de salvar de fato.
   const handleComplete = () => {
-    setDirection(1);
-    updateStep(totalSteps + 1);
+    onFinalStepCompleted();
   };
 
   return (

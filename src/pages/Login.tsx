@@ -7,6 +7,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [explicacaoAberta, setExplicacaoAberta] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,6 +79,29 @@ export function Login() {
             </button>
           </div>
         </form>
+
+        {/* Não existe autocadastro: as contas são criadas pelo Viol. Sem esta
+            explicação, quem chega pela primeira vez fica procurando um botão
+            de "criar conta" que nunca vai existir. */}
+        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+          <button
+            type="button"
+            onClick={() => setExplicacaoAberta(v => !v)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              color: 'var(--text-muted)', fontSize: '13px', textDecoration: 'underline',
+            }}
+          >
+            Não consigo criar uma conta. Por quê?
+          </button>
+
+          {explicacaoAberta && (
+            <p className="text-sm" style={{ marginTop: '12px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+              A resposta é simples: você quer o cu e ainda quer raspado?? A vida não é um
+              morango não! Manda mensagem pro Viol que ele olha para você.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 .spinning { animation: spin 1s linear infinite; }
 
 :root {
+  color-scheme: dark;
   --bg-primary: #121212;
   --bg-surface: #1a1a1a;
   --bg-active: #222222;
@@ -340,17 +341,6 @@ input[type="checkbox"]:checked::before {
     margin: 10px 0;
   }
 
-  /* Dashboard do projeto: conteúdo deslocado para a direita da sidebar */
-  .dash-shell > header {
-    margin-left: 240px;
-  }
-  .dash-shell > .screen-padding {
-    margin-left: 240px;
-    padding-left: 40px;
-    padding-right: 40px;
-    max-width: 1200px; /* Centered max limit for ultra-wide */
-    margin-right: auto;
-  }
 
   /* Home centralizado e cards em grade */
   .home-shell {
@@ -363,3 +353,25 @@ input[type="checkbox"]:checked::before {
     gap: 16px;
   }
 }
+
+/* Botão pequeno COM rótulo.
+   O .btn-icon é 40x40 fixo: com texto dentro, o rótulo vaza para fora da área
+   clicável e o clique não pega. Use .btn-chip sempre que houver texto. */
+.btn-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn-chip:active { transform: scale(0.96); }
+.btn-chip.is-danger { border-color: var(--color-danger); color: var(--color-danger); }
