@@ -106,7 +106,13 @@ function escaparHtml(texto: string): string {
 }
 
 /** Aba Roteiro: envio do PDF, processamento por IA e marcação manual. */
-export function BreakdownModule() {
+interface BreakdownModuleProps {
+  /** Página que o stripboard pediu para abrir ao clicar numa tira. */
+  paginaAlvo?: number | null;
+  onPaginaAtendida?: () => void;
+}
+
+export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModuleProps = {}) {
   const { id: projetoId } = useParams<{ id: string }>();
 
   const [numPages, setNumPages] = useState<number>();
@@ -136,6 +142,18 @@ export function BreakdownModule() {
   useEffect(() => {
     setPdfFile(roteiro ? roteiro.dados : null);
   }, [roteiro]);
+
+  /**
+   * Vindo do stripboard: abre a página da cena clicada.
+   *
+   * O pedido é consumido logo em seguida, senão o roteiro voltaria para essa
+   * página toda vez que a pessoa trocasse de aba.
+   */
+  useEffect(() => {
+    if (!paginaAlvo) return;
+    setPageNumber(paginaAlvo);
+    onPaginaAtendida?.();
+  }, [paginaAlvo]);
 
   /**
    * Enquanto esperamos a vez, acompanha a análise de quem está na frente.
