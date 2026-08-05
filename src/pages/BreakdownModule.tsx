@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db/db';
 import { useParams } from 'react-router-dom';
 import { pdfjs, Document, Page } from 'react-pdf';
-import { Trash2, Tag, CheckSquare, Plus, ChevronLeft, ChevronRight, FileDown, FileUp, Filter, Globe } from 'lucide-react';
+import { Trash2, Tag, CheckSquare, Plus, ChevronLeft, ChevronRight, FileDown, FileUp, Filter, Globe, History } from 'lucide-react';
 import type { RoteiroTag, Cena } from '../types';
 import { adicionarSubtarefasDecupagem } from '../lib/tasks';
 import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
@@ -119,8 +119,26 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   const [pageNumber, setPageNumber] = useState(1);
   const [pdfFile, setPdfFile] = useState<string | null>(null);
 
-  const roteiro = useLiveQuery(() => db.roteiro_pdfs.where('projeto_id').equals(projetoId!).first(), [projetoId]);
+  /** Versões do roteiro, da mais nova para a mais antiga. */
+  const versoes = useLiveQuery(
+    () => db.roteiro_pdfs.where('projeto_id').equals(projetoId!).toArray(), [projetoId]
+  );
+  // A ativa é a não arquivada; roteiros antigos não têm o campo, então o
+  // primeiro da lista continua servindo de resposta.
+  const roteiro = versoes?.find(r => !r.arquivado) ?? versoes?.[0];
   const tags = useLiveQuery(() => db.roteiro_tags.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+
+  /**
+   * Marcações da versão em uso.
+   *
+   * Cada revisão do roteiro tem as suas. Sem este filtro, restaurar uma versão
+   * antiga mostraria por cima dela os destaques feitos na nova — em páginas que
+   * podem nem existir mais.
+   */
+  const tagsDaVersao = roteiro
+    ? tags.filter(t => !t.roteiro_id || t.roteiro_id === roteiro.id)
+    : tags;
+
 
   const [textoSelecionado, setTextoSelecionado] = useState('');
   const [showTagMenu, setShowTagMenu] = useState(false);
@@ -137,6 +155,14 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   const [aviso, setAviso] = useState('');
   /** Preenchido quando outra pessoa está com a vez; libera sozinho ao terminar. */
   const [naFila, setNaFila] = useState<ExecucaoAtiva | null>(null);
+  const [versoesAberto, setVersoesAberto] = useState(false);
+
+  /** Volta a usar uma revisão antiga, com as marcações que ela tinha. */
+  const restaurarVersao = async (id: string) => {
+    const todas = await db.roteiro_pdfs.where('projeto_id').equals(projetoId!).toArray();
+    for (const v of todas) await db.roteiro_pdfs.update(v.id, { arquivado: v.id !== id });
+    setVersoesAberto(false);
+  };
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -201,12 +227,21 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         r.readAsDataURL(file);
       });
 
-      const roteiroId = roteiro ? roteiro.id : crypto.randomUUID();
-      if (roteiro) {
-        await db.roteiro_pdfs.update(roteiro.id, { nome: file.name, dados: b64, data_upload: Date.now() });
-      } else {
-        await db.roteiro_pdfs.add({ id: roteiroId, projeto_id: projetoId!, nome: file.name, dados: b64, data_upload: Date.now() });
+      // A versão anterior é ARQUIVADA, não sobrescrita: as marcações apontam
+      // para o id do roteiro, então sobrescrever apagava, na prática, todo o
+      // trabalho de decupagem feito em cima da revisão antiga.
+      const roteiroId = crypto.randomUUID();
+      const anteriores = await db.roteiro_pdfs.where('projeto_id').equals(projetoId!).toArray();
+      const proximaVersao = Math.max(0, ...anteriores.map(r => r.versao ?? 1)) + 1;
+
+      for (const antigo of anteriores.filter(r => !r.arquivado)) {
+        await db.roteiro_pdfs.update(antigo.id, { arquivado: true, versao: antigo.versao ?? 1 });
       }
+
+      await db.roteiro_pdfs.add({
+        id: roteiroId, projeto_id: projetoId!, nome: file.name, dados: b64,
+        data_upload: Date.now(), versao: anteriores.length ? proximaVersao : 1, arquivado: false,
+      });
 
       await registrarDocumento({
         projetoId: projetoId!, origem: 'roteiro', refId: roteiroId,
@@ -256,6 +291,9 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         periodo: c.periodo,
         origem_roteiro: true,
         ordem: ordem++,
+        // Guardado para os relatórios saberem quem aparece em cada cena.
+        // Cortado porque cena longa não acrescenta nome novo e o banco é local.
+        corpo: c.corpo.slice(0, 4000),
       } as Cena);
     }
     return { criadas: lista.length, substituidas: antigasDoRoteiro.length, idPorNumero };
@@ -496,7 +534,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
     if (!str) return str;
     // Tags globais (elenco, figuração, veículos) valem em todas as páginas;
     // as pontuais, só onde foram marcadas.
-    const daPagina = tags.filter(t => t.pagina === pageNumber || ehGlobal(t));
+    const daPagina = tagsDaVersao.filter(t => t.pagina === pageNumber || ehGlobal(t));
     if (daPagina.length === 0) return str;
 
     // Trechos maiores primeiro, para "LUVAS AMARELAS" ganhar de "LUVAS".
@@ -549,12 +587,12 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   const ehGlobal = (t: RoteiroTag) => t.global ?? escopoPadrao(t.categoria);
 
   const tagsVisiveis = filtroDepto
-    ? tags.filter(t => normalizarCategoria(t.categoria) === filtroDepto)
-    : tags;
+    ? tagsDaVersao.filter(t => normalizarCategoria(t.categoria) === filtroDepto)
+    : tagsDaVersao;
 
   const contagemPorDepto = DEPARTAMENTOS.map(d => ({
     ...d,
-    total: tags.filter(t => normalizarCategoria(t.categoria) === d.chave).length,
+    total: tagsDaVersao.filter(t => normalizarCategoria(t.categoria) === d.chave).length,
   })).filter(d => d.total > 0);
 
   // ---- ETAPA 1: sem roteiro, ou roteiro recém-enviado aguardando escolha ----
@@ -630,9 +668,16 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div className="text-xs text-muted truncate" style={{ maxWidth: '320px' }}>
-          {roteiro?.nome} · selecione um trecho no PDF para marcar
+          {roteiro?.nome}
+          {(roteiro?.versao ?? 0) > 1 && <> · <strong>v{roteiro!.versao}</strong></>}
+          {' '}· selecione um trecho no PDF para marcar
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
+          {(versoes?.length ?? 0) > 1 && (
+            <button onClick={() => setVersoesAberto(v => !v)} className="btn-chip" title="Versões anteriores do roteiro">
+              <History size={14} /> Versões ({versoes!.length})
+            </button>
+          )}
           {/* Trocar = manda outro PDF sem perder as marcações. */}
           <label
             className="btn-chip"
@@ -656,6 +701,51 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         </div>
       </div>
 
+      {/* Histórico de versões: cada revisão guarda as próprias marcações. */}
+      <AnimatePresence>
+        {versoesAberto && (versoes?.length ?? 0) > 1 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="card"
+            style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '8px' }}
+          >
+            <span className="text-xs font-bold uppercase tracking-widest text-secondary">Versões do roteiro</span>
+            {[...versoes!]
+              .sort((a, b) => (b.versao ?? 1) - (a.versao ?? 1))
+              .map(v => {
+                const marcacoes = tags.filter(t => t.roteiro_id === v.id).length;
+                const ativa = v.id === roteiro?.id;
+                return (
+                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span className="text-sm" style={{ flex: 1, minWidth: '180px' }}>
+                      <strong>v{v.versao ?? 1}</strong> · {v.nome}
+                      <span className="text-muted text-xs">
+                        {' '}· {new Date(v.data_upload).toLocaleDateString('pt-BR')} · {marcacoes} marcação(ões)
+                      </span>
+                    </span>
+                    {ativa
+                      ? <span className="text-xs text-accent font-bold">em uso</span>
+                      : (
+                        <button
+                          className="btn-chip"
+                          onClick={() => restaurarVersao(v.id)}
+                          title="Voltar a usar esta versão"
+                        >
+                          <History size={13} /> Restaurar
+                        </button>
+                      )}
+                  </div>
+                );
+              })}
+            <span className="text-xs text-muted">
+              Cada versão guarda as próprias marcações. Restaurar não apaga nada.
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: '600px', flexWrap: 'wrap' }}>
 
         <div className="card" style={{ flex: 2, minWidth: '320px', padding: '16px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
@@ -665,7 +755,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
               <span className="text-sm font-bold">Pág {pageNumber} de {numPages || '?'}</span>
               <button disabled={pageNumber >= (numPages || 1)} onClick={() => setPageNumber(p => p + 1)} className="btn-icon"><ChevronRight size={20} /></button>
             </div>
-            <div className="text-xs text-muted">{tags.filter(t => t.pagina === pageNumber).length} marcação(ões) aqui</div>
+            <div className="text-xs text-muted">{tagsDaVersao.filter(t => t.pagina === pageNumber).length} marcação(ões) aqui</div>
           </div>
 
           <div
@@ -732,7 +822,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         <div className="card" style={{ flex: 1, minWidth: '270px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
             <h3 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Tag size={16} /> Itens ({tags.length})
+              <Tag size={16} /> Itens ({tagsDaVersao.length})
             </h3>
             <button onClick={exportarRelatorio} className="btn-chip">
               <FileDown size={14} /> Relatório

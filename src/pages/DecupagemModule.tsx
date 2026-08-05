@@ -10,10 +10,10 @@ import { AnexoInput } from '../components/AnexoInput';
 import { BreakdownModule } from './BreakdownModule';
 import { ElementosManager } from '../components/ElementosManager';
 import { StripboardTimeline } from '../components/StripboardTimeline';
+import { RelatoriosModal } from '../components/RelatoriosModal';
 import { sincronizarElementos } from '../lib/elementos';
 import { registrarDocumento } from '../lib/documentos';
 import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
-import { imprimirHtml, baixarHtml } from '../lib/impressao';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
@@ -23,7 +23,6 @@ export function DecupagemModule() {
   // Envio da ordem de filmagem para uma diária
   const [modalDiaria, setModalDiaria] = useState(false);
   const [exportAberto, setExportAberto] = useState(false);
-  const [exportConfig, setExportConfig] = useState({ stripboard: true, shotlist: true, elementos: true });
 
   /** Cenas escolhidas por "Virar OD" numa quebra; null = a ordem inteira. */
   const [cenasParaExportar, setCenasParaExportar] = useState<Cena[] | null>(null);
@@ -37,14 +36,13 @@ export function DecupagemModule() {
   const tags = useLiveQuery(
     () => db.roteiro_tags.where('projeto_id').equals(projetoId!).toArray(), [projetoId]
   );
+  const elementos = useLiveQuery(
+    () => db.elementos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]
+  );
   const locacoes = useLiveQuery(() => db.locacoes.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const cenas = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const planos = useLiveQuery(() => db.planos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const diarias = useLiveQuery(() => db.diarias.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
-  const taskMae = useLiveQuery(
-    () => db.tasks.where('projeto_id').equals(projetoId!).filter(t => t.titulo === 'Análise Técnica / Decupagem').first(),
-    [projetoId]
-  );
 
   /**
    * Adota as marcações gravadas antes do inventário existir e mantém as
@@ -136,56 +134,6 @@ export function DecupagemModule() {
    */
   const totalPaginas = () =>
     oitavosParaPaginas(cenas.reduce((soma, c) => soma + paginasParaOitavos(c.paginas), 0));
-
-  const exportarDecupagem = () => {
-    const linhaStrip = cenasOrdenadas.map((c, i) => {
-      const loc = locacoes.find(l => l.id === c.locacao_id);
-      return `<tr>
-        <td style="text-align:center">${i + 1}</td>
-        <td style="font-weight:bold">${c.numero}</td>
-        <td>${c.descricao}</td>
-        <td>${(c.ambiente || '').toUpperCase()}</td>
-        <td>${c.periodo || ''}</td>
-        <td>${loc?.nome || '—'}</td>
-        <td>${c.paginas || '—'}</td>
-        <td style="text-align:center">${c.unidade || 'A'}</td>
-        <td>${c.estimativa || '—'}</td>
-      </tr>`;
-    }).join('');
-
-    const blocosShotlist = cenasOrdenadas.map(c => {
-      const pl = planos.filter(p => p.cena_id === c.id).sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
-      if (pl.length === 0) return '';
-      const trs = pl.map(p => `<tr><td style="width:40px;text-align:center"><b>${p.numero}</b></td><td>${p.descricao || '—'}</td><td>${p.tamanho || '-'}</td><td>${p.angulo || '-'}</td><td>${p.movimento || '-'}</td><td>${p.lente || '-'}</td></tr>`).join('');
-      return `<div style="margin-top:16px;page-break-inside:avoid">
-        <strong>Cena ${c.numero}</strong> — ${c.descricao}
-        <table><tr style="background:#eee"><th>Plano</th><th>Ação</th><th>Tamanho</th><th>Ângulo</th><th>Movimento</th><th>Lente</th></tr>${trs}</table>
-      </div>`;
-    }).join('');
-
-    const elementos = (taskMae?.subtarefas || []).map(s => `<li>${s.concluida ? '☑' : '☐'} ${s.titulo}</li>`).join('');
-
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Decupagem</title>
-      <style>
-        body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:960px;margin:0 auto}
-        h1{margin:0;font-size:24px}
-        h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:28px;font-size:14px;text-transform:uppercase;letter-spacing:.08em}
-        table{border-collapse:collapse;width:100%;font-size:12px;margin-top:8px}
-        td,th{border-bottom:1px solid #ddd;padding:5px 4px;text-align:left}
-        .muted{color:#666}
-        li{margin:2px 0;font-size:13px}
-      </style></head><body>
-      <h1>Decupagem</h1>
-      <div class="muted">${cenas.length} cena(s) · ${planos.length} plano(s) · ${totalPaginas()} páginas</div>
-      ${exportConfig.stripboard && linhaStrip ? `<h2>Stripboard — ordem de filmagem</h2>
-        <table><tr style="background:#eee"><th>#</th><th>Cena</th><th>Descrição</th><th>Amb.</th><th>Período</th><th>Locação</th><th>Págs</th><th>Un.</th><th>Estimativa</th></tr>${linhaStrip}</table>` : ''}
-      ${exportConfig.shotlist && blocosShotlist ? `<h2>Shot list por cena</h2>${blocosShotlist}` : ''}
-      ${exportConfig.elementos && elementos ? `<h2>Elementos levantados (Análise Técnica)</h2><ul>${elementos}</ul>` : ''}
-      </body></html>`;
-
-    if (!imprimirHtml(html)) baixarHtml(html, 'decupagem');
-    setExportAberto(false);
-  };
 
   const addCena = async () => {
     const novaCena: Cena = {
@@ -351,6 +299,10 @@ export function DecupagemModule() {
             <div className="text-xs text-muted">
               Anexe imagens de referência por cena — upload local ou link do Drive. Elas também aparecem em Documentos.
             </div>
+
+            {/* Grade: um card por linha deixava a maior parte da largura vazia,
+                porque a cena sem referência ocupa poucas linhas de altura. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', alignItems: 'start' }}>
             {cenasOrdenadas.map(cena => (
               <div key={cena.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -394,6 +346,7 @@ export function DecupagemModule() {
                 )}
               </div>
             ))}
+            </div>
           </div>
         )}
 
@@ -587,34 +540,17 @@ export function DecupagemModule() {
 
       {/* Exportação seletiva */}
       {exportAberto && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '400px', backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="font-bold text-lg">Exportar decupagem</h3>
-              <button onClick={() => setExportAberto(false)} className="btn-icon"><X size={18} /></button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {([
-                ['stripboard', 'Stripboard (ordem de filmagem)'],
-                ['shotlist', 'Shot list por cena'],
-                ['elementos', 'Relatório de elementos (Análise Técnica)'],
-              ] as const).map(([chave, rotulo]) => (
-                <label key={chave} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={exportConfig[chave]}
-                    onChange={e => setExportConfig({ ...exportConfig, [chave]: e.target.checked })}
-                    style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
-                  />
-                  <span className="text-sm">{rotulo}</span>
-                </label>
-              ))}
-            </div>
-            <button onClick={exportarDecupagem} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <FileDown size={16} /> Gerar PDF
-            </button>
-          </div>
-        </div>
+        <RelatoriosModal
+          onFechar={() => setExportAberto(false)}
+          dados={{
+            cenas,
+            itens: itensStrip,
+            tags: tags || [],
+            elementos: elementos || [],
+            locacoes,
+            tituloProjeto: projeto?.nome || 'Produção',
+          }}
+        />
       )}
     </div>
   );
