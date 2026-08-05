@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento } from '../types';
+import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem } from '../types';
 
 export class SetMoneyDB extends Dexie {
   projetos!: Table<Projeto, string>;
@@ -32,6 +32,7 @@ export class SetMoneyDB extends Dexie {
   roteiro_pdfs!: Table<RoteiroPDF, string>;
   roteiro_tags!: Table<RoteiroTag, string>;
   elementos!: Table<Elemento, string>;
+  stripboard_itens!: Table<StripboardItem, string>;
 
   // Fase 2 v4: Documentos e Pastas
   pastas!: Table<Pasta, string>;
@@ -82,6 +83,13 @@ export class SetMoneyDB extends Dexie {
       roteiro_tags: 'id, projeto_id, pagina, elemento_id'
     });
 
+    // v13: quebras de diária e banners do stripboard. Ficam em tabela própria
+    // (e não como "cena falsa") para nunca poluírem contagem de cenas,
+    // relatórios ou o vínculo com o roteiro.
+    this.version(13).stores({
+      stripboard_itens: 'id, projeto_id, ordem'
+    });
+
     // Middlewares para capturar modificações e jogar na sync_queue
     const trackChange = (tabela: string, operacao: 'INSERT' | 'UPDATE' | 'DELETE', dados: any) => {
       Dexie.ignoreTransaction(() => {
@@ -95,7 +103,7 @@ export class SetMoneyDB extends Dexie {
       });
     };
 
-    const tabelasParaSincronizar = ['projetos', 'departamentos', 'perfis', 'despesas', 'acertos', 'configuracoes', 'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos', 'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos', 'motoristas', 'elementos'];
+    const tabelasParaSincronizar = ['projetos', 'departamentos', 'perfis', 'despesas', 'acertos', 'configuracoes', 'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos', 'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos', 'motoristas', 'elementos', 'stripboard_itens'];
     
     tabelasParaSincronizar.forEach(tabela => {
       this.table(tabela).hook('creating', function(_primKey, obj) {

@@ -317,6 +317,32 @@ export interface Cena {
   elenco_ids?: string[]; // perfis presentes na cena
 }
 
+/**
+ * Itens do stripboard que NÃO são cena: quebras de diária e banners.
+ *
+ * Eles dividem e anotam a ordem de filmagem — "aqui acaba o dia 1", "almoço",
+ * "mudança de locação". Ficam na mesma linha do tempo das cenas, compartilhando
+ * o campo `ordem`, porque a posição relativa entre eles é justamente a
+ * informação: um almoço só significa algo entre duas cenas.
+ */
+export type TipoStripboardItem = 'DAY_BREAK' | 'BANNER_LUNCH' | 'BANNER_MOVE' | 'BANNER_NOTE';
+
+export interface StripboardItem {
+  id: string;
+  projeto_id: string;
+  tipo: TipoStripboardItem;
+  ordem: number;
+  /** Texto livre do banner. A quebra de diária usa o número calculado. */
+  titulo?: string;
+  /** Minutos que o evento consome do dia (almoço, deslocamento). */
+  duracao_min?: number;
+  descricao?: string;
+  /** Só para DAY_BREAK: data planejada da diária. */
+  data?: string;
+  /** Diária do projeto para a qual este dia já foi exportado. */
+  diaria_id?: string;
+}
+
 export interface Plano {
   id: string;
   projeto_id: string;

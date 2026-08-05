@@ -9,9 +9,10 @@ import type { Cena, Plano } from '../types';
 import { AnexoInput } from '../components/AnexoInput';
 import { BreakdownModule } from './BreakdownModule';
 import { ElementosManager } from '../components/ElementosManager';
+import { StripboardTimeline } from '../components/StripboardTimeline';
 import { sincronizarElementos } from '../lib/elementos';
 import { registrarDocumento } from '../lib/documentos';
-import { acharLocacao, getStripboardColor, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
+import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 
 export function DecupagemModule() {
@@ -19,16 +20,23 @@ export function DecupagemModule() {
   const [expandida, setExpandida] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'roteiro' | 'shotlist' | 'stripboard' | 'storyboard' | 'elementos'>('roteiro');
 
-  // Drag & drop do stripboard
-  const [arrastando, setArrastando] = useState<string | null>(null);
-  const [sobre, setSobre] = useState<string | null>(null);
-
   // Envio da ordem de filmagem para uma diária
   const [modalDiaria, setModalDiaria] = useState(false);
   const [exportAberto, setExportAberto] = useState(false);
   const [exportConfig, setExportConfig] = useState({ stripboard: true, shotlist: true, elementos: true });
 
+  /** Cenas escolhidas por "Virar OD" numa quebra; null = a ordem inteira. */
+  const [cenasParaExportar, setCenasParaExportar] = useState<Cena[] | null>(null);
+  /** Página que o Roteiro deve abrir ao clicar numa tira. */
+  const [paginaAlvo, setPaginaAlvo] = useState<number | null>(null);
+
   const projeto = useLiveQuery(() => db.projetos.get(projetoId!), [projetoId]);
+  const itensStrip = useLiveQuery(
+    () => db.stripboard_itens.where('projeto_id').equals(projetoId!).toArray(), [projetoId]
+  ) || [];
+  const tags = useLiveQuery(
+    () => db.roteiro_tags.where('projeto_id').equals(projetoId!).toArray(), [projetoId]
+  );
   const locacoes = useLiveQuery(() => db.locacoes.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const cenas = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
   const planos = useLiveQuery(() => db.planos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]);
@@ -90,33 +98,35 @@ export function DecupagemModule() {
     c.ordem !== undefined ? c.ordem : (parseInt(c.numero.replace(/\D/g, '')) || 0);
   const cenasOrdenadas = [...cenas].sort((a, b) => chaveOrdem(a) - chaveOrdem(b));
 
-  /** Move a cena arrastada para a posição da cena alvo e regrava a ordem de todas. */
-  const reordenarCenas = async (origemId: string, destinoId: string) => {
-    if (origemId === destinoId) return;
-    const lista = [...cenasOrdenadas];
-    const de = lista.findIndex(c => c.id === origemId);
-    const para = lista.findIndex(c => c.id === destinoId);
-    if (de === -1 || para === -1) return;
-
-    const [movida] = lista.splice(de, 1);
-    lista.splice(para, 0, movida);
-
-    await Promise.all(lista.map((c, i) => db.cenas.update(c.id, { ordem: i })));
-  };
-
-  /** Manda a ordem de filmagem atual para uma diária (v4 §2.4/§2.6). */
+  /**
+   * Manda cenas para uma diária (v4 §2.4/§2.6).
+   *
+   * Sem seleção, vai a ordem inteira. Com o botão "Virar OD" de uma quebra,
+   * vão só as cenas daquele dia — que é o ponto de ter quebras: cada bloco do
+   * stripboard vira uma Ordem do Dia.
+   */
   const enviarParaDiaria = async (diariaId: string) => {
     const diaria = diarias.find(d => d.id === diariaId);
     if (!diaria) return;
+
+    const escolhidas = cenasParaExportar ?? cenasOrdenadas;
     const atuais = diaria.cena_ids || [];
-    const novos = cenasOrdenadas.map(c => c.id).filter(id => !atuais.includes(id));
+    const novos = escolhidas.map(c => c.id).filter(id => !atuais.includes(id));
+
     await db.diarias.update(diariaId, { cena_ids: [...atuais, ...novos] });
     setModalDiaria(false);
+    setCenasParaExportar(null);
     alert(
       novos.length > 0
         ? `${novos.length} cena(s) adicionadas à Diária ${diaria.numero}, na ordem do stripboard.`
         : 'Essa diária já tinha todas as cenas.'
     );
+  };
+
+  /** Primeira página do roteiro em que a cena aparece, para o "ver no roteiro". */
+  const paginaDaCena = (cena: Cena): number | undefined => {
+    const daCena = (tags || []).filter(t => t.cena_id === cena.id).map(t => t.pagina);
+    return daCena.length ? Math.min(...daCena) : undefined;
   };
 
   /**
@@ -293,7 +303,12 @@ export function DecupagemModule() {
         )}
       </div>
 
-      {viewMode === 'roteiro' && <BreakdownModule />}
+      {viewMode === 'roteiro' && (
+        <BreakdownModule
+          paginaAlvo={paginaAlvo}
+          onPaginaAtendida={() => setPaginaAlvo(null)}
+        />
+      )}
       {viewMode === 'elementos' && <ElementosManager projetoId={projetoId!} />}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -304,130 +319,30 @@ export function DecupagemModule() {
         )}
 
         {viewMode === 'stripboard' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-
+          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
               <div className="text-xs text-muted">
-                Arraste as tiras para definir a ordem de filmagem · <strong>{totalPaginas()}</strong> páginas no total
+                Arraste as tiras para definir a ordem · <strong>{totalPaginas()}</strong> páginas no total
               </div>
               <button
-                onClick={() => setModalDiaria(true)}
+                onClick={() => { setCenasParaExportar(null); setModalDiaria(true); }}
                 className="btn-primary"
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
                 disabled={cenasOrdenadas.length === 0}
               >
-                <CalendarPlus size={16} /> Enviar ordem para uma diária
+                <CalendarPlus size={16} /> Enviar tudo para uma diária
               </button>
             </div>
 
-            {/* Legenda das cores da tira */}
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '0 4px 10px' }}>
-              {[['INT', 'dia'], ['EXT', 'dia'], ['INT', 'noite'], ['EXT', 'noite']].map(([a, p]) => {
-                const c = getStripboardColor(a, p);
-                return (
-                  <span key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-muted)' }}>
-                    <span style={{ width: '14px', height: '10px', borderRadius: '2px', backgroundColor: c.bg, border: '1px solid var(--border-light)' }} />
-                    {c.label}
-                  </span>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', padding: '8px 16px', fontWeight: 'bold', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              <div style={{ width: '12px', flexShrink: 0 }}></div>
-              <div style={{ width: '16px', flexShrink: 0 }} className="desktop-only"></div>
-              <div style={{ width: '40px', flexShrink: 0 }}>Cena</div>
-              <div style={{ flex: 1, minWidth: 0 }}>Descrição</div>
-              <div style={{ width: '78px', flexShrink: 0 }}>Amb./Per.</div>
-              <div style={{ width: '130px', flexShrink: 0 }}>Locação</div>
-              <div style={{ width: '64px', flexShrink: 0 }}>Págs</div>
-              <div style={{ width: '48px', flexShrink: 0 }}>Un.</div>
-              <div style={{ width: '76px', flexShrink: 0 }}>Estim.</div>
-            </div>
-
-            {cenasOrdenadas.map((cena, indice) => {
-              const loc = locacoes.find(l => l.id === cena.locacao_id);
-              // Cor da tira pelo par ambiente + período (padrão de stripboard).
-              const strip = getStripboardColor(cena.ambiente, cena.periodo);
-              const bgColor = strip.bg;
-              const textColor = strip.text;
-              const alvoDoDrop = sobre === cena.id && arrastando !== cena.id;
-
-              const campoTira: React.CSSProperties = {
-                width: '100%', padding: '4px 6px', fontSize: '12px', borderRadius: '4px',
-                border: '1px solid rgba(0,0,0,0.15)', backgroundColor: 'rgba(255,255,255,0.25)',
-                color: textColor, fontWeight: 'bold'
-              };
-
-              return (
-                <div
-                  key={cena.id}
-                  draggable
-                  onDragStart={() => setArrastando(cena.id)}
-                  onDragEnd={() => { setArrastando(null); setSobre(null); }}
-                  onDragOver={e => { e.preventDefault(); setSobre(cena.id); }}
-                  onDragLeave={() => setSobre(s => (s === cena.id ? null : s))}
-                  onDrop={e => {
-                    e.preventDefault();
-                    if (arrastando) reordenarCenas(arrastando, cena.id);
-                    setArrastando(null);
-                    setSobre(null);
-                  }}
-                  style={{
-                    display: 'flex', gap: '12px', alignItems: 'center', padding: '8px 16px',
-                    backgroundColor: bgColor, color: textColor, borderRadius: '4px', cursor: 'grab',
-                    opacity: arrastando === cena.id ? 0.4 : 1,
-                    borderTop: alvoDoDrop ? '3px solid var(--accent)' : '3px solid transparent',
-                    transition: 'opacity 0.15s'
-                  }}
-                >
-                  {/* No celular arrastar não funciona: as setas resolvem. */}
-                  <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, width: '12px', alignItems: 'center' }}>
-                    <button
-                      onClick={() => indice > 0 && reordenarCenas(cena.id, cenasOrdenadas[indice - 1].id)}
-                      disabled={indice === 0}
-                      title="Subir"
-                      style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: 0, lineHeight: 0.9, opacity: indice === 0 ? 0.25 : 0.75, fontSize: '11px' }}
-                    >▲</button>
-                    <button
-                      onClick={() => indice < cenasOrdenadas.length - 1 && reordenarCenas(cena.id, cenasOrdenadas[indice + 1].id)}
-                      disabled={indice === cenasOrdenadas.length - 1}
-                      title="Descer"
-                      style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: 0, lineHeight: 0.9, opacity: indice === cenasOrdenadas.length - 1 ? 0.25 : 0.75, fontSize: '11px' }}
-                    >▼</button>
-                  </div>
-                  <GripVertical size={16} style={{ opacity: 0.5, flexShrink: 0 }} className="desktop-only" />
-                  <div style={{ width: '40px', fontWeight: 'bold' }}>{cena.numero}</div>
-                  <div style={{ flex: 1, fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cena.descricao}</div>
-                  <div style={{ width: '78px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.04em', opacity: 0.85 }}>{strip.label}</div>
-                  <div style={{ width: '130px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '12px' }}>{loc?.nome || '—'}</div>
-
-                  <input
-                    value={cena.paginas || ''}
-                    onChange={e => updateCena(cena.id, { paginas: e.target.value })}
-                    onDragStart={e => e.preventDefault()}
-                    placeholder="1 2/8"
-                    title="Páginas em oitavos (padrão da indústria)"
-                    style={{ ...campoTira, width: '64px' }}
-                  />
-                  <select
-                    value={cena.unidade || 'A'}
-                    onChange={e => updateCena(cena.id, { unidade: e.target.value as 'A' | 'B' })}
-                    style={{ ...campoTira, width: '48px' }}
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                  </select>
-                  <input
-                    value={cena.estimativa || ''}
-                    onChange={e => updateCena(cena.id, { estimativa: e.target.value })}
-                    onDragStart={e => e.preventDefault()}
-                    placeholder="45min"
-                    style={{ ...campoTira, width: '76px' }}
-                  />
-                </div>
-              );
-            })}
+            <StripboardTimeline
+              projetoId={projetoId!}
+              cenas={cenas}
+              itens={itensStrip}
+              locacoes={locacoes}
+              paginaDaCena={paginaDaCena}
+              onVerNoRoteiro={pagina => { setPaginaAlvo(pagina); setViewMode('roteiro'); }}
+              onExportarDia={(lista) => { setCenasParaExportar(lista); setModalDiaria(true); }}
+            />
           </div>
         )}
 
@@ -640,9 +555,17 @@ export function DecupagemModule() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 className="font-bold text-lg">Montar o dia</h3>
-                <p className="text-xs text-muted">As {cenasOrdenadas.length} cenas entram na diária escolhida, na ordem atual do stripboard.</p>
+                {/* O texto precisa refletir a seleção: vindo de "Virar OD" de
+                    uma quebra, vão só as cenas daquele dia, não a ordem toda. */}
+                <p className="text-xs text-muted">
+                  {cenasParaExportar
+                    ? `As ${cenasParaExportar.length} cena(s) deste dia entram na diária escolhida.`
+                    : `As ${cenasOrdenadas.length} cenas entram na diária escolhida, na ordem atual do stripboard.`}
+                </p>
               </div>
-              <button onClick={() => setModalDiaria(false)} className="btn-icon"><X size={18} /></button>
+              {/* Limpa a seleção ao fechar, senão ela sobreviveria para o
+                  próximo "Enviar tudo" e mandaria menos cenas do que o rótulo diz. */}
+              <button onClick={() => { setModalDiaria(false); setCenasParaExportar(null); }} className="btn-icon"><X size={18} /></button>
             </div>
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {diarias.length === 0 && <div className="text-sm text-muted">Nenhuma diária criada ainda.</div>}
