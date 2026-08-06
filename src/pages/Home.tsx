@@ -105,7 +105,7 @@ export function Home() {
       transition: 'background-color 0.3s ease'
     }}>
       
-      <FundoEntrada />
+      <FundoEntrada perigo={modoDeletar} />
 
       {/* HEADER — a barra de cima só tem a versão (esquerda) e as ações
           (direita); o título fica solto embaixo, sem nada disputando espaço. */}
@@ -137,7 +137,7 @@ export function Home() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Alinhado à esquerda, na mesma coluna do selo, da saudação, da busca
             e dos cards — centralizado ele ficava boiando fora da composição. */}
-        <TituloSetProd tamanho={84} alinhamento="esquerda" />
+        <TituloSetProd tamanho={84} alinhamento="esquerda" perigo={modoDeletar} />
       </div>
 
       {/* Uma frase só. Antes eram dois rótulos de tamanhos muito diferentes

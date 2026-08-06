@@ -30,6 +30,8 @@ export interface Props {
    * do relaxamento soma em vez de recomecar.
    */
   boost?: number;
+  /** Multiplica a cor do texto. Usado para tingir sem redesenhar. */
+  tint?: string;
 }
 
 interface RuntimeProps {
@@ -49,6 +51,7 @@ interface RuntimeProps {
   ripple: boolean;
   align: 'left' | 'center';
   boost: number;
+  tint: string;
 }
 
 interface RuntimeContext {
@@ -90,6 +93,7 @@ uniform float uPointerStrength;
 uniform float uRefraction;
 uniform float uRipple;
 uniform float uMotion;
+uniform vec3 uTint;
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -168,10 +172,21 @@ void main() {
   float b = sampleText(displaced - split).b;
   float a = max(max(sampleText(displaced + split).a, base.a), sampleText(displaced - split).a);
 
-  vec3 color = vec3(r, g, b) + lens * base.a * 0.055;
+  // Tingimento aplicado aqui, e nao ao redesenhar a textura: assim a cor
+  // muda com transicao em vez de trocar de um quadro para o outro.
+  vec3 color = (vec3(r, g, b) + lens * base.a * 0.055) * uTint;
   fragColor = vec4(color, a);
 }
 `;
+
+/** '#rrggbb' ou '#rgb' para 0..1. Fora do formato, devolve branco. */
+const lerCor = (valor: string): [number, number, number] => {
+  const limpo = valor.replace('#', '').trim();
+  const cheio = limpo.length === 3 ? limpo.split('').map(c => c + c).join('') : limpo;
+  const n = parseInt(cheio, 16);
+  if (cheio.length !== 6 || Number.isNaN(n)) return [1, 1, 1];
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+};
 
 const getFontValue = (value: string | number): string => (typeof value === 'number' ? `${value}px` : value);
 
@@ -297,7 +312,8 @@ const WarpText = ({
   className = '',
   style,
   align = 'center',
-  boost = 0
+  boost = 0,
+  tint = '#ffffff'
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const propsRef = useRef<RuntimeProps>({
@@ -316,7 +332,8 @@ const WarpText = ({
     refraction,
     ripple,
     align,
-    boost
+    boost,
+    tint
   });
   const contextRef = useRef<RuntimeContext | null>(null);
 
@@ -337,7 +354,8 @@ const WarpText = ({
       refraction,
       ripple,
       align,
-      boost
+      boost,
+      tint
     };
 
     if (contextRef.current) {
@@ -360,7 +378,8 @@ const WarpText = ({
     refraction,
     ripple,
     align,
-    boost
+    boost,
+    tint
   ]);
 
   useEffect(() => {
@@ -441,7 +460,8 @@ const WarpText = ({
         uPointerStrength: { value: propsRef.current.pointerStrength },
         uRefraction: { value: propsRef.current.refraction },
         uRipple: { value: propsRef.current.ripple ? 1 : 0 },
-        uMotion: { value: reduceMotion ? 0 : 1 }
+        uMotion: { value: reduceMotion ? 0 : 1 },
+        uTint: { value: new Float32Array([1, 1, 1]) }
       }
     });
     mesh = new Mesh(gl, { geometry, program });
@@ -553,6 +573,15 @@ const WarpText = ({
       boostVel += acel * dt;
       boost += boostVel * dt;
       const b = Math.max(0, boost);
+
+      // Tingimento perseguido, não trocado de uma vez: o vermelho entra
+      // esmaecendo junto com o fundo, em vez de piscar.
+      const alvoTint = lerCor(propsRef.current.tint);
+      const passo = Math.min(1, dt * 4);
+      const t = program.uniforms.uTint.value as Float32Array;
+      t[0] += (alvoTint[0] - t[0]) * passo;
+      t[1] += (alvoTint[1] - t[1]) * passo;
+      t[2] += (alvoTint[2] - t[2]) * passo;
 
       const base = propsRef.current;
       program.uniforms.uWarpStrength.value = base.warpStrength * (1 + b * 7);

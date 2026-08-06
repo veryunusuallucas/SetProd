@@ -10,7 +10,15 @@ const Silk = lazy(() => import('./Silk'));
  * eficiência lá dentro. Se o aparelho não der conta ou a pessoa tiver pedido
  * menos movimento, some sem deixar buraco: o degradê estático abaixo assume.
  */
-export function FundoEntrada() {
+interface Props {
+  /**
+   * Tinge a tela de vermelho. Serve para o modo de apagar: a página inteira
+   * muda de clima, então não dá para clicar achando que está no modo normal.
+   */
+  perigo?: boolean;
+}
+
+export function FundoEntrada({ perigo = false }: Props) {
   const [efeitos] = useState(() => decidirEfeitos());
 
   return (
@@ -19,12 +27,15 @@ export function FundoEntrada() {
       style={{
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
         // Degradê que já sustenta a tela sozinho — o shader entra por cima.
-        background: 'radial-gradient(120% 100% at 50% 0%, #17122b 0%, var(--bg-primary) 60%)',
+        background: perigo
+          ? 'radial-gradient(120% 100% at 50% 0%, #3a1015 0%, var(--bg-primary) 60%)'
+          : 'radial-gradient(120% 100% at 50% 0%, #17122b 0%, var(--bg-primary) 60%)',
+        transition: 'background 0.45s ease',
       }}
     >
       {efeitos.fundo && (
         <Suspense fallback={null}>
-          <Silk />
+          <Silk cor={perigo ? '#3d0f14' : '#1a1030'} />
         </Suspense>
       )}
     </div>
