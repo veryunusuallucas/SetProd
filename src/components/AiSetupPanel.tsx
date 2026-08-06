@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Layers, ListTree, PenLine, Check } from 'lucide-react';
 import { AIButton } from './ui/AIButton';
+import { AIThinking } from './ui/ia';
 import { DEPARTAMENTOS, DEPARTAMENTOS_PADRAO_IA } from '../lib/decupagem';
 
 export type ModoProcessamento = 'FULL_BREAKDOWN' | 'SCENES_ONLY' | 'MANUAL';
@@ -52,7 +53,6 @@ export function AiSetupPanel({ totalPaginas, processando, progresso, onProcessar
 
   const mostraDeptos = modo === 'FULL_BREAKDOWN';
   const semDepto = mostraDeptos && departamentos.length === 0;
-  const pct = progresso && progresso.total > 0 ? Math.round((progresso.feito / progresso.total) * 100) : 0;
 
   return (
     <motion.div
@@ -174,28 +174,17 @@ export function AiSetupPanel({ totalPaginas, processando, progresso, onProcessar
         )}
       </AnimatePresence>
 
-      {/* Barra de progresso */}
+      {/* Estado "a IA está trabalhando" — mesmo componente de todos os pontos
+          de IA do app, para o comportamento ser sempre o mesmo. */}
       <AnimatePresence>
-        {processando && progresso && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }} className="text-xs text-muted">
-              {/* No modo minucioso cada cena rende duas etapas, então contar
-                  "cena" aqui mentiria o total. */}
-              <span>Analisando — etapa {progresso.feito} de {progresso.total}</span>
-              <span className="font-bold text-accent">{pct}%</span>
-            </div>
-            <div style={{ height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px', overflow: 'hidden' }}>
-              <motion.div
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.4 }}
-                style={{ height: '100%', background: 'linear-gradient(90deg, #9d4edd, #4cc9f0)' }}
-              />
-            </div>
+        {processando && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <AIThinking
+              // No modo minucioso cada cena rende duas etapas, então contar
+              // "cena" aqui mentiria o total.
+              texto={progresso ? `Analisando — etapa ${progresso.feito} de ${progresso.total}` : 'Preparando a análise...'}
+              progresso={progresso}
+            />
           </motion.div>
         )}
       </AnimatePresence>

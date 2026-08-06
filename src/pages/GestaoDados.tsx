@@ -7,6 +7,7 @@ import {
   CheckSquare, Square, Printer, X, AlertTriangle
 } from 'lucide-react';
 import { AIButton } from '../components/ui/AIButton';
+import { AIThinking } from '../components/ui/ia';
 import {
   CONJUNTOS, tabelaParaCSV, tabelaParaTXT, baixarArquivo, nomeSeguro,
   type Tabela
@@ -331,6 +332,12 @@ export function GestaoDados() {
             </button>
           )}
         </div>
+
+        {ocupado === 'ia' && (
+          <div style={{ marginTop: '16px' }}>
+            <AIThinking texto={`Diagramando ${escolhidos.length} conjunto(s) de dados...`} />
+          </div>
+        )}
       </div>
 
       {/* Arquivamento */}

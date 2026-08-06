@@ -121,7 +121,12 @@ h1, h2, h3, h4, h5, h6 {
 button {
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s ease;
+  /* Nunca `all` aqui: o framer-motion escreve `transform` inline a cada quadro,
+     e uma transição CSS sobre transform suaviza quadro a quadro — o efeito é
+     amassar a mola e deixar todo gesto mole, ignorando a configuração dela.
+     Só as propriedades que o framer não anima ficam na transição. */
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+              color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .btn-primary {

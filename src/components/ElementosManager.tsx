@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Merge, Scissors, Search, Users, ChevronRight, Check, X } from 'lucide-react';
+import { Merge, Scissors, Search, Users, ChevronRight } from 'lucide-react';
 import { db } from '../db/db';
-import { categoriasDisponiveis } from '../lib/decupagem';
+import { categoriasDisponiveis, temaDe } from '../lib/decupagem';
+import { AIRecommendation, AISuggestion, AISuggestionList } from './ui/ia';
 import { mesclarElementos, separarAlias, sugerirMerges, chaveNome } from '../lib/elementos';
 
 /**
@@ -75,37 +76,36 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Sugestões de merge */}
+      {/* Sugestões de merge — momento de IA, com a linguagem visual dela. */}
       <AnimatePresence>
         {sugestoes.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="card"
-            style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderColor: 'var(--accent)' }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
           >
-            <span className="text-xs font-bold uppercase tracking-widest text-accent">
-              Parecem a mesma coisa
-            </span>
-            {sugestoes.slice(0, 5).map(s => {
-              const chave = `${s.principal.id}|${s.candidato.id}`;
-              return (
-                <div key={chave} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <span className="text-sm" style={{ flex: 1, minWidth: '200px' }}>
+            <AIRecommendation titulo="Parecem a mesma coisa">
+              {sugestoes.length === 1
+                ? 'Achei dois nomes que provavelmente são o mesmo elemento. Confirme para contar como um só nos relatórios.'
+                : `Achei ${sugestoes.length} pares que provavelmente são o mesmo elemento. Confirme os que fizerem sentido — nos relatórios eles passam a contar como um.`}
+            </AIRecommendation>
+
+            <AISuggestionList>
+              {sugestoes.slice(0, 5).map(s => {
+                const chave = `${s.principal.id}|${s.candidato.id}`;
+                return (
+                  <AISuggestion
+                    key={chave}
+                    cor={temaDe(s.principal.categoria).border}
+                    rotuloAceitar="Juntar"
+                    onAceitar={() => { mesclarElementos(s.principal.id, [s.candidato.id]); }}
+                    onRecusar={() => setSugestoesOcultas(o => [...o, chave])}
+                  >
                     <strong>"{s.candidato.nome}"</strong> é o mesmo que <strong>"{s.principal.nome}"</strong>?
                     <span className="text-muted text-xs"> — {s.motivo}</span>
-                  </span>
-                  <button
-                    className="btn-chip"
-                    onClick={async () => { await mesclarElementos(s.principal.id, [s.candidato.id]); }}
-                  >
-                    <Check size={14} /> Juntar
-                  </button>
-                  <button className="btn-chip" onClick={() => setSugestoesOcultas(o => [...o, chave])}>
-                    <X size={14} /> Não
-                  </button>
-                </div>
-              );
-            })}
+                  </AISuggestion>
+                );
+              })}
+            </AISuggestionList>
           </motion.div>
         )}
       </AnimatePresence>

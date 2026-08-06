@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Sparkles, Printer } from 'lucide-react';
 import { gerarOrdemDoDia } from '../lib/gemini';
 import { AIButton } from './ui/AIButton';
+import { AIThinking } from './ui/ia';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import type { Diaria, Projeto, Perfil, Locacao, Departamento, Cena } from '../types';
 
@@ -71,6 +72,14 @@ export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, dep
                   Gerar Ordem do Dia
                 </AIButton>
               </div>
+
+              {/* A OD é a chamada de IA mais demorada do app: sem sinal de vida
+                  aqui, a pessoa acha que travou e clica de novo. */}
+              {carregando && (
+                <div style={{ marginTop: '24px', textAlign: 'left' }}>
+                  <AIThinking texto="Lendo cenas, equipe, locações e clima da diária..." />
+                </div>
+              )}
             </div>
           ) : (
             <div>
