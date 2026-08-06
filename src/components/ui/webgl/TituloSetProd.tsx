@@ -25,6 +25,8 @@ interface Props {
    */
   interativo?: boolean;
   alinhamento?: 'esquerda' | 'centro';
+  /** Tinge o título de vermelho junto com o fundo, no modo de apagar. */
+  perigo?: boolean;
 }
 
 /**
@@ -34,7 +36,7 @@ interface Props {
  * mais violento a cada clique. Quem só passa o olho não percebe nada; quem
  * cutuca de propósito sente a tensão subindo e descobre sozinho.
  */
-export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro' }: Props) {
+export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro', perigo = false }: Props) {
   const [efeitos] = useState(() => decidirEfeitos());
   const [tensao, setTensao] = useState(0);
 
@@ -80,9 +82,9 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
           fontFamily: fontFamily || "'Archivo Black', 'Arial Black', system-ui, sans-serif",
           fontWeight: 900, letterSpacing: '-0.06em',
           fontSize: `${Math.min(tamanho, 56)}px`,
-          color: 'var(--text-primary)', lineHeight: 1.1,
+          color: perigo ? 'var(--color-danger)' : 'var(--text-primary)', lineHeight: 1.1,
           opacity: movimentoReduzido() ? 1 : 1 - tensao * 0.35,
-          transition: 'opacity 0.2s ease',
+          transition: 'opacity 0.2s ease, color 0.45s ease',
         }}
       >
         SETPROD
@@ -114,6 +116,7 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
           letterSpacing="-0.06em"
           align={alinhamento === 'esquerda' ? 'left' : 'center'}
           boost={tensao}
+          tint={perigo ? '#ff6b6b' : '#ffffff'}
           {...(fontFamily ? { fontFamily } : {})}
           style={{ height: `${tamanho * 1.2}px`, minHeight: 0 }}
         />

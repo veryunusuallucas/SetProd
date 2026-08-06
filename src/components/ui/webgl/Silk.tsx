@@ -93,6 +93,17 @@ export default function Silk({
 }: SilkProps) {
   const container = useRef<HTMLDivElement>(null);
 
+  /**
+   * A cor vive num ref, não nas dependências do efeito.
+   *
+   * Se ela entrasse no array de dependências, trocar de cor destruiria o
+   * contexto WebGL e criaria outro — a tela piscaria preta no meio da
+   * transição. Assim o laço de render persegue o valor novo e a mudança sai
+   * como um esmaecimento.
+   */
+  const corAlvo = useRef(cor);
+  useEffect(() => { corAlvo.current = cor; }, [cor]);
+
   useEffect(() => {
     const alvo = container.current;
     if (!alvo) return;
@@ -142,10 +153,27 @@ export default function Silk({
     observador.observe(alvo);
 
     const inicio = performance.now();
+    let anterior = inicio;
+    const atual = new Color(cor);
+
     const desenhar = () => {
       if (!rodando) return;
       quadro = requestAnimationFrame(desenhar);
-      programa.uniforms.uTempo.value = (performance.now() - inicio) / 1000;
+
+      const agora = performance.now();
+      // Passo limitado: voltar de uma aba parada daria um dt enorme e a cor
+      // saltaria de uma vez, perdendo justamente a transição.
+      const dt = Math.min((agora - anterior) / 1000, 1 / 30);
+      anterior = agora;
+
+      const destino = new Color(corAlvo.current);
+      const passo = Math.min(1, dt * 3);
+      atual.r += (destino.r - atual.r) * passo;
+      atual.g += (destino.g - atual.g) * passo;
+      atual.b += (destino.b - atual.b) * passo;
+      programa.uniforms.uCor.value = atual;
+
+      programa.uniforms.uTempo.value = (agora - inicio) / 1000;
       renderer!.render({ scene: malha });
     };
     desenhar();
@@ -170,7 +198,9 @@ export default function Silk({
       gl.getExtension('WEBGL_lose_context')?.loseContext();
       if (gl.canvas.parentElement === alvo) alvo.removeChild(gl.canvas);
     };
-  }, [cor, velocidade, escala, ruido]);
+    // `cor` de propósito fora daqui: ela é perseguida no laço (ver corAlvo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [velocidade, escala, ruido]);
 
   return (
     <div
