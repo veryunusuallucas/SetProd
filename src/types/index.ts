@@ -472,6 +472,54 @@ export interface Task {
   data_conclusao?: string; // YYYY-MM-DD (Fase 4/6)
 }
 
+// ---- Pesquisas / enquetes para a equipe ----
+
+/**
+ * O tipo da pergunta decide como o resultado é lido.
+ *
+ * Não é detalhe de formulário: contar votos de "escolha única" faz sentido,
+ * contar respostas de texto livre não faz nenhum. Por isso cada tipo tem a
+ * própria apuração.
+ */
+export type TipoPergunta = 'escolha_unica' | 'escolha_multipla' | 'texto' | 'sim_nao';
+
+export interface Pergunta {
+  id: string;
+  texto: string;
+  tipo: TipoPergunta;
+  /** Só para escolha única/múltipla. */
+  opcoes?: string[];
+  obrigatoria?: boolean;
+}
+
+export interface Pesquisa {
+  id: string;
+  projeto_id: string;
+  titulo: string;
+  descricao?: string;
+  perguntas: Pergunta[];
+  /** Fechada para de aceitar respostas, mas o resultado continua visível. */
+  aberta: boolean;
+  data_criacao: number;
+  /** Recomendação da IA, guardada para não gastar chamada a cada abertura. */
+  recomendacao?: string;
+  recomendacao_em?: number;
+  /** Quantas respostas havia quando a recomendação foi gerada. */
+  recomendacao_respostas?: number;
+}
+
+export interface RespostaPesquisa {
+  id: string;
+  pesquisa_id: string;
+  projeto_id: string;
+  /** Quem respondeu, se quis se identificar. */
+  nome?: string;
+  perfil_id?: string;
+  /** id da pergunta → resposta. Múltipla escolha guarda lista. */
+  respostas: Record<string, string | string[]>;
+  data: number;
+}
+
 // ---- Fase 5: Notificações in-app (sino) ----
 export interface Notificacao {
   id: string;

@@ -13,6 +13,11 @@ export default defineConfig({
         // elas o roteiro abre com a camada de texto desalinhada, e no set não
         // há internet para buscá-las depois.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,pfb,ttf}'],
+        // O padrão do Workbox é 2 MiB, e o pacote passou disso (o pdf.js sozinho
+        // é a maior parte). Sem subir o teto, o arquivo principal fica FORA do
+        // cache e o app deixa de abrir offline — que é justamente o cenário do
+        // set. Vale dividir o pacote depois; o teto não substitui isso.
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
         name: 'SetProd',

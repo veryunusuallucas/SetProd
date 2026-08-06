@@ -7,6 +7,7 @@ import { Configuracoes } from './components/Configuracoes';
 import { CommandPalette } from './components/CommandPalette';
 import { Login } from './pages/Login';
 import { CadastroEquipe } from './pages/CadastroEquipe';
+import { ResponderPesquisa } from './pages/ResponderPesquisa';
 import { LocacoesModule } from './pages/LocacoesModule';
 import { DiariasList } from './pages/DiariasList';
 import { DiariaModule } from './pages/DiariaModule';
@@ -47,6 +48,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro/:projetoId" element={<CadastroEquipe />} />
+            {/* Link publico da pesquisa: sem login, como o de cadastro. */}
+            <Route path="/pesquisa/:pesquisaId" element={<ResponderPesquisa />} />
             
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             
