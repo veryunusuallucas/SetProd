@@ -276,9 +276,10 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px', lineHeight: 1.7 }}>
               <p>
-                Este aplicativo surgiu por uma grande causa: a falta de dinheiro no set e a completa
-                ausência de organização financeira. Não vamos mais fazer contas no Word, beleza,
-                Lages? Amo você.
+                Este aplicativo surgiu por um sentimento do último set em que participei, onde a
+                questão financeira foi extremamente confusa. Diante dessa bagunça, resolvi engatar
+                de vez e criar um app voltado para a produção por completo. Não vamos mais fazer
+                contas no Word, beleza, Lages? Amo você.
               </p>
 
               <p>
@@ -311,7 +312,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
               </div>
 
               <div className="text-xs text-muted">
-                SetProd v4 · Feito para produção audiovisual.
+                SetProd v4.1 · Feito para produção audiovisual.
               </div>
             </div>
 

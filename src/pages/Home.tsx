@@ -25,6 +25,7 @@ export function Home() {
 
   const [mostrarStepper, setMostrarStepper] = useState(false);
   const [mostrarChangelog, setMostrarChangelog] = useState(false);
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
   const [termoBusca, setTermoBusca] = useState('');
   
   // Stepper State
@@ -108,20 +109,20 @@ export function Home() {
               onClick={() => setMostrarChangelog(true)}
               style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
-              <Sparkles size={12} /> v4.0
+              <Sparkles size={12} /> v4.1
             </button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <HelpButton />
-          <button 
-            className="btn-icon" 
-            onClick={() => {
-              if (confirm('Tem certeza que deseja sair?')) {
-                logout();
-              }
-            }}
-            title="Sair"
+          {/* Confirmação na própria tela, não no confirm() do navegador.
+              O Chrome oferece "não exibir mais caixas de diálogo" depois de
+              alguns avisos seguidos; marcada essa opção, o confirm devolve
+              false calado e o botão simplesmente não fazia nada. */}
+          <button
+            className="btn-icon"
+            onClick={() => setConfirmarSaida(true)}
+            title="Sair do app"
           >
             <LogOut size={20} />
           </button>
@@ -284,6 +285,35 @@ export function Home() {
               </button>
               <button onClick={confirmarDelecao} className="btn-primary" style={{ flex: 1, backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}>
                 Deletar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAIR DO APP */}
+      {confirmarSaida && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '340px', backgroundColor: 'var(--bg-primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <LogOut size={24} className="text-secondary" />
+              </div>
+            </div>
+            <h3 className="text-lg font-bold" style={{ textAlign: 'center', marginBottom: '8px' }}>Sair do SetProd?</h3>
+            <p className="text-sm text-secondary" style={{ textAlign: 'center', marginBottom: '24px' }}>
+              Seus projetos ficam salvos neste aparelho. É só entrar de novo.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setConfirmarSaida(false)}
+                className="btn-primary"
+                style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+              >
+                Ficar
+              </button>
+              <button onClick={() => logout()} className="btn-primary" style={{ flex: 1 }}>
+                Sair
               </button>
             </div>
           </div>
