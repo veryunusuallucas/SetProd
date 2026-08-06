@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -11,10 +12,15 @@ import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
 import { ChangelogModal } from '../components/ChangelogModal';
 import { useAuth } from '../hooks/useAuth';
+import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
+import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
+import { ContadorAnimado } from '../components/ui/ContadorAnimado';
+import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../components/ui/ia';
 import { LogOut } from 'lucide-react';
 
 export function Home() {
   const { logout } = useAuth();
+  const reduzido = useMovimentoReduzido();
   const projetos = useLiveQuery(() => db.projetos.toArray());
   const aportesGlobais = useLiveQuery(() => db.aportes.toArray());
   const despesasGlobais = useLiveQuery(() => db.despesas.toArray());
@@ -99,13 +105,19 @@ export function Home() {
       transition: 'background-color 0.3s ease'
     }}>
       
+      <FundoEntrada />
+
       {/* HEADER */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '10px', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Bem-vindo</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Produtor</h1>
-            <button 
+
+          {/* O título é o protagonista da tela — e esconde o easter egg. */}
+          <TituloSetProd tamanho={84} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '-6px' }}>
+            <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-secondary)' }}>Produtor</h1>
+            <button
               onClick={() => setMostrarChangelog(true)}
               style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
@@ -130,7 +142,12 @@ export function Home() {
       </header>
 
       {/* SEARCH */}
-      <div style={{ position: 'relative', marginBottom: '32px' }}>
+      <motion.div
+        initial={reduzido ? { opacity: 0 } : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={MOLA}
+        style={{ position: 'relative', marginBottom: '32px', zIndex: 1 }}
+      >
         <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         <input 
           type="text" 
@@ -139,23 +156,36 @@ export function Home() {
           onChange={(e) => setTermoBusca(e.target.value)}
           style={{ paddingLeft: '44px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}
         />
-      </div>
+      </motion.div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative', zIndex: 1 }}>
         <h2 className="text-xs text-secondary font-bold uppercase tracking-widest">Produções Recentes</h2>
         <span className="text-accent text-sm font-bold">Ver todas</span>
       </div>
 
       {/* PROJECT LIST */}
-      <div className="home-projects" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* zIndex acima do fundo animado, que é fixo e cobre a tela toda. */}
+      <div className="home-projects" style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 1 }}>
         {projetosFiltrados.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
             <Film size={40} style={{ margin: '0 auto 16px', color: 'var(--text-muted)' }} />
             <p className="text-secondary">Nenhuma produção encontrada.</p>
           </div>
         ) : (
-          projetosFiltrados.map(projeto => (
-            <div key={projeto.id} className="card" onClick={() => !modoDeletar && navigate(`/projeto/${projeto.id}`)} style={{ cursor: modoDeletar ? 'default' : 'pointer', position: 'relative' }}>
+          projetosFiltrados.map((projeto, indice) => (
+            <motion.div
+              key={projeto.id}
+              className="card"
+              onClick={() => !modoDeletar && navigate(`/projeto/${projeto.id}`)}
+              // Entrada escalonada: os cards chegam um atrás do outro, para o
+              // olho percorrer a lista em vez de receber um bloco pronto.
+              initial={reduzido ? { opacity: 0 } : { opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...MOLA, delay: reduzido ? 0 : indice * PASSO_STAGGER }}
+              whileHover={reduzido ? undefined : { y: -4, transition: MOLA_GESTO }}
+              whileTap={reduzido ? undefined : { scale: 0.99, transition: MOLA_GESTO }}
+              style={{ cursor: modoDeletar ? 'default' : 'pointer', position: 'relative' }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <span className="badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>ATIVO</span>
                 {modoDeletar ? (
@@ -174,10 +204,16 @@ export function Home() {
               <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
                 <div className="text-xs text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Saldo Atual</div>
                 <div className="font-bold text-lg" style={{ color: ((aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) - (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                  R$ {((aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) - (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)).toFixed(2)}
+                  <ContadorAnimado
+                    prefixo="R$ "
+                    valor={
+                      (aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) -
+                      (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)
+                    }
+                  />
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))
         )}
       </div>
