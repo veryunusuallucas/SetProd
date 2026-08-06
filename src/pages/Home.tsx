@@ -195,16 +195,40 @@ export function Home() {
               initial={reduzido ? { opacity: 0 } : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...MOLA, delay: reduzido ? 0 : indice * PASSO_STAGGER }}
-              whileHover={reduzido ? undefined : { y: -4, transition: MOLA_GESTO }}
+              // No modo de apagar o card não levanta no hover: elevação convida
+              // a entrar, e entrar é justamente o que ele deixou de fazer.
+              whileHover={reduzido || modoDeletar ? undefined : { y: -4, transition: MOLA_GESTO }}
               whileTap={reduzido ? undefined : { scale: 0.99, transition: MOLA_GESTO }}
-              style={{ cursor: modoDeletar ? 'default' : 'pointer', position: 'relative' }}
+              style={{
+                cursor: modoDeletar ? 'default' : 'pointer',
+                position: 'relative',
+                // Contorno vermelho grosso enquanto o modo está ligado: o card
+                // some quando clicado, e ação sem volta precisa de aviso antes.
+                outline: modoDeletar ? '2px solid var(--color-danger)' : '2px solid transparent',
+                outlineOffset: '2px',
+                transition: 'outline-color 0.18s ease',
+              }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <span className="badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>ATIVO</span>
                 {modoDeletar ? (
-                  <button onClick={(e) => { e.stopPropagation(); setProjetoParaDeletar(projeto); }} className="btn-icon text-danger" style={{ padding: 0 }}>
-                    <Trash2 size={20} />
-                  </button>
+                  <motion.button
+                    onClick={(e) => { e.stopPropagation(); setProjetoParaDeletar(projeto); }}
+                    initial={reduzido ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileTap={reduzido ? undefined : { scale: 0.9, transition: MOLA_GESTO }}
+                    transition={MOLA}
+                    title="Apagar esta produção"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '34px', height: '34px', flexShrink: 0,
+                      borderRadius: '10px', border: '1px solid var(--color-danger)',
+                      backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)',
+                      cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    <Trash2 size={18} />
+                  </motion.button>
                 ) : (
                   <span className="text-secondary">&gt;</span>
                 )}
