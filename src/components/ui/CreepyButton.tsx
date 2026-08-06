@@ -1,211 +1,191 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState } from 'react';
 
 interface CreepyButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
 }
 
-type Coords = {
-  x: number;
-  y: number;
-};
+type Coords = { x: number; y: number };
 
-export function CreepyButton({
-  children,
-  className,
-  onClick,
-  ...props
-}: CreepyButtonProps) {
-  const eyesRef = useRef<HTMLSpanElement>(null);
-  const [eyeCoords, setEyeCoords] = useState<Coords>({ x: 0, y: 0 });
+/**
+ * Botão com olhos que seguem o cursor.
+ *
+ * A mecânica do original: os olhos ficam ATRÁS da capa colorida, no canto de
+ * baixo. Ao passar o mouse, a capa gira e se afasta — e é isso que descobre os
+ * olhos espiando. Eles não aparecem por mudança de opacidade; aparecem porque
+ * algo saiu da frente. É essa relação de camadas que faz a piada funcionar.
+ *
+ * A versão anterior daqui tinha invertido isso: os olhos flutuavam acima da
+ * borda, revelados por opacidade, e a capa girava tão pouco (-5°) que nunca
+ * chegava a descobrir nada.
+ */
+export function CreepyButton({ children, className, onClick, ...props }: CreepyButtonProps) {
+  const olhosRef = useRef<HTMLSpanElement>(null);
+  const [pupila, setPupila] = useState<Coords>({ x: 0, y: 0 });
 
-  const translateX = -50 + eyeCoords.x * 50;
-  const translateY = -50 + eyeCoords.y * 50;
-  
-  const eyeStyle: React.CSSProperties = {
-    transform: `translate(${translateX}%, ${translateY}%)`,
+  // -50% centraliza a pupila; o resto é o desvio na direção do cursor.
+  const estiloPupila: React.CSSProperties = {
+    transform: `translate(${-50 + pupila.x * 50}%, ${-50 + pupila.y * 50}%)`,
   };
 
-  const updateEyes = (
-    e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>
-  ) => {
-    const userEvent = "touches" in e ? (e as React.TouchEvent).touches[0] : (e as React.MouseEvent);
-    
-    if (!eyesRef.current) return;
-    const eyesRect = eyesRef.current.getBoundingClientRect();
-    const eyesCenter: Coords = {
-      x: eyesRect.left + eyesRect.width / 2,
-      y: eyesRect.top + eyesRect.height / 2,
-    };
-    
-    const cursor: Coords = {
-      x: userEvent.clientX,
-      y: userEvent.clientY,
-    };
+  const seguir = (e: React.MouseEvent | React.TouchEvent) => {
+    const evento = 'touches' in e ? (e as React.TouchEvent).touches[0] : (e as React.MouseEvent);
+    if (!olhosRef.current || !evento) return;
 
-    const dx = cursor.x - eyesCenter.x;
-    const dy = cursor.y - eyesCenter.y;
-    const angle = Math.atan2(-dy, dx) + Math.PI / 2;
+    const caixa = olhosRef.current.getBoundingClientRect();
+    const dx = evento.clientX - (caixa.left + caixa.width / 2);
+    const dy = evento.clientY - (caixa.top + caixa.height / 2);
 
-    const visionRangeX = 150; 
-    const visionRangeY = 100;
-    const distance = Math.min(Math.hypot(dx, dy), 200); 
-    
-    const x = (Math.sin(angle) * distance) / visionRangeX;
-    const y = (Math.cos(angle) * distance) / visionRangeY;
-    
-    setEyeCoords({ x, y });
+    // O ângulo entra em seno/cosseno para a pupila descrever um círculo dentro
+    // do olho — sem isso ela andaria em quadrado nas diagonais.
+    const angulo = Math.atan2(-dy, dx) + Math.PI / 2;
+    const distancia = Math.min(Math.hypot(dx, dy), 200);
+
+    setPupila({
+      x: (Math.sin(angulo) * distancia) / 150,
+      y: (Math.cos(angulo) * distancia) / 100,
+    });
   };
 
-  const resetEyes = () => {
-    setEyeCoords({ x: 0, y: 0 });
-  };
+  const centralizar = () => setPupila({ x: 0, y: 0 });
 
   return (
     <>
       <style>
         {`
-          :root {
-            --cb-hue: 0deg; /* Red for danger zone */
-            --cb-gray1: hsl(var(--cb-hue) 10% 95%);
-            --cb-gray9: hsl(var(--cb-hue) 10% 15%);
-            --cb-black: hsl(0 0% 0%);
-            --cb-primary3: hsl(var(--cb-hue) 90% 75%);
-            --cb-primary5: hsl(var(--cb-hue) 90% 45%); /* danger red */
-            --cb-primary6: hsl(var(--cb-hue) 90% 35%);
-            --cb-trans-dur: 0.3s;
-          }
-
+          /* Escopo no próprio botão. Antes isto vivia em :root e redefinia
+             variáveis para o app inteiro. */
           .creepy-btn {
-            background-color: transparent;
-            border-radius: 1.25em;
-            color: var(--cb-gray1);
-            cursor: pointer;
-            letter-spacing: 1px;
+            --cb-claro: hsl(0 10% 95%);
+            --cb-preto: hsl(0 0% 0%);
+            --cb-foco: hsl(0 90% 75%);
+            --cb-cor: var(--color-danger, hsl(0 90% 45%));
+            --cb-cor-hover: hsl(0 90% 35%);
+            --cb-dur: 0.3s;
+
+            position: relative;
+            display: inline-block;
             min-width: 9em;
             padding: 0;
             border: 0;
-            outline: 0.1875em solid transparent;
-            transition: outline 0.1s linear;
-            -webkit-tap-highlight-color: transparent;
+            border-radius: 1.25em;
+            background-color: transparent;
+            color: var(--cb-claro);
             font-family: inherit;
             font-size: 1rem;
             font-weight: 700;
-            position: relative;
-            display: inline-block;
+            letter-spacing: 1px;
+            cursor: pointer;
+            outline: 0.1875em solid transparent;
+            transition: outline 0.1s linear;
+            -webkit-tap-highlight-color: transparent;
           }
 
-          .creepy-btn__cover {
-            background-color: var(--cb-primary5);
-            box-shadow: 0 0 0 0.125em var(--cb-black) inset;
-            padding: 0.5em 2.5em 0.5em 1em;
-            border-radius: inherit;
-            display: block;
-            position: relative;
-            z-index: 1;
-            transform-origin: 1.25em 50%;
-            transition:
-              background-color var(--cb-trans-dur),
-              transform var(--cb-trans-dur) cubic-bezier(0.65, 0, 0.35, 1);
-            inset: 0;
-          }
-
-          .creepy-btn__eyes {
+          /* Os olhos ficam no fundo (z-index 0) e a capa por cima (z-index 1). */
+          .creepy-btn__olhos {
             position: absolute;
+            right: 1em;
+            bottom: 0.6em;
+            z-index: 0;
             display: flex;
             align-items: center;
             gap: 0.375em;
-            right: 1.4em;
-            top: -0.55em; /* espiam por cima da borda superior */
             height: 0.75em;
-            z-index: 0; /* atrás da capa: escondidos por padrão */
             pointer-events: none;
-            opacity: 0;
-            transform: translateY(0.5em);
-            transition: opacity var(--cb-trans-dur) ease, transform var(--cb-trans-dur) ease;
           }
 
-          /* Revelados quando o mouse chega no botão */
-          .creepy-btn:hover .creepy-btn__eyes,
-          .creepy-btn:focus-visible .creepy-btn__eyes {
-            opacity: 1;
-            transform: translateY(0);
-          }
-
-          .creepy-btn__eye {
-            animation: cb-eye-blink 3s infinite;
-            background-color: var(--cb-gray1);
-            border-radius: 50%;
-            overflow: hidden;
-            width: 0.75em;
-            height: 0.75em;
+          .creepy-btn__olho {
             position: relative;
             display: block;
+            width: 0.75em;
+            height: 0.75em;
+            border-radius: 50%;
+            background-color: var(--cb-claro);
+            overflow: hidden;
+            animation: cb-piscar 3s infinite;
           }
 
-          .creepy-btn__pupil {
-            background-color: var(--cb-black);
-            border-radius: 50%;
-            display: block;
+          .creepy-btn__pupila {
             position: absolute;
-            width: 0.375em;
-            height: 0.375em;
             top: 50%;
             left: 50%;
+            display: block;
+            width: 0.375em;
+            height: 0.375em;
+            border-radius: 50%;
+            background-color: var(--cb-preto);
           }
 
-          .creepy-btn:focus-visible {
-            outline: 0.1875em solid var(--cb-primary3);
+          .creepy-btn__capa {
+            position: relative;
+            z-index: 1;
+            display: block;
+            inset: 0;
+            padding: 0.6em 1.4em;
+            border-radius: inherit;
+            background-color: var(--cb-cor);
+            box-shadow: 0 0 0 0.125em var(--cb-preto) inset;
+            /* Gira em torno da ponta esquerda: é o que faz o lado direito
+               levantar e descobrir os olhos. */
+            transform-origin: 1.25em 50%;
+            transition:
+              background-color var(--cb-dur),
+              transform var(--cb-dur) cubic-bezier(0.65, 0, 0.35, 1);
           }
 
-          .creepy-btn:hover .creepy-btn__cover {
-            background-color: var(--cb-primary6);
-            transform: rotate(-5deg) translateY(2px);
+          .creepy-btn:hover .creepy-btn__capa,
+          .creepy-btn:focus-visible .creepy-btn__capa {
+            background-color: var(--cb-cor-hover);
+            transform: rotate(-12deg);
             transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1.65);
           }
 
-          .creepy-btn:focus-visible .creepy-btn__cover {
-            transform: rotate(-5deg);
-            transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1.65);
-          }
-
-          .creepy-btn:active .creepy-btn__cover {
+          .creepy-btn:active .creepy-btn__capa {
             transform: rotate(0);
             transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
           }
 
-          @keyframes cb-eye-blink {
-            0%,
-            92%,
-            100% {
+          .creepy-btn:focus-visible { outline-color: var(--cb-foco); }
+
+          @keyframes cb-piscar {
+            0%, 92%, 100% {
               animation-timing-function: cubic-bezier(0.32, 0, 0.67, 0);
               height: 0.75em;
             }
-
             96% {
               animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
               height: 0;
             }
           }
+
+          /* Quem pediu menos movimento não leva o giro nem o piscar. */
+          @media (prefers-reduced-motion: reduce) {
+            .creepy-btn__capa { transition: background-color var(--cb-dur); }
+            .creepy-btn:hover .creepy-btn__capa,
+            .creepy-btn:focus-visible .creepy-btn__capa { transform: none; }
+            .creepy-btn__olho { animation: none; }
+          }
         `}
       </style>
+
       <button
-        className={`creepy-btn ${className || ""}`}
         type="button"
+        className={`creepy-btn ${className || ''}`}
         onClick={onClick}
-        onMouseMove={updateEyes}
-        onTouchMove={updateEyes}
-        onMouseLeave={resetEyes}
+        onMouseMove={seguir}
+        onTouchMove={seguir}
+        onMouseLeave={centralizar}
         {...props}
       >
-        <span className="creepy-btn__cover">{children}</span>
-        <span className="creepy-btn__eyes" ref={eyesRef}>
-          <span className="creepy-btn__eye">
-            <span className="creepy-btn__pupil" style={eyeStyle}></span>
+        {/* Ordem importa: olhos primeiro, capa depois — a capa desenha por cima. */}
+        <span className="creepy-btn__olhos" ref={olhosRef} aria-hidden>
+          <span className="creepy-btn__olho">
+            <span className="creepy-btn__pupila" style={estiloPupila} />
           </span>
-          <span className="creepy-btn__eye">
-            <span className="creepy-btn__pupil" style={eyeStyle}></span>
+          <span className="creepy-btn__olho">
+            <span className="creepy-btn__pupila" style={estiloPupila} />
           </span>
         </span>
+        <span className="creepy-btn__capa">{children}</span>
       </button>
     </>
   );
