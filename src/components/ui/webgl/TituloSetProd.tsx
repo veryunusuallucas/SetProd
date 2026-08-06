@@ -37,7 +37,6 @@ interface Props {
 export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro' }: Props) {
   const [efeitos] = useState(() => decidirEfeitos());
   const [tensao, setTensao] = useState(0);
-  const [pulso, setPulso] = useState(0);
 
   const cliques = useRef(0);
   const relogio = useRef<number | undefined>(undefined);
@@ -47,7 +46,6 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
   const cutucar = () => {
     window.clearTimeout(relogio.current);
     cliques.current += 1;
-    setPulso(p => p + 1);
 
     if (cliques.current >= CLIQUES_PARA_ESTOURAR) {
       setTensao(1);
@@ -93,16 +91,33 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
   }
 
   return (
-    <Suspense fallback={<div style={{ height: `${tamanho * 1.35}px` }} />}>
-      <WarpText
-        texto="SETPROD"
-        tamanho={tamanho}
-        tensao={tensao}
-        pulso={pulso}
-        alinhamento={alinhamento}
-        {...(fontFamily ? { fontFamily } : {})}
-        {...(interativo ? { onClick: cutucar } : {})}
-      />
+    <Suspense fallback={<div style={{ height: `${tamanho * 1.2}px` }} />}>
+      {/* O onClick fica no wrapper porque o componente oficial não expõe um —
+          e assim o easter egg não exige tocar no código dele. */}
+      <div
+        onClick={interativo ? cutucar : undefined}
+        style={{ cursor: interativo ? 'pointer' : 'default' }}
+      >
+        <WarpText
+          text="SETPROD"
+          color="#f8f5ff"
+          /* Números do exemplo da referência, sem alteração. */
+          warpStrength={0.08}
+          warpScale={1.7}
+          speed={0.55}
+          pointerInfluence={0.42}
+          pointerStrength={0.38}
+          refraction={0.018}
+          ripple
+          fontSize={tamanho}
+          fontWeight={800}
+          letterSpacing="-0.06em"
+          align={alinhamento === 'esquerda' ? 'left' : 'center'}
+          boost={tensao}
+          {...(fontFamily ? { fontFamily } : {})}
+          style={{ height: `${tamanho * 1.2}px`, minHeight: 0 }}
+        />
+      </div>
     </Suspense>
   );
 }
