@@ -312,7 +312,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
               </div>
 
               <div className="text-xs text-muted">
-                SetProd v4.1 · Feito para produção audiovisual.
+                SetProd v4.2 · Feito para produção audiovisual.
               </div>
             </div>
 
