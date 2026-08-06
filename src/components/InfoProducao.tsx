@@ -3,13 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { PessoasList } from './PessoasList';
 import { DepartamentosList } from './DepartamentosList';
-import { Film, Users, LayoutList, Download, Plus, Trash2 } from 'lucide-react';
+import { Film, Users, LayoutList, Download, Plus, Trash2, ClipboardList } from 'lucide-react';
 import { useLayoutContext } from '../pages/ProjectLayout';
 import { DetalhesUsuario } from './DetalhesUsuario';
 import { CreditosPorDepartamento } from './CreditosPorDepartamento';
+import { PesquisasPanel } from './PesquisasPanel';
 import type { Credito } from '../types';
 
-type SubAba = 'creditos' | 'departamentos' | 'equipe';
+type SubAba = 'creditos' | 'departamentos' | 'equipe' | 'pesquisas';
 
 export function InfoProducao({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -120,7 +121,17 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
         >
           <Users size={18} /> <span style={{ fontSize: '12px' }}>Equipe</span>
         </button>
+        {/* Ler resultado é atividade de decisão — por isso aba própria, e não
+            um canto da tela de Equipe. */}
+        <button
+          onClick={() => setAbaAtiva('pesquisas')}
+          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'pesquisas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'pesquisas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
+        >
+          <ClipboardList size={18} /> <span style={{ fontSize: '12px' }}>Pesquisas</span>
+        </button>
       </div>
+
+      {abaAtiva === 'pesquisas' && <PesquisasPanel projetoId={projetoId} />}
 
       {/* SEÇÃO DE CRÉDITOS E EXPORTAÇÃO */}
       {abaAtiva === 'creditos' && (

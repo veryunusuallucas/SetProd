@@ -83,6 +83,28 @@ function ehErroDeCota(err: unknown): boolean {
   return /cota|quota|429|limite de \d+ an[áa]lises/i.test(msg);
 }
 
+/**
+ * Lê o resultado de uma pesquisa e recomenda uma decisão.
+ *
+ * O gráfico já mostra quem ganhou; o valor da IA está no que o gráfico não diz
+ * — se a margem é confortável, se houve empate, e o que serve de critério de
+ * desempate quando outra pergunta traz restrição (alergia, disponibilidade).
+ */
+export async function recomendarPesquisa(resumo: string): Promise<string> {
+  const prompt = `Você ajuda uma produção audiovisual a decidir a partir de uma enquete feita com a equipe.
+
+Escreva de 2 a 4 frases, em português do Brasil, direto ao ponto:
+- diga qual opção ganhou e se a margem é confortável ou apertada;
+- se houve empate, aponte e sugira um critério de desempate;
+- se alguma resposta indicar restrição (alimentar, de saúde, de agenda), leve em conta e explique.
+
+Não invente dados que não estão abaixo. Não use marcadores nem títulos, só o texto corrido.
+
+${resumo}`;
+
+  return limpar(await chamarIA(prompt));
+}
+
 // ---- Decupagem: elementos de uma cena ----
 
 export async function sugerirBreakdownCena(_projetoId: string, descricaoCena: string) {

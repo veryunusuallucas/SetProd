@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem } from '../types';
+import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa } from '../types';
 
 export class SetMoneyDB extends Dexie {
   projetos!: Table<Projeto, string>;
@@ -33,6 +33,8 @@ export class SetMoneyDB extends Dexie {
   roteiro_tags!: Table<RoteiroTag, string>;
   elementos!: Table<Elemento, string>;
   stripboard_itens!: Table<StripboardItem, string>;
+  pesquisas!: Table<Pesquisa, string>;
+  respostas_pesquisa!: Table<RespostaPesquisa, string>;
 
   // Fase 2 v4: Documentos e Pastas
   pastas!: Table<Pasta, string>;
@@ -88,6 +90,13 @@ export class SetMoneyDB extends Dexie {
     // relatórios ou o vínculo com o roteiro.
     this.version(13).stores({
       stripboard_itens: 'id, projeto_id, ordem'
+    });
+
+    // v14: pesquisas para a equipe. As respostas chegam pelo link público (via
+    // Supabase) e são puxadas para cá, como já acontece com os cadastros.
+    this.version(14).stores({
+      pesquisas: 'id, projeto_id, data_criacao',
+      respostas_pesquisa: 'id, pesquisa_id, projeto_id'
     });
 
     // Middlewares para capturar modificações e jogar na sync_queue
