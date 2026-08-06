@@ -1,4 +1,4 @@
-import { X, Sparkles, Film, FileText, Users, Layers, ShieldCheck, History, Printer } from 'lucide-react';
+import { X, Sparkles, Film, FileText, Users, Layers, ShieldCheck, History, Printer, ClipboardList, Wand2 } from 'lucide-react';
 
 interface Novidade {
   icone: React.ReactNode;
@@ -7,6 +7,21 @@ interface Novidade {
 }
 
 const NOVIDADES: Novidade[] = [
+  {
+    icone: <ClipboardList size={24} style={{ color: '#00b894' }} />,
+    titulo: 'Pesquisas com a equipe',
+    texto: 'Pergunte qualquer coisa por link — o que jantar, tamanho de camiseta, o que for. Escolha única, múltipla, sim/não ou texto livre, cada uma com o resultado do seu tipo. Só quem está logado lê as respostas: com o link, ninguém vê o que os colegas responderam.',
+  },
+  {
+    icone: <Wand2 size={24} style={{ color: '#c77dff' }} />,
+    titulo: 'A IA recomenda, não só conta voto',
+    texto: 'O gráfico mostra quem ganhou; a IA diz o que fazer com isso. Num empate de 5 a 5 entre pizza e japonês, ela cruzou com a pergunta de restrições e recomendou pizza porque duas pessoas têm alergia a frutos do mar.',
+  },
+  {
+    icone: <Sparkles size={24} style={{ color: '#4cc9f0' }} />,
+    titulo: 'Os momentos de IA ficaram bonitos',
+    texto: 'O "pensando" deixou de ser spinner — vira uma barra viva, e quando há progresso real ele manda. As sugestões entram escalonadas, uma atrás da outra, e aceitar ou recusar responde no toque, não no soltar. Quem pediu menos movimento no sistema recebe transição suave no lugar.',
+  },
   {
     icone: <FileText size={24} style={{ color: '#e85d04' }} />,
     titulo: 'Decupagem por IA que funciona',
@@ -52,7 +67,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
         <div style={{ padding: '20px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={20} color="var(--accent)" />
-            <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da v4.1</h2>
+            <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da v4.2</h2>
           </div>
           <button onClick={onClose} className="btn-icon"><X size={20} /></button>
         </div>
@@ -60,10 +75,10 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
           <div>
-            <h3 className="font-bold text-md mb-2">A decupagem ficou de verdade</h3>
+            <h3 className="font-bold text-md mb-2">Agora a equipe responde, e a IA opina</h3>
             <p className="text-sm text-secondary" style={{ lineHeight: '1.6' }}>
-              A v4.0 montou os módulos. A v4.1 faz o roteiro virar plano de filmagem: você sobe o PDF,
-              a IA marca, o stripboard divide os dias e sai o relatório que a produção usa no set.
+              A v4.1 fez o roteiro virar plano de filmagem. A v4.2 abre o app para a equipe:
+              você pergunta por link, o resultado vira gráfico e a IA recomenda a decisão.
             </p>
           </div>
 
