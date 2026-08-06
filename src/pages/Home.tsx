@@ -107,24 +107,16 @@ export function Home() {
       
       <FundoEntrada />
 
-      {/* HEADER */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '10px', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Bem-vindo</div>
+      {/* HEADER — a barra de cima só tem a versão (esquerda) e as ações
+          (direita); o título fica solto embaixo, sem nada disputando espaço. */}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
+        <button
+          onClick={() => setMostrarChangelog(true)}
+          style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '6px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+        >
+          <Sparkles size={12} /> v4.2
+        </button>
 
-          {/* O título é o protagonista da tela — e esconde o easter egg. */}
-          <TituloSetProd tamanho={84} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '-6px' }}>
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-secondary)' }}>Produtor</h1>
-            <button
-              onClick={() => setMostrarChangelog(true)}
-              style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Sparkles size={12} /> v4.2
-            </button>
-          </div>
-        </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <HelpButton />
           {/* Confirmação na própria tela, não no confirm() do navegador.
@@ -140,6 +132,18 @@ export function Home() {
           </button>
         </div>
       </header>
+
+      {/* O título é o protagonista da tela — e esconde o easter egg. */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <TituloSetProd tamanho={84} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '-8px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
+        <span style={{ fontSize: '10px', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+          Bem-vindo
+        </span>
+        <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-secondary)' }}>VIADÃO</h1>
+      </div>
 
       {/* SEARCH */}
       <motion.div

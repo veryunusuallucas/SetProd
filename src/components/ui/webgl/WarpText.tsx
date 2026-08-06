@@ -58,17 +58,20 @@ void main() {
   float forca = uForca * (1.0 + uTensao * 4.0);
   float t = uTempo;
 
-  // 1) Ondulação de base — o "vidro respirando".
+  // 1) Ondulação de base: quase nada. O texto em repouso tem que estar LIMPO —
+  //    é a lente que distorce, não o tempo. Uma onda constante em cima de tudo
+  //    faz o título parecer defeito de tela, não vidro.
   vec2 desloc = vec2(
     ondas(centrada * uEscala, t),
     ondas(centrada * uEscala + 4.7, t * 0.9)
-  ) * forca;
+  ) * forca * 0.07;
 
-  // 2) Lente do cursor: empurra o que está perto, some com a distância.
+  // 2) Lente do cursor: é ela a protagonista. Forte e concentrada — o que está
+  //    debaixo do dedo entorta, o resto do título continua legível.
   vec2 doPonteiro = centrada - uPonteiro * vec2(aspecto, 1.0) * 0.5;
   float dist = length(doPonteiro);
-  float lente = exp(-dist * dist * 9.0) * uPonteiroPeso;
-  desloc += normalize(doPonteiro + 1e-5) * lente * forca * 2.4;
+  float lente = exp(-dist * dist * 26.0) * uPonteiroPeso;
+  desloc += normalize(doPonteiro + 1e-5) * lente * forca * 9.0;
 
   // 3) Ripple do clique: anel que sai da origem e se apaga.
   if (uRipple > 0.001) {
@@ -79,9 +82,15 @@ void main() {
               * anel * envelope * forca * 6.0;
   }
 
-  // Separação de cores: quanto mais tensão, mais o vidro "racha" a luz.
+  // Separação de cores PROPORCIONAL à distorção local.
+  //
+  // Antes era normalize(desloc) * refr — sem crase, que aqui dentro fecharia
+  // o template literal do JS. Normalizar joga fora a intensidade,
+  // então até um pixel praticamente parado recebia a franja inteira — e a
+  // palavra toda ficava colorida, como tela quebrada. Multiplicando pelo
+  // próprio deslocamento, onde o texto está limpo não há franja nenhuma.
   float refr = uRefracao * (1.0 + uTensao * 5.0);
-  vec2 sep = normalize(desloc + 1e-5) * refr;
+  vec2 sep = desloc * refr;
 
   float r = texture2D(uTexto, uv + desloc + sep).a;
   float g = texture2D(uTexto, uv + desloc).a;
@@ -127,19 +136,16 @@ export default function WarpText({
   fontWeight = 900,
   letterSpacing = '-0.06em',
   tamanho = 96,
-  /**
-   * Calibrado neste shader, medindo o inchaço do texto e a área com franja
-   * colorida. Os valores sugeridos na spec (0.08 / 0.018) vieram do componente
-   * do React Bits, que normaliza diferente: aqui eles deixavam o REPOUSO já em
-   * 1,8x de inchaço e 69% de franja — exatamente o pico que o easter egg
-   * precisa alcançar. Sem margem para escalar, o clique não teria efeito
-   * perceptível. Assim o descanso fica em 1,17x / 31%, e a tensão leva ao pico.
-   */
-  forca = 0.012,
+  /** Amplitude base. A lente multiplica isto por 9 no ponto do cursor. */
+  forca = 0.02,
   escala = 1.7,
   velocidade = 0.55,
-  influenciaPonteiro = 0.42,
-  refracao = 0.004,
+  influenciaPonteiro = 1,
+  /**
+   * Multiplicador da franja sobre o deslocamento local — não é deslocamento em
+   * si. Onde o texto não entorta, não há cor separada.
+   */
+  refracao = 0.5,
   tensao = 0,
   pulso = 0,
   onClick,
