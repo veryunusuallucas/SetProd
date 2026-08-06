@@ -127,6 +127,13 @@ export interface WarpTextProps {
   tensao?: number;
   /** Muda de valor a cada clique: dispara um ripple novo. */
   pulso?: number;
+  /**
+   * Onde o texto encosta dentro do canvas.
+   *
+   * Importa mais do que parece: numa tela com tudo alinhado à esquerda, um
+   * título centralizado fica flutuando solto, sem pertencer à coluna.
+   */
+  alinhamento?: 'esquerda' | 'centro';
   onClick?: (e: React.MouseEvent) => void;
 }
 
@@ -148,6 +155,7 @@ export default function WarpText({
   refracao = 0.5,
   tensao = 0,
   pulso = 0,
+  alinhamento = 'centro',
   onClick,
 }: WarpTextProps) {
   const container = useRef<HTMLDivElement>(null);
@@ -197,11 +205,19 @@ export default function WarpText({
       ctx.save();
       ctx.scale(dpr, dpr);
       ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `${fontWeight} ${tamanho}px ${fontFamily}`;
       if ('letterSpacing' in ctx) (ctx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
-      ctx.fillText(texto, largura / 2, altura / 2);
+
+      if (alinhamento === 'esquerda') {
+        // Uma folga pequena na borda: o warp empurra pixels para fora e sem
+        // isso a primeira letra sai cortada quando o cursor passa perto.
+        ctx.textAlign = 'left';
+        ctx.fillText(texto, tamanho * 0.06, altura / 2);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.fillText(texto, largura / 2, altura / 2);
+      }
       ctx.restore();
 
       textura.image = canvasTexto;
@@ -332,13 +348,15 @@ export default function WarpText({
       gl.getExtension('WEBGL_lose_context')?.loseContext();
       if (gl.canvas.parentElement === alvo) alvo.removeChild(gl.canvas);
     };
-  }, [texto, fontFamily, fontWeight, letterSpacing, tamanho, forca, escala, velocidade, influenciaPonteiro, refracao]);
+  }, [texto, fontFamily, fontWeight, letterSpacing, tamanho, forca, escala, velocidade, influenciaPonteiro, refracao, alinhamento]);
 
   return (
     <div
       ref={container}
       onClick={onClick}
-      style={{ position: 'relative', width: '100%', height: `${tamanho * 1.35}px`, cursor: onClick ? 'pointer' : 'default' }}
+      // 1.35 deixava ~29px de vazio abaixo de uma fonte de 84px. 1.12 dá a
+      // folga que o warp precisa para empurrar os pixels sem cortar, e nada além.
+      style={{ position: 'relative', width: '100%', height: `${tamanho * 1.12}px`, cursor: onClick ? 'pointer' : 'default' }}
     >
       {/* Título comum, que some quando o canvas assume. É ele que aparece se o
           WebGL falhar — e é ele que o leitor de tela lê, porque canvas não tem
@@ -346,7 +364,8 @@ export default function WarpText({
       <span
         style={{
           position: 'absolute', inset: 0, display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
+          alignItems: 'center',
+          justifyContent: alinhamento === 'esquerda' ? 'flex-start' : 'center',
           fontFamily, fontWeight, letterSpacing, fontSize: `${tamanho}px`,
           color: 'var(--text-primary)', pointerEvents: 'none', userSelect: 'none',
           opacity: webglAtivo ? 0 : 1,

@@ -24,6 +24,7 @@ interface Props {
    * telas deixa de ser segredo e vira botão.
    */
   interativo?: boolean;
+  alinhamento?: 'esquerda' | 'centro';
 }
 
 /**
@@ -33,7 +34,7 @@ interface Props {
  * mais violento a cada clique. Quem só passa o olho não percebe nada; quem
  * cutuca de propósito sente a tensão subindo e descobre sozinho.
  */
-export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true }: Props) {
+export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro' }: Props) {
   const [efeitos] = useState(() => decidirEfeitos());
   const [tensao, setTensao] = useState(0);
   const [pulso, setPulso] = useState(0);
@@ -98,6 +99,7 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true }: P
         tamanho={tamanho}
         tensao={tensao}
         pulso={pulso}
+        alinhamento={alinhamento}
         {...(fontFamily ? { fontFamily } : {})}
         {...(interativo ? { onClick: cutucar } : {})}
       />
