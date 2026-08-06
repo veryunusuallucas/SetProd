@@ -135,15 +135,24 @@ export function Home() {
 
       {/* O título é o protagonista da tela — e esconde o easter egg. */}
       <div style={{ position: 'relative', zIndex: 1 }}>
-        <TituloSetProd tamanho={84} />
+        {/* Alinhado à esquerda, na mesma coluna do selo, da saudação, da busca
+            e dos cards — centralizado ele ficava boiando fora da composição. */}
+        <TituloSetProd tamanho={84} alinhamento="esquerda" />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '-8px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
-        <span style={{ fontSize: '10px', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
-          Bem-vindo
+      {/* Uma frase só. Antes eram dois rótulos de tamanhos muito diferentes
+          (10px e 18px) alinhados pela base — o olho lia como duas coisas
+          soltas, não como uma saudação. */}
+      <h1 style={{
+        display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap',
+        margin: '0 0 20px', position: 'relative', zIndex: 1,
+        fontSize: '15px', fontWeight: 500, color: 'var(--text-secondary)',
+      }}>
+        Bem-vindo,
+        <span style={{ fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-primary)' }}>
+          VIADÃO
         </span>
-        <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-secondary)' }}>VIADÃO</h1>
-      </div>
+      </h1>
 
       {/* SEARCH */}
       <motion.div
