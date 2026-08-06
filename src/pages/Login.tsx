@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
+import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
+import { MOLA } from '../components/ui/ia';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,10 +43,24 @@ export function Login() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
-      <div className="card" style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Mesma identidade da tela inicial: as duas são a porta do app. */}
+      <FundoEntrada />
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={MOLA}
+        className="card"
+        style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative', zIndex: 1 }}
+      >
+        {/* O título com warp também aqui: o login é a primeira coisa que a
+            pessoa vê do app. O easter egg fica só na tela inicial — repetido nos
+            dois lugares ele deixaria de ser achado e viraria botão. */}
         <div style={{ textAlign: 'center' }}>
-          <h1 className="text-xl font-bold">SetProd</h1>
-          <p className="text-sm text-secondary">Faça login para acessar suas produções</p>
+          <TituloSetProd tamanho={52} interativo={false} />
+          <p className="text-sm text-secondary" style={{ marginTop: '-4px' }}>
+            Faça login para acessar suas produções
+          </p>
         </div>
 
         {error && (
@@ -102,7 +120,7 @@ export function Login() {
             </p>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
