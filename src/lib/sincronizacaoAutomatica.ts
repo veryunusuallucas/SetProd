@@ -1,4 +1,5 @@
-import { sincronizar, puxar, pendencias } from './sincronizacao';
+import { sincronizar, puxar, pendencias, aplicarLinhas, TABELA_ESPELHO } from './sincronizacao';
+import { supabase } from './supabase';
 import { sincronizarParticipacoes } from './membros';
 import { enviarPendentes } from './arquivos';
 import { migrarAnexosDoProjeto } from './migracaoAnexos';
@@ -117,11 +118,75 @@ export async function puxarProjetosCompartilhados(): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// Tempo real
+// ---------------------------------------------------------------------------
+
+/** Projetos com o canal ao vivo de pé — alimenta o rodapé e o ritmo do relógio. */
+const aoVivo = new Set<string>();
+
+export const estaAoVivo = (projetoId: string) => aoVivo.has(projetoId);
+
+/**
+ * Escuta as mudanças do projeto no servidor e aplica na hora.
+ *
+ * O Realtime entrega a linha inteira, então não precisa nem consultar de volta:
+ * o que chega aqui passa pelo MESMO `aplicarLinhas` do lote periódico. É o que
+ * faz o LWW e as lápides valerem igual nos dois caminhos, sem código separado.
+ *
+ * O QUE ELE NÃO FAZ: mexer no cursor.
+ * O cursor diz "li tudo até aqui", e o Realtime não dá essa garantia — ele pode
+ * perder eventos numa reconexão, e a entrega não é ordenada por `recebido_em`.
+ * Avançar o cursor com o que chega ao vivo criaria um buraco silencioso: a
+ * leitura periódica pularia justamente as linhas que o Realtime deixou passar.
+ * Quem move o cursor é `puxar`, e só ele.
+ */
+function ligarTempoReal(projetoId: string, aoMudarEstado: () => void) {
+  const canal = supabase
+    .channel(`projeto:${projetoId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: TABELA_ESPELHO, filter: `projeto_id=eq.${projetoId}` },
+      async payload => {
+        const linha = payload.new as any;
+        // DELETE só acontece na purga de um projeto inteiro; não há o que
+        // aplicar linha a linha, e o `new` vem vazio.
+        if (!linha?.tabela) return;
+
+        try {
+          const aplicadas = await aplicarLinhas([linha]);
+          if (aplicadas) {
+            anunciar(projetoId, { estado: 'salvo', ultimaVez: Date.now() });
+          }
+        } catch (e) {
+          console.warn('[SetProd] Falha ao aplicar mudança ao vivo:', e);
+        }
+      }
+    )
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') aoVivo.add(projetoId);
+      else aoVivo.delete(projetoId);
+      aoMudarEstado();
+    });
+
+  return () => {
+    aoVivo.delete(projetoId);
+    supabase.removeChannel(canal);
+  };
+}
+
+// ---------------------------------------------------------------------------
 // O laço
 // ---------------------------------------------------------------------------
 
-/** De quanto em quanto tempo, com o projeto aberto na tela. */
-const INTERVALO_MS = 15_000;
+/**
+ * De quanto em quanto tempo o app confere o servidor por conta própria.
+ *
+ * Com o canal ao vivo de pé, a conferência periódica vira rede de segurança —
+ * pega o que o Realtime tiver perdido — e pode ser rara. Sem ele, é o único
+ * jeito de saber que algo mudou, então aperta.
+ */
+const INTERVALO_AO_VIVO_MS = 60_000;
+const INTERVALO_SEM_TEMPO_REAL_MS = 15_000;
 
 /**
  * Mantém um projeto sincronizando enquanto a tela dele estiver aberta.
@@ -132,11 +197,31 @@ const INTERVALO_MS = 15_000;
  */
 export function manterSincronizado(projetoId: string): () => void {
   let vivo = true;
+  let relogio: number | undefined;
+  let ritmoAtual = 0;
 
   const agora = () => { if (vivo) void rodada(projetoId); };
 
+  /**
+   * Ajusta o ritmo conforme o canal ao vivo esteja de pé ou não.
+   *
+   * Só recria o intervalo quando o ritmo REALMENTE muda: reagendar a cada
+   * evento adiaria a conferência para sempre, e ela nunca aconteceria.
+   */
+  const ajustarRitmo = () => {
+    if (!vivo) return;
+    const desejado = estaAoVivo(projetoId) ? INTERVALO_AO_VIVO_MS : INTERVALO_SEM_TEMPO_REAL_MS;
+    if (desejado === ritmoAtual) return;
+
+    ritmoAtual = desejado;
+    window.clearInterval(relogio);
+    relogio = window.setInterval(agora, desejado);
+  };
+
   agora();
-  const relogio = window.setInterval(agora, INTERVALO_MS);
+  ajustarRitmo();
+
+  const desligarTempoReal = ligarTempoReal(projetoId, ajustarRitmo);
 
   const aoVoltarAba = () => { if (!document.hidden) agora(); };
 
@@ -150,6 +235,7 @@ export function manterSincronizado(projetoId: string): () => void {
   return () => {
     vivo = false;
     window.clearInterval(relogio);
+    desligarTempoReal();
     window.removeEventListener('online', agora);
     window.removeEventListener('focus', agora);
     window.removeEventListener('offline', aoCairARede);
