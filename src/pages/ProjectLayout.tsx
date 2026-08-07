@@ -7,8 +7,10 @@ import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, Camera, CheckSquare, CalendarDays, Search,
-  LogOut, DollarSign, ListTodo, Shield, X, Menu, Users, FileText, Truck, Database
+  LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database
 } from 'lucide-react';
+import { CompartilharModal } from '../components/CompartilharModal';
+import { participacaoLocal, sincronizarParticipacoes } from '../lib/membros';
 
 export const LayoutContext = createContext<{
   openPanel: (content: React.ReactNode) => void;
@@ -25,27 +27,21 @@ export function ProjectLayout() {
   const location = useLocation();
 
   const projeto = useLiveQuery(() => db.projetos.get(id!), [id]);
-  const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(id!).toArray(), [id]) || [];
-  
+
   const [rightPanelContent, setRightPanelContent] = useState<React.ReactNode | null>(null);
   
-  const [meuPerfilId, setMeuPerfilId] = useState(() => localStorage.getItem('mock_perfil_id') || '');
-  const [meuPapel, setMeuPapel] = useState(() => localStorage.getItem('mock_papel') || 'producao');
-  
-  const mudarMeuPerfil = (id: string) => {
-    setMeuPerfilId(id);
-    localStorage.setItem('mock_perfil_id', id);
-    const p = perfis.find(x => x.id === id);
-    let novoPapel = 'producao';
-    if (p && p.funcao?.toLowerCase().includes('foto')) {
-      novoPapel = 'fotografia';
-    } else if (p && p.funcao?.toLowerCase().includes('ac')) {
-      novoPapel = 'ac';
-    }
-    setMeuPapel(novoPapel);
-    localStorage.setItem('mock_papel', novoPapel);
-    window.dispatchEvent(new Event('storage'));
-  };
+  const [mostrarCompartilhar, setMostrarCompartilhar] = useState(false);
+  const [participacao, setParticipacao] = useState(() => participacaoLocal(id!));
+
+  // A participação é buscada de novo ao abrir o projeto: quem entrou por
+  // convite em outro aparelho precisa aparecer aqui sem ter que sair e voltar.
+  useEffect(() => {
+    let vivo = true;
+    sincronizarParticipacoes().then(() => {
+      if (vivo) setParticipacao(participacaoLocal(id!));
+    });
+    return () => { vivo = false; };
+  }, [id]);
 
   const currentPath = location.pathname;
 
@@ -165,25 +161,25 @@ export function ProjectLayout() {
         </button>
       </div>
 
-      {/* Seletor Mock de Usuário Logado */}
-      <div style={{ marginTop: '12px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-        <div className="text-xs font-bold uppercase tracking-widest text-secondary mb-2" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Shield size={14} /> Quem está usando?
-        </div>
-        <select 
-          value={meuPerfilId} 
-          onChange={e => mudarMeuPerfil(e.target.value)}
-          style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontSize: '13px' }}
-        >
-          <option value="">-- Modo Root / Admin --</option>
-          {perfis.filter(p => p.id !== 'caixa_central').map(p => (
-            <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Membro'})</option>
-          ))}
-        </select>
-        <div className="text-xs text-muted mt-2" style={{ lineHeight: 1.3 }}>
-          Papel atual: <strong>{meuPapel}</strong>
-        </div>
-      </div>
+      {/*
+        Aqui ficava o seletor "Quem está usando?", que deixava escolher o
+        próprio papel num dropdown. Com login de verdade isso não faz mais
+        sentido: o papel vem da conta, e quem decide o que ela pode é a RLS do
+        servidor — não um <select> que qualquer um mexe.
+      */}
+      <button
+        className="sidebar-link"
+        onClick={() => setMostrarCompartilhar(true)}
+        style={{ marginTop: '12px' }}
+      >
+        <Users size={18} />
+        <span>Quem tem acesso</span>
+        {participacao?.apelido && (
+          <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
+            {participacao.apelido}
+          </span>
+        )}
+      </button>
     </>
   );
 
@@ -273,18 +269,16 @@ export function ProjectLayout() {
           <span style={{ fontSize: '10px', fontWeight: 600 }}>$$$</span>
         </NavLink>
 
-        {/* 4th Adaptive Slot */}
-        {meuPapel === 'fotografia' ? (
-          <NavLink to={`/projeto/${id}/equipamentos`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <Camera size={20} />
-            <span style={{ fontSize: '10px', fontWeight: 600 }}>Equips</span>
-          </NavLink>
-        ) : (
-          <NavLink to={`/projeto/${id}/tasks`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <ListTodo size={20} />
-            <span style={{ fontSize: '10px', fontWeight: 600 }}>Tasks</span>
-          </NavLink>
-        )}
+        {/*
+          Este slot mudava conforme o papel simulado (fotografia via
+          Equipamentos, resto via Tasks). Com A e B no mesmo nível não há mais
+          de onde tirar essa escolha, então fica Tasks, que serve a todo mundo —
+          Equipamentos continua a um toque, pelo "Mais".
+        */}
+        <NavLink to={`/projeto/${id}/tasks`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <ListTodo size={20} />
+          <span style={{ fontSize: '10px', fontWeight: 600 }}>Tasks</span>
+        </NavLink>
 
         {/* More Button */}
         <button className="nav-item" onClick={() => setMobileSidebarOpen(true)}>
@@ -293,6 +287,16 @@ export function ProjectLayout() {
         </button>
       </nav>
 
+      {mostrarCompartilhar && (
+        <CompartilharModal
+          projetoId={id!}
+          nomeProjeto={projeto.nome}
+          aoFechar={() => {
+            setMostrarCompartilhar(false);
+            setParticipacao(participacaoLocal(id!));
+          }}
+        />
+      )}
     </div>
   );
 }

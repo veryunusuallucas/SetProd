@@ -8,6 +8,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { Login } from './pages/Login';
 import { CadastroEquipe } from './pages/CadastroEquipe';
 import { ResponderPesquisa } from './pages/ResponderPesquisa';
+import { AceitarConvite } from './pages/AceitarConvite';
 import { LocacoesModule } from './pages/LocacoesModule';
 import { DiariasList } from './pages/DiariasList';
 import { DiariaModule } from './pages/DiariaModule';
@@ -50,6 +51,9 @@ function App() {
             <Route path="/cadastro/:projetoId" element={<CadastroEquipe />} />
             {/* Link publico da pesquisa: sem login, como o de cadastro. */}
             <Route path="/pesquisa/:pesquisaId" element={<ResponderPesquisa />} />
+            {/* Fora do ProtectedRoute: quem chega pelo link de convite pode não
+                ter conta ainda, e a tela explica antes de mandar para o login. */}
+            <Route path="/convite/:token" element={<AceitarConvite />} />
             
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             

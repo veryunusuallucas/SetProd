@@ -7,6 +7,7 @@ import type { Projeto } from '../types';
 import { Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
+import { entrarComoFundador } from '../lib/membros';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
@@ -63,6 +64,13 @@ export function Home() {
     };
 
     await db.projetos.add(projetoCriado);
+
+    // Entra como dono ANTES de qualquer dado subir: o servidor só aceita o
+    // fundador enquanto o projeto está vazio. É o que impede que um projeto
+    // abandonado seja reclamado por quem souber o id — e o preço é esta ordem.
+    // Se falhar (sem internet), o projeto existe local e só não é
+    // compartilhável até a participação entrar.
+    await entrarComoFundador(id, 'Equipe A');
 
     // Adiciona o "Caixa Central" como usuário fantasma sempre
     await db.perfis.add({
