@@ -10,6 +10,7 @@ import {
   LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
+import { StatusSync } from '../components/StatusSync';
 import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 
@@ -218,6 +219,8 @@ export function ProjectLayout() {
           </span>
         )}
       </button>
+
+      <StatusSync projetoId={id!} />
     </>
   );
 

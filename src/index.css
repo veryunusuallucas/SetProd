@@ -380,3 +380,15 @@ input[type="checkbox"]:checked::before {
 }
 .btn-chip:active { transform: scale(0.96); }
 .btn-chip.is-danger { border-color: var(--color-danger); color: var(--color-danger); }
+
+/* Ícone girando — usado no indicador de "Salvando…" do rodapé da sidebar.
+   Um ícone parado ali passa a impressão de travado. */
+@keyframes setprod-girar {
+  to { transform: rotate(360deg); }
+}
+.girando {
+  animation: setprod-girar 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; opacity: 0.6; }
+}
