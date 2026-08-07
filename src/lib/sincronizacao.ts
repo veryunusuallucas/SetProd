@@ -301,16 +301,22 @@ export function pendencias(projetoId: string) {
  * diz isso: o número oficial mora no painel do Supabase, que mede a conta
  * inteira e não daria para separar por projeto sem acesso de admin.
  */
-export async function tamanhoAproximado(projetoId: string): Promise<number> {
-  let bytes = 0;
+export async function tamanhoAproximado(projetoId: string): Promise<{ dados: number; anexos: number; total: number }> {
+  let dados = 0;
 
   for (const tabela of TABELAS_SINCRONIZADAS) {
     const linhas = tabela === 'projetos'
       ? await db.table(tabela).where('id').equals(projetoId).toArray()
       : await db.table(tabela).where('projeto_id').equals(projetoId).toArray().catch(() => []);
 
-    for (const linha of linhas) bytes += JSON.stringify(linha).length;
+    for (const linha of linhas) dados += JSON.stringify(linha).length;
   }
 
-  return bytes;
+  // Os anexos contam à parte porque quase sempre SÃO o número: um roteiro
+  // sozinho pesa mais que todo o resto da produção somado. Juntar os dois num
+  // total só esconderia onde o espaço está indo.
+  const arquivos = await db.arquivos.where('projeto_id').equals(projetoId).toArray().catch(() => []);
+  const anexos = arquivos.reduce((soma, a) => soma + (a.tamanho || 0), 0);
+
+  return { dados, anexos, total: dados + anexos };
 }
