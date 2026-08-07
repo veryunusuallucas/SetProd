@@ -4,7 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Folder, File, Link as LinkIcon, Plus, ChevronRight, Edit2, Trash2, X, Upload } from 'lucide-react';
 import type { Pasta, Documento } from '../types';
-import { inspecionarLink, lerArquivoComoDataURL, LIMITE_UPLOAD_BYTES, formatarTamanho, descreverOrigem, apagarOrigemDoDocumento } from '../lib/documentos';
+import { inspecionarLink, formatarTamanho, descreverOrigem, apagarOrigemDoDocumento } from '../lib/documentos';
+import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
+import { useArquivo } from '../hooks/useArquivo';
 
 const ROTULO_ORIGEM: Record<string, string> = {
   roteiro: 'Roteiro',
@@ -78,22 +80,24 @@ export function DocumentosModule() {
     e.target.value = '';
     if (!file || !pastaSelecionada) return;
 
-    if (file.size > LIMITE_UPLOAD_BYTES) {
-      alert(`Arquivo muito grande (máx ${LIMITE_UPLOAD_BYTES / 1024 / 1024}MB para funcionar offline). Prefira colar um link do Drive.`);
+    if (file.size > LIMITE_BYTES) {
+      alert(`Arquivo muito grande (máx ${Math.round(LIMITE_BYTES / 1024 / 1024)}MB). Prefira colar um link do Drive.`);
       return;
     }
 
     setEnviando(true);
     try {
-      const dataUrl = await lerArquivoComoDataURL(file);
+      // Vai para o Storage com cópia no aparelho: a equipe toda alcança, e
+      // continua abrindo sem sinal.
+      const referencia = await guardarArquivo(id!, file, file.name, file.type);
       await db.documentos.add({
         id: crypto.randomUUID(),
         projeto_id: id!,
         pasta_id: pastaSelecionada.id,
         nome: file.name,
         tipo: 'upload',
-        url: dataUrl,
-        preview_url: file.type.startsWith('image/') ? dataUrl : undefined,
+        url: referencia,
+        preview_url: file.type.startsWith('image/') ? referencia : undefined,
         tamanho: file.size,
         data_criacao: Date.now(),
         origem: 'manual',
@@ -335,14 +339,7 @@ export function DocumentosModule() {
         {documentos?.map(doc => (
           <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '8px', backgroundColor: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-              {doc.preview_url ? (
-                <img
-                  src={doc.preview_url}
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={e => { e.currentTarget.style.display = 'none'; }}
-                />
-              ) : doc.tipo === 'link' ? <LinkIcon size={22} className="text-accent" /> : <File size={22} className="text-info" />}
+              <Miniatura doc={doc} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -373,16 +370,7 @@ export function DocumentosModule() {
               <button onClick={() => deleteDoc(doc)} className="btn-icon text-danger" style={{ padding: '8px' }}>
                 <Trash2 size={16} />
               </button>
-              <a
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download={doc.tipo === 'upload' ? doc.nome : undefined}
-                className="btn-primary"
-                style={{ fontSize: '12px', padding: '8px 16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
-              >
-                Abrir
-              </a>
+              <BotaoAbrir doc={doc} />
             </div>
           </div>
         ))}
@@ -395,4 +383,59 @@ export function DocumentosModule() {
       {renderModal()}
     </div>
   );
+}
+
+/**
+ * O botão "Abrir" de um documento.
+ *
+ * Componente próprio porque o endereço do arquivo agora é resolvido de forma
+ * assíncrona (aparelho ou Storage), e hook não roda dentro de `.map`.
+ */
+function BotaoAbrir({ doc }: { doc: Documento }) {
+  const endereco = useArquivo(doc.url);
+
+  const estilo: React.CSSProperties = {
+    fontSize: '12px', padding: '8px 16px', backgroundColor: 'var(--bg-surface)',
+    color: 'var(--text-primary)', border: '1px solid var(--border-color)',
+  };
+
+  if (!endereco) {
+    return (
+      <span className="text-xs text-muted" style={{ ...estilo, opacity: 0.6, borderRadius: '8px' }}>
+        Indisponível offline
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={endereco}
+      target="_blank"
+      rel="noopener noreferrer"
+      download={doc.tipo === 'upload' ? doc.nome : undefined}
+      className="btn-primary"
+      style={estilo}
+    >
+      Abrir
+    </a>
+  );
+}
+
+/** Miniatura do documento — mesma resolução assíncrona do botão Abrir. */
+function Miniatura({ doc }: { doc: Documento }) {
+  const endereco = useArquivo(doc.preview_url);
+
+  if (doc.preview_url && endereco) {
+    return (
+      <img
+        src={endereco}
+        alt=""
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        onError={e => { e.currentTarget.style.display = 'none'; }}
+      />
+    );
+  }
+  return doc.tipo === 'link'
+    ? <LinkIcon size={22} className="text-accent" />
+    : <File size={22} className="text-info" />;
 }

@@ -11,22 +11,15 @@ import { supabase, supabaseConfigurado } from './supabase';
 export const TABELA_ESPELHO = 'registros';
 
 /**
- * Tabelas que ainda NÃO viajam, porque carregam binário em base64 dentro da
- * linha: o PDF do roteiro, o arquivo do documento.
+ * Todas as tabelas viajam.
  *
- * Um roteiro de 18 páginas passa de 5 MB. Mandar isso por linha de banco a cada
- * alteração entope o plano free e estoura o limite de payload do Realtime — e
- * pior, faz uma troca de roteiro empurrar 5 MB para cada pessoa conectada.
- *
- * Sai desta lista quando os binários forem para o Supabase Storage e a linha
- * passar a guardar só o caminho.
+ * `roteiro_pdfs` e `documentos` ficaram de fora por um tempo porque carregavam
+ * o arquivo em base64 dentro da linha — um roteiro de 18 páginas passa de 5 MB,
+ * e cada alteração empurraria isso de novo para cada pessoa conectada. Agora o
+ * arquivo mora no Storage (`arquivos.ts`) e a linha guarda só a referência, que
+ * cabe em algumas dezenas de bytes.
  */
-export const TABELAS_ADIADAS = ['roteiro_pdfs', 'documentos'] as const;
-
-/** O que efetivamente sobe e desce hoje. */
-export const TABELAS_EM_SINCRONIA = TABELAS_SINCRONIZADAS.filter(
-  t => !(TABELAS_ADIADAS as readonly string[]).includes(t)
-);
+export const TABELAS_EM_SINCRONIA = TABELAS_SINCRONIZADAS;
 
 /**
  * Quantas linhas por requisição.

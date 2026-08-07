@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import type { TipoDivisao } from '../types';
+import type { TipoDivisao, Despesa } from '../types';
 import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon } from 'lucide-react';
-import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink, LIMITE_UPLOAD_BYTES } from '../lib/documentos';
+import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '../lib/documentos';
+import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
+import { useArquivo } from '../hooks/useArquivo';
 
 const CATEGORIAS = [
   { id: 'transporte', label: 'Transporte', emoji: '🚗' },
@@ -58,20 +60,23 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
 
   const [comprovanteNome, setComprovanteNome] = useState<string>('');
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > LIMITE_UPLOAD_BYTES) {
-      alert(`Arquivo muito grande (máx ${LIMITE_UPLOAD_BYTES / 1024 / 1024}MB). Prefira anexar um link do Drive.`);
+    if (file.size > LIMITE_BYTES) {
+      alert(`Arquivo muito grande (máx ${Math.round(LIMITE_BYTES / 1024 / 1024)}MB). Prefira anexar um link do Drive.`);
       e.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setComprovanteBase64(ev.target?.result as string);
+    try {
+      // Vai para o Storage: o comprovante precisa chegar em quem faz o acerto,
+      // que quase nunca é quem tirou a foto da nota.
+      setComprovanteBase64(await guardarArquivo(projetoId, file, file.name, file.type));
       setComprovanteNome(file.name);
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      alert('Não foi possível anexar o comprovante. ' + (err?.message || ''));
+    }
+    e.target.value = '';
   };
 
   /** Alternativa ao upload: link do Drive, que não gasta Storage (v4 §7). */
@@ -451,11 +456,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
                   </div>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                     {d.reembolsavel && <span className="text-xs font-bold px-2 py-1 bg-surface rounded text-danger">Reembolsável</span>}
-                    {d.comprovante && (
-                      <a href={d.comprovante} download={`Comprovante_${d.descricao}.pdf`} className="text-xs font-bold px-2 py-1 bg-surface rounded text-accent" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer">
-                        Ver Comprovante
-                      </a>
-                    )}
+                    {d.comprovante && <LinkComprovante despesa={d} />}
                   </div>
                 </div>
 
@@ -470,5 +471,32 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
       </div>
 
     </div>
+  );
+}
+
+/**
+ * Link "Ver Comprovante".
+ *
+ * Componente próprio porque o comprovante agora mora no Storage e o endereço é
+ * resolvido de forma assíncrona — hook não roda dentro de `.map`.
+ */
+function LinkComprovante({ despesa }: { despesa: Despesa }) {
+  const endereco = useArquivo(despesa.comprovante);
+
+  if (!endereco) {
+    return <span className="text-xs font-bold px-2 py-1 bg-surface rounded text-muted">Comprovante (sem sinal)</span>;
+  }
+
+  return (
+    <a
+      href={endereco}
+      download={`Comprovante_${despesa.descricao}`}
+      className="text-xs font-bold px-2 py-1 bg-surface rounded text-accent"
+      style={{ textDecoration: 'none' }}
+      target="_blank"
+      rel="noreferrer"
+    >
+      Ver Comprovante
+    </a>
   );
 }

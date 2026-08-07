@@ -204,6 +204,11 @@ begin
 end;
 $$;
 
+-- Nota sobre os arquivos: quem apaga os anexos do Storage é o app, ANTES de
+-- chamar esta função, pela API de storage. Apagar a linha de `storage.objects`
+-- daqui tiraria o arquivo da listagem mas deixaria o binário para trás — o
+-- espaço continuaria ocupado, sem nada apontando para ele.
+
 
 -- ###########################################################################
 -- PARTE 3 — RLS
@@ -368,7 +373,48 @@ $$;
 
 
 -- ###########################################################################
--- PARTE 5 — DEPOIS DE RODAR
+-- PARTE 5 — ARQUIVOS (Storage)
+-- ###########################################################################
+--
+-- Roteiro em PDF, anexos da Ordem do Dia, storyboard, documentos. Antes eles
+-- viviam em base64 DENTRO da linha: um roteiro de 18 páginas passa de 5 MB, e
+-- cada alteração empurraria esses 5 MB de novo, para cada pessoa conectada.
+--
+-- Aqui o arquivo vai para o Storage e a linha guarda só o caminho.
+
+insert into storage.buckets (id, name, public)
+values ('anexos', 'anexos', false)
+on conflict (id) do nothing;
+
+-- O bucket NÃO é público de propósito. Público significa "qualquer um com a
+-- URL", e a URL de um roteiro circula em conversa de equipe. Aqui cada leitura
+-- passa pela mesma regra de participação do resto.
+
+-- O caminho é sempre `<projeto_id>/<arquivo>` — é essa primeira pasta que diz
+-- de quem é o arquivo, e é ela que a política consulta.
+drop policy if exists "anexos: membros leem" on storage.objects;
+create policy "anexos: membros leem" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'anexos' and public.e_membro((storage.foldername(name))[1]));
+
+drop policy if exists "anexos: membros enviam" on storage.objects;
+create policy "anexos: membros enviam" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'anexos' and public.e_membro((storage.foldername(name))[1]));
+
+drop policy if exists "anexos: membros substituem" on storage.objects;
+create policy "anexos: membros substituem" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'anexos' and public.e_membro((storage.foldername(name))[1]));
+
+drop policy if exists "anexos: membros apagam" on storage.objects;
+create policy "anexos: membros apagam" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'anexos' and public.e_membro((storage.foldername(name))[1]));
+
+
+-- ###########################################################################
+-- PARTE 6 — DEPOIS DE RODAR
 -- ###########################################################################
 -- Me coloque como super-admin (troque o e-mail):
 --
