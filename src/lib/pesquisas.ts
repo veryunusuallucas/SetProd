@@ -20,6 +20,48 @@ function ehTabelaAusente(erro: any) {
   return erro?.code === 'PGRST205' || /schema cache|does not exist/i.test(erro?.message || '');
 }
 
+/**
+ * Tira a pesquisa do ar: some o link e somem as respostas.
+ *
+ * Apagar só no aparelho deixava a pesquisa **viva para quem tinha o link** —
+ * ela sumia da sua tela e continuava recebendo respostas, num lugar que você
+ * já não enxergava. Para quem responde, "apagada" tem que significar apagada.
+ *
+ * As respostas saem PRIMEIRO. Na ordem inversa, uma falha no meio deixaria
+ * respostas órfãs, apontando para uma pesquisa que já não existe — invisíveis
+ * no app e impossíveis de limpar pela interface.
+ */
+export async function apagarPesquisaPublica(pesquisaId: string): Promise<void> {
+  if (!supabaseConfigurado) return;
+
+  const conferir = (error: any, oQue: string) => {
+    if (!error || ehTabelaAusente(error)) return;
+    throw new Error(`não consegui apagar ${oQue}: ${error.message}`);
+  };
+
+  const { error: erroRespostas } = await supabase
+    .from(TABELA_RESPOSTA).delete().eq('pesquisa_id', pesquisaId);
+  conferir(erroRespostas, 'as respostas');
+
+  const { data: apagadas, error: erroPesquisa } = await supabase
+    .from(TABELA_PESQUISA).delete().eq('id', pesquisaId).select('id');
+  conferir(erroPesquisa, 'a pesquisa');
+
+  // O `.select()` acima existe para isto: um DELETE que a RLS barra NÃO dá
+  // erro — ele apaga zero linhas e responde sucesso. Sem conferir o que voltou,
+  // a tela diria "apagada" com a pesquisa ainda no ar.
+  //
+  // Mas zero linhas tem DUAS causas, e confundi-las seria assustar à toa:
+  // ou a pesquisa já tinha sumido (apagada em outro aparelho, ou nunca chegou
+  // a ser publicada), ou a RLS barrou. Só a segunda é problema.
+  if (apagadas && apagadas.length === 0) {
+    const aindaExiste = await lerPesquisaPublica(pesquisaId).catch(() => null);
+    if (aindaExiste) {
+      throw new Error('o servidor recusou a exclusão — o link continua ativo.');
+    }
+  }
+}
+
 /** Publica (ou republica) a pesquisa para o link funcionar. */
 export async function publicarPesquisa(pesquisa: Pesquisa): Promise<void> {
   if (!supabaseConfigurado) throw new Error('Supabase não está configurado neste ambiente.');
