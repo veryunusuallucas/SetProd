@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { participacaoLocal, garantirParticipacao } from '../lib/membros';
+import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 
 export const LayoutContext = createContext<{
   openPanel: (content: React.ReactNode) => void;
@@ -40,12 +41,20 @@ export function ProjectLayout() {
   // convite em outro aparelho precisa aparecer aqui sem ter que sair e voltar.
   useEffect(() => {
     let vivo = true;
+    let parar: (() => void) | undefined;
+
     // `garantir` e não só `sincronizar`: se o registro do fundador falhou na
     // criação (sem internet), abrir o projeto é a segunda chance dele.
+    //
+    // E a participação vem ANTES de ligar o sync: sem ela a RLS recusa tudo, e
+    // a primeira rodada seria só um 42501 inútil.
     garantirParticipacao(id!).then(() => {
-      if (vivo) setParticipacao(participacaoLocal(id!));
+      if (!vivo) return;
+      setParticipacao(participacaoLocal(id!));
+      parar = manterSincronizado(id!);
     });
-    return () => { vivo = false; };
+
+    return () => { vivo = false; parar?.(); };
   }, [id]);
 
   const currentPath = location.pathname;
