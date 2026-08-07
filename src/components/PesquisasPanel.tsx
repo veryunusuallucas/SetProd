@@ -9,7 +9,7 @@ import { db } from '../db/db';
 import type { Pesquisa, Pergunta, TipoPergunta } from '../types';
 import {
   publicarPesquisa, puxarRespostas, apurar, resumirParaIA, recomendacaoDesatualizada,
-  type ApuracaoPergunta,
+  apagarPesquisaPublica, type ApuracaoPergunta,
 } from '../lib/pesquisas';
 import { recomendarPesquisa } from '../lib/gemini';
 import { AIButton } from './ui/AIButton';
@@ -84,7 +84,23 @@ export function PesquisasPanel({ projetoId }: { projetoId: string }) {
   };
 
   const apagar = async (p: Pesquisa) => {
-    if (!confirm(`Apagar "${p.titulo}" e as respostas dela?`)) return;
+    const quantas = respostas.filter(r => r.pesquisa_id === p.id).length;
+    const aviso = `Apagar "${p.titulo}"?\n\n`
+      + `O link para de funcionar para todo mundo`
+      + (quantas ? ` e ${quantas} resposta(s) serão perdidas.` : '.');
+    if (!confirm(aviso)) return;
+
+    setAviso('');
+    try {
+      // O servidor primeiro. Se der errado, a pesquisa continua na sua tela —
+      // que é o certo: apagar aqui e falhar lá deixaria o link no ar sem você
+      // ter como voltar nele.
+      await apagarPesquisaPublica(p.id);
+    } catch (e: any) {
+      setAviso(`Não apaguei: ${e?.message || e}`);
+      return;
+    }
+
     await db.pesquisas.delete(p.id);
     const daPesquisa = respostas.filter(r => r.pesquisa_id === p.id);
     await db.respostas_pesquisa.bulkDelete(daPesquisa.map(r => r.id));

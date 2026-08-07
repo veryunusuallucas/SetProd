@@ -10,6 +10,7 @@ import { criarDepartamentosPadrao } from '../lib/creditos';
 import { entrarComoFundador, purgarProjetoNoServidor } from '../lib/membros';
 import { puxarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
 import { apagarAnexosDoProjeto } from '../lib/arquivos';
+import { apagarPesquisaPublica } from '../lib/pesquisas';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
@@ -142,6 +143,18 @@ export function Home() {
       await db.table(tabela).where('projeto_id').equals(id).delete().catch(() => {});
     }
     await db.notificacoes.where('projeto_id').equals(id).delete().catch(() => {});
+
+    // As pesquisas saem do ar ANTES de sumirem daqui.
+    //
+    // Apagar só a linha local deixava o link de cada pesquisa vivo para quem o
+    // tivesse — a produção acabava, e a enquete continuava recebendo respostas
+    // num lugar que ninguém mais abria.
+    const pesquisasDoProjeto = await db.pesquisas.where('projeto_id').equals(id).toArray();
+    for (const p of pesquisasDoProjeto) {
+      await apagarPesquisaPublica(p.id).catch(e =>
+        console.warn('[SetProd] Link da pesquisa continua ativo:', p.titulo, e?.message)
+      );
+    }
     await db.pesquisas.where('projeto_id').equals(id).delete().catch(() => {});
     await db.respostas_pesquisa.where('projeto_id').equals(id).delete().catch(() => {});
     await db.configuracoes.delete(id);
