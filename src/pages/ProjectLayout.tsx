@@ -26,7 +26,10 @@ export function ProjectLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const projeto = useLiveQuery(() => db.projetos.get(id!), [id]);
+  // O `?? null` é o que separa "ainda procurando" de "procurei e não existe":
+  // o Dexie devolve `undefined` nos dois casos, e sem esta distinção a tela
+  // fica em "Carregando..." para sempre quando o projeto não está aqui.
+  const projeto = useLiveQuery(async () => (await db.projetos.get(id!)) ?? null, [id]);
 
   const [rightPanelContent, setRightPanelContent] = useState<React.ReactNode | null>(null);
   
@@ -53,7 +56,31 @@ export function ProjectLayout() {
   // Mobile sidebar state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  if (!projeto) return <div>Carregando...</div>;
+  // `undefined` é o Dexie ainda respondendo; `null` é resposta dada e não achou.
+  if (projeto === undefined) return <div className="screen-padding">Carregando...</div>;
+
+  if (!projeto) {
+    // Beco sem saída que o compartilhamento cria: você entrou na produção pelo
+    // convite, mas o dado ainda mora no aparelho de quem te convidou. Antes só
+    // dava para abrir projeto que já estava aqui, então isto não existia — e
+    // sem este aviso a tela ficaria em "Carregando..." para sempre.
+    return (
+      <div className="screen-padding" style={{ maxWidth: '520px', margin: '10vh auto', textAlign: 'center' }}>
+        <Users size={32} style={{ opacity: 0.6 }} />
+        <h2 className="text-xl font-bold" style={{ marginTop: '16px' }}>
+          {participacao ? 'Produção ainda não está neste aparelho' : 'Produção não encontrada'}
+        </h2>
+        <p className="text-sm text-muted" style={{ marginTop: '10px', lineHeight: 1.5 }}>
+          {participacao
+            ? 'Você tem acesso, mas o conteúdo ainda vive no aparelho de quem te convidou. A sincronização entre equipes é a próxima etapa.'
+            : 'Ela não existe neste navegador e você não participa dela.'}
+        </p>
+        <button className="btn btn-primary" onClick={() => navigate('/')} style={{ marginTop: '20px' }}>
+          Voltar ao início
+        </button>
+      </div>
+    );
+  }
 
   const navGroups = [
     {
