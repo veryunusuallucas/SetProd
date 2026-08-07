@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa } from '../types';
+import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -84,6 +84,9 @@ export class SetMoneyDB extends Dexie {
   veiculos!: Table<Veiculo, string>;
   motoristas!: Table<Motorista, string>;
 
+  /** Cópia local dos anexos que vivem no Storage. Cache, não dado — não sincroniza. */
+  arquivos!: Table<ArquivoLocal, string>;
+
   constructor() {
     super('SetMoneyDB');
     this.version(10).stores({
@@ -159,6 +162,18 @@ export class SetMoneyDB extends Dexie {
       await tx.table('diaria_tasks').toCollection().modify(t => {
         t.projeto_id = projetoPorDiaria.get(t.diaria_id);
       });
+    });
+
+    // v16: cópia local dos arquivos que vivem no Storage.
+    //
+    // Sem ela, tirar os anexos de dentro das linhas custaria o offline: hoje o
+    // roteiro abre no set sem sinal porque está no IndexedDB. O Storage passa a
+    // ser o transporte entre as equipes; esta tabela é o que mantém o arquivo à
+    // mão no aparelho.
+    //
+    // Fora do sync de propósito — é cache, não dado. Cada aparelho monta o seu.
+    this.version(16).stores({
+      arquivos: 'caminho, projeto_id'
     });
 
     /**

@@ -7,6 +7,7 @@ import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp, GripVertica
 import type { Cena, Plano } from '../types';
 
 import { AnexoInput } from '../components/AnexoInput';
+import { ImagemAnexo } from '../components/ImagemAnexo';
 import { BreakdownModule } from './BreakdownModule';
 import { ElementosManager } from '../components/ElementosManager';
 import { StripboardTimeline } from '../components/StripboardTimeline';
@@ -311,6 +312,7 @@ export function DecupagemModule() {
                     <div className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>{cena.ambiente} · {cena.periodo}</div>
                   </div>
                   <AnexoInput
+                    projetoId={projetoId}
                     accept="image/*"
                     label="Referência"
                     onAddLink={() => {}}
@@ -324,14 +326,11 @@ export function DecupagemModule() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
                     {(cena.anexos || []).map((url, i) => (
                       <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}>
-                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', height: '110px' }}>
-                          <img
-                            src={url}
-                            alt={`Referência ${i + 1} da cena ${cena.numero}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={e => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        </a>
+                        <ImagemAnexo
+                          valor={url}
+                          alt={`Referência ${i + 1} da cena ${cena.numero}`}
+                          estiloLink={{ display: 'block', height: '110px' }}
+                        />
                         <button
                           onClick={() => removerAnexo(cena, i)}
                           className="btn-icon"
@@ -405,9 +404,12 @@ export function DecupagemModule() {
                   {cena.anexos && cena.anexos.length > 0 && (
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                       {cena.anexos.map((url, i) => (
-                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '60px', height: '60px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                          <img src={url} alt={`Storyboard ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
-                        </a>
+                        <ImagemAnexo
+                          key={i}
+                          valor={url}
+                          alt={`Storyboard ${i}`}
+                          estiloLink={{ display: 'block', width: '60px', height: '60px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)' }}
+                        />
                       ))}
                     </div>
                   )}
@@ -418,7 +420,7 @@ export function DecupagemModule() {
                     breakdown de ninguém. A análise de verdade acontece na aba
                     Roteiro, cena a cena e com o texto da cena. */}
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <AnexoInput onAddLink={(url) => handleAddAnexo(cena, url)} />
+                  <AnexoInput projetoId={projetoId} onAddLink={(url) => handleAddAnexo(cena, url)} />
                   <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted hover-danger" style={{ padding: '8px', border: 'none', background: 'transparent' }} title="Excluir Cena"><Trash2 size={18} /></button>
                 </div>
               </div>

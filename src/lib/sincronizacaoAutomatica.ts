@@ -1,5 +1,7 @@
 import { sincronizar, puxar, pendencias } from './sincronizacao';
 import { sincronizarParticipacoes } from './membros';
+import { enviarPendentes } from './arquivos';
+import { migrarAnexosDoProjeto } from './migracaoAnexos';
 import { supabaseConfigurado } from './supabase';
 
 /**
@@ -59,6 +61,15 @@ export async function rodada(projetoId: string): Promise<void> {
   anunciar(projetoId, { estado: 'sincronizando' });
 
   try {
+    // Os anexos que ainda estavam em base64 dentro das linhas viram arquivo de
+    // verdade. Uma vez por projeto, e só o que faltou — ver migracaoAnexos.
+    await migrarAnexosDoProjeto(projetoId);
+
+    // Anexos criados sem sinal sobem agora. Antes do `sincronizar` de propósito:
+    // a linha que aponta para o arquivo não deveria chegar na outra equipe
+    // antes do arquivo em si.
+    await enviarPendentes(projetoId);
+
     await sincronizar(projetoId);
     anunciar(projetoId, {
       estado: 'salvo',

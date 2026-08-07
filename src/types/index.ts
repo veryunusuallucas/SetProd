@@ -177,6 +177,27 @@ export interface AuditLog {
 }
 
 /**
+ * Cópia local de um anexo que vive no Storage.
+ *
+ * O arquivo em si sai das linhas (um roteiro em base64 passa de 5 MB e viajaria
+ * inteiro a cada alteração), mas não pode sair do aparelho: no set, sem sinal,
+ * o roteiro precisa abrir. Esta tabela é essa cópia — cache, não dado, e por
+ * isso fora do sync: cada aparelho monta a sua conforme abre os arquivos.
+ */
+export interface ArquivoLocal {
+  /** `<projeto_id>/<uuid>-<nome>` — o mesmo caminho lá no Storage. */
+  caminho: string;
+  projeto_id: string;
+  nome: string;
+  tipo: string;   // MIME
+  tamanho: number;
+  blob: Blob;
+  /** false enquanto o arquivo ainda não subiu (criado offline). */
+  enviado: boolean;
+  criado_em: number;
+}
+
+/**
  * Caixa de saída do sync: o que este aparelho ainda não mandou para o servidor.
  *
  * Duas escolhas de forma que resolvem o problema da fila antiga (v3), que

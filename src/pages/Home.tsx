@@ -9,6 +9,7 @@ import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
 import { entrarComoFundador, purgarProjetoNoServidor } from '../lib/membros';
 import { puxarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
+import { apagarAnexosDoProjeto } from '../lib/arquivos';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
@@ -145,6 +146,12 @@ export function Home() {
     await db.respostas_pesquisa.where('projeto_id').equals(id).delete().catch(() => {});
     await db.configuracoes.delete(id);
     await db.projetos.delete(id);
+
+    // Os anexos primeiro: quem apaga arquivo do Storage é o app, e depois de
+    // purgar a participação eu já não teria permissão para isso.
+    await apagarAnexosDoProjeto(id).catch(e =>
+      console.warn('[SetProd] Anexos não foram apagados do servidor:', e?.message)
+    );
 
     // E some do servidor também: a participação e o espelho não caem sozinhos
     // quando o projeto é apagado aqui. Sem isto sobram participações órfãs,

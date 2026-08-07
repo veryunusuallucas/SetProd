@@ -15,6 +15,7 @@ import { sincronizarElementos } from '../lib/elementos';
 import { pegarVez, liberarVez, marcarProgresso, manterVivo, execucaoAtiva, type Vaga, type ExecucaoAtiva } from '../lib/filaIA';
 import { ScriptDropzone } from '../components/ScriptDropzone';
 import { AiSetupPanel, type ModoProcessamento } from '../components/AiSetupPanel';
+import { guardarArquivo, resolverArquivo } from '../lib/arquivos';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -165,8 +166,17 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   };
   const [erro, setErro] = useState('');
 
+  // O PDF pode estar no aparelho, no Storage ou ainda em base64 antigo — o
+  // resolvedor cobre os três e devolve um endereço que o react-pdf abre.
   useEffect(() => {
-    setPdfFile(roteiro ? roteiro.dados : null);
+    let vivo = true;
+    if (!roteiro) { setPdfFile(null); return; }
+
+    resolverArquivo(roteiro.dados).then(endereco => {
+      if (vivo) setPdfFile(endereco);
+    });
+
+    return () => { vivo = false; };
   }, [roteiro]);
 
   /**
@@ -238,14 +248,19 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         await db.roteiro_pdfs.update(antigo.id, { arquivado: true, versao: antigo.versao ?? 1 });
       }
 
+      // O PDF vai para o Storage e a linha guarda só a referência. Antes o
+      // base64 inteiro ficava aqui dentro — 5 MB por revisão, que agora
+      // viajariam para cada pessoa da equipe a cada alteração da linha.
+      const referencia = await guardarArquivo(projetoId!, file, file.name, file.type);
+
       await db.roteiro_pdfs.add({
-        id: roteiroId, projeto_id: projetoId!, nome: file.name, dados: b64,
+        id: roteiroId, projeto_id: projetoId!, nome: file.name, dados: referencia,
         data_upload: Date.now(), versao: anteriores.length ? proximaVersao : 1, arquivado: false,
       });
 
       await registrarDocumento({
         projetoId: projetoId!, origem: 'roteiro', refId: roteiroId,
-        nome: file.name, url: b64, tipo: 'upload', tamanho: file.size,
+        nome: file.name, url: referencia, tipo: 'upload', tamanho: file.size,
       });
 
       const paginas = await extrairPaginas(b64);

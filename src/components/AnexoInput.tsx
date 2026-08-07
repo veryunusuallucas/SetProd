@@ -1,9 +1,18 @@
 import { useRef, useState } from 'react';
 import { Paperclip, Link as LinkIcon, File } from 'lucide-react';
 import { inspecionarLink, lerArquivoComoDataURL, LIMITE_UPLOAD_BYTES } from '../lib/documentos';
+import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 
 interface AnexoInputProps {
-  /** Recebe a URL do anexo — link colado ou data URL do arquivo lido localmente. */
+  /**
+   * Projeto dono do arquivo — define a pasta no Storage e quem enxerga.
+   *
+   * Sem ele o componente ainda funciona, mas o arquivo fica só neste navegador
+   * (base64 na linha, como era antes): sem projeto não há como escopar no
+   * servidor nem dizer a quem o arquivo pertence.
+   */
+  projetoId?: string;
+  /** Recebe a referência do anexo — link colado ou `arquivo:<caminho>`. */
   onAddLink: (url: string) => void;
   /** Versão detalhada: recebe também nome e tamanho (quando disponíveis). */
   onAddAnexo?: (info: { url: string; nome: string; tamanho?: number; tipo: 'link' | 'upload' }) => void;
@@ -12,7 +21,7 @@ interface AnexoInputProps {
   label?: string;
 }
 
-export function AnexoInput({ onAddLink, onAddAnexo, accept, label = 'Anexar' }: AnexoInputProps) {
+export function AnexoInput({ projetoId, onAddLink, onAddAnexo, accept, label = 'Anexar' }: AnexoInputProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,17 +46,24 @@ export function AnexoInput({ onAddLink, onAddAnexo, accept, label = 'Anexar' }: 
     e.target.value = '';
     if (!file) return;
 
-    if (file.size > LIMITE_UPLOAD_BYTES) {
-      alert(`Arquivo muito grande (máx ${LIMITE_UPLOAD_BYTES / 1024 / 1024}MB para funcionar offline). Use um link do Drive.`);
+    const teto = projetoId ? LIMITE_BYTES : LIMITE_UPLOAD_BYTES;
+    if (file.size > teto) {
+      alert(`Arquivo muito grande (máx ${Math.round(teto / 1024 / 1024)}MB). Use um link do Drive.`);
       setOpen(false);
       return;
     }
 
     try {
-      const dataUrl = await lerArquivoComoDataURL(file);
-      emitir({ url: dataUrl, nome: file.name, tamanho: file.size, tipo: 'upload' });
-    } catch {
-      alert('Não foi possível ler o arquivo.');
+      // Com projeto: vai para o Storage e a linha guarda a referência, então a
+      // outra equipe alcança. Sem projeto: cai no base64 de antes, que só vive
+      // neste navegador.
+      const url = projetoId
+        ? await guardarArquivo(projetoId, file, file.name, file.type)
+        : await lerArquivoComoDataURL(file);
+
+      emitir({ url, nome: file.name, tamanho: file.size, tipo: 'upload' });
+    } catch (e: any) {
+      alert('Não foi possível anexar o arquivo. ' + (e?.message || ''));
       setOpen(false);
     }
   };

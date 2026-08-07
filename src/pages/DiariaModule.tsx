@@ -12,6 +12,8 @@ import { ShotList } from '../components/ShotList';
 import { GeradorODModal } from '../components/GeradorODModal';
 import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
+import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
+import { useArquivo } from '../hooks/useArquivo';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -178,12 +180,14 @@ export function DiariaModule() {
     await db.diarias.update(diariaId!, { comboios: atualizados });
   };
 
-  // ---- Anexos (data URL, offline) ----
+  // ---- Anexos (no Storage, com cópia no aparelho para o set sem sinal) ----
   const addAnexo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) { alert('Arquivo muito grande (máx 3MB para funcionar offline).'); return; }
-    const dados = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(file); });
+    // O teto era 3MB porque o arquivo ia inteiro para dentro da linha. Agora
+    // ele vai para o Storage, então cabe o que o aparelho aguenta guardar.
+    if (file.size > LIMITE_BYTES) { alert(`Arquivo muito grande (máx ${Math.round(LIMITE_BYTES / 1024 / 1024)}MB).`); return; }
+    const dados = await guardarArquivo(projetoId!, file, file.name, file.type);
     const anexo: AnexoOD = { id: crypto.randomUUID(), nome: file.name, tipo: file.type, dados };
     await db.diarias.update(diariaId!, { anexos: [...(diaria.anexos || []), anexo] });
     // Índice central: o anexo também aparece na página Documentos, pasta "Diárias".
@@ -790,13 +794,9 @@ export function DiariaModule() {
           </label>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {(diaria.anexos || []).length === 0 && <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px' }}>Roteiro do dia, decupagem, referências... (máx 3MB cada).</div>}
+          {(diaria.anexos || []).length === 0 && <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px' }}>Roteiro do dia, decupagem, referências...</div>}
           {(diaria.anexos || []).map(a => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-              <Paperclip size={14} className="text-muted" />
-              <a href={a.dados} download={a.nome} style={{ flex: 1, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nome}</a>
-              <button onClick={() => removeAnexo(a.id)} className="btn-icon text-muted" style={{ padding: '6px', border: 'none', background: 'transparent' }}><Trash2 size={14} /></button>
-            </div>
+            <LinhaAnexo key={a.id} anexo={a} aoRemover={() => removeAnexo(a.id)} />
           ))}
         </div>
       </div>
@@ -892,6 +892,33 @@ export function DiariaModule() {
         />
       )}
 
+    </div>
+  );
+}
+
+/**
+ * Uma linha da lista de anexos.
+ *
+ * É componente próprio porque resolver o endereço do arquivo virou assíncrono
+ * (pode estar no aparelho ou precisar vir do Storage), e hook não pode ser
+ * chamado dentro de um `.map`.
+ */
+function LinhaAnexo({ anexo, aoRemover }: { anexo: AnexoOD; aoRemover: () => void }) {
+  const endereco = useArquivo(anexo.dados);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+      <Paperclip size={14} className="text-muted" />
+      {endereco ? (
+        <a href={endereco} download={anexo.nome} target="_blank" rel="noreferrer" style={{ flex: 1, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexo.nome}</a>
+      ) : (
+        // Sem endereço = o arquivo está no Storage e não há sinal para buscá-lo.
+        // Dizer isso é melhor que um link que não abre.
+        <span className="text-muted" style={{ flex: 1, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {anexo.nome} <span className="text-xs">(indisponível offline)</span>
+        </span>
+      )}
+      <button onClick={aoRemover} className="btn-icon text-muted" style={{ padding: '6px', border: 'none', background: 'transparent' }}><Trash2 size={14} /></button>
     </div>
   );
 }
