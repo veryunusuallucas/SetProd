@@ -77,7 +77,7 @@ export function DiariaModule() {
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTask.trim()) return;
-    await db.diaria_tasks.add({ id: crypto.randomUUID(), diaria_id: diariaId!, departamento_id: 'geral', descricao: newTask, status: 'pendente' });
+    await db.diaria_tasks.add({ id: crypto.randomUUID(), projeto_id: projetoId!, diaria_id: diariaId!, departamento_id: 'geral', descricao: newTask, status: 'pendente' });
     setNewTask('');
   };
   const toggleTask = async (task: DiariaTask) => {

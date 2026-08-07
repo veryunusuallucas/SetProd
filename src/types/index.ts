@@ -176,12 +176,29 @@ export interface AuditLog {
   data_hora: number;
 }
 
+/**
+ * Caixa de saída do sync: o que este aparelho ainda não mandou para o servidor.
+ *
+ * Duas escolhas de forma que resolvem o problema da fila antiga (v3), que
+ * crescia para sempre porque ninguém a lia:
+ *
+ * 1. **Uma linha por REGISTRO, não por alteração.** O `id` é `tabela:registro_id`
+ *    e gravar de novo sobrescreve. Corrigir o mesmo valor vinte vezes deixa uma
+ *    linha, não vinte.
+ *
+ * 2. **Guarda a chave, não o conteúdo.** A linha é lida do Dexie na hora de
+ *    enviar — então o que sobe é sempre a versão atual, e um PDF em base64 não
+ *    fica duplicado dentro da fila.
+ */
 export interface SyncQueue {
+  /** `${tabela}:${registro_id}` — é o que faz as alterações repetidas colapsarem. */
   id: string;
   tabela: string;
-  operacao: 'INSERT' | 'UPDATE' | 'DELETE';
-  dados: any;
-  timestamp: number;
+  registro_id: string;
+  projeto_id: string;
+  /** Lápide: o registro foi apagado aqui e o outro lado precisa saber. */
+  deletado?: boolean;
+  atualizado_em: number;
 }
 
 // ---- v3: Locações e Fase 4 (Ordem do Dia) ----
@@ -290,6 +307,13 @@ export interface AnexoOD {
 
 export interface DiariaTask {
   id: string;
+  /**
+   * Era a única tabela do app que não sabia dizer a que projeto pertence — só
+   * tinha `diaria_id`. O sync escopa tudo por projeto (é assim que a RLS decide
+   * quem vê o quê), então sem este campo a tarefa da Ordem do Dia ficaria de
+   * fora. Opcional porque as linhas antigas são preenchidas na migração v15.
+   */
+  projeto_id?: string;
   diaria_id: string;
   departamento_id: string;
   descricao: string;
