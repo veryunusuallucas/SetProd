@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { db, TABELAS_SINCRONIZADAS } from '../db/db';
 import type { Projeto } from '../types';
 import { Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
-import { entrarComoFundador } from '../lib/membros';
+import { entrarComoFundador, purgarProjetoNoServidor } from '../lib/membros';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
@@ -63,25 +63,43 @@ export function Home() {
       moeda: novoProjeto.moeda || 'BRL'
     };
 
-    await db.projetos.add(projetoCriado);
+    try {
+      await db.projetos.add(projetoCriado);
 
-    // Entra como dono ANTES de qualquer dado subir: o servidor só aceita o
-    // fundador enquanto o projeto está vazio. É o que impede que um projeto
-    // abandonado seja reclamado por quem souber o id — e o preço é esta ordem.
-    // Se falhar (sem internet), o projeto existe local e só não é
-    // compartilhável até a participação entrar.
-    await entrarComoFundador(id, 'Equipe A');
+      // O "Caixa da Produção" é um id fixo, global, e não uma pessoa: a lógica
+      // de despesas usa 'caixa_central' como sentinela para "quem pagou foi a
+      // produção".
+      //
+      // Por isso `put` e não `add`. Com `add`, criar o SEGUNDO projeto batia
+      // numa chave repetida, a função morria aqui — e o modal ficava aberto
+      // para sempre, sem erro na tela. Quem clicasse de novo criava outro
+      // projeto pela metade.
+      await db.perfis.put({
+        id: 'caixa_central',
+        projeto_id: id,
+        nome: 'Caixa da Produção',
+        funcao: 'Caixa'
+      });
 
-    // Adiciona o "Caixa Central" como usuário fantasma sempre
-    await db.perfis.add({
-      id: 'caixa_central',
-      projeto_id: id,
-      nome: 'Caixa da Produção',
-      funcao: 'Caixa'
-    });
+      // Departamentos básicos já saem criados — são a base dos Créditos e das despesas.
+      await criarDepartamentosPadrao(id);
+    } catch (e: any) {
+      // Sem isto, qualquer falha aqui deixa a pessoa presa olhando um modal que
+      // não fecha, com um projeto meio criado no banco.
+      console.error('[SetProd] Falha ao criar a produção:', e);
+      alert('Não consegui criar a produção: ' + (e?.message || e));
+      return;
+    }
 
-    // Departamentos básicos já saem criados — são a base dos Créditos e das despesas.
-    await criarDepartamentosPadrao(id);
+    // Registra o fundador no servidor SEM segurar a tela.
+    //
+    // Com `await` aqui, criar projeto passaria a depender da internet: o modal
+    // ficaria aberto esperando a resposta, e quem clicasse de novo acharia que
+    // não pegou. Criar produção é trabalho local e tem que ser instantâneo.
+    //
+    // A participação é recuperável: `garantirParticipacao` roda de novo ao
+    // abrir o projeto, e a fase 2 a exige antes de mandar qualquer dado.
+    void entrarComoFundador(id, 'Equipe A');
 
     setMostrarStepper(false);
     navigate(`/projeto/${id}`);
@@ -95,12 +113,31 @@ export function Home() {
   const confirmarDelecao = async () => {
     if (!projetoParaDeletar) return;
     const id = projetoParaDeletar.id;
-    await db.projetos.delete(id);
-    await db.perfis.where('projeto_id').equals(id).delete();
-    await db.despesas.where('projeto_id').equals(id).delete();
-    await db.acertos.where('projeto_id').equals(id).delete();
-    await db.departamentos.where('projeto_id').equals(id).delete();
+
+    // Varre TODAS as tabelas do projeto, não só cinco.
+    //
+    // Antes daqui saíam apenas projeto, perfis, despesas, acertos,
+    // departamentos e configuração — locações, diárias, cenas, tarefas,
+    // documentos, roteiros e o resto ficavam órfãos no banco, invisíveis e
+    // para sempre. Com o compartilhamento isso deixa de ser só desperdício:
+    // linha órfã é linha que o sync mandaria para um projeto sem dono.
+    for (const tabela of TABELAS_SINCRONIZADAS) {
+      if (tabela === 'projetos') continue;
+      await db.table(tabela).where('projeto_id').equals(id).delete().catch(() => {});
+    }
+    await db.notificacoes.where('projeto_id').equals(id).delete().catch(() => {});
+    await db.pesquisas.where('projeto_id').equals(id).delete().catch(() => {});
+    await db.respostas_pesquisa.where('projeto_id').equals(id).delete().catch(() => {});
     await db.configuracoes.delete(id);
+    await db.projetos.delete(id);
+
+    // E some do servidor também: a participação e o espelho não caem sozinhos
+    // quando o projeto é apagado aqui. Sem isto sobram participações órfãs,
+    // apontando para produções que já não existem.
+    purgarProjetoNoServidor(id).catch(e =>
+      console.warn('[SetProd] Projeto apagado aqui, mas não no servidor:', e?.message)
+    );
+
     setProjetoParaDeletar(null);
   };
 

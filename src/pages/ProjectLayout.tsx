@@ -10,7 +10,7 @@ import {
   LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
-import { participacaoLocal, sincronizarParticipacoes } from '../lib/membros';
+import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 
 export const LayoutContext = createContext<{
   openPanel: (content: React.ReactNode) => void;
@@ -40,7 +40,9 @@ export function ProjectLayout() {
   // convite em outro aparelho precisa aparecer aqui sem ter que sair e voltar.
   useEffect(() => {
     let vivo = true;
-    sincronizarParticipacoes().then(() => {
+    // `garantir` e não só `sincronizar`: se o registro do fundador falhou na
+    // criação (sem internet), abrir o projeto é a segunda chance dele.
+    garantirParticipacao(id!).then(() => {
       if (vivo) setParticipacao(participacaoLocal(id!));
     });
     return () => { vivo = false; };
