@@ -139,24 +139,57 @@ export async function membrosDoProjeto(projetoId: string): Promise<Participacao[
 export async function entrarComoFundador(projetoId: string, apelido = 'Equipe A'): Promise<boolean> {
   if (!supabaseConfigurado) return false;
 
-  const { data: sessao } = await supabase.auth.getSession();
-  const usuario = sessao?.session?.user;
-  if (!usuario) return false;
+  // Tudo dentro do try: esta função é chamada sem `await` na criação do
+  // projeto, e uma promessa rejeitada solta aí vira erro não tratado no
+  // console — sem nada quebrado, mas parecendo que quebrou.
+  try {
+    const { data: sessao } = await supabase.auth.getSession();
+    const usuario = sessao?.session?.user;
+    if (!usuario) return false;
 
-  const { error } = await supabase.from(TABELA_MEMBROS).insert({
-    projeto_id: projetoId,
-    usuario_id: usuario.id,
-    papel: 'dono',
-    apelido,
-  });
+    const { error } = await supabase.from(TABELA_MEMBROS).insert({
+      projeto_id: projetoId,
+      usuario_id: usuario.id,
+      papel: 'dono',
+      apelido,
+    });
 
-  if (error) {
-    console.warn('[SetProd] Não consegui registrar a participação do fundador:', error.message);
+    if (error) {
+      console.warn('[SetProd] Não consegui registrar a participação do fundador:', error.message);
+      return false;
+    }
+
+    await sincronizarParticipacoes();
+    return true;
+  } catch (e) {
+    console.warn('[SetProd] Falha ao registrar o fundador:', e);
     return false;
   }
+}
 
-  await sincronizarParticipacoes();
-  return true;
+/**
+ * Garante que eu participo deste projeto, se ele for meu.
+ *
+ * Existe porque registrar o fundador não segura mais a tela na hora de criar:
+ * se aquela tentativa falhou (sem internet, servidor fora), ela precisa de uma
+ * segunda chance — e a segunda chance é abrir o projeto.
+ *
+ * Não força nada: só tenta quando o projeto ainda está livre. Se outra pessoa
+ * já é dona, o servidor recusa, que é exatamente o que deve acontecer.
+ */
+export async function garantirParticipacao(projetoId: string, apelido = 'Equipe A'): Promise<void> {
+  if (!supabaseConfigurado) return;
+  if (participacaoLocal(projetoId)) return;
+
+  try {
+    const lista = await sincronizarParticipacoes();
+    if (lista.some(p => p.projeto_id === projetoId)) return;
+
+    const { data: livre } = await supabase.rpc('projeto_livre_para_fundar', { p_projeto: projetoId });
+    if (livre) await entrarComoFundador(projetoId, apelido);
+  } catch (e) {
+    console.warn('[SetProd] Não consegui conferir a participação:', e);
+  }
 }
 
 /**
