@@ -4,7 +4,8 @@ import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
 import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
 import { MOLA } from '../components/ui/ia';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { sincronizarParticipacoes } from '../lib/membros';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -13,14 +14,24 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [explicacaoAberta, setExplicacaoAberta] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /**
+   * Para onde ir depois de entrar.
+   *
+   * Quem chegou por um link de convite tem que voltar PARA O CONVITE, e não
+   * para o início — senão a pessoa entra na conta e o convite simplesmente
+   * some, sem explicação.
+   */
+  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara || '/';
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate('/');
+        navigate(voltarPara, { replace: true });
       }
     });
-  }, [navigate]);
+  }, [navigate, voltarPara]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +45,10 @@ export function Login() {
     if (error) {
       setError(error.message);
     } else {
-      navigate('/');
+      // De quais projetos esta conta participa. Sem isto, quem acabou de
+      // entrar veria o app como se não fosse membro de nada.
+      await sincronizarParticipacoes();
+      navigate(voltarPara, { replace: true });
     }
     setLoading(false);
   };

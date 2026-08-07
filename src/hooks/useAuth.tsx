@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { limparParticipacoesLocais, sincronizarParticipacoes } from '../lib/membros';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +19,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      // Sessão retomada (voltou ao app, outro aparelho): confere de quais
+      // projetos esta conta participa, sem travar a tela esperando.
+      if (session?.user) sincronizarParticipacoes();
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -29,6 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = async () => {
+    // Limpa as participações ANTES de sair: elas ficam no localStorage, e sem
+    // isto a próxima pessoa a entrar neste navegador herdaria os acessos de
+    // quem saiu. O servidor recusaria de qualquer jeito, mas a tela mostraria
+    // permissões que não existem — e susto de "por que eu vejo isso?" é caro.
+    limparParticipacoesLocais();
     await supabase.auth.signOut();
   };
 

@@ -44,6 +44,14 @@ create table if not exists public.projeto_membros (
 create index if not exists idx_membros_usuario
   on public.projeto_membros (usuario_id);
 
+-- Quem eu sou DENTRO da equipe desta produção (id do perfil no cadastro).
+--
+-- É outra pergunta que "qual meu papel": o papel diz o que posso fazer, este
+-- diz quem eu sou na ficha — é o que faz "Minhas Tasks" saber o que é meu.
+-- Fica no servidor, e não no aparelho, para valer em qualquer navegador.
+alter table public.projeto_membros
+  add column if not exists perfil_id text;
+
 -- ---------------------------------------------------------------------------
 -- 1.3 O espelho dos dados
 -- ---------------------------------------------------------------------------
@@ -234,6 +242,22 @@ create policy "membros: fundador entra sozinho" on public.projeto_membros
     usuario_id = auth.uid()
     and public.projeto_livre_para_fundar(projeto_id)
   );
+
+-- Cada um mexe só na própria linha, e SÓ na coluna `perfil_id`.
+--
+-- A política sozinha não bastaria: RLS decide quais LINHAS, nunca quais
+-- COLUNAS. Com ela só, um membro poderia se promover a outro papel editando a
+-- própria linha — hoje inofensivo (a RLS olha participação, não papel), mas
+-- viraria um furo no dia em que 'leitura' existir de verdade. Quem limita
+-- coluna é o GRANT, então os dois trabalham juntos.
+revoke update on public.projeto_membros from authenticated;
+grant  update (perfil_id) on public.projeto_membros to authenticated;
+
+drop policy if exists "membros: cada um ajusta a propria linha" on public.projeto_membros;
+create policy "membros: cada um ajusta a propria linha" on public.projeto_membros
+  for update to authenticated
+  using (usuario_id = auth.uid())
+  with check (usuario_id = auth.uid());
 
 drop policy if exists "membros: sair do projeto" on public.projeto_membros;
 create policy "membros: sair do projeto" on public.projeto_membros

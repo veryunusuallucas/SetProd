@@ -6,6 +6,7 @@ import { Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle, CalendarCl
 import type { Task } from '../types';
 import { logAction } from '../lib/audit';
 import { notificar } from '../lib/notificacoes';
+import { useRole } from '../hooks/useRole';
 
 export function TasksModule() {
   const { id: projetoId } = useParams();
@@ -14,8 +15,9 @@ export function TasksModule() {
   const tasks = useLiveQuery(() => db.tasks.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
 
-  // Puxar mock do Perfil Atual (pra "Minhas Tasks")
-  const meuPerfilId = localStorage.getItem('mock_perfil_id') || '';
+  // Quem eu sou na equipe desta produção — vem da participação, não mais de um
+  // seletor de simulação no rodapé.
+  const { perfilId: meuPerfilId } = useRole();
 
   const [filtro, setFiltro] = useState<'todas' | 'minhas'>('todas');
   
