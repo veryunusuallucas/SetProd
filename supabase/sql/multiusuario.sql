@@ -153,8 +153,9 @@ as $$
      and not exists (select 1 from public.registros      where projeto_id = p_projeto);
 $$;
 
--- Nome antigo (versão anterior deste arquivo), já sem uso.
-drop function if exists public.projeto_tem_dono(text);
+-- (A função antiga `projeto_tem_dono` é derrubada lá na Parte 3.2, e não aqui:
+--  enquanto a política antiga existir, ela segura a função e o Postgres recusa
+--  o drop. Primeiro a política passa a apontar para a nova, depois a velha cai.)
 
 -- ---------------------------------------------------------------------------
 -- Apagar um projeto de vez
@@ -233,6 +234,12 @@ drop policy if exists "membros: sair do projeto" on public.projeto_membros;
 create policy "membros: sair do projeto" on public.projeto_membros
   for delete to authenticated
   using (usuario_id = auth.uid() or public.e_admin());
+
+-- Só agora: com a política do fundador já apontando para a função nova, nada
+-- mais depende da antiga e ela pode cair. Derrubá-la antes disso dá
+-- "cannot drop function ... because other objects depend on it" — a política
+-- que ainda estava no banco, da rodada anterior, segurava a função.
+drop function if exists public.projeto_tem_dono(text);
 
 -- ---------------------------------------------------------------------------
 -- 3.3 registros
