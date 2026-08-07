@@ -2,6 +2,46 @@ import Dexie from 'dexie';
 import type { Table } from 'dexie';
 import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa } from '../types';
 
+/**
+ * As tabelas que viajam para o servidor.
+ *
+ * `logs` entra porque a ata do rodapé é compartilhada (§3.5 da spec) — assim
+ * ela não precisa de tabela própria. `notificacoes` fica de fora: é o sino de
+ * cada um, não dado do projeto. `pesquisas` e `respostas_pesquisa` já têm
+ * caminho próprio no Supabase, com leitura pública.
+ */
+export const TABELAS_SINCRONIZADAS = [
+  'projetos', 'departamentos', 'perfis', 'despesas', 'acertos', 'configuracoes',
+  'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos',
+  'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos',
+  'motoristas', 'elementos', 'stripboard_itens', 'logs',
+] as const;
+
+/**
+ * Marca que uma transação está gravando o que veio do servidor.
+ *
+ * Sem isto, os hooks abaixo carimbam a linha recebida com a hora DAQUI. Ela
+ * volta para a caixa de saída parecendo alteração local e mais nova, sobe de
+ * novo, o outro lado recebe e faz o mesmo — ping-pong infinito, com o carimbo
+ * subindo a cada volta e o dado nunca estabilizando.
+ *
+ * A marca vive na transação, não numa variável global de "estou aplicando
+ * remoto". Faz diferença: uma trava global engoliria em silêncio qualquer
+ * edição que a pessoa fizesse durante a aplicação — e edição engolida é dado
+ * perdido, bem pior que um eco. Escritas do usuário rodam em outra transação e
+ * não enxergam esta marca.
+ */
+export const MARCA_REMOTA = 'setprodEscritaRemota';
+
+export function marcarTransacaoComoRemota() {
+  const tx = Dexie.currentTransaction as any;
+  if (tx) tx[MARCA_REMOTA] = true;
+}
+
+function escritaVindaDoServidor(): boolean {
+  return Boolean((Dexie.currentTransaction as any)?.[MARCA_REMOTA]);
+}
+
 export class SetMoneyDB extends Dexie {
   projetos!: Table<Projeto, string>;
   departamentos!: Table<Departamento, string>;
@@ -99,30 +139,81 @@ export class SetMoneyDB extends Dexie {
       respostas_pesquisa: 'id, pesquisa_id, projeto_id'
     });
 
-    // Middlewares para capturar modificações e jogar na sync_queue
-    const trackChange = (tabela: string, operacao: 'INSERT' | 'UPDATE' | 'DELETE', dados: any) => {
+    // v15: a caixa de saída do sync.
+    //
+    // A fila antiga guardava uma linha por ALTERAÇÃO, com o objeto inteiro
+    // dentro — e nenhum código jamais a leu. Crescia desde a v3 com cópias de
+    // PDFs em base64. Aqui ela é esvaziada de vez e passa a guardar só chaves
+    // (ver `SyncQueue` em types).
+    //
+    // O `projeto_id` em diaria_tasks é preenchido pela diária correspondente:
+    // era a única tabela que não sabia dizer a que projeto pertence.
+    this.version(15).stores({
+      sync_queue: 'id, projeto_id, atualizado_em',
+      diaria_tasks: 'id, diaria_id, departamento_id, projeto_id'
+    }).upgrade(async tx => {
+      await tx.table('sync_queue').clear();
+
+      const diarias = await tx.table('diarias').toArray();
+      const projetoPorDiaria = new Map(diarias.map(d => [d.id, d.projeto_id]));
+      await tx.table('diaria_tasks').toCollection().modify(t => {
+        t.projeto_id = projetoPorDiaria.get(t.diaria_id);
+      });
+    });
+
+    /**
+     * Descobre de que projeto a linha é.
+     *
+     * `projetos` é o caso especial: nela o próprio `id` é o id do projeto.
+     */
+    const donoDaLinha = (tabela: string, obj: any): string | undefined =>
+      tabela === 'projetos' ? obj?.id : obj?.projeto_id;
+
+    const enfileirar = (tabela: string, obj: any, deletado: boolean, carimbo: number) => {
+      const projeto_id = donoDaLinha(tabela, obj);
+      // Sem dono não há como escopar no servidor (a RLS decide por projeto), e
+      // sem id não há o que sincronizar. Ficar só no local é melhor que subir
+      // um registro que ninguém consegue enxergar depois.
+      if (!projeto_id || !obj?.id) return;
+
+      // Fora da transação: escrever na fila de dentro dela travaria o Dexie
+      // esperando por ela mesma.
       Dexie.ignoreTransaction(() => {
-        this.sync_queue.add({
-          id: crypto.randomUUID(),
+        this.sync_queue.put({
+          id: `${tabela}:${obj.id}`,
           tabela,
-          operacao,
-          dados,
-          timestamp: Date.now()
-        }).catch(e => console.error("Erro ao registrar no sync_queue", e));
+          registro_id: obj.id,
+          projeto_id,
+          ...(deletado ? { deletado: true } : {}),
+          atualizado_em: carimbo,
+        }).catch(e => console.error('[SetProd] Falha ao enfileirar para o sync', e));
       });
     };
 
-    const tabelasParaSincronizar = ['projetos', 'departamentos', 'perfis', 'despesas', 'acertos', 'configuracoes', 'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos', 'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos', 'motoristas', 'elementos', 'stripboard_itens'];
-    
-    tabelasParaSincronizar.forEach(tabela => {
-      this.table(tabela).hook('creating', function(_primKey, obj) {
-        trackChange(tabela, 'INSERT', obj);
+    TABELAS_SINCRONIZADAS.forEach(tabela => {
+      // O carimbo de hora nasce aqui, num lugar só, para as 22 tabelas. Nenhum
+      // módulo do app precisa lembrar de datar o que grava — e é esse carimbo
+      // que decide quem vence quando A e B editam o mesmo campo (LWW).
+      this.table(tabela).hook('creating', function (_primKey, obj: any) {
+        if (escritaVindaDoServidor()) return;
+        const carimbo = Date.now();
+        obj.atualizado_em = carimbo;
+        enfileirar(tabela, obj, false, carimbo);
       });
-      this.table(tabela).hook('updating', function(mods, _primKey, obj) {
-        trackChange(tabela, 'UPDATE', { ...obj, ...(mods as object) });
+
+      this.table(tabela).hook('updating', function (mods, _primKey, obj: any) {
+        if (escritaVindaDoServidor()) return;
+        const carimbo = Date.now();
+        enfileirar(tabela, { ...obj, ...(mods as object) }, false, carimbo);
+        return { atualizado_em: carimbo };
       });
-      this.table(tabela).hook('deleting', function(_primKey, obj) {
-        trackChange(tabela, 'DELETE', obj);
+
+      this.table(tabela).hook('deleting', function (_primKey, obj: any) {
+        if (escritaVindaDoServidor()) return;
+        // Vai como lápide, não some da fila: se a Equipe A apagar uma cena
+        // enquanto a B está offline, a B não tem como saber que ela sumiu —
+        // e a cena ressuscitaria no próximo pull dela.
+        enfileirar(tabela, obj, true, Date.now());
       });
     });
   }
