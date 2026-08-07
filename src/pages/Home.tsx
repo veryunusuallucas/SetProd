@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -8,6 +8,7 @@ import { Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
 import { entrarComoFundador, purgarProjetoNoServidor } from '../lib/membros';
+import { puxarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
@@ -29,6 +30,20 @@ export function Home() {
 
   const [modoDeletar, setModoDeletar] = useState(false);
   const [projetoParaDeletar, setProjetoParaDeletar] = useState<Projeto | null>(null);
+
+  /**
+   * Busca as produções que compartilharam comigo.
+   *
+   * É o que faz a Equipe B, que aceitou um convite e nunca teve o projeto neste
+   * navegador, ver a produção aparecer aqui. Sem isto o convite daria acesso a
+   * uma tela vazia.
+   *
+   * Não segura a tela: o que já está no aparelho aparece na hora, e o que vem
+   * do servidor entra sozinho quando chega (o useLiveQuery redesenha).
+   */
+  useEffect(() => {
+    void puxarProjetosCompartilhados();
+  }, []);
 
   const [mostrarStepper, setMostrarStepper] = useState(false);
   const [mostrarChangelog, setMostrarChangelog] = useState(false);

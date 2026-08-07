@@ -5,15 +5,28 @@ import { supabase, supabaseConfigurado } from './supabase';
  * O motor de sincronização: leva o que mudou aqui para o servidor e traz o que
  * mudou lá para cá.
  *
- * Nesta fase ele existe mas ninguém o chama — a RLS só libera escrita para quem
- * é membro do projeto, e a tabela de membros é a fase seguinte. O motor está
- * inteiro e testável antes de qualquer tela mudar, de propósito: um bug daqui
- * se propaga para todo mundo, então é aqui que o cuidado tem que estar.
- *
  * Ver `.md/setprod_plano_multiusuario.md` para o desenho e o porquê das escolhas.
  */
 
 export const TABELA_ESPELHO = 'registros';
+
+/**
+ * Tabelas que ainda NÃO viajam, porque carregam binário em base64 dentro da
+ * linha: o PDF do roteiro, o arquivo do documento.
+ *
+ * Um roteiro de 18 páginas passa de 5 MB. Mandar isso por linha de banco a cada
+ * alteração entope o plano free e estoura o limite de payload do Realtime — e
+ * pior, faz uma troca de roteiro empurrar 5 MB para cada pessoa conectada.
+ *
+ * Sai desta lista quando os binários forem para o Supabase Storage e a linha
+ * passar a guardar só o caminho.
+ */
+export const TABELAS_ADIADAS = ['roteiro_pdfs', 'documentos'] as const;
+
+/** O que efetivamente sobe e desce hoje. */
+export const TABELAS_EM_SINCRONIA = TABELAS_SINCRONIZADAS.filter(
+  t => !(TABELAS_ADIADAS as readonly string[]).includes(t)
+);
 
 /**
  * Quantas linhas por requisição.
@@ -38,8 +51,14 @@ interface LinhaEspelho {
   deletado: boolean;
 }
 
-/** Só o que o motor conhece entra no Dexie — nome de tabela vem do servidor. */
-const conhecida = (t: string) => (TABELAS_SINCRONIZADAS as readonly string[]).includes(t);
+/**
+ * Só o que o motor conhece e não está adiada entra no Dexie.
+ *
+ * A checagem vale para os dois lados: o nome da tabela chega do servidor, e
+ * escrever no Dexie a partir de um nome que veio de fora sem conferir é abrir a
+ * porta para gravar em qualquer lugar.
+ */
+const conhecida = (t: string) => (TABELAS_EM_SINCRONIA as readonly string[]).includes(t);
 
 // ---------------------------------------------------------------------------
 // Cursor
