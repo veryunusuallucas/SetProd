@@ -167,6 +167,11 @@ $$;
 -- É função, e não política de delete linha a linha, de propósito: assim ninguém
 -- consegue apagar UMA linha de verdade — o que faria a lápide se perder e o
 -- registro ressuscitar no outro lado. Aqui ou vai o projeto inteiro, ou nada.
+--
+-- ⚠️ NÃO FUNCIONA NO SQL EDITOR. Ela pergunta quem você é por `auth.uid()`, e
+-- ali não há usuário logado — a conexão é a de dono do banco. Chamada do app
+-- (supabase.rpc) funciona. Para limpar pelo editor, apague direto nas três
+-- tabelas: o dono do banco passa por cima da RLS.
 
 create or replace function public.purgar_projeto(p_projeto text)
 returns integer
