@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cloud, CloudOff, RefreshCw, Check, X, History, AlertTriangle } from 'lucide-react';
 import { ouvirSync, situacaoDe, estaAoVivo, rodada } from '../lib/sincronizacaoAutomatica';
@@ -79,7 +80,13 @@ function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: 
     tamanhoAproximado(projetoId).then(setTamanho).catch(() => setTamanho(null));
   }, [projetoId]);
 
-  return (
+  /*
+    Portal, pelo mesmo motivo do manual do usuário: este componente mora dentro
+    da `.sidebar`, que é `position: fixed; z-index: 50`. Isso é um contexto de
+    empilhamento — o `z-index: 300` daqui de dentro só disputaria com irmãos da
+    sidebar, e a barra inferior do celular (`z-index: 1000`) passaria por cima.
+  */
+  return createPortal(
     <div
       onClick={aoFechar}
       style={{
@@ -161,6 +168,7 @@ function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: 
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
