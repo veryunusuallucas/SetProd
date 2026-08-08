@@ -245,6 +245,47 @@ export async function purgarProjetoNoServidor(projetoId: string): Promise<number
 }
 
 // ---------------------------------------------------------------------------
+// Quem está usando
+// ---------------------------------------------------------------------------
+
+export type Persona = 'admin' | 'equipe_a' | 'equipe_b' | 'desconhecido';
+
+/**
+ * Quem é a pessoa logada, do ponto de vista da tela inicial.
+ *
+ * Não olha o e-mail: e-mail muda, e chumbar endereço no código faria a
+ * saudação errar no dia em que você trocar de conta. Sai do que o servidor já
+ * sabe — se é super-admin, e qual apelido a participação dá a esta conta.
+ */
+export async function descobrirPersona(): Promise<Persona> {
+  if (!supabaseConfigurado) return 'desconhecido';
+
+  try {
+    const { data: sessao } = await supabase.auth.getSession();
+    if (!sessao?.session?.user) return 'desconhecido';
+
+    const { data: admin } = await supabase.rpc('e_admin');
+    if (admin) return 'admin';
+
+    // O apelido vem da participação ("Equipe A" para quem criou, "Equipe B"
+    // para quem entrou por convite). Uso a mais antiga: é a que define a
+    // pessoa, e não o último projeto em que ela entrou de carona.
+    const participacoes = participacoesLocais().length
+      ? participacoesLocais()
+      : await sincronizarParticipacoes();
+
+    const maisAntiga = [...participacoes].sort(
+      (a, b) => (a.criado_em || '').localeCompare(b.criado_em || '')
+    )[0];
+
+    if (!maisAntiga?.apelido) return 'desconhecido';
+    return /\bB\b/i.test(maisAntiga.apelido) ? 'equipe_b' : 'equipe_a';
+  } catch {
+    return 'desconhecido';
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Convites
 // ---------------------------------------------------------------------------
 
