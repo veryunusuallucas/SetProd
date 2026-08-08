@@ -222,7 +222,7 @@ export function Home() {
           onClick={() => setMostrarChangelog(true)}
           style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '6px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
-          <Sparkles size={12} /> v4.2
+          <Sparkles size={12} /> v4.3
         </button>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

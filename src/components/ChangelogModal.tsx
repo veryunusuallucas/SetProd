@@ -1,4 +1,4 @@
-import { X, Sparkles, Film, FileText, Users, Layers, ShieldCheck, History, Printer, ClipboardList, Wand2 } from 'lucide-react';
+import { X, Sparkles, FileText, Users, ShieldCheck, History, Printer, ClipboardList } from 'lucide-react';
 
 interface Novidade {
   icone: React.ReactNode;
@@ -8,54 +8,39 @@ interface Novidade {
 
 const NOVIDADES: Novidade[] = [
   {
-    icone: <ClipboardList size={24} style={{ color: '#00b894' }} />,
-    titulo: 'Pesquisas com a equipe',
-    texto: 'Pergunte qualquer coisa por link — o que jantar, tamanho de camiseta, o que for. Escolha única, múltipla, sim/não ou texto livre, cada uma com o resultado do seu tipo. Só quem está logado lê as respostas: com o link, ninguém vê o que os colegas responderam.',
-  },
-  {
-    icone: <Wand2 size={24} style={{ color: '#c77dff' }} />,
-    titulo: 'A IA recomenda, não só conta voto',
-    texto: 'O gráfico mostra quem ganhou; a IA diz o que fazer com isso. Num empate de 5 a 5 entre pizza e japonês, ela cruzou com a pergunta de restrições e recomendou pizza porque duas pessoas têm alergia a frutos do mar.',
+    icone: <Users size={24} style={{ color: '#0984e3' }} />,
+    titulo: 'Duas equipes, uma produção',
+    texto: 'Crie um link de convite em "Quem tem acesso" e a outra equipe entra na MESMA produção — não em uma cópia. As duas têm o mesmo poder. O link vale 7 dias, serve uma vez só, e quem tiver ele entra: mande por canal privado.',
   },
   {
     icone: <Sparkles size={24} style={{ color: '#4cc9f0' }} />,
-    titulo: 'Os momentos de IA ficaram bonitos',
-    texto: 'O "pensando" deixou de ser spinner — vira uma barra viva, e quando há progresso real ele manda. As sugestões entram escalonadas, uma atrás da outra, e aceitar ou recusar responde no toque, não no soltar. Quem pediu menos movimento no sistema recebe transição suave no lugar.',
-  },
-  {
-    icone: <FileText size={24} style={{ color: '#e85d04' }} />,
-    titulo: 'Decupagem por IA que funciona',
-    texto: 'Mande o PDF e a IA lê cena por cena, marcando elenco, objetos, figurino, som e veículos direto no roteiro. As cenas são separadas por padrão de cabeçalho, não por palpite: no roteiro de teste foram 30 de 30, com 147 elementos marcados e nenhum descartado.',
-  },
-  {
-    icone: <Layers size={24} style={{ color: '#00b894' }} />,
-    titulo: 'Aba Elementos: junte os nomes repetidos',
-    texto: 'O roteiro chama a mesma pessoa de "Renata" e de "sua mulher". Agora o app percebe e pergunta se são a mesma — você aceita e vira um item só, com Cast ID automático por ordem de entrada. Dá para desfazer a qualquer momento.',
-  },
-  {
-    icone: <Film size={24} style={{ color: '#fca311' }} />,
-    titulo: 'Stripboard com quebra de diária',
-    texto: 'Insira quebras de dia, almoço e mudança de locação entre as cenas. Cada dia mostra sozinho quantas cenas, quantas páginas e quantas horas — contando o almoço, que ocupa o dia sem filmar. Agrupe por locação num clique e mande o dia direto para uma Ordem do Dia.',
-  },
-  {
-    icone: <Users size={24} style={{ color: '#0984e3' }} />,
-    titulo: 'DOOD e mais três relatórios',
-    texto: 'Day Out of Days com os dias de espera de cada ator — aquele que filma no dia 1 e no dia 8 costuma ser pago pelos seis do meio. Mais plano de filmagem, breakdown por cena e lista de elementos. Todos em PDF, e os tabulares também em CSV.',
-  },
-  {
-    icone: <History size={24} style={{ color: '#a29bfe' }} />,
-    titulo: 'Versões do roteiro',
-    texto: 'Subir uma revisão não apaga mais o trabalho feito na anterior. Cada versão guarda as próprias marcações e dá para voltar quando quiser.',
+    titulo: 'O que uma equipe faz, a outra vê na hora',
+    texto: 'Com as duas online, uma alteração aparece na tela da outra em menos de um segundo. Sem internet você continua trabalhando normalmente, e tudo sobe sozinho quando o sinal volta — nada se perde no caminho.',
   },
   {
     icone: <ShieldCheck size={24} className="text-success" />,
-    titulo: 'IA sem susto na conta',
-    texto: 'A chave da IA vive no servidor — ninguém no app consegue vê-la ou trocá-la por um modelo caro. Tem teto diário para a produção inteira e fila de uma análise por vez: se alguém já estiver rodando, você vê o progresso em vez de estourar a cota dos dois.',
+    titulo: 'O papel vem do login, não de um menu',
+    texto: 'Saiu o seletor "Quem está usando?", que era só simulação. Agora quem decide o que você pode fazer é a sua conta, com a regra rodando no servidor — ninguém entra numa produção sem ser convidado, mesmo sabendo o endereço dela.',
+  },
+  {
+    icone: <History size={24} style={{ color: '#a29bfe' }} />,
+    titulo: 'Salvo, Salvando, Offline — e a ata',
+    texto: 'O pé da barra lateral mostra se o seu trabalho já saiu do aparelho. Clicando, você vê o que andou acontecendo em linguagem de gente ("Outra equipe mexeu em Financeiro, há 20 min") e quanto a produção está ocupando.',
+  },
+  {
+    icone: <FileText size={24} style={{ color: '#e85d04' }} />,
+    titulo: 'O roteiro viaja junto',
+    texto: 'Roteiro, comprovantes, storyboard e anexos da OD agora ficam no servidor e chegam na outra equipe. Continuam abrindo sem internet, porque cada aparelho guarda a própria cópia. E o limite de 3 MB por anexo acabou.',
+  },
+  {
+    icone: <ClipboardList size={24} style={{ color: '#00b894' }} />,
+    titulo: 'Apagar pesquisa agora apaga de verdade',
+    texto: 'Antes a pesquisa sumia da sua tela e o link continuava vivo, recebendo respostas num lugar que ninguém mais abria. Agora apagar derruba o link para todo mundo — e apagar a produção derruba os links dela junto.',
   },
   {
     icone: <Printer size={24} style={{ color: '#fd79a8' }} />,
-    titulo: 'Consertos que faziam falta',
-    texto: 'Os botões de exportar não abriam nada com bloqueador de pop-up — agora imprimem direto. A marcação no PDF encaixa em palavra inteira (chega de "ARCOS" no lugar de "MARCOS"). A locação da cena vem sozinha do cabeçalho. E o roteiro abre sem internet, como o resto do app.',
+    titulo: 'O manual foi reescrito',
+    texto: 'Estava parado numa época em que o app só cuidava de dinheiro. Agora cobre tudo: diárias, decupagem, locações, transporte, documentos, pesquisas — e explica o que fazer quando um anexo aparece como indisponível offline.',
   },
 ];
 
@@ -67,7 +52,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
         <div style={{ padding: '20px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={20} color="var(--accent)" />
-            <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da v4.2</h2>
+            <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da v4.3</h2>
           </div>
           <button onClick={onClose} className="btn-icon"><X size={20} /></button>
         </div>
@@ -75,10 +60,11 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
           <div>
-            <h3 className="font-bold text-md mb-2">Agora a equipe responde, e a IA opina</h3>
+            <h3 className="font-bold text-md mb-2">Duas equipes trabalhando na mesma produção</h3>
             <p className="text-sm text-secondary" style={{ lineHeight: '1.6' }}>
-              A v4.1 fez o roteiro virar plano de filmagem. A v4.2 abre o app para a equipe:
-              você pergunta por link, o resultado vira gráfico e a IA recomenda a decisão.
+              A v4.2 abriu o app para a equipe responder. A v4.3 abre para a equipe
+              <strong> trabalhar junto</strong>: uma produção, duas equipes, o mesmo dado.
+              O que uma altera aparece na outra em segundos — e continua funcionando offline.
             </p>
           </div>
 
@@ -96,10 +82,9 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
 
           <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
             <div className="text-xs text-muted" style={{ lineHeight: 1.6 }}>
-              <strong>Antes, na v4.0:</strong> calendário no dashboard com clima, transporte com
-              veículos e motoristas, hospital mais próximo na Ordem do Dia, documentos com índice
-              central, tasks com prazo e cor de departamento, ficha como fonte única do cadastro e
-              fechamento de diária em PDF.
+              <strong>Antes, na v4.2:</strong> pesquisas por link com recomendação da IA, decupagem
+              cena a cena no PDF, aba Elementos com Cast ID, stripboard com quebra de diária, DOOD e
+              mais três relatórios, versões do roteiro e teto de gasto da IA no servidor.
             </div>
           </div>
 
