@@ -7,7 +7,7 @@ import type { Projeto } from '../types';
 import { Search, Film, Trash2, Sparkles } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
-import { entrarComoFundador, purgarProjetoNoServidor } from '../lib/membros';
+import { entrarComoFundador, purgarProjetoNoServidor, descobrirPersona, type Persona } from '../lib/membros';
 import { puxarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
 import { apagarAnexosDoProjeto } from '../lib/arquivos';
 import { apagarPesquisaPublica } from '../lib/pesquisas';
@@ -21,6 +21,20 @@ import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
 import { ContadorAnimado } from '../components/ui/ContadorAnimado';
 import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../components/ui/ia';
 import { LogOut } from 'lucide-react';
+
+/**
+ * Como cada um é recebido na porta.
+ *
+ * A frase é montada em duas partes porque a segunda vai em destaque — e a do
+ * admin não é um nome, é o fim da piada, então ela também precisa cair no
+ * lugar destacado para a frase fechar.
+ */
+const SAUDACOES: Record<Persona, { antes: string; nome: string }> = {
+  equipe_a: { antes: 'Bem-vindo,', nome: 'VIADÃO' },
+  equipe_b: { antes: 'Bem-vindo,', nome: 'BOIOLA' },
+  admin: { antes: 'UI UI, quanta importância para', nome: 'CAMPONESA' },
+  desconhecido: { antes: 'Bem-vindo,', nome: 'VIADÃO' },
+};
 
 export function Home() {
   const { logout } = useAuth();
@@ -46,6 +60,20 @@ export function Home() {
   useEffect(() => {
     void puxarProjetosCompartilhados();
   }, []);
+
+  /**
+   * A saudação muda conforme quem entrou.
+   *
+   * Começa na do dono e só troca quando o servidor responde — assim a tela
+   * nunca aparece sem saudação nenhuma, e quem está offline continua sendo
+   * recebido do jeito de sempre.
+   */
+  const [persona, setPersona] = useState<Persona>('equipe_a');
+  useEffect(() => {
+    descobrirPersona().then(setPersona);
+  }, []);
+
+  const saudacao = SAUDACOES[persona];
 
   const [mostrarStepper, setMostrarStepper] = useState(false);
   const [mostrarChangelog, setMostrarChangelog] = useState(false);
@@ -228,9 +256,9 @@ export function Home() {
         margin: '0 0 20px', position: 'relative', zIndex: 1,
         fontSize: '15px', fontWeight: 500, color: 'var(--text-secondary)',
       }}>
-        Bem-vindo,
+        {saudacao.antes}
         <span style={{ fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-primary)' }}>
-          VIADÃO
+          {saudacao.nome}
         </span>
       </h1>
 
