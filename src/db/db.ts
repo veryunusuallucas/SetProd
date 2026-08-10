@@ -31,6 +31,15 @@ export const TABELAS_SINCRONIZADAS = [
  * perdido, bem pior que um eco. Escritas do usuário rodam em outra transação e
  * não enxergam esta marca.
  */
+/**
+ * Disparado sempre que algo entra na caixa de saída.
+ *
+ * É o gatilho que faz a alteração subir logo, em vez de esperar o relógio.
+ * Quem escuta precisa segurar um pouco antes de agir: digitar um nome dispara
+ * um evento por tecla, e subir a cada tecla seria bater no servidor à toa.
+ */
+export const EVENTO_ALTERACAO = 'setprod-alteracao';
+
 export const MARCA_REMOTA = 'setprodEscritaRemota';
 
 export function marcarTransacaoComoRemota() {
@@ -201,7 +210,14 @@ export class SetMoneyDB extends Dexie {
           projeto_id,
           ...(deletado ? { deletado: true } : {}),
           atualizado_em: carimbo,
-        }).catch(e => console.error('[SetProd] Falha ao enfileirar para o sync', e));
+        })
+          .then(() => {
+            // Avisa que há coisa nova para subir. Sem isto, a alteração só
+            // saía daqui no próximo tique do relógio — a outra equipe recebe
+            // em menos de um segundo, mas só depois de o dado enfim subir.
+            window.dispatchEvent(new CustomEvent(EVENTO_ALTERACAO, { detail: { projeto_id } }));
+          })
+          .catch(e => console.error('[SetProd] Falha ao enfileirar para o sync', e));
       });
     };
 
