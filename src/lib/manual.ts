@@ -131,7 +131,14 @@ export const MANUAL: SecaoManual[] = [
     titulo: '⚙️ Configurações e dados',
     texto:
       'Modelos de mensagem (com variáveis como {{nome}}, {{valor}}, {{pix}}), modo de diária (automático ou manual) e a zona de perigo para apagar a produção. ' +
-      'Em GESTÃO DE DADOS você exporta tudo em TXT, CSV ou JSON — vale como cópia de segurança fora do app. ' +
-      'Apagar uma produção apaga também no servidor, para as duas equipes, e derruba os links de pesquisa dela. Não tem volta.',
+      'Em GESTÃO DE DADOS você exporta o backup completo da produção — e restaura a partir dele. Vale como cópia de segurança fora do app.',
+  },
+  {
+    titulo: '🗑️ Lixeira',
+    texto:
+      'Apagar uma produção manda ela para a lixeira: some da lista das duas equipes, mas nada é perdido. ' +
+      `Dá para restaurar por ${7} dias; depois disso ela é apagada de vez — do servidor, dos aparelhos e os links de pesquisa param. ` +
+      'A limpeza roda quando alguém abre o app, então pode demorar um pouco mais que o prazo. ' +
+      'Apagar de vez antes do prazo só quem criou a produção pode: destruir o trabalho da outra equipe não é uma tecla que deva existir.',
   },
 ];

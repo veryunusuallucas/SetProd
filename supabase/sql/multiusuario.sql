@@ -181,6 +181,27 @@ $$;
 -- (supabase.rpc) funciona. Para limpar pelo editor, apague direto nas três
 -- tabelas: o dono do banco passa por cima da RLS.
 
+-- Só quem CRIOU a produção (papel 'dono') e o super-admin destroem.
+--
+-- Antes bastava ser membro, e isso deixava a Equipe B apagar para sempre a
+-- produção da Equipe A — com um clique, sem volta e sem aviso para o outro
+-- lado. Mandar para a lixeira todo mundo pode, porque é reversível; destruir
+-- é outra conversa.
+create or replace function public.pode_destruir(p_projeto text)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.projeto_membros
+     where projeto_id = p_projeto
+       and usuario_id = auth.uid()
+       and papel = 'dono'
+  ) or public.e_admin();
+$$;
+
 create or replace function public.purgar_projeto(p_projeto text)
 returns integer
 language plpgsql
@@ -190,8 +211,8 @@ as $$
 declare
   apagados integer;
 begin
-  if not public.e_membro(p_projeto) then
-    raise exception 'nao autorizado a purgar o projeto %', p_projeto;
+  if not public.pode_destruir(p_projeto) then
+    raise exception 'so quem criou a producao (ou o admin) pode apaga-la de vez';
   end if;
 
   delete from public.registros where projeto_id = p_projeto;

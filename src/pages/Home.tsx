@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, TABELAS_SINCRONIZADAS } from '../db/db';
+import { db } from '../db/db';
 import type { Projeto } from '../types';
-import { Search, Film, Trash2, Sparkles } from 'lucide-react';
+import { Search, Film, Trash2, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
-import { entrarComoFundador, purgarProjetoNoServidor, descobrirPersona, type Persona } from '../lib/membros';
+import { entrarComoFundador, descobrirPersona, type Persona } from '../lib/membros';
 import { puxarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
-import { apagarAnexosDoProjeto } from '../lib/arquivos';
-import { apagarPesquisaPublica } from '../lib/pesquisas';
+import {
+  estaNaLixeira, mandarParaLixeira, restaurarDaLixeira, diasRestantes,
+  podeDestruir, destruirProducao, varrerLixeira, RETENCAO_DIAS,
+} from '../lib/lixeira';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
 import { HelpButton } from '../components/HelpButton';
@@ -46,6 +48,10 @@ export function Home() {
 
   const [modoDeletar, setModoDeletar] = useState(false);
   const [projetoParaDeletar, setProjetoParaDeletar] = useState<Projeto | null>(null);
+  const [lixeiraAberta, setLixeiraAberta] = useState(false);
+  const [projetoParaDestruir, setProjetoParaDestruir] = useState<Projeto | null>(null);
+  const [posso, setPosso] = useState(false);
+  const [destruindo, setDestruindo] = useState(false);
 
   /**
    * Busca as produções que compartilharam comigo.
@@ -58,7 +64,11 @@ export function Home() {
    * do servidor entra sozinho quando chega (o useLiveQuery redesenha).
    */
   useEffect(() => {
-    void puxarProjetosCompartilhados();
+    // A varredura vem primeiro: puxar antes traria de volta o que já venceu,
+    // só para apagar em seguida.
+    varrerLixeira()
+      .catch(() => [])
+      .then(() => puxarProjetosCompartilhados());
   }, []);
 
   /**
@@ -150,59 +160,47 @@ export function Home() {
     navigate(`/projeto/${id}`);
   };
 
-  const projetosFiltrados = projetos?.filter(p => 
-    p.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
-    (p.diretor && p.diretor.toLowerCase().includes(termoBusca.toLowerCase()))
-  ) || [];
+  const naLixeira = projetos?.filter(estaNaLixeira) || [];
 
+  const projetosFiltrados = (projetos || []).filter(p =>
+    !estaNaLixeira(p) && (
+      p.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
+      (p.diretor && p.diretor.toLowerCase().includes(termoBusca.toLowerCase()))
+    )
+  );
+
+  /**
+   * "Apagar" agora manda para a lixeira, e não destrói.
+   *
+   * A produção some da lista e para de aparecer para as duas equipes, mas dá
+   * para voltar atrás por uma semana. Destruir de vez virou uma ação separada,
+   * dentro da lixeira, e só quem criou a produção pode fazer.
+   */
   const confirmarDelecao = async () => {
     if (!projetoParaDeletar) return;
-    const id = projetoParaDeletar.id;
-
-    // Varre TODAS as tabelas do projeto, não só cinco.
-    //
-    // Antes daqui saíam apenas projeto, perfis, despesas, acertos,
-    // departamentos e configuração — locações, diárias, cenas, tarefas,
-    // documentos, roteiros e o resto ficavam órfãos no banco, invisíveis e
-    // para sempre. Com o compartilhamento isso deixa de ser só desperdício:
-    // linha órfã é linha que o sync mandaria para um projeto sem dono.
-    for (const tabela of TABELAS_SINCRONIZADAS) {
-      if (tabela === 'projetos') continue;
-      await db.table(tabela).where('projeto_id').equals(id).delete().catch(() => {});
-    }
-    await db.notificacoes.where('projeto_id').equals(id).delete().catch(() => {});
-
-    // As pesquisas saem do ar ANTES de sumirem daqui.
-    //
-    // Apagar só a linha local deixava o link de cada pesquisa vivo para quem o
-    // tivesse — a produção acabava, e a enquete continuava recebendo respostas
-    // num lugar que ninguém mais abria.
-    const pesquisasDoProjeto = await db.pesquisas.where('projeto_id').equals(id).toArray();
-    for (const p of pesquisasDoProjeto) {
-      await apagarPesquisaPublica(p.id).catch(e =>
-        console.warn('[SetProd] Link da pesquisa continua ativo:', p.titulo, e?.message)
-      );
-    }
-    await db.pesquisas.where('projeto_id').equals(id).delete().catch(() => {});
-    await db.respostas_pesquisa.where('projeto_id').equals(id).delete().catch(() => {});
-    await db.configuracoes.delete(id);
-    await db.projetos.delete(id);
-
-    // Os anexos primeiro: quem apaga arquivo do Storage é o app, e depois de
-    // purgar a participação eu já não teria permissão para isso.
-    await apagarAnexosDoProjeto(id).catch(e =>
-      console.warn('[SetProd] Anexos não foram apagados do servidor:', e?.message)
-    );
-
-    // E some do servidor também: a participação e o espelho não caem sozinhos
-    // quando o projeto é apagado aqui. Sem isto sobram participações órfãs,
-    // apontando para produções que já não existem.
-    purgarProjetoNoServidor(id).catch(e =>
-      console.warn('[SetProd] Projeto apagado aqui, mas não no servidor:', e?.message)
-    );
-
+    await mandarParaLixeira(projetoParaDeletar.id);
     setProjetoParaDeletar(null);
   };
+
+  /** Abre a confirmação de destruir — já sabendo se esta conta tem permissão. */
+  const pedirDestruicao = async (p: Projeto) => {
+    setProjetoParaDestruir(p);
+    setPosso(await podeDestruir(p.id));
+  };
+
+  const confirmarDestruicao = async () => {
+    if (!projetoParaDestruir) return;
+    setDestruindo(true);
+    try {
+      await destruirProducao(projetoParaDestruir.id);
+      setProjetoParaDestruir(null);
+    } catch (e: any) {
+      alert('Não consegui apagar de vez: ' + (e?.message || e));
+    } finally {
+      setDestruindo(false);
+    }
+  };
+
 
   return (
     <div className="home-shell" style={{
@@ -281,7 +279,17 @@ export function Home() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative', zIndex: 1 }}>
         <h2 className="text-xs text-secondary font-bold uppercase tracking-widest">Produções Recentes</h2>
-        <span className="text-accent text-sm font-bold">Ver todas</span>
+        {naLixeira.length > 0 ? (
+          <button
+            onClick={() => setLixeiraAberta(true)}
+            className="btn-chip"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Trash2 size={13} /> Lixeira ({naLixeira.length})
+          </button>
+        ) : (
+          <span className="text-accent text-sm font-bold">Ver todas</span>
+        )}
       </div>
 
       {/* PROJECT LIST */}
@@ -456,18 +464,122 @@ export function Home() {
                 <Trash2 size={26} className="text-danger" />
               </div>
             </div>
-            <h3 className="text-lg font-bold" style={{ textAlign: 'center', marginBottom: '8px' }}>Deletar "{projetoParaDeletar.nome}"?</h3>
+            <h3 className="text-lg font-bold" style={{ textAlign: 'center', marginBottom: '8px' }}>Mandar "{projetoParaDeletar.nome}" para a lixeira?</h3>
             <p className="text-sm text-secondary" style={{ textAlign: 'center', marginBottom: '24px' }}>
-              Essa ação é irreversível. Todas as despesas, acertos e a equipe desta produção serão apagados.
+              Ela some da lista para <strong>as duas equipes</strong>, mas nada é apagado ainda:
+              dá para restaurar por {RETENCAO_DIAS} dias. Depois disso, some de vez.
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={() => setProjetoParaDeletar(null)} className="btn-primary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                 Cancelar
               </button>
               <button onClick={confirmarDelecao} className="btn-primary" style={{ flex: 1, backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}>
-                Deletar
+                Mandar para a lixeira
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* LIXEIRA */}
+      {lixeiraAberta && (
+        <div
+          onClick={() => setLixeiraAberta(false)}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+        >
+          <div
+            className="card"
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: '460px', maxHeight: '80vh', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}
+          >
+            <h3 className="text-lg font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Trash2 size={18} /> Lixeira
+            </h3>
+            <p className="text-xs text-muted" style={{ marginBottom: '16px', lineHeight: 1.5 }}>
+              Produções mandadas para cá somem da lista das duas equipes e são apagadas de vez
+              depois de {RETENCAO_DIAS} dias. A limpeza acontece quando alguém abre o app, então
+              pode demorar um pouco mais que o prazo.
+            </p>
+
+            {naLixeira.length === 0 && <p className="text-sm text-muted">A lixeira está vazia.</p>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {naLixeira.map(p => {
+                const dias = diasRestantes(p);
+                return (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="font-bold text-sm truncate">{p.nome}</div>
+                      <div className="text-xs" style={{ color: dias <= 1 ? 'var(--color-danger)' : 'var(--text-secondary)' }}>
+                        {dias === 0 ? 'some na próxima abertura do app' : `some em ${dias} dia${dias > 1 ? 's' : ''}`}
+                      </div>
+                    </div>
+                    <button className="btn-chip" onClick={() => restaurarDaLixeira(p.id)} title="Restaurar">
+                      <RotateCcw size={13} /> Restaurar
+                    </button>
+                    <button className="btn-icon text-danger" onClick={() => pedirDestruicao(p)} title="Apagar de vez">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setLixeiraAberta(false)}
+              className="btn-primary"
+              style={{ width: '100%', marginTop: '16px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* APAGAR DE VEZ */}
+      {projetoParaDestruir && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', borderColor: 'var(--color-danger)', backgroundColor: 'var(--bg-primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={26} className="text-danger" />
+              </div>
+            </div>
+
+            {posso ? (
+              <>
+                <h3 className="text-lg font-bold" style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  Apagar "{projetoParaDestruir.nome}" de vez?
+                </h3>
+                <p className="text-sm text-secondary" style={{ textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
+                  Isto não tem volta. Somem o roteiro, os anexos, o financeiro e a equipe —
+                  no servidor e nos aparelhos das duas equipes. Os links de pesquisa param de funcionar.
+                  {' '}<strong>Exporte um backup antes se tiver qualquer dúvida.</strong>
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => setProjetoParaDestruir(null)} className="btn-primary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={confirmarDestruicao} disabled={destruindo} className="btn-primary" style={{ flex: 1, backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}>
+                    {destruindo ? 'Apagando…' : 'Apagar de vez'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold" style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  Só quem criou pode apagar de vez
+                </h3>
+                <p className="text-sm text-secondary" style={{ textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
+                  "{projetoParaDestruir.nome}" foi criada por outra equipe. Você pode mandar para a
+                  lixeira e restaurar, mas destruir o trabalho de outra pessoa não é uma tecla que
+                  deva existir. Ela some sozinha quando o prazo vencer.
+                </p>
+                <button onClick={() => setProjetoParaDestruir(null)} className="btn-primary" style={{ width: '100%', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
+                  Entendi
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
