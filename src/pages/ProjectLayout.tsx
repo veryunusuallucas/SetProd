@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useEffect } from 'react';
+import { useState, createContext, useContext, useEffect, Suspense } from 'react';
 import { useParams, useNavigate, Outlet, useLocation, Link, NavLink } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -274,7 +274,13 @@ export function ProjectLayout() {
           }}>
             <div className="master-detail-container">
               <div className="master-detail-master">
-                <Outlet />
+                {/* Suspense aqui, e não só lá no App: as telas do projeto
+                    carregam sob demanda, e sem esta fronteira mais interna a
+                    troca de aba derrubaria a barra lateral inteira por um
+                    instante — o app pareceria recarregar a cada clique. */}
+                <Suspense fallback={<div className="screen-padding" style={{ padding: '40px 0', color: 'var(--text-secondary)' }}>Carregando…</div>}>
+                  <Outlet />
+                </Suspense>
               </div>
               
               {rightPanelContent && (

@@ -1,27 +1,48 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { ProjectLayout } from './pages/ProjectLayout';
-import { DashboardGeral } from './components/DashboardGeral';
-import { InfoProducao } from './components/InfoProducao';
-import { Configuracoes } from './components/Configuracoes';
 import { CommandPalette } from './components/CommandPalette';
 import { Login } from './pages/Login';
-import { CadastroEquipe } from './pages/CadastroEquipe';
-import { ResponderPesquisa } from './pages/ResponderPesquisa';
-import { AceitarConvite } from './pages/AceitarConvite';
-import { LocacoesModule } from './pages/LocacoesModule';
-import { DiariasList } from './pages/DiariasList';
-import { DiariaModule } from './pages/DiariaModule';
-import { FinanceiroModule } from './pages/FinanceiroModule';
-import { TasksModule } from './pages/TasksModule';
-import { DecupagemModule } from './pages/DecupagemModule';
-import { DocumentosModule } from './pages/DocumentosModule';
-import { TransporteModule } from './pages/TransporteModule';
-import { GestaoDados } from './pages/GestaoDados';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { BugReportModal } from './components/BugReportModal';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Bug } from 'lucide-react';
+
+/**
+ * As telas de dentro do app carregam sob demanda.
+ *
+ * Antes tudo vinha num pacote só, e a conta era pesada: o pdf.js entra pela
+ * Decupagem e sozinho responde por metade do arquivo — mesmo para quem abriu o
+ * app só para lançar uma despesa, ou para quem está no 4G do set esperando a
+ * tela de login aparecer.
+ *
+ * Ficam de fora deste corte a Home e o Login: são a porta de entrada, e
+ * dividi-las só adicionaria uma espera antes da primeira tela.
+ */
+const DashboardGeral = lazy(() => import('./components/DashboardGeral').then(m => ({ default: m.DashboardGeral })));
+const InfoProducao = lazy(() => import('./components/InfoProducao').then(m => ({ default: m.InfoProducao })));
+const Configuracoes = lazy(() => import('./components/Configuracoes').then(m => ({ default: m.Configuracoes })));
+const CadastroEquipe = lazy(() => import('./pages/CadastroEquipe').then(m => ({ default: m.CadastroEquipe })));
+const ResponderPesquisa = lazy(() => import('./pages/ResponderPesquisa').then(m => ({ default: m.ResponderPesquisa })));
+const AceitarConvite = lazy(() => import('./pages/AceitarConvite').then(m => ({ default: m.AceitarConvite })));
+const LocacoesModule = lazy(() => import('./pages/LocacoesModule').then(m => ({ default: m.LocacoesModule })));
+const DiariasList = lazy(() => import('./pages/DiariasList').then(m => ({ default: m.DiariasList })));
+const DiariaModule = lazy(() => import('./pages/DiariaModule').then(m => ({ default: m.DiariaModule })));
+const FinanceiroModule = lazy(() => import('./pages/FinanceiroModule').then(m => ({ default: m.FinanceiroModule })));
+const TasksModule = lazy(() => import('./pages/TasksModule').then(m => ({ default: m.TasksModule })));
+const DecupagemModule = lazy(() => import('./pages/DecupagemModule').then(m => ({ default: m.DecupagemModule })));
+const DocumentosModule = lazy(() => import('./pages/DocumentosModule').then(m => ({ default: m.DocumentosModule })));
+const TransporteModule = lazy(() => import('./pages/TransporteModule').then(m => ({ default: m.TransporteModule })));
+const GestaoDados = lazy(() => import('./pages/GestaoDados').then(m => ({ default: m.GestaoDados })));
+
+/** O que aparece durante o instante em que a tela está chegando. */
+function Carregando() {
+  return (
+    <div className="screen-padding" style={{ padding: '40px 24px', color: 'var(--text-secondary)' }}>
+      Carregando…
+    </div>
+  );
+}
 
 // Placeholder components for new v3 modules
 const EquipamentosModule = () => <div className="screen-padding">Módulo de Equipamentos - Em breve</div>;
@@ -46,6 +67,10 @@ function App() {
       <BrowserRouter>
         <CommandPaletteWrapper />
         <div className="app-container">
+          {/* Rede de segurança das rotas de fora do projeto. As de dentro têm
+              a própria, junto do Outlet, para a barra lateral não piscar a cada
+              troca de aba. */}
+          <Suspense fallback={<Carregando />}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro/:projetoId" element={<CadastroEquipe />} />
@@ -77,6 +102,7 @@ function App() {
               <Route path="dados" element={<GestaoDados />} />
             </Route>
           </Routes>
+          </Suspense>
           <GlobalBugButton />
         </div>
       </BrowserRouter>
