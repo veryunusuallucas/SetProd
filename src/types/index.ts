@@ -23,6 +23,17 @@ export interface Projeto {
   obs?: string;
   campos_customizados?: CampoCustomizado[];
   data_criacao: number;
+  /**
+   * Quando foi mandada para a lixeira. Ausente = produção ativa.
+   *
+   * Fica no próprio registro do projeto de propósito: ele já viaja pelo
+   * espelho, então a marca chega sozinha nas duas equipes. Uma lixeira que
+   * existisse só num aparelho seria pior que não ter lixeira — a outra equipe
+   * continuaria vendo a produção como se nada tivesse acontecido.
+   */
+  lixeira_em?: number;
+  /** Quem mandou para a lixeira (id da conta), para a tela saber dizer. */
+  lixeira_por?: string;
   moeda: string;
   campos_obrigatorios?: string[]; // IDs ou nomes dos campos obrigatórios
   creditos?: Credito[]; // Apoios e extras da Fase 3
