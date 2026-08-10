@@ -44,11 +44,23 @@ export function AceitarConvite() {
         const logado = Boolean(sessao?.session?.user);
         if (vivo) setContaAtual(sessao?.session?.user?.email ?? null);
 
+        // Sem sessão, nem tenta ler o convite.
+        //
+        // A regra do servidor libera a leitura só para quem está logado — e um
+        // SELECT barrado pela RLS não dá erro, devolve VAZIO. Ler antes de
+        // entrar fazia o app concluir "este convite não existe" e mandar a
+        // pessoa pedir outro link, quando o convite estava lá, intacto, só
+        // esperando o login.
+        if (!logado) {
+          if (vivo) setEstado('precisa_entrar');
+          return;
+        }
+
         const c = await lerConvite(token!);
         if (!vivo) return;
 
         if (!c) {
-          setErro('Este convite não existe. Peça um link novo para quem te chamou.');
+          setErro('Este convite não existe ou já foi revogado. Peça um link novo para quem te chamou.');
           setEstado('erro');
           return;
         }
@@ -119,8 +131,11 @@ export function AceitarConvite() {
         {(estado === 'precisa_entrar' || estado === 'pronto' || estado === 'aceitando') && (
           <>
             <p className="text-sm" style={{ lineHeight: 1.5, marginBottom: '20px' }}>
-              Você foi convidado para{' '}
-              <strong>{convite?.nome_projeto || 'uma produção no SetProd'}</strong>.
+              {convite?.nome_projeto ? (
+                <>Você foi convidado para <strong>{convite.nome_projeto}</strong>.</>
+              ) : (
+                <>Você foi convidado para uma produção no SetProd.</>
+              )}
               <br />
               <span className="text-muted">
                 Vocês vão trabalhar na mesma produção — o que uma equipe muda, a outra vê.

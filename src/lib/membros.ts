@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigurado } from './supabase';
+import { linkDoApp } from './urlPublica';
 
 /**
  * Participação: quem entra em qual projeto.
@@ -385,5 +386,5 @@ async function lerDetalheDoErro(error: any): Promise<string | null> {
 
 /** URL que a Equipe A manda para a Equipe B. */
 export function linkDoConvite(token: string): string {
-  return `${window.location.origin}${import.meta.env.BASE_URL}convite/${token}`.replace(/([^:])\/\//g, '$1/');
+  return linkDoApp(`convite/${token}`);
 }
