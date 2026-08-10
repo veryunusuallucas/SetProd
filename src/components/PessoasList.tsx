@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, Trash2, UserPlus } from 'lucide-react';
 import { syncPerfisDeCadastro, publicarFichaPublica } from '../lib/sync';
 import { useRole } from '../hooks/useRole';
+import { linkDoApp } from '../lib/urlPublica';
 import Stepper, { Step } from './ui/Stepper';
 import { ProfileCard } from './ui/ProfileCard';
 import { FormBuilder } from './FormBuilder';
@@ -250,7 +251,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
    * uma versão antiga dos campos.
    */
   const copiarLinkCadastro = async () => {
-    const url = `${window.location.origin}/cadastro/${projetoId}`;
+    const url = linkDoApp(`cadastro/${projetoId}`);
     await navigator.clipboard.writeText(url);
 
     try {

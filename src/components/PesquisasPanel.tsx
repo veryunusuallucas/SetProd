@@ -12,6 +12,7 @@ import {
   apagarPesquisaPublica, type ApuracaoPergunta,
 } from '../lib/pesquisas';
 import { recomendarPesquisa } from '../lib/gemini';
+import { linkDoApp } from '../lib/urlPublica';
 import { AIButton } from './ui/AIButton';
 import { AIRecommendation, MOLA, useMovimentoReduzido } from './ui/ia';
 
@@ -69,7 +70,7 @@ export function PesquisasPanel({ projetoId }: { projetoId: string }) {
   const copiarLink = async (p: Pesquisa) => {
     try {
       await publicarPesquisa(p);
-      const url = `${window.location.origin}/pesquisa/${p.id}`;
+      const url = linkDoApp(`pesquisa/${p.id}`);
       await navigator.clipboard.writeText(url);
       setAviso('Link copiado. Mande para a equipe.');
     } catch (e: any) {
