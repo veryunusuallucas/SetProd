@@ -1,5 +1,6 @@
 import { sincronizar, puxar, pendencias, aplicarLinhas, TABELA_ESPELHO } from './sincronizacao';
 import { supabase } from './supabase';
+import { EVENTO_ALTERACAO } from '../db/db';
 import { sincronizarParticipacoes } from './membros';
 import { enviarPendentes } from './arquivos';
 import { migrarAnexosDoProjeto } from './migracaoAnexos';
@@ -189,6 +190,16 @@ const INTERVALO_AO_VIVO_MS = 60_000;
 const INTERVALO_SEM_TEMPO_REAL_MS = 15_000;
 
 /**
+ * Quanto esperar depois de uma alteração antes de subir.
+ *
+ * Não é atraso à toa: digitar um nome dispara uma gravação por tecla, e subir
+ * a cada tecla mandaria dezenas de requisições para escrever a mesma linha.
+ * Um segundo e meio é mais que o intervalo entre teclas e muito menos que o
+ * tempo de perceber que algo demorou.
+ */
+const ESPERA_APOS_ALTERACAO_MS = 1_500;
+
+/**
  * Mantém um projeto sincronizando enquanto a tela dele estiver aberta.
  *
  * Devolve a função de parar. Além do relógio, reage a três momentos em que o
@@ -223,6 +234,26 @@ export function manterSincronizado(projetoId: string): () => void {
 
   const desligarTempoReal = ligarTempoReal(projetoId, ajustarRitmo);
 
+  /**
+   * Sobe logo depois de alguém mexer em algo.
+   *
+   * O canal ao vivo já entregava em menos de um segundo — mas só depois que o
+   * dado chegava ao servidor, e isso esperava o relógio. Na prática, uma
+   * alteração podia levar um minuto para aparecer do outro lado, mesmo com
+   * tudo online. O gargalo era a subida, não a descida.
+   */
+  let esperando: number | undefined;
+  const aoAlterar = (e: Event) => {
+    const alvo = (e as CustomEvent<{ projeto_id?: string }>).detail?.projeto_id;
+    if (alvo && alvo !== projetoId) return;
+
+    // Reinicia a contagem a cada alteração: o envio sai quando a pessoa para
+    // de mexer, não no meio da digitação.
+    window.clearTimeout(esperando);
+    esperando = window.setTimeout(agora, ESPERA_APOS_ALTERACAO_MS);
+  };
+  window.addEventListener(EVENTO_ALTERACAO, aoAlterar);
+
   const aoVoltarAba = () => { if (!document.hidden) agora(); };
 
   window.addEventListener('online', agora);
@@ -235,7 +266,9 @@ export function manterSincronizado(projetoId: string): () => void {
   return () => {
     vivo = false;
     window.clearInterval(relogio);
+    window.clearTimeout(esperando);
     desligarTempoReal();
+    window.removeEventListener(EVENTO_ALTERACAO, aoAlterar);
     window.removeEventListener('online', agora);
     window.removeEventListener('focus', agora);
     window.removeEventListener('offline', aoCairARede);
