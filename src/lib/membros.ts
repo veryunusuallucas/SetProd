@@ -359,7 +359,7 @@ export async function lerConvite(token: string): Promise<Convite | null> {
  * chave de qualquer projeto, bastando saber o id. A função roda com service
  * role e é o único caminho.
  */
-export async function aceitarConvite(token: string): Promise<{ projeto_id: string }> {
+export async function aceitarConvite(token: string): Promise<{ projeto_id: string; ja_era_membro: boolean }> {
   const { data, error } = await supabase.functions.invoke('convite', { body: { token } });
 
   if (error) {
@@ -371,7 +371,7 @@ export async function aceitarConvite(token: string): Promise<{ projeto_id: strin
   if (data?.erro) throw new Error(data.erro);
 
   await sincronizarParticipacoes();
-  return { projeto_id: data.projeto_id };
+  return { projeto_id: data.projeto_id, ja_era_membro: Boolean(data.ja_era_membro) };
 }
 
 async function lerDetalheDoErro(error: any): Promise<string | null> {

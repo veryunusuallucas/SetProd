@@ -7,7 +7,7 @@ import { aceitarConvite, lerConvite, type Convite } from '../lib/membros';
 import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
 import { MOLA } from '../components/ui/ia';
 
-type Estado = 'lendo' | 'precisa_entrar' | 'pronto' | 'aceitando' | 'aceito' | 'erro';
+type Estado = 'lendo' | 'precisa_entrar' | 'pronto' | 'aceitando' | 'aceito' | 'ja_era' | 'erro';
 
 /**
  * Tela que a Equipe B abre ao clicar no link de convite.
@@ -24,6 +24,16 @@ export function AceitarConvite() {
   const [estado, setEstado] = useState<Estado>('lendo');
   const [convite, setConvite] = useState<Convite | null>(null);
   const [erro, setErro] = useState('');
+  /**
+   * Qual conta vai aceitar o convite.
+   *
+   * Fica visível o tempo todo porque o erro silencioso aqui é caro: quem já
+   * estava logado entrava na hora, sem o app nunca perguntar nada — e um
+   * convite mandado para o colega acabava aceito pela conta de quem estava no
+   * computador. O convite gasta e não dá para desfazer.
+   */
+  const [contaAtual, setContaAtual] = useState<string | null>(null);
+  const [projetoId, setProjetoId] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -32,6 +42,7 @@ export function AceitarConvite() {
       try {
         const { data: sessao } = await supabase.auth.getSession();
         const logado = Boolean(sessao?.session?.user);
+        if (vivo) setContaAtual(sessao?.session?.user?.email ?? null);
 
         const c = await lerConvite(token!);
         if (!vivo) return;
@@ -64,13 +75,22 @@ export function AceitarConvite() {
   const aceitar = async () => {
     setEstado('aceitando');
     try {
-      const { projeto_id } = await aceitarConvite(token!);
-      setEstado('aceito');
-      setTimeout(() => navigate(`/projeto/${projeto_id}`), 900);
+      const { projeto_id, ja_era_membro } = await aceitarConvite(token!);
+      setProjetoId(projeto_id);
+      // "Já era membro" merece tela própria, e não um redirecionamento mudo:
+      // é o sinal de que o convite foi aberto pela conta errada.
+      setEstado(ja_era_membro ? 'ja_era' : 'aceito');
+      if (!ja_era_membro) setTimeout(() => navigate(`/projeto/${projeto_id}`), 900);
     } catch (e: any) {
       setErro(e?.message || 'Não consegui aceitar o convite.');
       setEstado('erro');
     }
+  };
+
+  /** Sai da conta atual e volta para cá depois de entrar na certa. */
+  const trocarDeConta = async () => {
+    await supabase.auth.signOut();
+    navigate('/login', { state: { voltarPara: `/convite/${token}` }, replace: true });
   };
 
   return (
@@ -123,14 +143,31 @@ export function AceitarConvite() {
                 </p>
               </>
             ) : (
-              <button
-                className="btn btn-primary"
-                onClick={aceitar}
-                disabled={estado === 'aceitando'}
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                {estado === 'aceitando' ? 'Entrando…' : 'Aceitar e entrar na produção'}
-              </button>
+              <>
+                {/* Antes de qualquer botão: com QUAL conta isso vai acontecer.
+                    Aceitar gasta o convite e não desfaz — se o link foi aberto
+                    no computador de outra pessoa, o erro é definitivo. */}
+                <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', marginBottom: '14px' }}>
+                  <div className="text-xs text-muted">Entrando na produção como</div>
+                  <div className="text-sm font-bold" style={{ wordBreak: 'break-all' }}>{contaAtual || 'conta desconhecida'}</div>
+                  <button
+                    onClick={trocarDeConta}
+                    className="text-xs"
+                    style={{ marginTop: '6px', background: 'none', border: 'none', padding: 0, color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Não é você? Entrar com outra conta
+                  </button>
+                </div>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={aceitar}
+                  disabled={estado === 'aceitando'}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {estado === 'aceitando' ? 'Entrando…' : 'Aceitar e entrar na produção'}
+                </button>
+              </>
             )}
           </>
         )}
@@ -139,6 +176,25 @@ export function AceitarConvite() {
           <p className="text-sm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Check size={18} color="var(--color-success, #4ade80)" /> Pronto! Abrindo a produção…
           </p>
+        )}
+
+        {estado === 'ja_era' && (
+          <>
+            <p className="text-sm" style={{ lineHeight: 1.5, marginBottom: '16px' }}>
+              A conta <strong>{contaAtual}</strong> já faz parte desta produção — o convite não
+              chegou a ser usado.
+              <br />
+              <span className="text-muted">
+                Se o convite era para outra pessoa, mande o link para ela abrir na conta dela.
+              </span>
+            </p>
+            <button onClick={() => navigate(`/projeto/${projetoId}`)} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              Abrir a produção
+            </button>
+            <button onClick={trocarDeConta} className="btn" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+              Entrar com outra conta
+            </button>
+          </>
         )}
 
         {estado === 'erro' && (
