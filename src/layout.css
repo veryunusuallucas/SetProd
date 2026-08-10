@@ -115,7 +115,9 @@
     overflow-y: auto;
   }
 
-@media (max-width: 899px) {
+  /* Estava num segundo `@media` de mesma condição, aberto sem que o primeiro
+     tivesse sido fechado. Juntar os dois é o que fecha o buraco de vez: com
+     dois blocos idênticos convivendo, a chave que falta some no meio deles. */
   .desktop-only {
     display: none !important;
   }

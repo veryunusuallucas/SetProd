@@ -174,7 +174,7 @@ export function BugReportModal({ onClose }: { onClose: () => void }) {
           </div>
 
           {erro && <div style={{ color: 'var(--color-danger)', fontSize: '13px' }}>{erro}</div>}
-          {enviado && <div style={{ color: 'var(--color-success)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}><span>✅</span> Enviado para o Supabase. Obrigado!</div>}
+          {enviado && <div style={{ color: 'var(--color-success)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}><span>✅</span> Enviei! Vai trabalhar, seu bosta!</div>}
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
             <button onClick={copiarDados} style={{ flex: 1, padding: '12px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
