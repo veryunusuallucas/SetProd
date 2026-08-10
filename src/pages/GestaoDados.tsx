@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import {
   Database, FileText, FileSpreadsheet, FileJson, Archive, ShieldAlert,
-  CheckSquare, Square, Printer, X, AlertTriangle
+  CheckSquare, Square, Printer, X, AlertTriangle, ShieldCheck, Upload
 } from 'lucide-react';
+import { montarBackup, lerBackup, restaurarBackup, pesoDoBackup, nomeDoArquivo } from '../lib/backup';
+import { formatarTamanho } from '../lib/documentos';
 import { AIButton } from '../components/ui/AIButton';
 import { AIThinking } from '../components/ui/ia';
 import {
@@ -31,6 +33,17 @@ export function GestaoDados() {
 
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [erro, setErro] = useState('');
+
+  // ---- Backup ----
+  const [peso, setPeso] = useState<{ dados: number; anexos: number; total: number; quantidadeDeAnexos: number } | null>(null);
+  const [arquivoParaRestaurar, setArquivoParaRestaurar] = useState<File | null>(null);
+  const [avisoRestauracao, setAvisoRestauracao] = useState('');
+
+  // O peso é calculado ao abrir a tela: saber que o arquivo vai ter 60 MB só
+  // quando o navegador engasga é frustrante.
+  useEffect(() => {
+    if (projetoId) pesoDoBackup(projetoId).then(setPeso).catch(() => setPeso(null));
+  }, [projetoId]);
 
   // Relatório com IA
   const [instrucoes, setInstrucoes] = useState('');
@@ -106,25 +119,47 @@ export function GestaoDados() {
     }
   };
 
-  const exportarJSON = async () => {
+  /**
+   * Backup completo, com anexos.
+   *
+   * A versão anterior listava 16 tabelas à mão e esquecia justamente as que
+   * doem: roteiro, elementos, stripboard, configurações. E não levava nenhum
+   * arquivo — restaurar daria uma produção sem o roteiro dentro.
+   */
+  const baixarBackup = async (comAnexos: boolean) => {
     setOcupado('json');
+    setErro('');
     try {
-      const backup: Record<string, any> = { projeto: await db.projetos.get(projetoId!) };
-      const tabelas = [
-        'perfis', 'departamentos', 'despesas', 'acertos', 'aportes', 'locacoes',
-        'diarias', 'diaria_tasks', 'tasks', 'cenas', 'planos', 'roteiro_tags',
-        'pastas', 'documentos', 'veiculos', 'motoristas',
-      ];
-      for (const t of tabelas) {
-        backup[t] = await db.table(t).where('projeto_id').equals(projetoId!).toArray();
-      }
+      const backup = await montarBackup(projetoId!, { incluirAnexos: comAnexos });
       baixarArquivo(
-        `${nomeSeguro(projeto?.nome || 'projeto')}_backup.json`,
-        JSON.stringify(backup, null, 2),
+        nomeDoArquivo(projeto?.nome || 'producao'),
+        JSON.stringify(backup),
         'application/json'
       );
     } catch (e: any) {
-      setErro('Erro ao exportar: ' + (e?.message || e));
+      setErro('Erro ao gerar o backup: ' + (e?.message || e));
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  const restaurar = async (arquivo: File, substituir: boolean) => {
+    setOcupado('restaurar');
+    setErro('');
+    try {
+      const backup = lerBackup(await arquivo.text());
+      const r = await restaurarBackup(backup, { substituir });
+      setAvisoRestauracao(
+        `"${backup.nome_projeto}" restaurada: ${r.linhas} registros` +
+        (r.anexos ? ` e ${r.anexos} anexo(s)` : '') +
+        (r.substituiu ? ' — substituindo o que estava aqui.' : '.')
+      );
+      setArquivoParaRestaurar(null);
+    } catch (e: any) {
+      setErro(e?.message || String(e));
+      // Guarda o arquivo: se o erro foi "já existe", a tela oferece substituir
+      // sem obrigar a pessoa a escolher o arquivo de novo.
+      if (/já existe/i.test(e?.message || '')) setArquivoParaRestaurar(arquivo);
     } finally {
       setOcupado(null);
     }
@@ -288,15 +323,100 @@ export function GestaoDados() {
             <FileSpreadsheet size={16} /> {ocupado === 'csv' ? 'Gerando...' : `Exportar CSV (${escolhidos.length})`}
           </button>
 
+        </div>
+      </div>
+
+      {/* ---- Backup completo ---- */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div>
+          <h3 className="text-lg font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} /> Backup da produção
+          </h3>
+          <p className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+            Um arquivo com <strong>tudo</strong> desta produção, para guardar fora do app — no Drive,
+            no computador, onde você quiser. É a rede de segurança para quando algo dá errado:
+            alguém apaga sem querer, ou o servidor sai do ar.
+          </p>
+        </div>
+
+        {peso && (
+          <div className="text-xs text-muted" style={{ padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+            Com anexos: <strong>~{formatarTamanho(peso.total)}</strong>
+            {peso.quantidadeDeAnexos > 0 && <> ({peso.quantidadeDeAnexos} arquivo(s))</>}.
+            {' '}Sem anexos: <strong>~{formatarTamanho(peso.dados) || '0 B'}</strong>.
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <button
-            onClick={exportarJSON}
+            onClick={() => baixarBackup(true)}
+            disabled={ocupado !== null}
+            className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <FileJson size={16} /> {ocupado === 'json' ? 'Montando...' : 'Backup completo'}
+          </button>
+
+          <button
+            onClick={() => baixarBackup(false)}
             disabled={ocupado !== null}
             className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-            title="Backup técnico com todos os dados, para reimportar depois"
+            title="Bem menor, mas sem roteiro, comprovantes nem storyboard"
           >
-            <FileJson size={16} /> {ocupado === 'json' ? 'Gerando...' : 'Backup JSON'}
+            <FileJson size={16} /> Só os dados (sem anexos)
           </button>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+          <h4 className="font-bold text-sm" style={{ marginBottom: '6px' }}>Restaurar de um backup</h4>
+          <p className="text-xs text-muted" style={{ lineHeight: 1.5, marginBottom: '10px' }}>
+            Traz a produção de volta a partir de um arquivo. Se ela já existir aqui, o app pergunta
+            antes — restaurar por cima substitui o que está no lugar,{' '}
+            <strong>inclusive para a outra equipe</strong>.
+          </p>
+
+          <label className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <Upload size={16} /> {ocupado === 'restaurar' ? 'Restaurando...' : 'Escolher arquivo'}
+            <input
+              type="file"
+              accept="application/json,.json"
+              style={{ display: 'none' }}
+              disabled={ocupado !== null}
+              onChange={e => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) restaurar(f, false);
+              }}
+            />
+          </label>
+
+          {arquivoParaRestaurar && (
+            <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-danger)', backgroundColor: 'rgba(220,38,38,0.06)' }}>
+              <p className="text-xs" style={{ lineHeight: 1.5, marginBottom: '10px' }}>
+                Esta produção já existe aqui. Substituir apaga o estado atual e coloca o do backup —
+                e, como o conteúdo restaurado é mais recente, ele vence e chega na outra equipe.
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => restaurar(arquivoParaRestaurar, true)}
+                  className="btn-primary"
+                  style={{ backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}
+                >
+                  Substituir mesmo assim
+                </button>
+                <button onClick={() => { setArquivoParaRestaurar(null); setErro(''); }} className="btn">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {avisoRestauracao && (
+            <p className="text-xs" style={{ marginTop: '10px', color: 'var(--color-success, #4ade80)' }}>
+              {avisoRestauracao}
+            </p>
+          )}
         </div>
       </div>
 
