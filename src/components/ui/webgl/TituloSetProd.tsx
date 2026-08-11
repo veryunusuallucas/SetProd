@@ -14,6 +14,35 @@ const CLIQUES_PARA_ESTOURAR = 3;
 /** Tensão acumulada em cada clique — o terceiro é o estouro. */
 const TENSAO = [0, 0.22, 0.55, 1];
 
+/**
+ * COMPENSAÇÃO DE TAMANHO — por que os números não são os da referência.
+ *
+ * O shader desloca o texto em coordenadas de textura (0 a 1), então o efeito
+ * final em PIXELS é proporcional à largura do canvas. A demonstração do React
+ * Bits usa um texto enorme; aqui o título tem 84px na tela inicial e 52px no
+ * login. Com os mesmos números, o movimento vira um terço — e o repouso cai
+ * para MENOS DE UM PIXEL, que é literalmente invisível.
+ *
+ * Medido com os valores antigos (warp 0.08, ponteiro 0.38):
+ *   login  0,66px em repouso ·  6,3px sob o cursor
+ *   início 1,08px em repouso · 10,3px sob o cursor
+ *   demo   1,98px em repouso · 18,8px sob o cursor
+ *
+ * Daí a compensação: a força cresce na mesma proporção em que o título
+ * encolhe, e o movimento percebido fica igual em qualquer tamanho — cerca de
+ * 2,7px em repouso e 16px sob o cursor, nos dois lugares.
+ *
+ * Para mexer na intensidade, mexa só nestes três números.
+ */
+const TAMANHO_REFERENCIA = 84;
+const BASE_WARP = 0.20;
+const BASE_PONTEIRO = 0.62;
+const BASE_REFRACAO = 0.028;
+
+/** Teto de 2,2× para um título minúsculo não virar borrão ilegível. */
+const compensacaoDe = (tamanho: number) =>
+  Math.min(2.2, Math.max(1, TAMANHO_REFERENCIA / Math.max(tamanho, 1)));
+
 interface Props {
   tamanho?: number;
   fontFamily?: string;
@@ -39,6 +68,7 @@ interface Props {
 export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro', perigo = false }: Props) {
   const [efeitos] = useState(() => decidirEfeitos());
   const [tensao, setTensao] = useState(0);
+  const compensacao = compensacaoDe(tamanho);
 
   const cliques = useRef(0);
   const relogio = useRef<number | undefined>(undefined);
@@ -103,13 +133,13 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
         <WarpText
           text="SETPROD"
           color="#f8f5ff"
-          /* Números do exemplo da referência, sem alteração. */
-          warpStrength={0.08}
+          /* Ver COMPENSACAO abaixo: os números crescem quando o título encolhe. */
+          warpStrength={BASE_WARP * compensacao}
           warpScale={1.7}
           speed={0.55}
           pointerInfluence={0.42}
-          pointerStrength={0.38}
-          refraction={0.018}
+          pointerStrength={BASE_PONTEIRO * compensacao}
+          refraction={BASE_REFRACAO * compensacao}
           ripple
           fontSize={tamanho}
           fontWeight={800}

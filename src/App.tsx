@@ -5,6 +5,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { Login } from './pages/Login';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { BugReportModal } from './components/BugReportModal';
+import { PenseNisso } from './components/PenseNisso';
 import { lazy, Suspense, useState } from 'react';
 import { Bug } from 'lucide-react';
 
@@ -104,6 +105,7 @@ function App() {
           </Routes>
           </Suspense>
           <GlobalBugButton />
+          <PenseNissoQuandoLogado />
         </div>
       </BrowserRouter>
     </AuthProvider>
@@ -145,6 +147,23 @@ function GlobalBugButton() {
 }
 
 // Wrappers to pass projetoId from context/params since previously they received it via props
+
+/**
+ * O aviso do J. Martins só existe dentro do app.
+ *
+ * Fora dele ficam as telas públicas — cadastro da equipe, pesquisa e convite —
+ * abertas por gente de fora respondendo um formulário. A piada é interna, e
+ * numa dessas telas ela viraria só um pop-up estranho num site desconhecido.
+ */
+function PenseNissoQuandoLogado() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  const publica = /^\/(login|cadastro|pesquisa|convite)(\/|$)/.test(location.pathname);
+  if (!user || publica) return null;
+
+  return <PenseNisso />;
+}
 
 function CommandPaletteWrapper() {
   const location = useLocation();
