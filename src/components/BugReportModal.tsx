@@ -38,7 +38,7 @@ export function BugReportModal({ onClose }: { onClose: () => void }) {
         projeto_id: projetoId || null,
         papel: localStorage.getItem('mock_papel') || null,
         perfil_id: localStorage.getItem('mock_perfil_id') || null,
-        versao_app: 'v4',
+        versao_app: `v${__VERSAO_APP__}`,
         banco: { projetos, perfis, despesas, acertos, diarias, tasks },
         resumo_log: {
           total: eventos.length,

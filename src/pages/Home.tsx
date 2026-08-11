@@ -220,7 +220,10 @@ export function Home() {
           onClick={() => setMostrarChangelog(true)}
           style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '6px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
-          <Sparkles size={12} /> v4.3
+          {/* Sai do package.json: escrito à mão, o selo já ficou dizendo v4.2
+              enquanto o app era outro. Só maior.menor — o número de correção
+              interessa ao relatório de bug, não a quem está usando. */}
+          <Sparkles size={12} /> v{__VERSAO_APP__.split('.').slice(0, 2).join('.')}
         </button>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
