@@ -7,12 +7,31 @@ import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '.
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { useArquivo } from '../hooks/useArquivo';
 
+/**
+ * As categorias de gasto de uma produção.
+ *
+ * As seis primeiras são as antigas e ficam no começo de propósito: são as mais
+ * lançadas, e mudar a ordem obrigaria a reaprender onde cada uma está. As
+ * novas cobrem o que antes caía tudo em "Outro" — e "Outro" continua por
+ * último, como saída para o que não se encaixa.
+ */
 const CATEGORIAS = [
   { id: 'transporte', label: 'Transporte', emoji: '🚗' },
   { id: 'alimentacao', label: 'Alimentação', emoji: '🍔' },
   { id: 'moradia', label: 'Moradia', emoji: '🏨' },
   { id: 'equipamento', label: 'Equipamento', emoji: '🎥' },
   { id: 'arte', label: 'Arte', emoji: '🎨' },
+  { id: 'elenco', label: 'Elenco', emoji: '🎭' },
+  { id: 'equipe', label: 'Cachês', emoji: '💼' },
+  { id: 'locacao', label: 'Locação', emoji: '🏠' },
+  { id: 'figurino', label: 'Figurino', emoji: '👗' },
+  { id: 'maquiagem', label: 'Maquiagem', emoji: '💄' },
+  { id: 'som', label: 'Som', emoji: '🎙️' },
+  { id: 'luz', label: 'Luz e Elétrica', emoji: '💡' },
+  { id: 'pos', label: 'Pós-produção', emoji: '🎞️' },
+  { id: 'combustivel', label: 'Combustível', emoji: '⛽' },
+  { id: 'seguro', label: 'Seguro e Taxas', emoji: '📋' },
+  { id: 'producao', label: 'Produção', emoji: '📌' },
   { id: 'outro', label: 'Outro', emoji: '📄' },
 ];
 
@@ -37,6 +56,9 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     return arr.sort((a, b) => a.numero - b.numero);
   }, [projetoId]);
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
+
+  /** A equipe de verdade: o 'caixa_central' e sentinela da producao, nao pessoa. */
+  const equipe = (perfis || []).filter(p => p.id !== 'caixa_central');
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [descricao, setDescricao] = useState('');
@@ -139,7 +161,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     }
     setDiariaSelecionadaId(selId);
     const devedoresIds = d.devedores.filter((x: any) => x.tipo === 'pessoa').map((x: any) => x.id_ref);
-    const naoCaixa = (perfis || []).filter(p => p.id !== 'caixa_central').map(p => p.id);
+    const naoCaixa = equipe.map(p => p.id);
     const cobreTodos = naoCaixa.length > 0 && naoCaixa.every(id => devedoresIds.includes(id));
     setDividirComTodos(cobreTodos);
     setSelecionados(devedoresIds);
@@ -151,10 +173,23 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     const valorNum = parseCurrency(valor);
     if (!descricao || valorNum <= 0 || !pagadorId || !perfis) return;
 
-    const pagador = perfis.find(p => p.id === pagadorId);
-    if (!pagador) return;
+    /*
+      O 'caixa_central' é sentinela, não pessoa — e a linha dele no banco é uma
+      só, global, que muda de projeto conforme novos vão sendo criados. Exigir
+      que ela exista fazia `salvarDespesa` RETORNAR EM SILÊNCIO nos projetos
+      onde ela não estava: o botão "Registrar Despesa" simplesmente não fazia
+      nada, sem erro nenhum na tela.
+    */
+    const pagador = pagadorId === 'caixa_central'
+      ? { id: 'caixa_central' }
+      : perfis.find(p => p.id === pagadorId);
 
-    let devedoresLista = perfis.filter(p => p.id !== 'caixa_central');
+    if (!pagador) {
+      alert('Escolha quem pagou antes de registrar.');
+      return;
+    }
+
+    let devedoresLista = equipe;
     if (!dividirComTodos) {
       if (selecionados.length === 0) {
         alert('Selecione pelo menos uma pessoa para dividir a despesa.');
@@ -323,8 +358,22 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
             <select value={pagadorId} onChange={e => setPagadorId(e.target.value)} required disabled={tipoDespesa === 'producao'}>
               <option value="">Quem pagou?</option>
               <option value="caixa_central">A Produção (Caixa)</option>
-              {perfis?.filter(p => p.id !== 'caixa_central').map(p => (<option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>))}
+              {equipe.map(p => (<option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>))}
             </select>
+
+            {/*
+              Sem ninguém cadastrado, a lista só oferecia "A Produção" e ficava
+              parecendo quebrada — o relatório de bug foi exatamente esse:
+              "clicamos em Reembolsável e não apareceu a pessoa da equipe".
+              A lista não estava com defeito; estava vazia, e não dizia.
+            */}
+            {equipe.length === 0 && (
+              <p className="text-xs text-muted" style={{ marginTop: '-4px', lineHeight: 1.5 }}>
+                Ninguém cadastrado na equipe ainda — por isso só aparece a Produção.
+                Adicione as pessoas em <strong>Produção → Equipe</strong> para poder
+                lançar reembolso e rateio.
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
@@ -368,11 +417,13 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
               <span className="text-sm font-bold">Comprovante (Recibo / Nota)</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <input type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ fontSize: '12px' }} />
+                {/* `.btn-chip`, não `.btn-icon`: o .btn-icon é 40x40 fixo, e o
+                    rótulo quebrava em três linhas dentro do quadrado. */}
                 <button
                   type="button"
                   onClick={anexarLinkComprovante}
-                  className="btn-icon"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', border: '1px solid var(--border-light)', fontSize: '12px' }}
+                  className="btn-chip"
+                  style={{ fontSize: '12px', whiteSpace: 'nowrap' }}
                 >
                   <LinkIcon size={14} /> Link do Drive
                 </button>
@@ -404,7 +455,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
               {!dividirComTodos && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
                   <div className="text-xs text-muted" style={{ marginBottom: '4px' }}>Selecione quem participou da despesa:</div>
-                  {perfis?.filter(p => p.id !== 'caixa_central').map(p => (
+                  {equipe.map(p => (
                     <label key={p.id} className="checkbox-label">
                       <input type="checkbox" checked={selecionados.includes(p.id)} onChange={() => toggleSelecionado(p.id)} />
                       <span className="text-sm">{p.nome} {p.sobrenome}</span>

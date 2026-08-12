@@ -15,9 +15,18 @@ export interface ClimaDia {
  */
 export function parseCoords(texto?: string): { lat: number; lng: number } | null {
   if (!texto) return null;
+
+  /*
+    Links do OpenStreetMap trazem as coordenadas em parâmetros SEPARADOS
+    (?mlat=…&mlon=…), e não como um par "lat,lng". O app gera esse formato no
+    `linkMapa` e não conseguia lê-lo de volta: quem copiasse o link do próprio
+    mapa que o SetProd abriu recebia "sem coordenadas".
+  */
+  const osm = texto.match(/[?&]mlat=(-?\d{1,3}\.?\d*)[^]*?[?&]mlon=(-?\d{1,3}\.?\d*)/);
+
   // Formato @-23.55,-46.63 (links do Google Maps)
   const arroba = texto.match(/@(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/);
-  const alvo = arroba || texto.match(/(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+  const alvo = osm || arroba || texto.match(/(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
   if (!alvo) return null;
   const lat = parseFloat(alvo[1]);
   const lng = parseFloat(alvo[2]);

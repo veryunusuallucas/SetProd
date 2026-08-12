@@ -91,8 +91,10 @@ export function LocacoesModule() {
         return;
       }
       setCandidatosHospital(achados);
-    } catch (e) {
-      alert('Erro na busca de hospital (Overpass API). Tente de novo em alguns segundos.');
+    } catch (e: any) {
+      // A mensagem vem de `buscarHospitaisProximos`, que sabe distinguir
+      // "congestionado" de "demorou demais" — dizer só "erro" some com isso.
+      alert(e?.message || 'Erro na busca de hospital. Tente de novo em alguns segundos.');
     } finally {
       setBuscandoHospital(false);
     }

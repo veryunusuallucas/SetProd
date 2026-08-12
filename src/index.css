@@ -277,6 +277,47 @@ input[type="checkbox"]:checked::before {
   transform: scale(1);
 }
 
+/*
+  Os radios estavam pegando a regra geral de `input`: largura 100%, padding de
+  12px e borda. Viravam uma caixa da largura toda com a bolinha centralizada e
+  o texto empurrado para a direita — era isso que deixava o "Tipo de Despesa"
+  com cara de quebrado. O checkbox já tinha a sua exceção; o radio não tinha.
+*/
+input[type="radio"] {
+  appearance: none;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  width: 1.15em;
+  height: 1.15em;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  background-color: var(--bg-surface);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+input[type="radio"]::before {
+  content: "";
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background-color: #000;
+  transform: scale(0);
+  transition: transform 120ms ease-in-out;
+}
+
+input[type="radio"]:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="radio"]:checked::before {
+  transform: scale(1);
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
