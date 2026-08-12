@@ -191,11 +191,58 @@ export interface CabecalhoCena {
  *  - o período NÃO pode terminar em \b. "MANHÃ" acaba em caractere não-ASCII e
  *    \b não reconhece fronteira ali, então todo cabeçalho de manhã era perdido.
  */
-const RE_CABECALHO = /\b(INT\.?\/EXT\.?|EXT\.?\/INT\.?|INT\.|EXT\.|I\/E\.)\s+([^\n]{2,80}?)\s*[-–—]\s*(DIA|NOITE|MANHÃ|MANHA|TARDE|AMANHECER|ENTARDECER|MADRUGADA|CONT[ÍI]NUO)(?![A-Za-zÀ-ÿ])/gi;
+/**
+ * Os períodos que fecham um cabeçalho.
+ *
+ * "PÔR DO SOL" faltava, e faltava caro: uma cena inteira do roteiro de teste
+ * ("EXT. ESTACIONAMENTO - PÔR DO SOL") era simplesmente ignorada — 11 cenas
+ * detectadas de 12. O resto entrou junto porque é a mesma família de erro:
+ * roteirista escreve o horário como quiser, e o que a lista não conhece some
+ * sem deixar rastro.
+ */
+const PERIODOS = [
+  'DIA', 'NOITE', 'MANHÃ', 'MANHA', 'TARDE', 'MADRUGADA',
+  'AMANHECER', 'ENTARDECER', 'ANOITECER', 'ALVORECER',
+  'P[ÔO]R DO SOL', 'NASCER DO SOL', 'CREP[ÚU]SCULO', 'MEIO[- ]DIA',
+  'MAIS TARDE', 'CONT[ÍI]NUO', 'CONTINUO',
+  // Roteiros em inglês circulam bastante em coprodução.
+  'DAY', 'NIGHT', 'CONTINUOUS', 'DAWN', 'DUSK', 'MORNING', 'EVENING',
+].join('|');
+
+/**
+ * Cabeçalho de cena no padrão do mercado: 7A. INT./EXT. LOCAL - PERÍODO.
+ *
+ * O número na frente é OPCIONAL e capturado: tratamento numerado usa sufixo de
+ * letra (7A, 7B) para cenas inseridas depois, sem renumerar o roteiro inteiro.
+ * Ignorar isso quebra a conversa com o resto da equipe, que chama a cena pelo
+ * número impresso.
+ *
+ * Dois cuidados que custaram cena:
+ *  - o local é limitado a 80 caracteres e a captura é preguiçosa, senão quando
+ *    o traço some na extração do PDF ela "vaza" e engole a página inteira;
+ *  - o período NÃO pode terminar em \b. "MANHÃ" acaba em caractere não-ASCII e
+ *    \b não reconhece fronteira ali, então todo cabeçalho de manhã era perdido.
+ */
+const RE_CABECALHO = new RegExp(
+  String.raw`(?:(\d{1,4}\s?[A-Za-z]?)\s*[.):\-–—]\s*)?` +
+  String.raw`\b(INT\.?\/EXT\.?|EXT\.?\/INT\.?|INT\.|EXT\.|I\/E\.)\s+` +
+  String.raw`([^\n]{2,80}?)\s*[-–—]\s*` +
+  `(${PERIODOS})(?![A-Za-zÀ-ÿ])`,
+  'gi'
+);
 
 function periodoDe(bruto: string): 'dia' | 'noite' {
   const p = bruto.toUpperCase();
-  return (p.includes('NOITE') || p.includes('MADRUGADA')) ? 'noite' : 'dia';
+  // Anoitecer já é noite na prática da diária; pôr do sol e entardecer ainda
+  // são bloco de dia, que é como a produção escala.
+  return /NOITE|MADRUGADA|ANOITECER|NIGHT|DUSK|EVENING/.test(p) ? 'noite' : 'dia';
+}
+
+/** Normaliza "7 A" e "7a" para "7A" — o mesmo número escrito de jeitos diferentes. */
+function numeroImpresso(bruto?: string): string | undefined {
+  if (!bruto) return undefined;
+  const limpo = bruto.replace(/\s+/g, '').toUpperCase();
+  return /^\d{1,4}[A-Z]?$/.test(limpo) ? limpo : undefined;
 }
 
 /**
@@ -223,33 +270,65 @@ export function extrairCenas(paginas: { numero: number; texto: string }[]): Cabe
     return atual;
   };
 
-  const achados: { indice: number; fim: number; cab: Omit<CabecalhoCena, 'corpo' | 'numero'> }[] = [];
+  const achados: {
+    indice: number;
+    fim: number;
+    impresso?: string;
+    cab: Omit<CabecalhoCena, 'corpo' | 'numero'>;
+  }[] = [];
   RE_CABECALHO.lastIndex = 0;
 
   for (const m of completo.matchAll(RE_CABECALHO)) {
     const indice = m.index ?? 0;
-    const ambiente = m[1].toUpperCase().startsWith('INT') ? 'int' : 'ext';
-    const local = m[2].trim().replace(/\s{2,}/g, ' ');
+    const ambiente = m[2].toUpperCase().startsWith('INT') ? 'int' : 'ext';
+    const local = m[3].trim().replace(/\s{2,}/g, ' ');
     if (!local) continue;
 
     achados.push({
       indice,
       fim: indice + m[0].length,
+      impresso: numeroImpresso(m[1]),
       cab: {
         cabecalho: m[0].trim().replace(/\s{2,}/g, ' '),
         local,
         ambiente: ambiente as 'int' | 'ext',
-        periodo: periodoDe(m[3]),
+        periodo: periodoDe(m[4]),
         pagina: paginaDe(indice),
       },
     });
   }
 
-  return achados.map((a, i) => ({
-    ...a.cab,
-    numero: String(i + 1),
-    corpo: completo.slice(a.fim, achados[i + 1]?.indice ?? completo.length).trim(),
-  }));
+  /*
+    O número é o DO ROTEIRO quando ele existe.
+
+    Antes tudo era renumerado em sequência, e isso desmontava a numeração de
+    tratamento: 7A e 7B viravam "7" e "9", e a equipe que pede "a 7B" ficava
+    procurando uma cena que o app tinha rebatizado. Só quem não traz número
+    impresso recebe um sequencial — e mesmo aí, contando a partir de quantas
+    cenas numeradas já passaram, para não colidir.
+  */
+  const temNumeracao = achados.some(a => a.impresso);
+
+  let proximoAutomatico = 1;
+  return achados.map((a, i) => {
+    let numero: string;
+    if (a.impresso) {
+      numero = a.impresso;
+    } else if (temNumeracao) {
+      // Roteiro numerado com um cabeçalho sem número: marca como derivado do
+      // anterior em vez de inventar um número que já existe em outro lugar.
+      const anterior = achados[i - 1]?.impresso;
+      numero = anterior ? `${anterior}.1` : String(proximoAutomatico++);
+    } else {
+      numero = String(proximoAutomatico++);
+    }
+
+    return {
+      ...a.cab,
+      numero,
+      corpo: completo.slice(a.fim, achados[i + 1]?.indice ?? completo.length).trim(),
+    };
+  });
 }
 
 /**

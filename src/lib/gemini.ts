@@ -291,8 +291,16 @@ export async function analisarRoteiro(params: {
     const pedidos: string[] = [];
     if (separarCenas) {
       pedidos.push(
-        '- "cenas": um item por cabeçalho de cena (INT./EXT. LOCAL - PERÍODO). ' +
-        'Em "paginas", estime o tamanho da cena em oitavos de página, no formato "1 4/8".'
+        '- "cenas": um item por cabeçalho de cena (INT./EXT. LOCAL - PERÍODO).\n' +
+        '  Em "numero", copie EXATAMENTE o número impresso antes do cabeçalho, incluindo\n' +
+        '  a letra quando houver: "7A", "7B", "12", "3C". Roteiro numerado usa sufixo de\n' +
+        '  letra para cenas inseridas depois, sem renumerar o resto — então 7A e 7B são\n' +
+        '  DUAS cenas distintas, e podem aparecer separadas por outras no meio. NÃO\n' +
+        '  renumere, NÃO junte e NÃO ordene: devolva na ordem em que aparecem.\n' +
+        '  Se o cabeçalho não tiver número impresso, deixe "numero" vazio.\n' +
+        '  O período pode ser DIA, NOITE, MANHÃ, TARDE, CONTÍNUO, PÔR DO SOL, AMANHECER\n' +
+        '  e afins — considere todos, e classifique em "periodo" como dia ou noite.\n' +
+        '  Em "paginas", estime o tamanho da cena em oitavos de página, no formato "1 4/8".'
       );
     }
     if (analiseTecnica) {
