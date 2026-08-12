@@ -58,10 +58,35 @@ export async function buscarHospitaisProximos(
 );
 out center tags 30;`;
 
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    body: query,
-  });
+  /*
+    A Overpass é gratuita e compartilhada: responde em 3s num dia bom e passa de
+    30s quando está cheia. Sem um limite, a busca ficava "Buscando..." por tempo
+    indeterminado e parecia travada. Trinta segundos é generoso para ela e curto
+    o bastante para a pessoa saber que falhou.
+  */
+  const cancelamento = new AbortController();
+  const relogio = setTimeout(() => cancelamento.abort(), 30_000);
+
+  let res: Response;
+  try {
+    res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: query,
+      signal: cancelamento.signal,
+    });
+  } catch (e: any) {
+    if (e?.name === 'AbortError') {
+      throw new Error('O serviço de mapas demorou demais para responder. Tente de novo em alguns minutos.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(relogio);
+  }
+
+  // 429 e 504 são o serviço dizendo "estou cheio", não erro do app.
+  if (res.status === 429 || res.status === 504) {
+    throw new Error('O serviço de mapas está congestionado agora. Tente de novo em alguns minutos.');
+  }
   if (!res.ok) throw new Error(`Overpass respondeu ${res.status}`);
 
   const data = await res.json();

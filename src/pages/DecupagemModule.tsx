@@ -206,12 +206,21 @@ export function DecupagemModule() {
 
   return (
     <div style={{ paddingBottom: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/*
+        Título à esquerda, abas NO MEIO, ações à direita.
+
+        Antes era `space-between` com três blocos — e nas abas Roteiro e
+        Elementos, que não têm ações, o terceiro bloco sumia e as abas iam
+        parar coladas na borda direita. Agora as duas colunas laterais têm o
+        mesmo peso (`flex: 1`) e a do canto direito existe sempre, mesmo vazia:
+        é o que mantém o miolo centrado em qualquer aba.
+      */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 0', minWidth: 'max-content' }}>
           <Clapperboard size={20} /> Decupagem Geral
         </h2>
-        
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
           {([
             ['roteiro', 'Roteiro'],
             ['shotlist', 'Master Shot List'],
@@ -240,16 +249,18 @@ export function DecupagemModule() {
           ))}
         </div>
 
-        {viewMode !== 'roteiro' && viewMode !== 'elementos' && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button onClick={() => setExportAberto(true)} className="btn-chip">
-              <FileDown size={16} /> <span className="font-bold text-sm">Exportar</span>
-            </button>
-            <button onClick={addCena} className="btn-chip">
-              <Plus size={16} /> <span className="font-bold text-sm">Cena</span>
-            </button>
-          </div>
-        )}
+        <div style={{ flex: '1 1 0', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {viewMode !== 'roteiro' && viewMode !== 'elementos' && (
+            <>
+              <button onClick={() => setExportAberto(true)} className="btn-chip">
+                <FileDown size={16} /> <span className="font-bold text-sm">Exportar</span>
+              </button>
+              <button onClick={addCena} className="btn-chip">
+                <Plus size={16} /> <span className="font-bold text-sm">Cena</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {viewMode === 'roteiro' && (

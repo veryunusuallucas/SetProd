@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, Trash2, UserPlus } from 'lucide-react';
+import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
 import { syncPerfisDeCadastro, publicarFichaPublica } from '../lib/sync';
 import { useRole } from '../hooks/useRole';
 import { linkDoApp } from '../lib/urlPublica';
@@ -376,7 +376,8 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
             title="Relatório por campo (filtro transversal)"
             style={{ ...botaoBarra, backgroundColor: showRelatorio ? 'var(--accent)' : 'var(--bg-surface)', color: showRelatorio ? '#000' : 'var(--text-primary)' }}
           >
-            <FileText size={16} />
+            {/* Controles = filtrar; documento = ficha. Estavam trocados. */}
+            <SlidersHorizontal size={16} />
           </button>
 
           {canEditProducao && (
@@ -407,7 +408,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                 title="Ficha de cadastro"
                 style={{ ...botaoBarra, backgroundColor: menuAberto === 'ficha' ? 'var(--bg-active)' : 'var(--bg-surface)' }}
               >
-                <Settings2 size={16} />
+                <FileText size={16} />
               </button>
               {menuAberto === 'ficha' && (
                 <Menu onFechar={() => setMenuAberto(null)}>
