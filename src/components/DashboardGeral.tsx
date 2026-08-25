@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { useNavigate } from 'react-router-dom';
 import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText } from 'lucide-react';
 import { CalendarioDashboard } from './CalendarioDashboard';
+import { FilaRepescagem } from './FilaRepescagem';
 
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
   const navigate = useNavigate();
@@ -101,6 +102,11 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
           <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>{projeto.nome}</h2>
         </div>
       </div>
+
+      {/* No topo, e não no fim: cena que ficou para trás é a informação mais
+          perecível do app. Enterrada no rodapé, ela vira descoberta na véspera
+          do último dia. Some sozinha quando a fila está vazia. */}
+      <FilaRepescagem projetoId={projetoId} />
 
       <div style={{ display: 'flex', gap: '8px', padding: '0 4px' }}>
         <button 

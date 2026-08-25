@@ -14,6 +14,9 @@ import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
+import { marcarCena } from '../lib/registroSet';
+import { FechamentoDiaria } from '../components/FechamentoDiaria';
+import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
 
 export function DiariaModule() {
@@ -50,6 +53,15 @@ export function DiariaModule() {
 
   /** cena → planos decupados, já na ordem de filmagem (ver `lib/planos.ts`). */
   const planosDaCena = planosPorCena(planosGlobais);
+
+  /** O que já foi marcado hoje. Alimenta o relatório de fechamento. */
+  const registrosDoDia = useLiveQuery(
+    () => db.registros_cena.where('diaria_id').equals(diariaId!).toArray(),
+    [diariaId]
+  ) || [];
+
+  const [fechamentoAberto, setFechamentoAberto] = useState(false);
+  const { perfilId: meuPerfilId } = useRole();
 
   const [newTask, setNewTask] = useState('');
   const [selecionandoEquipe, setSelecionandoEquipe] = useState(false);
@@ -268,10 +280,45 @@ export function DiariaModule() {
       return;
     }
 
-    if (!confirm('Fechar a diária? Será gerado o resumo em PDF para impressão. Os dados continuam salvos e a diária pode ser reaberta depois.')) return;
+    // Fechar deixou de ser um `confirm()`: virou o relatório de produção, onde
+    // se confere o que saiu e se resolve o que ficou sem marcação. Ver
+    // `FechamentoDiaria`.
+    setFechamentoAberto(true);
+  };
 
-    await db.diarias.update(diariaId!, { fechada: true, data_fechamento: Date.now() });
+  /** Chamado pelo relatório, depois de a pessoa conferir tudo. */
+  const confirmarFechamento = async (notas: string) => {
+    await db.diarias.update(diariaId!, {
+      fechada: true,
+      data_fechamento: Date.now(),
+      // As notas do wrap entram nas observações da diária, que é onde o resto
+      // do app já procura o texto livre do dia.
+      observacoes: notas
+        ? `${diaria.observacoes ? diaria.observacoes + '\n\n' : ''}Fechamento: ${notas}`
+        : diaria.observacoes,
+    });
+
+    /*
+      Cena escalada e nunca marcada vira `nao_gravada` AGORA, na hora de fechar.
+
+      Não é assumir sem perguntar: a tela mostrou cada uma delas destacada e
+      ofereceu os três botões. Quem fechou mesmo assim decidiu. E deixar sem
+      registro nenhum seria pior — a cena sumiria do relatório e da fila de
+      repescagem, como se nunca tivesse sido programada.
+    */
+    const registrosDoDia = await db.registros_cena.where('diaria_id').equals(diariaId!).toArray();
+    const marcadas = new Set(registrosDoDia.map(r => r.cena_id));
+    for (const cena of cenasDaDiaria) {
+      if (!marcadas.has(cena.id)) {
+        await marcarCena(projetoId!, diariaId!, cena.id, 'nao_gravada', {
+          registrado_por: meuPerfilId || undefined,
+          motivo: 'sem registro no fechamento',
+        });
+      }
+    }
+
     if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Fechou a Diária ${diaria.numero}`);
+    setFechamentoAberto(false);
     gerarResumoFechamento();
   };
 
@@ -896,6 +943,19 @@ export function DiariaModule() {
             </div>
           </div>
         </div>
+      )}
+
+      {fechamentoAberto && (
+        <FechamentoDiaria
+          numero={diaria.numero}
+          projetoId={projetoId!}
+          diariaId={diariaId!}
+          cenas={cenasDaDiaria}
+          registros={registrosDoDia}
+          meuPerfilId={meuPerfilId || undefined}
+          aoFechar={confirmarFechamento}
+          aoCancelar={() => setFechamentoAberto(false)}
+        />
       )}
 
       {geradorAberto && projeto && (
