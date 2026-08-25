@@ -13,6 +13,7 @@ import { GeradorODModal } from '../components/GeradorODModal';
 import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
+import { planosPorCena } from '../lib/planos';
 import { useArquivo } from '../hooks/useArquivo';
 
 export function DiariaModule() {
@@ -32,6 +33,23 @@ export function DiariaModule() {
   const cenasGlobais = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const veiculos = useLiveQuery(() => db.veiculos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const motoristas = useLiveQuery(() => db.motoristas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const planosGlobais = useLiveQuery(() => db.planos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+
+  /**
+   * As cenas escaladas para este dia, na ordem em que foram escaladas.
+   *
+   * Sai de `cena_ids` e das cenas globais. Os campos `diaria.cenas` e
+   * `diaria.planos` estão marcados DEPRECATED no tipo desde a v4 — e o bloco de
+   * Shot List da exportação ainda lia os dois. O resultado é que a caixinha
+   * "Shot List" existia, a pessoa marcava, e nada saía impresso: em qualquer
+   * diária feita do jeito atual esses arrays estão vazios.
+   */
+  const cenasDaDiaria = (diaria?.cena_ids || [])
+    .map(id => cenasGlobais.find(c => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => Boolean(c));
+
+  /** cena → planos decupados, já na ordem de filmagem (ver `lib/planos.ts`). */
+  const planosDaCena = planosPorCena(planosGlobais);
 
   const [newTask, setNewTask] = useState('');
   const [selecionandoEquipe, setSelecionandoEquipe] = useState(false);
@@ -367,17 +385,17 @@ export function DiariaModule() {
       ${exportConfig.checklist && linhaTasks ? `<h2>Checklist</h2><ul>${linhaTasks}</ul>` : ''}
       ${exportConfig.observacoes && diaria.observacoes ? `<h2>Observações</h2><p>${diaria.observacoes}</p>` : ''}
       
-      ${exportConfig.shotlist && (diaria.cenas || []).length > 0 ? `<h2>Shot List</h2>
-        ${(diaria.cenas||[]).map((c: any) => {
-          const pl = (diaria.planos||[]).filter((p: any) => p.cena_id === c.id);
-          const trs = pl.map((p: any) => `<tr><td style="width:40px;text-align:center"><b>${p.numero}</b></td><td>${p.descricao}</td><td>${p.tamanho||'-'}</td><td>${p.movimento||'-'}</td><td>${p.lente||'-'}</td></tr>`).join('');
+      ${exportConfig.shotlist && cenasDaDiaria.length > 0 ? `<h2>Shot List</h2>
+        ${cenasDaDiaria.map(c => {
+          const pl = planosDaCena.get(c.id) || [];
+          const trs = pl.map(p => `<tr><td style="width:40px;text-align:center"><b>${p.numero}</b></td><td>${p.descricao || '-'}</td><td>${p.tamanho||'-'}</td><td>${p.movimento||'-'}</td><td>${p.lente||'-'}</td></tr>`).join('');
           return `
             <div style="margin-top:16px;background:#f9f9f9;padding:12px;border:1px solid #ddd;border-radius:8px">
               <strong>Cena ${c.numero}</strong>: ${c.descricao} (${c.ambiente||'ext'} / ${c.periodo||'dia'})
               ${pl.length > 0 ? `<table style="width:100%;margin-top:8px;font-size:13px">
                 <tr style="text-align:left;background:#eee"><th>Plano</th><th>Ação</th><th>Tamanho</th><th>Movimento</th><th>Lente</th></tr>
                 ${trs}
-              </table>` : ''}
+              </table>` : '<div class="muted" style="margin-top:6px;font-size:12px">Sem decupagem para esta cena.</div>'}
             </div>
           `;
         }).join('')}

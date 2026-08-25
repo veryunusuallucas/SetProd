@@ -1,11 +1,21 @@
 import { useState } from 'react';
 import { db } from '../db/db';
-import { Clapperboard, Plus, Trash2 } from 'lucide-react';
+import { Clapperboard, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Diaria, Cena } from '../types';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { ordenarPlanos, resumoDePlanos } from '../lib/planos';
 
 export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[] }) {
   const [showSelector, setShowSelector] = useState(false);
+
+  /** Quais cenas estão com os planos abertos. Recolhido é o padrão. */
+  const [aberta, setAberta] = useState<Set<string>>(new Set());
+  const alternar = (cenaId: string) => setAberta(atual => {
+    const proxima = new Set(atual);
+    if (proxima.has(cenaId)) proxima.delete(cenaId);
+    else proxima.add(cenaId);
+    return proxima;
+  });
 
   // Busca as cenas e planos globais
   const cenasGlobais = useLiveQuery(() => db.cenas.where('projeto_id').equals(diaria.projeto_id).toArray(), [diaria.projeto_id]) || [];
@@ -84,9 +94,17 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
       {todasCenas.map(cena => {
         // Se for cena antiga, os planos estão em diaria.planos. Se for nova, estão em planosGlobais
         const isAntiga = !!cena.ambiente && !cena.projeto_id;
-        const planosDaCena = isAntiga 
-          ? (diaria.planos || []).filter(p => p.cena_id === cena.id)
-          : planosGlobais.filter(p => p.cena_id === cena.id);
+        /*
+          Ordenados, e não na ordem em que o Dexie devolveu.
+          `Plano.numero` é TEXTO, então ordenar por ele direto coloca o 10 antes
+          do 2 e perde o 3A no meio. `ordenarPlanos` lê o número como número e
+          usa a letra para desempatar — que é como a decupagem numera.
+        */
+        const planosDaCena = ordenarPlanos(
+          isAntiga
+            ? (diaria.planos || []).filter(p => p.cena_id === cena.id)
+            : planosGlobais.filter(p => p.cena_id === cena.id)
+        );
         
         const loc = locacoes.find(l => l.id === cena.locacao_id);
         
@@ -106,14 +124,40 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
               <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted" style={{ padding: '6px' }} title="Remover da Diária"><Trash2 size={16} /></button>
             </div>
 
-            {planosDaCena.length > 0 && (
-              <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'var(--bg-surface)' }}>
-                <div className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">Planos ({planosDaCena.length})</div>
+            {/*
+              Recolhido por padrão, e isso não é preferência estética: uma cena
+              pode ter vinte planos, e três cenas assim transformam a Ordem do
+              Dia num rolo em que ninguém acha a cena seguinte. A contagem fica
+              visível — é ela que diz se a cena foi decupada ou não.
+            */}
+            <button
+              onClick={() => alternar(cena.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                padding: '10px 12px', cursor: planosDaCena.length ? 'pointer' : 'default',
+                background: 'var(--bg-surface)', border: 'none',
+                borderTop: '1px solid var(--border-light)',
+                color: 'var(--text-secondary)', textAlign: 'left',
+              }}
+              disabled={planosDaCena.length === 0}
+            >
+              {planosDaCena.length > 0 && (
+                aberta.has(cena.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+              )}
+              <span className="text-xs font-bold uppercase tracking-widest">
+                {resumoDePlanos(planosDaCena.length)}
+              </span>
+            </button>
+
+            {aberta.has(cena.id) && planosDaCena.length > 0 && (
+              <div style={{ padding: '4px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'var(--bg-surface)' }}>
                 {planosDaCena.map(plano => (
                   <div key={plano.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                    <span className="font-bold text-muted" style={{ width: '20px' }}>{plano.numero}</span>
+                    <span className="font-bold text-muted" style={{ width: '28px' }}>{plano.numero}</span>
                     <span style={{ flex: 1 }}>{plano.descricao}</span>
-                    <span className="text-xs text-secondary">{plano.tamanho} {plano.movimento ? `/ ${plano.movimento}` : ''}</span>
+                    <span className="text-xs text-secondary">
+                      {[plano.tamanho, plano.movimento, plano.lente].filter(Boolean).join(' · ')}
+                    </span>
                   </div>
                 ))}
               </div>
