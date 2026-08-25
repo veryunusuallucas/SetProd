@@ -8,10 +8,11 @@ import { Search, Film, Trash2, Sparkles, RotateCcw, AlertTriangle } from 'lucide
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
 import { entrarComoFundador, descobrirPersona, type Persona } from '../lib/membros';
-import { puxarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
+import { sincronizarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
 import {
   estaNaLixeira, mandarParaLixeira, restaurarDaLixeira, diasRestantes,
-  podeDestruir, destruirProducao, varrerLixeira, RETENCAO_DIAS,
+  podeDestruir, destruirProducao, varrerLixeira, limparProducoesDestruidas,
+  RETENCAO_DIAS,
 } from '../lib/lixeira';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
@@ -64,11 +65,26 @@ export function Home() {
    * do servidor entra sozinho quando chega (o useLiveQuery redesenha).
    */
   useEffect(() => {
-    // A varredura vem primeiro: puxar antes traria de volta o que já venceu,
-    // só para apagar em seguida.
-    varrerLixeira()
-      .catch(() => [])
-      .then(() => puxarProjetosCompartilhados());
+    /*
+      A ordem dos três passos importa, e cada um só funciona depois do anterior:
+
+      1. Varrer a lixeira ANTES de sincronizar. Sincronizar primeiro traria de
+         volta o que já venceu, só para apagar em seguida.
+
+      2. Sincronizar — sobe E desce. O empurrão é o que faltava: mandar uma
+         produção para a lixeira aqui na tela inicial ficava preso na caixa de
+         saída, porque quem empurra é o laço de dentro de uma produção aberta.
+         A produção sumia para quem apagou e continuava na lista da outra equipe.
+
+      3. Limpar as destruídas DEPOIS de sincronizar, porque o passo 2 é que
+         atualiza a lista de participações — é nela que se descobre que uma
+         produção deixou de ser nossa.
+    */
+    (async () => {
+      await varrerLixeira().catch(() => []);
+      await sincronizarProjetosCompartilhados().catch(() => 0);
+      await limparProducoesDestruidas().catch(() => []);
+    })();
   }, []);
 
   /**

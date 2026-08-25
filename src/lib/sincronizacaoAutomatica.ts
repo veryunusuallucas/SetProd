@@ -1,4 +1,4 @@
-import { sincronizar, puxar, pendencias, aplicarLinhas, TABELA_ESPELHO } from './sincronizacao';
+import { sincronizar, pendencias, aplicarLinhas, TABELA_ESPELHO } from './sincronizacao';
 import { supabase } from './supabase';
 import { EVENTO_ALTERACAO } from '../db/db';
 import { sincronizarParticipacoes } from './membros';
@@ -95,13 +95,23 @@ export async function rodada(projetoId: string): Promise<void> {
 }
 
 /**
- * Traz as produções que compartilharam comigo.
+ * Sincroniza todas as produções de que participo — sobe e desce.
  *
  * É isto que faz a Equipe B, que aceitou um convite e nunca teve o projeto
  * neste navegador, ver a produção aparecer na tela inicial. Sem isto o convite
  * dá acesso a uma tela vazia.
+ *
+ * ⚠️ SOBE TAMBÉM, e isso não é detalhe. Antes ela só puxava, e o `rodada()` —
+ * único lugar que empurra — só roda dentro de uma produção ABERTA. Então tudo o
+ * que a pessoa fazia na tela inicial ficava preso na caixa de saída: mandar uma
+ * produção para a lixeira, restaurar, renomear. A alteração só saía do aparelho
+ * se ela abrisse aquela produção depois — e quem acabou de mandar algo para a
+ * lixeira justamente não abre.
+ *
+ * O sintoma era a produção sumir para quem apagou e continuar na lista da outra
+ * equipe, para sempre.
  */
-export async function puxarProjetosCompartilhados(): Promise<number> {
+export async function sincronizarProjetosCompartilhados(): Promise<number> {
   if (!supabaseConfigurado || !navigator.onLine) return 0;
 
   const participacoes = await sincronizarParticipacoes();
@@ -109,9 +119,10 @@ export async function puxarProjetosCompartilhados(): Promise<number> {
 
   for (const p of participacoes) {
     try {
-      total += await puxar(p.projeto_id);
+      const { recebidas } = await sincronizar(p.projeto_id);
+      total += recebidas;
     } catch (e) {
-      console.warn('[SetProd] Não consegui puxar o projeto', p.projeto_id, e);
+      console.warn('[SetProd] Não consegui sincronizar o projeto', p.projeto_id, e);
     }
   }
 

@@ -1,9 +1,9 @@
 import { db, TABELAS_SINCRONIZADAS } from '../db/db';
 import { supabase, supabaseConfigurado } from './supabase';
-import { participacaoLocal, purgarProjetoNoServidor } from './membros';
+import { participacaoLocal, participacoesLocais, purgarProjetoNoServidor } from './membros';
 import { apagarAnexosDoProjeto } from './arquivos';
 import { apagarPesquisaPublica } from './pesquisas';
-import { reiniciarCursor } from './sincronizacao';
+import { reiniciarCursor, cursorDe } from './sincronizacao';
 import type { Projeto } from '../types';
 
 /**
@@ -116,6 +116,70 @@ export async function destruirProducao(projetoId: string): Promise<void> {
 
   await purgarProjetoNoServidor(projetoId);
   await apagarSomenteLocal(projetoId);
+}
+
+/**
+ * Tira do aparelho as produções que outra pessoa destruiu no servidor.
+ *
+ * O PROBLEMA QUE ELA RESOLVE
+ * `puxar` traz linhas; nunca traz a ausência delas. Quando o dono destrói uma
+ * produção, o `purgar_projeto` apaga o espelho, os anexos e as participações —
+ * e a outra equipe fica com a cópia inteira no IndexedDB, para sempre. Ela
+ * aparece na lixeira dizendo "some em 7 dias" e nunca some, porque não há nada
+ * chegando que diga que ela morreu.
+ *
+ * COMO DESCOBRIR SEM TABELA NOVA
+ * `projeto_livre_para_fundar` já responde exatamente a pergunta certa: "este
+ * projeto está sem nenhum membro E sem nenhuma linha no espelho?". É o estado
+ * em que um projeto fica depois de purgado.
+ *
+ * OS DOIS CASOS QUE PARECEM IGUAIS E NÃO SÃO
+ * Perder a participação pode significar duas coisas, e elas pedem respostas
+ * opostas:
+ *
+ *   · a produção foi destruída  → a cópia local não serve para nada, apaga
+ *   · eu fui removido dela      → a produção continua viva com as outras
+ *                                 pessoas, e apagar a minha cópia seria apagar
+ *                                 trabalho que ainda existe
+ *
+ * A função separa os dois: só apaga quando o servidor confirma que não sobrou
+ * nada lá. Remover alguém continua NÃO apagando a cópia dessa pessoa, que é a
+ * decisão registrada na Etapa 5 do ROADMAP.
+ *
+ * A TRAVA CONTRA APAGAR O QUE É SÓ SEU
+ * Uma produção que nunca subiu para o servidor também responde "livre para
+ * fundar" — não há membro nem linha lá, porque ela nunca chegou lá. Apagá-la
+ * seria destruir o trabalho de quem usa o app offline. Por isso a checagem só
+ * vale para quem TEM CURSOR: cursor é a prova de que aquele projeto já foi lido
+ * do servidor pelo menos uma vez.
+ */
+export async function limparProducoesDestruidas(): Promise<string[]> {
+  if (!supabaseConfigurado || !navigator.onLine) return [];
+
+  const meus = new Set(participacoesLocais().map(p => p.projeto_id));
+  const projetos = await db.projetos.toArray();
+  const sumidas: string[] = [];
+
+  for (const p of projetos) {
+    // Ainda sou membro: está viva e é minha.
+    if (meus.has(p.id)) continue;
+    // Nunca veio do servidor: é só deste aparelho, não se mexe.
+    if (!cursorDe(p.id)) continue;
+
+    try {
+      const { data, error } = await supabase.rpc('projeto_livre_para_fundar', { p_projeto: p.id });
+      if (error) continue;
+      if (!data) continue; // ainda existe lá — fui removido, não destruíram
+
+      await apagarSomenteLocal(p.id);
+      sumidas.push(p.nome);
+      console.info('[SetProd] Produção destruída por outra equipe, removida daqui:', p.nome);
+    } catch {
+      // Sem rede ou servidor fora: não é hora de apagar nada.
+    }
+  }
+
+  return sumidas;
 }
 
 /**
