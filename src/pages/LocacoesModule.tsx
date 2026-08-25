@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { MapPin, Plus, Edit2, Trash2, Cross, Shield, Phone, X } from 'lucide-react';
+import { MapPin, Plus, Edit2, Trash2, Cross, Shield, Phone, X, Save } from 'lucide-react';
 import { logAction } from '../lib/audit';
 import { parseCoords } from '../lib/clima';
 import { buscarHospitaisProximos, formatarDistancia, linkRota, type HospitalOSM } from '../lib/osm';
@@ -30,6 +30,17 @@ export interface Locacao {
   obs?: string;
 }
 
+/**
+ * Papéis que aparecem como atalho ao adicionar um contato.
+ *
+ * No set ninguém quer digitar "Zelador" com o celular na mão. E "Segurança" é o
+ * primeiro de propósito: é o contato que a Ordem do Dia procura numa emergência.
+ */
+const PAPEIS_CONTATO = ['Segurança', 'Dono', 'Zelador', 'Síndico', 'Outro'] as const;
+
+/** Reconhece o contato de segurança, escrito de qualquer jeito. */
+const ehSeguranca = (papel?: string) => /seguran|vigi|port(ei|aria)|base/i.test(papel || '');
+
 export function LocacoesModule() {
   const { id: projetoId } = useParams();
   const locacoes = useLiveQuery(
@@ -48,7 +59,6 @@ export function LocacoesModule() {
   const [hospitalDistancia, setHospitalDistancia] = useState<number | undefined>();
   const [hospitalCoords, setHospitalCoords] = useState('');
   const [candidatosHospital, setCandidatosHospital] = useState<HospitalOSM[] | null>(null);
-  const [seguranca, setSeguranca] = useState('');
   const [status, setStatus] = useState<'conversa' | 'temos' | 'caiu'>('conversa');
   const [contatos, setContatos] = useState<LocacaoContato[]>([]);
   
@@ -108,8 +118,8 @@ export function LocacoesModule() {
     setCandidatosHospital(null);
   };
 
-  const addContato = () => {
-    setContatos([...contatos, { id: crypto.randomUUID(), nome: '', telefone: '', papel: '' }]);
+  const addContato = (papel = '') => {
+    setContatos([...contatos, { id: crypto.randomUUID(), nome: '', telefone: '', papel }]);
   };
 
   const updateContato = (id: string, field: keyof LocacaoContato, value: string) => {
@@ -122,7 +132,7 @@ export function LocacoesModule() {
 
   const limparForm = () => {
     setNome(''); setEndereco(''); setCoordenadas('');
-    setHospital(''); setSeguranca(''); setObs('');
+    setHospital(''); setObs('');
     setHospitalTelefone(''); setHospitalDistancia(undefined); setHospitalCoords('');
     setCandidatosHospital(null);
     setStatus('conversa'); setContatos([]);
@@ -138,10 +148,21 @@ export function LocacoesModule() {
     setHospitalTelefone(loc.hospital_telefone || '');
     setHospitalDistancia(loc.hospital_distancia);
     setHospitalCoords(loc.hospital_coordenadas || '');
-    setSeguranca(loc.contato_seguranca || '');
     setObs(loc.obs || '');
     setStatus(loc.status || 'conversa');
-    setContatos(loc.contatos || []);
+
+    /*
+      Locações antigas guardavam a segurança num campo solto. Ao abrir para
+      editar, ele entra na lista como um contato normal — assim a informação não
+      se perde e a pessoa não precisa redigitar. O campo velho é limpo ao salvar.
+    */
+    const jaListados = loc.contatos || [];
+    const precisaMigrar = loc.contato_seguranca && !jaListados.some(c => ehSeguranca(c.papel));
+    setContatos(
+      precisaMigrar
+        ? [...jaListados, { id: crypto.randomUUID(), papel: 'Segurança', nome: loc.contato_seguranca!, telefone: '' }]
+        : jaListados
+    );
     setShowForm(true);
   };
 
@@ -161,7 +182,9 @@ export function LocacoesModule() {
       hospital_telefone: hospitalTelefone,
       hospital_distancia: hospitalDistancia,
       hospital_coordenadas: hospitalCoords,
-      contato_seguranca: seguranca,
+      // O campo velho sai de cena: a segurança agora é um contato da lista, e
+      // manter os dois vivos faria a tela mostrar o telefone duas vezes.
+      contato_seguranca: undefined,
       obs,
       status,
       contatos
@@ -250,25 +273,58 @@ export function LocacoesModule() {
               </button>
             </div>
             
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-              <Shield size={16} style={{ color: '#4CAF50' }} />
-              <input placeholder="Contato de Segurança / Base" value={seguranca} onChange={e => setSeguranca(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
-            </div>
           </div>
 
+          {/*
+            UMA LISTA SÓ DE CONTATOS.
+
+            Antes havia dois lugares: um campo solto "Contato de Segurança /
+            Base" e esta lista de contatos com papel, nome e telefone. Mas
+            segurança É um contato — com o papel "Segurança". Dois lugares para
+            a mesma coisa fazem a pessoa preencher um, esquecer o outro, e
+            procurar o telefone no lugar errado no dia em que precisar dele.
+
+            Os papéis viram atalhos: no set ninguém quer digitar "Zelador".
+          */}
           <div style={{ border: '1px solid var(--border-light)', padding: '12px', borderRadius: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
               <div className="text-xs font-bold uppercase tracking-widest text-muted">Contatos da Locação</div>
-              <button onClick={addContato} className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }}><Plus size={14}/></button>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {PAPEIS_CONTATO.map(p => (
+                  <button
+                    key={p}
+                    onClick={() => addContato(p)}
+                    className="text-xs"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      padding: '4px 10px', borderRadius: '20px', cursor: 'pointer',
+                      border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    <Plus size={11} /> {p}
+                  </button>
+                ))}
+              </div>
             </div>
-            {contatos.length === 0 && <div className="text-xs text-muted">Nenhum contato adicionado.</div>}
+
+            {contatos.length === 0 && (
+              <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                Ninguém ainda. Use os atalhos acima — o contato de <strong>Segurança</strong> é
+                o que a Ordem do Dia procura em caso de emergência.
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {contatos.map((c) => (
-                <div key={c.id} style={{ display: 'flex', gap: '8px' }}>
-                  <input placeholder="Papel (Dono, Zelador)" value={c.papel} onChange={e => updateContato(c.id, 'papel', e.target.value)} style={{ flex: 1, padding: '8px' }} />
-                  <input placeholder="Nome" value={c.nome} onChange={e => updateContato(c.id, 'nome', e.target.value)} style={{ flex: 1, padding: '8px' }} />
-                  <input placeholder="Telefone" value={c.telefone} onChange={e => updateContato(c.id, 'telefone', e.target.value)} style={{ flex: 1, padding: '8px' }} />
-                  <button onClick={() => removeContato(c.id)} className="btn-icon text-danger" style={{ backgroundColor: 'var(--bg-primary)' }}><Trash2 size={14}/></button>
+                <div key={c.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {/* O ícone marca quem é o contato de segurança, para achá-lo
+                      de relance numa lista com cinco nomes. */}
+                  {ehSeguranca(c.papel) && <Shield size={15} style={{ color: '#4CAF50', flexShrink: 0 }} />}
+                  <input placeholder="Papel (Dono, Zelador)" value={c.papel} onChange={e => updateContato(c.id, 'papel', e.target.value)} style={{ flex: 1, padding: '8px', minWidth: 0 }} />
+                  <input placeholder="Nome" value={c.nome} onChange={e => updateContato(c.id, 'nome', e.target.value)} style={{ flex: 1, padding: '8px', minWidth: 0 }} />
+                  <input placeholder="Telefone" value={c.telefone} onChange={e => updateContato(c.id, 'telefone', e.target.value)} style={{ flex: 1, padding: '8px', minWidth: 0 }} />
+                  <button onClick={() => removeContato(c.id)} className="btn-icon text-danger" style={{ backgroundColor: 'var(--bg-primary)', flexShrink: 0 }}><Trash2 size={14}/></button>
                 </div>
               ))}
             </div>
@@ -276,9 +332,18 @@ export function LocacoesModule() {
 
           <textarea placeholder="Observações (estacionamento, regras do local, restrições de horário...)" value={obs} onChange={e => setObs(e.target.value)} rows={2} />
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button onClick={() => setShowForm(false)} className="btn-icon" style={{ backgroundColor: 'var(--bg-primary)' }}>Cancelar</button>
-            <button onClick={salvar} className="btn-primary">Salvar Locação</button>
+          {/*
+            `btn-icon` é a classe dos botões QUADRADOS de ícone — largura e
+            altura fixas. Com texto dentro, "Cancelar" transbordava e ficava por
+            cima do botão de salvar. É `btn`, que é o botão comum com texto.
+          */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <button onClick={() => { setShowForm(false); limparForm(); }} className="btn">
+              Cancelar
+            </button>
+            <button onClick={salvar} className="btn btn-primary">
+              <Save size={16} /> Salvar Locação
+            </button>
           </div>
         </div>
       )}
@@ -386,11 +451,20 @@ export function LocacoesModule() {
                   </div>
                 </div>
               )}
-              {loc.contato_seguranca && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-                  <Shield size={14} style={{ color: '#4CAF50' }} /> <strong>Segurança:</strong> {loc.contato_seguranca}
-                </div>
-              )}
+              {/* Lê dos dois lugares: a lista nova e o campo antigo, para as
+                  locações que ainda não foram reabertas para edição. */}
+              {(() => {
+                const daLista = (loc.contatos || []).find((c: LocacaoContato) => ehSeguranca(c.papel));
+                const texto = daLista
+                  ? [daLista.nome, daLista.telefone].filter(Boolean).join(' · ')
+                  : loc.contato_seguranca;
+                if (!texto) return null;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                    <Shield size={14} style={{ color: '#4CAF50' }} /> <strong>Segurança:</strong> {texto}
+                  </div>
+                );
+              })()}
             </div>
 
             {loc.obs && (

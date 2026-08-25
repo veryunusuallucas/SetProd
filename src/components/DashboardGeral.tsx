@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText } from 'lucide-react';
 import { CalendarioDashboard } from './CalendarioDashboard';
 import { FilaRepescagem } from './FilaRepescagem';
+import { calcularProgresso } from '../lib/registroSet';
+import { oitavosParaPaginas } from '../lib/decupagem';
 
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
   const navigate = useNavigate();
@@ -16,10 +18,22 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
   const aportes = useLiveQuery(() => db.aportes.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const diarias = useLiveQuery(() => db.diarias.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
 
-  const [diariaAtual] = useState(() => {
-    const salva = localStorage.getItem(`diaria_atual_${projetoId}`);
-    return salva ? parseInt(salva.replace(/\D/g, '')) || 1 : 1;
-  });
+  /*
+    O andamento vem do que aconteceu, não de um número guardado.
+
+    Antes este card lia `localStorage['diaria_atual_<projeto>']` — uma chave que
+    NADA no app jamais escreveu. Só era lida, aqui. Sobrou de uma versão antiga,
+    e por isso o card mostrava "Diária 1" para sempre, com 2 ou com 40 diárias.
+    O denominador vinha de `num_diarias`, um campo digitado à mão que quase
+    ninguém preenche — daí a barra parada em 0%.
+
+    Agora sai dos registros de filmagem, que existem de verdade: diárias
+    fechadas e páginas gravadas.
+  */
+  const cenasProjeto = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const registrosCena = useLiveQuery(() => db.registros_cena.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+
+  const progresso = calcularProgresso(cenasProjeto, registrosCena);
 
   // Contadores animados
   const [animatedSaldo, setAnimatedSaldo] = useState(0);
@@ -75,7 +89,19 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
     .sort((a, b) => b.data_criacao - a.data_criacao)
     .slice(0, 3);
 
-  const progressoDiaria = totalPlanejado > 0 ? Math.min((diariaAtual / totalPlanejado) * 100, 100) : 0;
+  const totalDiarias = diarias.length;
+  const diariasFechadas = diarias.filter(d => d.fechada).length;
+
+  /*
+    A barra mede PÁGINAS quando há decupagem, e diárias quando não há.
+
+    Página gravada é a medida honesta: dez diárias fechadas de meia página cada
+    não são metade de um filme. Mas quem ainda não decupou o roteiro não teria
+    barra nenhuma — e aí diárias fechadas é o melhor que dá para dizer.
+  */
+  const progressoDiaria = progresso.oitavosTotal > 0
+    ? Math.min((progresso.oitavosGravados / progresso.oitavosTotal) * 100, 100)
+    : (totalDiarias > 0 ? (diariasFechadas / totalDiarias) * 100 : 0);
 
   // Semana à frente (v4 §1.1): 7 dias a partir de hoje, com diárias e prazos de tasks.
   const semana = Array.from({ length: 7 }, (_, i) => {
@@ -227,16 +253,46 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
               </div>
               
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span className="text-3xl font-bold">Diária {diariaAtual}</span>
-                {totalPlanejado > 0 && <span className="text-secondary font-bold">de {totalPlanejado}</span>}
+                <span className="text-3xl font-bold">
+                  {diariasFechadas} <span className="text-secondary" style={{ fontSize: '18px', fontWeight: 400 }}>
+                    de {totalDiarias || '—'} {totalDiarias === 1 ? 'diária' : 'diárias'}
+                  </span>
+                </span>
               </div>
 
               <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ width: `${progressoDiaria}%`, height: '100%', backgroundColor: 'var(--accent)', transition: 'width 0.5s ease-out' }}></div>
               </div>
-              
-              {diariaAtual > totalPlanejado && totalPlanejado > 0 && (
-                <div className="text-xs text-danger font-bold">⚠️ Número de diárias ultrapassou o planejado.</div>
+
+              {/* O que realmente diz se a produção está andando: páginas de
+                  roteiro gravadas. Diária fechada mede o calendário; página
+                  gravada mede o filme. */}
+              {progresso.cenasTotal > 0 && (
+                <div className="text-xs text-secondary" style={{ lineHeight: 1.6 }}>
+                  <div>
+                    <strong>{oitavosParaPaginas(progresso.oitavosGravados)}</strong> de{' '}
+                    <strong>{oitavosParaPaginas(progresso.oitavosTotal)}</strong> páginas gravadas
+                  </div>
+                  <div className="text-muted">
+                    {progresso.gravadas} cena(s) prontas
+                    {progresso.parciais > 0 && ` · ${progresso.parciais} pela metade`}
+                    {progresso.pendentes > 0 && ` · ${progresso.pendentes} a gravar`}
+                    {progresso.cortadas > 0 && ` · ${progresso.cortadas} cortada(s)`}
+                  </div>
+                </div>
+              )}
+
+              {progresso.cenasTotal === 0 && (
+                <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                  Decupe o roteiro e marque as cenas na diária para ver quanto do
+                  filme já saiu.
+                </div>
+              )}
+
+              {totalPlanejado > 0 && totalDiarias > totalPlanejado && (
+                <div className="text-xs text-danger font-bold">
+                  ⚠️ {totalDiarias} diárias criadas, {totalPlanejado} planejadas.
+                </div>
               )}
             </div>
 
