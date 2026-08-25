@@ -1,5 +1,6 @@
 import { db, TABELAS_SINCRONIZADAS, marcarTransacaoComoRemota } from '../db/db';
 import { supabase, supabaseConfigurado } from './supabase';
+import { contaAtual } from './conta';
 
 /**
  * O motor de sincronização: leva o que mudou aqui para o servidor e traz o que
@@ -35,6 +36,21 @@ const TETO_BYTES = 3_000_000;
 
 type Linha = { id: string; projeto_id?: string; atualizado_em?: number };
 
+/**
+ * Uma edição local que perdeu para uma versão mais nova do servidor.
+ *
+ * O motor não resolve o conflito — o LWW já decidiu, e por linha inteira. O que
+ * ele faz é parar de resolver *em silêncio*: quem estava com a tela aberta
+ * merece saber que o que digitou foi substituído.
+ */
+export const EVENTO_CONFLITO = 'setprod-conflito';
+
+export interface Conflito {
+  projeto_id: string;
+  tabela: string;
+  id: string;
+}
+
 interface LinhaEspelho {
   projeto_id: string;
   tabela: string;
@@ -64,10 +80,23 @@ const conhecida = (t: string) => (TABELAS_EM_SINCRONIA as readonly string[]).inc
  * do cliente). Se fosse o do cliente, um aparelho com a hora adiantada gravaria
  * um cursor no futuro e simplesmente pararia de receber mudanças — sem erro,
  * sem aviso, só silêncio.
+ *
+ * E é por conta, não só por projeto: o `localStorage` é do navegador, então duas
+ * contas no mesmo Chrome brigariam pelo mesmo cursor — uma marca "li até aqui"
+ * e a outra pula tudo o que já passou. Ver `conta.ts`.
  */
-const chaveCursor = (projetoId: string) => `setprod_cursor_${projetoId}`;
+const chaveCursor = (projetoId: string) => `setprod_cursor_${contaAtual()}_${projetoId}`;
+
+/** Como a chave era antes de existir separação por conta. */
+const chaveCursorAntiga = (projetoId: string) => `setprod_cursor_${projetoId}`;
 
 export function cursorDe(projetoId: string): string | null {
+  // Um cursor da chave antiga é de dono desconhecido: foi escrito por quem
+  // estivesse logado na época. Herdá-lo poderia fazer esta conta pular linhas
+  // que nunca leu — exatamente o bug que a separação veio consertar. Então ele
+  // é descartado, e o projeto desce inteiro mais uma vez. Baixar de novo é
+  // barato e idempotente (o LWW resolve); perder linha em silêncio, não.
+  localStorage.removeItem(chaveCursorAntiga(projetoId));
   return localStorage.getItem(chaveCursor(projetoId));
 }
 
@@ -195,6 +224,7 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
 
   const tabelas = [...new Set(usaveis.map(l => l.tabela))];
   let aplicadas = 0;
+  const perdidas: Conflito[] = [];
 
   await db.transaction('rw', [...tabelas.map(t => db.table(t)), db.sync_queue], async () => {
     // Sem esta marca, os hooks do Dexie carimbam cada linha recebida com a hora
@@ -225,9 +255,19 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
       const naFila = await db.sync_queue.get(`${linha.tabela}:${linha.id}`);
       if (naFila && naFila.atualizado_em <= linha.atualizado_em) {
         await db.sync_queue.delete(naFila.id);
+        // Aqui alguém perdeu trabalho. O LWW já decidiu e não há o que desfazer,
+        // mas perder em silêncio é o pior aspecto disto: a pessoa vê o próprio
+        // texto mudar sozinho na tela e não entende. Ver §10.A do ROADMAP.
+        perdidas.push({ projeto_id: linha.projeto_id, tabela: linha.tabela, id: linha.id });
       }
     }
   });
+
+  // Depois da transação, não dentro: se ela abortar, nada foi sobrescrito e o
+  // aviso teria sido mentira.
+  if (perdidas.length) {
+    window.dispatchEvent(new CustomEvent(EVENTO_CONFLITO, { detail: perdidas }));
+  }
 
   return aplicadas;
 }

@@ -85,33 +85,53 @@ export async function lerFichaPublica(projetoId: string) {
   return data;
 }
 
-export async function syncPerfisDeCadastro(projetoId: string) {
-  try {
-    // 1. Puxa todos os perfis desse projeto que estão no Supabase
-    const { data: perfisRemotos, error } = await supabase
-      .from('perfis')
-      .select('*')
-      .eq('projeto_id', projetoId);
+/**
+ * Traz para a Equipe os cadastros feitos pelo formulário público.
+ *
+ * A tabela `perfis` do Supabase NÃO é um par do motor de sincronização: é uma
+ * caixa de entrada. Quem preenche o link não está logado e só faz `insert` —
+ * nunca edita o que já mandou. Preencher a ficha duas vezes cria uma linha
+ * nova, com outro id, não uma correção da anterior.
+ *
+ * Por isso a regra aqui é: **só entra o que ainda não existe deste lado.**
+ * Nada de `bulkPut`. Duas razões, ambas já custaram dado:
+ *
+ * 1. `put` sobrescreve. O produtor corrige o PIX que a pessoa digitou errado,
+ *    e a próxima puxada traz a versão original de volta por cima — em silêncio.
+ * 2. `put` numa linha que não mudou ainda assim dispara o hook `updating`, que
+ *    recarimba `atualizado_em = agora` e joga o perfil na caixa de saída. Cada
+ *    puxada reenviava a equipe inteira ao servidor como se fosse edição local,
+ *    e essas linhas voltavam sempre "mais novas" — o LWW desta tabela morria.
+ *
+ * O que NÃO fazer aqui: `marcarTransacaoComoRemota()`. Seria o reflexo certo em
+ * qualquer outro lugar, mas estas linhas não vêm do espelho — vêm de fora dele.
+ * Silenciar o hook faria o cadastro novo entrar só neste aparelho e nunca subir
+ * para `registros`, e as outras equipes jamais veriam a pessoa. Cadastro que
+ * chega é dado novo, e dado novo tem que ser enfileirado como qualquer outro.
+ *
+ * Devolve quantos cadastros novos entraram — zero é a resposta normal.
+ */
+export async function syncPerfisDeCadastro(projetoId: string): Promise<number> {
+  const { data: perfisRemotos, error } = await supabase
+    .from('perfis')
+    .select('*')
+    .eq('projeto_id', projetoId);
 
-    if (error) {
-      console.error("Erro ao puxar perfis do Supabase:", error);
-      throw error;
-    }
-
-    if (!perfisRemotos) return;
-
-    // 2. Compara com os locais e insere os que não existem (ou atualiza)
-    // Dexie bulkPut faz upsert (atualiza se existir, cria se não existir)
-    
-    // Precisamos garantir que os dados remotos não sobrescrevam dados locais mais recentes (se tivéssemos sync bidirecional complexo).
-    // Para simplificar agora, como o form público só insere, e o produtor que edita:
-    // Nós faremos um bulkPut de tudo que veio, mas focando em novos cadastros.
-    
-    await db.perfis.bulkPut(perfisRemotos);
-    
-    return perfisRemotos.length;
-  } catch (e) {
-    console.error("Falha na sincronização:", e);
-    throw e;
+  if (error) {
+    console.error('[SetProd] Erro ao puxar cadastros do Supabase:', error);
+    throw error;
   }
+  if (!perfisRemotos?.length) return 0;
+
+  const jaTemos = new Set(
+    await db.perfis.where('id').anyOf(perfisRemotos.map(p => p.id)).primaryKeys()
+  );
+  const novos = perfisRemotos.filter(p => !jaTemos.has(p.id));
+  if (!novos.length) return 0;
+
+  // `bulkAdd`, não `bulkPut`: se algo escapou do filtro acima, quero o erro,
+  // não uma sobrescrita silenciosa. O hook `creating` carimba a hora e enfileira
+  // para o espelho, que é como o cadastro chega às outras equipes.
+  await db.perfis.bulkAdd(novos as any);
+  return novos.length;
 }
