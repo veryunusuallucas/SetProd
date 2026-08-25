@@ -9,6 +9,7 @@ import {
   type Convite, type Participacao,
 } from '../lib/membros';
 import { supabaseConfigurado } from '../lib/supabase';
+import { pode, DESCRICAO, PAPEIS_CONVIDAVEIS, type PapelConvidavel } from '../lib/permissoes';
 import { MOLA } from './ui/ia';
 
 interface Props {
@@ -31,6 +32,8 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   const [erro, setErro] = useState('');
   const [copiado, setCopiado] = useState('');
   const [gerando, setGerando] = useState(false);
+  /** Que papel o próximo link vai conceder. 'equipe' é o caso comum. */
+  const [papelDoConvite, setPapelDoConvite] = useState<PapelConvidavel>('equipe');
 
   const perfis = useLiveQuery(
     () => db.perfis.where('projeto_id').equals(projetoId).toArray(),
@@ -38,6 +41,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   ) || [];
 
   const minhaParticipacao = participacaoLocal(projetoId);
+  const podeConvidar = pode(minhaParticipacao?.papel ?? 'desconhecido', 'convidar');
 
   const recarregar = async () => {
     try {
@@ -61,7 +65,12 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
     setGerando(true);
     try {
       setErro('');
-      const convite = await criarConvite(projetoId, nomeProjeto, `Equipe ${String.fromCharCode(65 + membros.length)}`);
+      const convite = await criarConvite(
+        projetoId,
+        nomeProjeto,
+        papelDoConvite,
+        `Equipe ${String.fromCharCode(65 + membros.length)}`
+      );
       await navigator.clipboard.writeText(linkDoConvite(convite.token)).catch(() => {});
       setCopiado(convite.token);
       setTimeout(() => setCopiado(''), 2500);
@@ -177,7 +186,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="text-sm font-bold">{m.apelido || 'Equipe'}</div>
                     <div className="text-xs text-muted">
-                      {m.papel === 'dono' ? 'criou a produção' : m.papel}
+                      {m.papel === 'dono' ? 'criou a produção' : (DESCRICAO[m.papel]?.nome ?? m.papel)}
                       {m.usuario_id === minhaParticipacao?.usuario_id && ' · você'}
                     </div>
                   </div>
@@ -203,8 +212,11 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="text-sm font-bold">{c.apelido || 'Convite'}</div>
+                  {/* O papel na lista, e não só na hora de criar: um link
+                      pendente de dias atrás não diz mais o que vai conceder. */}
                   <div className="text-xs text-muted">
-                    vale até {new Date(c.expira_em).toLocaleDateString('pt-BR')}
+                    entra como <strong>{DESCRICAO[c.papel]?.nome ?? c.papel}</strong>
+                    {' · '}vale até {new Date(c.expira_em).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
                 <button className="btn-icon" onClick={() => copiar(c.token)} title="Copiar link">
@@ -217,14 +229,38 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
             ))}
           </AnimatePresence>
 
+          {/* O papel se escolhe ANTES de gerar, porque o link já nasce com ele
+              dentro — não dá para mudar depois sem revogar e criar outro. */}
+          <label className="text-xs text-muted" style={{ display: 'block', marginTop: convites.length ? '12px' : 0, marginBottom: '6px' }}>
+            Quem entrar por este link vai poder:
+          </label>
+          <select
+            value={papelDoConvite}
+            onChange={e => setPapelDoConvite(e.target.value as PapelConvidavel)}
+            style={campoEstilo}
+            disabled={!podeConvidar}
+          >
+            {PAPEIS_CONVIDAVEIS.map(p => (
+              <option key={p} value={p}>{DESCRICAO[p].nome} — {DESCRICAO[p].resumo}</option>
+            ))}
+          </select>
+
           <button
             className="btn btn-primary"
             onClick={gerarLink}
-            disabled={gerando || !supabaseConfigurado || !minhaParticipacao}
-            style={{ width: '100%', marginTop: convites.length ? '8px' : 0 }}
+            disabled={gerando || !supabaseConfigurado || !minhaParticipacao || !podeConvidar}
+            style={{ width: '100%', marginTop: '8px' }}
           >
             <Link2 size={16} /> {gerando ? 'Criando…' : 'Criar link de convite'}
           </button>
+
+          {/* Esconder o botão inteiro deixaria a pessoa procurando por ele. Uma
+              linha dizendo o porquê custa menos que um chamado de suporte. */}
+          {!podeConvidar && (
+            <p className="text-xs text-muted" style={{ marginTop: '8px' }}>
+              Só quem é dono ou administra a produção pode convidar gente.
+            </p>
+          )}
 
           <p className="text-xs text-muted" style={{ marginTop: '8px', lineHeight: 1.4 }}>
             O link vale por 7 dias e serve <strong>uma vez só</strong>. Quem abrir
