@@ -65,12 +65,10 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
     setGerando(true);
     try {
       setErro('');
-      const convite = await criarConvite(
-        projetoId,
-        nomeProjeto,
-        papelDoConvite,
-        `Equipe ${String.fromCharCode(65 + membros.length)}`
-      );
+      // Sem apelido: a Edge Function preenche com o nome de quem realmente
+      // aceitar. Chutar um rótulo aqui, sem saber quem vai abrir o link, é como
+      // se chegou no "Equipe C", "Equipe D".
+      const convite = await criarConvite(projetoId, nomeProjeto, papelDoConvite);
       await navigator.clipboard.writeText(linkDoConvite(convite.token)).catch(() => {});
       setCopiado(convite.token);
       setTimeout(() => setCopiado(''), 2500);
@@ -172,7 +170,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
 
         {/* ---- membros ---- */}
         <section style={{ marginBottom: '24px' }}>
-          <h3 style={tituloSecao}><Users size={14} /> Equipes com acesso</h3>
+          <h3 style={tituloSecao}><Users size={14} /> Quem participa</h3>
           {carregando ? (
             <p className="text-sm text-muted">Consultando…</p>
           ) : membros.length === 0 ? (
@@ -181,24 +179,46 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {membros.map(m => (
-                <div key={m.usuario_id} style={linhaEstilo}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="text-sm font-bold">{m.apelido || 'Equipe'}</div>
-                    <div className="text-xs text-muted">
-                      {m.papel === 'dono' ? 'criou a produção' : (DESCRICAO[m.papel]?.nome ?? m.papel)}
-                      {m.usuario_id === minhaParticipacao?.usuario_id && ' · você'}
+              {membros.map(m => {
+                /*
+                  Os dois eixos lado a lado, e nunca misturados:
+
+                    Maira · Direção de Arte    ← quem ela é no filme
+                    pode editar                ← o que a conta pode fazer
+
+                  Antes esta linha mostrava "Equipe A"/"Equipe B", que não é
+                  nenhum dos dois — era o rótulo da máquina, de quando o app
+                  tinha só dois lados.
+                */
+                const ficha = m.perfil_id ? perfis.find(p => p.id === m.perfil_id) : undefined;
+                const nome = ficha
+                  ? `${ficha.nome} ${ficha.sobrenome || ''}`.trim()
+                  : (m.apelido || 'Sem nome');
+                const funcao = ficha?.funcao;
+
+                return (
+                  <div key={m.usuario_id} style={linhaEstilo}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="text-sm font-bold">
+                        {nome}
+                        {funcao && <span className="text-muted" style={{ fontWeight: 400 }}> · {funcao}</span>}
+                      </div>
+                      <div className="text-xs text-muted">
+                        {m.papel === 'dono' ? 'criou a produção' : (DESCRICAO[m.papel]?.nome ?? m.papel)}
+                        {m.usuario_id === minhaParticipacao?.usuario_id && ' · você'}
+                        {!m.perfil_id && ' · ainda não disse quem é na equipe'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
 
         {/* ---- convites ---- */}
         <section>
-          <h3 style={tituloSecao}><Link2 size={14} /> Convidar outra equipe</h3>
+          <h3 style={tituloSecao}><Link2 size={14} /> Convidar alguém</h3>
 
           <AnimatePresence>
             {convites.map(c => (
@@ -211,7 +231,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                 style={{ ...linhaEstilo, marginBottom: '8px' }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="text-sm font-bold">{c.apelido || 'Convite'}</div>
+                  <div className="text-sm font-bold">{c.apelido || 'Convite em aberto'}</div>
                   {/* O papel na lista, e não só na hora de criar: um link
                       pendente de dias atrás não diz mais o que vai conceder. */}
                   <div className="text-xs text-muted">

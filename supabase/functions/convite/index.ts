@@ -67,7 +67,9 @@ async function comoServidor(caminho: string, init: RequestInit = {}) {
 }
 
 /** Quem está chamando, a partir do JWT que o app manda. */
-async function usuarioDaRequisicao(req: Request): Promise<{ id: string; email?: string } | null> {
+async function usuarioDaRequisicao(
+  req: Request
+): Promise<{ id: string; email?: string; nome?: string } | null> {
   const auth = req.headers.get('Authorization');
   if (!auth) return null;
 
@@ -77,7 +79,30 @@ async function usuarioDaRequisicao(req: Request): Promise<{ id: string; email?: 
   if (!resposta.ok) return null;
 
   const usuario = await resposta.json();
-  return usuario?.id ? { id: usuario.id, email: usuario.email } : null;
+  if (!usuario?.id) return null;
+  return {
+    id: usuario.id,
+    email: usuario.email,
+    // Veio do `signUp({ options: { data: { nome } } })` da tela de cadastro.
+    nome: usuario.user_metadata?.nome,
+  };
+}
+
+/**
+ * Como a pessoa vai aparecer enquanto não tiver ficha vinculada.
+ *
+ * O padrão era chumbado em "Equipe B", herança de quando o app tinha dois lados.
+ * Agora sai de quem realmente aceitou o convite. Nunca o e-mail inteiro: ele
+ * aparece na ata e na lista de membros, e expor o endereço de todo mundo é
+ * vazamento que ninguém pediu.
+ *
+ * ⚠️ Mesma regra de `apelidoDaConta` em `src/lib/membros.ts`. Se mudar lá, mude
+ * aqui — os dois preenchem a mesma coluna.
+ */
+function apelidoDaConta(usuario: { email?: string; nome?: string }): string {
+  const nome = (usuario.nome || '').trim();
+  if (nome) return nome;
+  return (usuario.email || '').split('@')[0] || 'Sem nome';
 }
 
 Deno.serve(async req => {
@@ -155,7 +180,7 @@ Deno.serve(async req => {
       projeto_id: convite.projeto_id,
       usuario_id: usuario.id,
       papel,
-      apelido: convite.apelido || 'Equipe B',
+      apelido: convite.apelido || apelidoDaConta(usuario),
     };
     if (convite.perfil_id) linha.perfil_id = convite.perfil_id;
 

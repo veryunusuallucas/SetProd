@@ -170,7 +170,10 @@ export function Home() {
     //
     // A participação é recuperável: `garantirParticipacao` roda de novo ao
     // abrir o projeto, e a fase 2 a exige antes de mandar qualquer dado.
-    void entrarComoFundador(id, 'Equipe A');
+    // Sem apelido: a função preenche com o nome da conta. Antes era "Equipe A",
+    // que não é o nome de ninguém — e ainda roubava o nome da unidade de
+    // filmagem, que é o A/B que existe de verdade no set.
+    void entrarComoFundador(id);
 
     setMostrarStepper(false);
     navigate(`/projeto/${id}`);
