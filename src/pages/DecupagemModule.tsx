@@ -15,6 +15,8 @@ import { RelatoriosModal } from '../components/RelatoriosModal';
 import { sincronizarElementos } from '../lib/elementos';
 import { registrarDocumento } from '../lib/documentos';
 import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
+import { ULTIMO_BLOCO } from '../lib/stripboard';
+import { jaAconteceu } from '../lib/sincronizaOD';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
@@ -27,6 +29,14 @@ export function DecupagemModule() {
 
   /** Cenas escolhidas por "Virar OD" numa quebra; null = a ordem inteira. */
   const [cenasParaExportar, setCenasParaExportar] = useState<Cena[] | null>(null);
+  /**
+   * De qual quebra veio a seleção. É o que faz a diária virar espelho daquele
+   * bloco enquanto estiver em rascunho — ver `sincronizaOD.ts`.
+   *
+   * `null` no "Enviar tudo": a ordem inteira não corresponde a nenhum bloco, e
+   * inventar um vínculo ali faria a diária espelhar um dia que não é o dela.
+   */
+  const [quebraDeOrigem, setQuebraDeOrigem] = useState<string | null>(null);
   /** Página que o Roteiro deve abrir ao clicar numa tira. */
   const [paginaAlvo, setPaginaAlvo] = useState<number | null>(null);
 
@@ -108,13 +118,45 @@ export function DecupagemModule() {
     const diaria = diarias.find(d => d.id === diariaId);
     if (!diaria) return;
 
+    /*
+      Diária cujo dia já passou não é oferecida em silêncio.
+
+      O caso real é reencaixe: a cena não saiu, alguém volta ao stripboard e
+      manda para "a última diária" — que era ontem. Sem este aviso a cena entra
+      num dia morto e some do radar, e ninguém percebe até faltar.
+    */
+    if (jaAconteceu(diaria)) {
+      const seguir = confirm(
+        `A Diária ${String(diaria.numero).padStart(2, '0')} é de ${new Date(diaria.data + 'T12:00').toLocaleDateString('pt-BR')} — esse dia já passou.\n\n` +
+        'Cena mandada para um dia que já aconteceu não aparece no que falta gravar.\n\n' +
+        'Quer mandar mesmo assim? (Cancele para criar uma diária nova em Diárias / OD.)'
+      );
+      if (!seguir) return;
+    }
+
     const escolhidas = cenasParaExportar ?? cenasOrdenadas;
     const atuais = diaria.cena_ids || [];
     const novos = escolhidas.map(c => c.id).filter(id => !atuais.includes(id));
 
-    await db.diarias.update(diariaId, { cena_ids: [...atuais, ...novos] });
+    /*
+      O vínculo com a quebra é gravado nos DOIS lados.
+
+      `StripboardItem.diaria_id` já existia, mas um lado só não basta: para
+      recalcular as cenas é preciso partir da diária e achar a quebra. Sem o
+      caminho de volta, a diária em rascunho não teria como espelhar nada.
+    */
+    const vinculo = quebraDeOrigem
+      ? { stripboard_item_id: quebraDeOrigem }
+      : {};
+
+    await db.diarias.update(diariaId, { cena_ids: [...atuais, ...novos], ...vinculo });
+    if (quebraDeOrigem && quebraDeOrigem !== ULTIMO_BLOCO) {
+      await db.stripboard_itens.update(quebraDeOrigem, { diaria_id: diariaId }).catch(() => {});
+    }
+
     setModalDiaria(false);
     setCenasParaExportar(null);
+    setQuebraDeOrigem(null);
     alert(
       novos.length > 0
         ? `${novos.length} cena(s) adicionadas à Diária ${diaria.numero}, na ordem do stripboard.`
@@ -285,7 +327,7 @@ export function DecupagemModule() {
                 Arraste as tiras para definir a ordem · <strong>{totalPaginas()}</strong> páginas no total
               </div>
               <button
-                onClick={() => { setCenasParaExportar(null); setModalDiaria(true); }}
+                onClick={() => { setCenasParaExportar(null); setQuebraDeOrigem(null); setModalDiaria(true); }}
                 className="btn-primary"
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
                 disabled={cenasOrdenadas.length === 0}
@@ -301,7 +343,11 @@ export function DecupagemModule() {
               locacoes={locacoes}
               paginaDaCena={paginaDaCena}
               onVerNoRoteiro={pagina => { setPaginaAlvo(pagina); setViewMode('roteiro'); }}
-              onExportarDia={(lista) => { setCenasParaExportar(lista); setModalDiaria(true); }}
+              onExportarDia={(lista, _dia, quebraId) => {
+                setCenasParaExportar(lista);
+                setQuebraDeOrigem(quebraId ?? null);
+                setModalDiaria(true);
+              }}
             />
           </div>
         )}
@@ -531,7 +577,7 @@ export function DecupagemModule() {
               </div>
               {/* Limpa a seleção ao fechar, senão ela sobreviveria para o
                   próximo "Enviar tudo" e mandaria menos cenas do que o rótulo diz. */}
-              <button onClick={() => { setModalDiaria(false); setCenasParaExportar(null); }} className="btn-icon"><X size={18} /></button>
+              <button onClick={() => { setModalDiaria(false); setCenasParaExportar(null); setQuebraDeOrigem(null); }} className="btn-icon"><X size={18} /></button>
             </div>
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {diarias.length === 0 && <div className="text-sm text-muted">Nenhuma diária criada ainda.</div>}
@@ -542,8 +588,16 @@ export function DecupagemModule() {
                   className="btn-icon"
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', width: '100%' }}
                 >
-                  <span className="font-bold">Diária {String(d.numero).padStart(2, '0')}</span>
-                  <span className="text-xs text-muted">{(d.cena_ids || []).length} cena(s)</span>
+                  <span className="font-bold" style={{ opacity: jaAconteceu(d) ? 0.55 : 1 }}>
+                    Diária {String(d.numero).padStart(2, '0')}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {/* O dia vencido aparece marcado, e não escondido: às vezes
+                        é ele mesmo que se quer, quando se está lançando algo
+                        depois do fato. */}
+                    {jaAconteceu(d) && <span style={{ color: 'var(--color-warning, #fbbf24)' }}>já passou · </span>}
+                    {(d.cena_ids || []).length} cena(s)
+                  </span>
                 </button>
               ))}
             </div>

@@ -6,7 +6,7 @@ import type { Cena, Locacao, StripboardItem, TipoStripboardItem } from '../types
 import { getStripboardColor } from '../lib/decupagem';
 import {
   montarLinha, resumirDias, agruparPorLocacao, cenasDoDia, diaNaPosicao,
-  ROTULOS, CORES_MARCADOR, formatarDuracao, type ItemLinha,
+  ROTULOS, CORES_MARCADOR, formatarDuracao, ULTIMO_BLOCO, type ItemLinha,
 } from '../lib/stripboard';
 
 interface Props {
@@ -16,8 +16,14 @@ interface Props {
   locacoes: Locacao[];
   /** Abre a aba Roteiro na página da cena clicada. */
   onVerNoRoteiro: (pagina: number) => void;
-  /** Manda as cenas de um dia para uma diária do projeto. */
-  onExportarDia: (cenas: Cena[], numeroDoDia: number) => void;
+  /**
+   * Manda as cenas de um dia para uma diária do projeto.
+   *
+   * `quebraId` é o vínculo duradouro: enquanto a diária estiver em rascunho, ela
+   * espelha o bloco daquela quebra. O número do dia serve só para a mensagem —
+   * ele é posicional e muda quando alguém insere uma quebra antes.
+   */
+  onExportarDia: (cenas: Cena[], numeroDoDia: number, quebraId?: string) => void;
   paginaDaCena: (cena: Cena) => number | undefined;
 }
 
@@ -157,7 +163,10 @@ export function StripboardTimeline({
                           resumo={it.tipo === 'DAY_BREAK' ? resumos.get(it.id) : undefined}
                           onExportar={() => {
                             const dia = diaNaPosicao(linha, indice);
-                            onExportarDia(cenasDoDia(linha, dia), dia);
+                            // O id da quebra viaja junto: é ele que amarra a
+                            // diária a ESTE bloco. O número do dia é posicional
+                            // e muda quando alguém insere uma quebra antes.
+                            onExportarDia(cenasDoDia(linha, dia), dia, it.id);
                           }}
                         />
                       )}
@@ -175,7 +184,7 @@ export function StripboardTimeline({
       {resumos.get('__ultimo__') && (
         <RodapeDia
           resumo={resumos.get('__ultimo__')!}
-          onExportar={() => onExportarDia(cenasDoDia(linha, totalDias), totalDias)}
+          onExportar={() => onExportarDia(cenasDoDia(linha, totalDias), totalDias, ULTIMO_BLOCO)}
         />
       )}
     </div>

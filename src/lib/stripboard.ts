@@ -150,6 +150,32 @@ export function cenasDoDia(linha: ItemLinha[], numeroDoDia: number): Cena[] {
   return out;
 }
 
+/** O bloco final, que não tem quebra depois dele. */
+export const ULTIMO_BLOCO = '__ultimo__';
+
+/**
+ * As cenas do bloco que uma quebra fecha — pelo ID da quebra, não pelo número.
+ *
+ * O número do dia é frágil de propósito: ele é POSICIONAL. Adicionar uma quebra
+ * no começo empurra todo mundo, e o "dia 3" de ontem é o "dia 4" de hoje. Uma
+ * diária que guardasse o número apontaria para o bloco errado no dia seguinte.
+ *
+ * Devolve `null` quando a quebra não existe mais — foi apagada. Esse caso NÃO é
+ * "nenhuma cena": é "perdi a referência", e confundir os dois faria a Ordem do
+ * Dia esvaziar sozinha porque alguém removeu um marcador.
+ */
+export function cenasDaQuebra(linha: ItemLinha[], quebraId: string): Cena[] | null {
+  if (quebraId === ULTIMO_BLOCO) {
+    const totalDias = linha.filter(i => i.tipo === 'DAY_BREAK').length + 1;
+    return cenasDoDia(linha, totalDias);
+  }
+
+  const indice = linha.findIndex(i => i.id === quebraId);
+  if (indice < 0) return null;
+
+  return cenasDoDia(linha, diaNaPosicao(linha, indice));
+}
+
 /**
  * Reagrupa as cenas juntando as da mesma locação, sem cruzar quebras de diária.
  *
