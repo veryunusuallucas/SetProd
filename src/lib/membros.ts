@@ -162,7 +162,25 @@ export async function membrosDoProjeto(projetoId: string): Promise<Participacao[
  * Falhar aqui não impede de trabalhar: o projeto existe no IndexedDB de todo
  * jeito. Só não será compartilhável até a participação entrar.
  */
-export async function entrarComoFundador(projetoId: string, apelido = 'Equipe A'): Promise<boolean> {
+/**
+ * Como a pessoa vai aparecer quando o app ainda não sabe quem ela é na ficha.
+ *
+ * O padrão era "Equipe A" / "Equipe B", herança de quando o app tinha dois lados
+ * e duas máquinas. Numa produção de verdade ninguém se chama assim — e o rótulo
+ * ainda roubava o nome do conceito que existe no set, a segunda unidade.
+ *
+ * A ordem é: o nome que a pessoa deu no cadastro, senão a parte do e-mail antes
+ * do @. Nunca o e-mail inteiro: ele aparece na ata e na lista de membros, e
+ * expor o endereço de todo mundo é vazamento que ninguém pediu.
+ */
+export function apelidoDaConta(usuario: { email?: string; user_metadata?: any } | null | undefined): string {
+  const nome = (usuario?.user_metadata?.nome || '').trim();
+  if (nome) return nome;
+  const antesDoArroba = (usuario?.email || '').split('@')[0];
+  return antesDoArroba || 'Sem nome';
+}
+
+export async function entrarComoFundador(projetoId: string, apelido?: string): Promise<boolean> {
   if (!supabaseConfigurado) return false;
 
   // Tudo dentro do try: esta função é chamada sem `await` na criação do
@@ -177,7 +195,7 @@ export async function entrarComoFundador(projetoId: string, apelido = 'Equipe A'
       projeto_id: projetoId,
       usuario_id: usuario.id,
       papel: 'dono',
-      apelido,
+      apelido: apelido || apelidoDaConta(usuario),
     });
 
     if (error) {
@@ -203,7 +221,7 @@ export async function entrarComoFundador(projetoId: string, apelido = 'Equipe A'
  * Não força nada: só tenta quando o projeto ainda está livre. Se outra pessoa
  * já é dona, o servidor recusa, que é exatamente o que deve acontecer.
  */
-export async function garantirParticipacao(projetoId: string, apelido = 'Equipe A'): Promise<void> {
+export async function garantirParticipacao(projetoId: string, apelido?: string): Promise<void> {
   if (!supabaseConfigurado) return;
   if (participacaoLocal(projetoId)) return;
 
@@ -280,8 +298,16 @@ export type Persona = 'admin' | 'equipe_a' | 'equipe_b' | 'desconhecido';
  * Quem é a pessoa logada, do ponto de vista da tela inicial.
  *
  * Não olha o e-mail: e-mail muda, e chumbar endereço no código faria a
- * saudação errar no dia em que você trocar de conta. Sai do que o servidor já
- * sabe — se é super-admin, e qual apelido a participação dá a esta conta.
+ * saudação errar no dia em que você trocar de conta.
+ *
+ * SAI DO PAPEL, NÃO DO APELIDO.
+ * Antes isto lia o apelido da participação e procurava a letra "B" nele. Era
+ * frágil por dois motivos: o apelido é texto livre, e um dia alguém se chamaria
+ * "Beatriz" e viraria "equipe B" por causa de uma letra. E agora que o apelido
+ * é o NOME da pessoa, essa heurística erraria o tempo todo.
+ *
+ * O que a distinção sempre quis dizer, no fundo, é isto — e agora está
+ * explícito: quem funda produções, contra quem foi convidado para as dos outros.
  */
 export async function descobrirPersona(): Promise<Persona> {
   if (!supabaseConfigurado) return 'desconhecido';
@@ -293,19 +319,12 @@ export async function descobrirPersona(): Promise<Persona> {
     const { data: admin } = await supabase.rpc('e_admin');
     if (admin) return 'admin';
 
-    // O apelido vem da participação ("Equipe A" para quem criou, "Equipe B"
-    // para quem entrou por convite). Uso a mais antiga: é a que define a
-    // pessoa, e não o último projeto em que ela entrou de carona.
     const participacoes = participacoesLocais().length
       ? participacoesLocais()
       : await sincronizarParticipacoes();
 
-    const maisAntiga = [...participacoes].sort(
-      (a, b) => (a.criado_em || '').localeCompare(b.criado_em || '')
-    )[0];
-
-    if (!maisAntiga?.apelido) return 'desconhecido';
-    return /\bB\b/i.test(maisAntiga.apelido) ? 'equipe_b' : 'equipe_a';
+    if (!participacoes.length) return 'desconhecido';
+    return participacoes.some(p => p.papel === 'dono') ? 'equipe_a' : 'equipe_b';
   } catch {
     return 'desconhecido';
   }
@@ -335,7 +354,14 @@ export async function criarConvite(
   projetoId: string,
   nomeProjeto: string,
   papel: PapelConvidavel = 'equipe',
-  apelido = 'Equipe B',
+  /**
+   * Como quem entrar vai aparecer, enquanto não tiver ficha vinculada.
+   *
+   * Vazio de propósito quando o convite é genérico: a Edge Function preenche
+   * com o nome da conta que aceitar, que é melhor palpite que qualquer rótulo
+   * escolhido aqui sem saber quem vai abrir o link.
+   */
+  apelido?: string | null,
   /** Convite nominal: já diz quem a pessoa é na ficha da equipe. */
   pessoa?: { perfil_id: string; email_esperado?: string | null }
 ): Promise<Convite> {
@@ -352,7 +378,7 @@ export async function criarConvite(
       projeto_id: projetoId,
       nome_projeto: nomeProjeto,
       papel,
-      apelido,
+      apelido: apelido || null,
       expira_em: expira.toISOString(),
       perfil_id: pessoa?.perfil_id ?? null,
       email_esperado: pessoa?.email_esperado ?? null,
@@ -450,7 +476,7 @@ async function lerDetalheDoErro(error: any): Promise<string | null> {
   }
 }
 
-/** URL que a Equipe A manda para a Equipe B. */
+/** O link que se manda para quem vai entrar na produção. */
 export function linkDoConvite(token: string): string {
   return linkDoApp(`convite/${token}`);
 }
