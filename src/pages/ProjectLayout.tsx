@@ -12,6 +12,8 @@ import {
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
 import { AvisoConflito } from '../components/AvisoConflito';
+import { AvisoSemFicha } from '../components/AvisoSemFicha';
+import { useAuth } from '../hooks/useAuth';
 import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 
@@ -28,6 +30,7 @@ export function ProjectLayout() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   // O `?? null` é o que separa "ainda procurando" de "procurei e não existe":
   // o Dexie devolve `undefined` nos dois casos, e sem esta distinção a tela
@@ -275,6 +278,10 @@ export function ProjectLayout() {
           }}>
             <div className="master-detail-container">
               <div className="master-detail-master">
+                {/* Fora do Suspense: o aviso não depende da tela que está
+                    carregando, e é o mesmo em todas as abas da produção. */}
+                <AvisoSemFicha projetoId={id!} meuEmail={user?.email} />
+
                 {/* Suspense aqui, e não só lá no App: as telas do projeto
                     carregam sob demanda, e sem esta fronteira mais interna a
                     troca de aba derrubaria a barra lateral inteira por um

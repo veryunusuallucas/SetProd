@@ -40,7 +40,21 @@ export interface Convite {
   apelido?: string | null;
   expira_em: string;
   usado_por?: string | null;
+  /** Quem a pessoa é na equipe desta produção, quando o convite já sabe. */
+  perfil_id?: string | null;
+  /** Só para conferir na tela. Nunca trava o aceite — ver `AceitarConvite`. */
+  email_esperado?: string | null;
 }
+
+/**
+ * As colunas do convite, num lugar só.
+ *
+ * Estavam escritas à mão em cada consulta, e uma coluna nova precisava ser
+ * lembrada em três lugares — esquecer um faz o campo chegar `undefined` na tela,
+ * sem erro nenhum.
+ */
+const CAMPOS_CONVITE =
+  'token, projeto_id, nome_projeto, papel, apelido, expira_em, usado_por, perfil_id, email_esperado';
 
 const TABELA_MEMBROS = 'projeto_membros';
 const TABELA_CONVITES = 'convites';
@@ -321,7 +335,9 @@ export async function criarConvite(
   projetoId: string,
   nomeProjeto: string,
   papel: PapelConvidavel = 'equipe',
-  apelido = 'Equipe B'
+  apelido = 'Equipe B',
+  /** Convite nominal: já diz quem a pessoa é na ficha da equipe. */
+  pessoa?: { perfil_id: string; email_esperado?: string | null }
 ): Promise<Convite> {
   if (!supabaseConfigurado) throw new Error('Supabase não está configurado neste ambiente.');
   if (!papelConvidavel(papel)) throw new Error(`Papel inválido para convite: ${papel}`);
@@ -338,6 +354,8 @@ export async function criarConvite(
       papel,
       apelido,
       expira_em: expira.toISOString(),
+      perfil_id: pessoa?.perfil_id ?? null,
+      email_esperado: pessoa?.email_esperado ?? null,
     })
     .select()
     .single();
@@ -346,10 +364,29 @@ export async function criarConvite(
   return data as Convite;
 }
 
+/**
+ * Os perfis desta produção que JÁ têm conta vinculada.
+ *
+ * A tela de aceite usa para oferecer só quem ainda está livre. Mostrar quem já
+ * foi reivindicado produziria uma colisão que o índice único do banco recusa na
+ * cara da pessoa — e ela não teria como saber por quê.
+ */
+export async function perfisJaVinculados(projetoId: string): Promise<string[]> {
+  if (!supabaseConfigurado) return [];
+  const { data, error } = await supabase
+    .from(TABELA_MEMBROS)
+    .select('perfil_id')
+    .eq('projeto_id', projetoId)
+    .not('perfil_id', 'is', null);
+
+  if (error) throw error;
+  return (data || []).map(l => l.perfil_id as string);
+}
+
 export async function convitesDoProjeto(projetoId: string): Promise<Convite[]> {
   const { data, error } = await supabase
     .from(TABELA_CONVITES)
-    .select('token, projeto_id, nome_projeto, papel, apelido, expira_em, usado_por')
+    .select(CAMPOS_CONVITE)
     .eq('projeto_id', projetoId)
     .order('criado_em', { ascending: false });
 
@@ -366,7 +403,7 @@ export async function revogarConvite(token: string): Promise<void> {
 export async function lerConvite(token: string): Promise<Convite | null> {
   const { data, error } = await supabase
     .from(TABELA_CONVITES)
-    .select('token, projeto_id, nome_projeto, papel, apelido, expira_em, usado_por')
+    .select(CAMPOS_CONVITE)
     .eq('token', token)
     .maybeSingle();
 
@@ -383,7 +420,9 @@ export async function lerConvite(token: string): Promise<Convite | null> {
  * chave de qualquer projeto, bastando saber o id. A função roda com service
  * role e é o único caminho.
  */
-export async function aceitarConvite(token: string): Promise<{ projeto_id: string; ja_era_membro: boolean }> {
+export async function aceitarConvite(
+  token: string
+): Promise<{ projeto_id: string; ja_era_membro: boolean; perfil_id: string | null }> {
   const { data, error } = await supabase.functions.invoke('convite', { body: { token } });
 
   if (error) {
@@ -395,7 +434,11 @@ export async function aceitarConvite(token: string): Promise<{ projeto_id: strin
   if (data?.erro) throw new Error(data.erro);
 
   await sincronizarParticipacoes();
-  return { projeto_id: data.projeto_id, ja_era_membro: Boolean(data.ja_era_membro) };
+  return {
+    projeto_id: data.projeto_id,
+    ja_era_membro: Boolean(data.ja_era_membro),
+    perfil_id: data.perfil_id ?? null,
+  };
 }
 
 async function lerDetalheDoErro(error: any): Promise<string | null> {

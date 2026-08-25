@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
 import { syncPerfisDeCadastro, publicarFichaPublica } from '../lib/sync';
 import { useRole } from '../hooks/useRole';
 import { podeVerCamada } from '../lib/camposSensiveis';
+import { criarConvite, linkDoConvite, perfisJaVinculados } from '../lib/membros';
+import type { Perfil } from '../types';
 import { linkDoApp } from '../lib/urlPublica';
 import Stepper, { Step } from './ui/Stepper';
 import { ProfileCard } from './ui/ProfileCard';
@@ -92,7 +94,53 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const camposCustom = projeto?.campos_customizados || [];
   
-  const { canEditProducao, role, perfilId: meuPerfilId } = useRole();
+  const { canEditProducao, role, perfilId: meuPerfilId, podeAqui } = useRole();
+  const podeConvidar = podeAqui('convidar');
+
+  /**
+   * Quem da equipe já tem conta vinculada.
+   *
+   * Serve para não oferecer "convidar" a quem já está dentro — o convite seria
+   * gasto à toa, e o índice único do banco recusaria o vínculo na cara da
+   * pessoa quando ela tentasse aceitar.
+   */
+  const [vinculados, setVinculados] = useState<Set<string>>(new Set());
+  const [convidando, setConvidando] = useState<string | null>(null);
+  const [convidado, setConvidado] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!podeConvidar) return;
+    perfisJaVinculados(projetoId)
+      .then(ids => setVinculados(new Set(ids)))
+      .catch(() => {});
+  }, [projetoId, podeConvidar]);
+
+  /**
+   * Gera um convite nominal e copia o link.
+   *
+   * O papel é 'equipe': quem está na ficha da produção trabalha nela. Para
+   * convidar alguém como leitura ou admin, o caminho continua sendo o botão
+   * de compartilhar, que é onde se escolhe papel.
+   */
+  const convidarPessoa = async (p: Perfil) => {
+    setConvidando(p.id);
+    try {
+      const convite = await criarConvite(
+        projetoId,
+        projeto?.nome || 'Produção',
+        'equipe',
+        `${p.nome} ${p.sobrenome || ''}`.trim(),
+        { perfil_id: p.id, email_esperado: p.email || null }
+      );
+      await navigator.clipboard.writeText(linkDoConvite(convite.token)).catch(() => {});
+      setConvidado(p.id);
+      setTimeout(() => setConvidado(null), 3000);
+    } catch (e: any) {
+      alert('Não consegui criar o convite:\n\n' + (e?.message || e));
+    } finally {
+      setConvidando(null);
+    }
+  };
   const [showForm, setShowForm] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -539,6 +587,32 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                         {p.alergias && <span className="text-xs text-danger bg-surface" style={{ padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>Alergia</span>}
                         {p.chave_pix && <span className="text-xs text-accent bg-surface" style={{ padding: '4px 8px', borderRadius: '4px' }}><Wallet size={12} style={{ display: 'inline', marginRight: '4px' }}/> PIX</span>}
                       </div>
+                      {/* Convidar ESTA pessoa.
+                          O link nasce sabendo quem ela é, então ela entra já
+                          como "Maira, da Arte" — sem precisar achar dropdown
+                          nenhum depois. Só quem administra vê o botão. */}
+                      {!bulkMode && podeConvidar && !vinculados.has(p.id) && (
+                        <button
+                          onClick={e => { e.stopPropagation(); convidarPessoa(p); }}
+                          disabled={convidando === p.id}
+                          title={`Gerar link de convite para ${p.nome}`}
+                          className="text-xs"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 8px', borderRadius: '4px', cursor: 'pointer',
+                            background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+                            color: convidado === p.id ? 'var(--color-success, #4ade80)' : 'var(--accent)',
+                          }}
+                        >
+                          <Link2 size={12} />
+                          {convidado === p.id ? 'link copiado' : convidando === p.id ? '…' : 'convidar'}
+                        </button>
+                      )}
+                      {!bulkMode && vinculados.has(p.id) && (
+                        <span className="text-xs text-muted" title="Esta pessoa já tem conta nesta produção">
+                          tem conta
+                        </span>
+                      )}
                       {!bulkMode && <div className="text-xs font-bold text-accent">Abrir Ficha &rarr;</div>}
                     </div>
                   </ProfileCard>
