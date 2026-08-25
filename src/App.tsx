@@ -23,6 +23,9 @@ import { Bug } from 'lucide-react';
 const DashboardGeral = lazy(() => import('./components/DashboardGeral').then(m => ({ default: m.DashboardGeral })));
 const InfoProducao = lazy(() => import('./components/InfoProducao').then(m => ({ default: m.InfoProducao })));
 const Configuracoes = lazy(() => import('./components/Configuracoes').then(m => ({ default: m.Configuracoes })));
+const CriarConta = lazy(() => import('./pages/CriarConta').then(m => ({ default: m.CriarConta })));
+const EsqueciSenha = lazy(() => import('./pages/EsqueciSenha').then(m => ({ default: m.EsqueciSenha })));
+const NovaSenha = lazy(() => import('./pages/NovaSenha').then(m => ({ default: m.NovaSenha })));
 const CadastroEquipe = lazy(() => import('./pages/CadastroEquipe').then(m => ({ default: m.CadastroEquipe })));
 const ResponderPesquisa = lazy(() => import('./pages/ResponderPesquisa').then(m => ({ default: m.ResponderPesquisa })));
 const AceitarConvite = lazy(() => import('./pages/AceitarConvite').then(m => ({ default: m.AceitarConvite })));
@@ -74,6 +77,15 @@ function App() {
           <Suspense fallback={<Carregando />}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            {/* Autocadastro. É `/criar-conta` e não `/cadastro` porque
+                `/cadastro/:projetoId` logo abaixo já é outra coisa — a ficha
+                pública da equipe. Nomes parecidos para telas diferentes é como
+                se acaba mandando o link errado para a pessoa errada. */}
+            <Route path="/criar-conta" element={<CriarConta />} />
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            {/* Onde o e-mail de recuperação desemboca. O token vem na própria
+                URL e o supabase-js o troca por sessão sozinho. */}
+            <Route path="/nova-senha" element={<NovaSenha />} />
             <Route path="/cadastro/:projetoId" element={<CadastroEquipe />} />
             {/* Link publico da pesquisa: sem login, como o de cadastro. */}
             <Route path="/pesquisa/:pesquisaId" element={<ResponderPesquisa />} />
@@ -159,7 +171,9 @@ function PenseNissoQuandoLogado() {
   const { user } = useAuth();
   const location = useLocation();
 
-  const publica = /^\/(login|cadastro|pesquisa|convite)(\/|$)/.test(location.pathname);
+  // `nova-senha` entra nesta lista mesmo tendo sessão: o link de recuperação
+  // já loga a pessoa, e o aviso apareceria por cima da troca de senha.
+  const publica = /^\/(login|cadastro|criar-conta|esqueci-senha|nova-senha|pesquisa|convite)(\/|$)/.test(location.pathname);
   if (!user || publica) return null;
 
   return <PenseNisso />;

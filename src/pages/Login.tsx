@@ -4,7 +4,7 @@ import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
 import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
 import { MOLA } from '../components/ui/ia';
 import { supabase } from '../lib/supabase';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { sincronizarParticipacoes } from '../lib/membros';
 
 export function Login() {
@@ -12,7 +12,6 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [explicacaoAberta, setExplicacaoAberta] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -112,27 +111,20 @@ export function Login() {
           </div>
         </form>
 
-        {/* Não existe autocadastro: as contas são criadas pelo Viol. Sem esta
-            explicação, quem chega pela primeira vez fica procurando um botão
-            de "criar conta" que nunca vai existir. */}
-        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-          <button
-            type="button"
-            onClick={() => setExplicacaoAberta(v => !v)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-              color: 'var(--text-muted)', fontSize: '13px', textDecoration: 'underline',
-            }}
-          >
-            Não consigo criar uma conta. Por quê?
-          </button>
+        {/* Antes daqui vivia a piada do "não consigo criar uma conta, por quê?".
+            Ela existia porque autocadastro não existia — agora existe, e manter
+            a piada seria esconder o botão que a resposta dela mandava procurar. */}
+        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+          <div className="text-sm">
+            <span className="text-muted">Ainda não tem conta? </span>
+            <Link to="/criar-conta" state={{ voltarPara }} style={{ color: 'var(--accent)' }}>
+              Criar conta
+            </Link>
+          </div>
 
-          {explicacaoAberta && (
-            <p className="text-sm" style={{ marginTop: '12px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-              A resposta é simples: você quer o cu e ainda quer raspado?? A vida não é um
-              morango não! Manda mensagem pro Viol que ele olha para você.
-            </p>
-          )}
+          <Link to="/esqueci-senha" className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Esqueci a senha
+          </Link>
         </div>
       </motion.div>
     </div>
