@@ -129,7 +129,48 @@ button {
               color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
+/* O botão comum — o par neutro do `.btn-primary`.
+ *
+ * Ele NÃO EXISTIA, e isso passou despercebido por muito tempo: `className="btn"`
+ * caía no botão padrão do navegador, aquele retângulo cinza com fonte de
+ * sistema. Aparecia em toda tela com um par "Cancelar / Salvar" — o secundário
+ * ficava cru ao lado de um primário estilizado, e o "Cancelar" das Locações
+ * chegava a transbordar por cima do Salvar.
+ *
+ * Vem ANTES do `.btn-primary` de propósito: quem escreve `class="btn btn-primary"`
+ * espera o amarelo, e na cascata do CSS ganha quem for declarado depois.
+ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--text-muted); }
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
 .btn-primary {
+  /* Também inline-flex: sem isto, um ícone dentro do botão fica desalinhado do
+     texto, e era por isso que cada tela resolvia o alinhamento no style. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
   background-color: var(--accent);
   color: #000;
   border: none;
@@ -141,6 +182,7 @@ button {
 .btn-primary:active {
   transform: scale(0.95);
 }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .btn-icon {
   background-color: var(--bg-surface);
