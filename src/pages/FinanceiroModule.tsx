@@ -6,6 +6,7 @@ import { DashboardFinanceiro } from '../components/DashboardFinanceiro';
 import { EntradasList } from '../components/EntradasList';
 import { ControleFinanceiro } from '../components/ControleFinanceiro';
 import { MovimentoList } from '../components/MovimentoList';
+import { GastoPorArea } from '../components/GastoPorArea';
 import { LayoutDashboard, HandCoins, List, Settings, ArrowDownToLine, ArrowUpToLine } from 'lucide-react';
 import { useLayoutContext } from './ProjectLayout';
 import { DetalhesUsuario } from '../components/DetalhesUsuario';
@@ -63,7 +64,16 @@ export function FinanceiroModule() {
       </div>
 
       {/* Conteúdo Dinâmico */}
-      {abaAtiva === 'visao' && <DashboardFinanceiro projetoId={id} />}
+      {abaAtiva === 'visao' && (
+        <>
+          <DashboardFinanceiro projetoId={id} />
+          {/* Logo abaixo da visão geral: "quanto cada área gastou" é a segunda
+              pergunta de qualquer reunião, depois de "quanto gastamos". */}
+          <div style={{ marginTop: '16px' }}>
+            <GastoPorArea projetoId={id} />
+          </div>
+        </>
+      )}
       {abaAtiva === 'movimento' && <MovimentoList projetoId={id} />}
       {abaAtiva === 'controle' && <ControleFinanceiro projetoId={id} />}
       {abaAtiva === 'entradas' && <EntradasList projetoId={id} />}

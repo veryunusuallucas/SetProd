@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { TipoDivisao, Despesa } from '../types';
 import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon } from 'lucide-react';
+import { useRole } from '../hooks/useRole';
 import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '../lib/documentos';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { useArquivo } from '../hooks/useArquivo';
@@ -35,6 +36,16 @@ const CATEGORIAS = [
   { id: 'outro', label: 'Outro', emoji: '📄' },
 ];
 
+/** O chip de escolha, num lugar só — eram cinco cópias do mesmo style inline. */
+const chipEstilo = (ativo: boolean): React.CSSProperties => ({
+  padding: '8px 14px', borderRadius: '20px', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap',
+  fontSize: '0.85rem', fontWeight: ativo ? 'bold' : 'normal',
+  border: `1px solid ${ativo ? 'var(--accent)' : 'var(--border-light)'}`,
+  backgroundColor: ativo ? 'var(--bg-active)' : 'var(--bg-surface)',
+  color: ativo ? 'var(--text-primary)' : 'var(--text-secondary)',
+});
+
 const emojiCategoria = (cat?: string, descricao = '') => {
   const found = CATEGORIAS.find(c => c.id === cat);
   if (found) return found.emoji;
@@ -65,6 +76,29 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
   const [valor, setValor] = useState('');
   const [categoria, setCategoria] = useState('outro');
   const [pagadorId, setPagadorId] = useState('');
+
+  /**
+   * A área a que o gasto pertence.
+   *
+   * Nasce no departamento de quem está lançando, quando o app sabe quem é a
+   * pessoa (`projeto_membros.perfil_id` → `perfis.departamento_id`). Quem é da
+   * Arte lança gasto da Arte quase sempre; deixar em branco todo dia seria pedir
+   * que a pessoa repita a mesma escolha para sempre.
+   *
+   * É um palpite, não uma trava: os chips ficam ali e mudar é um toque.
+   */
+  const { perfilId: meuPerfilId } = useRole();
+  const meuDepartamento = (perfis || []).find(p => p.id === meuPerfilId)?.departamento_id || '';
+  const [departamentoId, setDepartamentoId] = useState('');
+
+  // Só na primeira vez que o perfil aparece: refazer isso a cada render
+  // apagaria a escolha da pessoa no meio do preenchimento.
+  const [palpitePronto, setPalpitePronto] = useState(false);
+  useEffect(() => {
+    if (palpitePronto || !meuDepartamento || editandoId) return;
+    setDepartamentoId(meuDepartamento);
+    setPalpitePronto(true);
+  }, [meuDepartamento, palpitePronto, editandoId]);
 
   const [dataOcorrencia, setDataOcorrencia] = useState(() => new Date().toISOString().split('T')[0]);
 
@@ -125,7 +159,10 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
 
   const limparForm = () => {
     setEditandoId(null);
+    // O departamento volta ao SEU, não a vazio: quem lança dez gastos da Arte
+    // seguidos não deveria reescolher "Arte" dez vezes.
     setDescricao(''); setValor(''); setCategoria('outro'); setPagadorId('');
+    setDepartamentoId(meuDepartamento);
     setSelecionados([]); setDividirComTodos(true);
     setComprovanteBase64(undefined); setComprovanteNome('');
   };
@@ -135,6 +172,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     setDescricao(d.descricao);
     setValor(d.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
     setCategoria(d.categoria || 'outro');
+    setDepartamentoId(d.departamento_id || '');
     setPagadorId(d.pagadores[0]?.id_ref || '');
     setDataOcorrencia(d.data_ocorrencia || new Date(d.data).toISOString().split('T')[0]);
     
@@ -234,6 +272,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
       projeto_id: projetoId,
       descricao,
       categoria,
+      departamento_id: departamentoId || undefined,
       valor_total: valorNum,
       data_ocorrencia: dataOcorrencia,
       diaria: nomeDiaria,
@@ -341,6 +380,46 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
                 ))}
               </div>
             </div>
+
+            {/*
+              DE QUEM É a despesa — a área que gastou.
+
+              Diferente de "quem pagou", logo abaixo. A Arte pode comprar uma
+              lente que é da Fotografia, e o produtor pode pagar a tinta que é da
+              Arte. Confundir as duas coisas é o que impede o orçamento por área
+              de existir.
+
+              Vem preenchido com o SEU departamento quando o app sabe quem você
+              é: quem lança quase sempre lança o do próprio setor, e uma escolha
+              já feita é uma escolha a menos no fim do dia.
+            */}
+            {(departamentos || []).length > 0 && (
+              <div>
+                <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>
+                  De qual área é este gasto
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <div
+                    onClick={() => setDepartamentoId('')}
+                    style={chipEstilo(departamentoId === '')}
+                  >
+                    Da produção
+                  </div>
+                  {(departamentos || []).map(d => (
+                    <div
+                      key={d.id}
+                      onClick={() => setDepartamentoId(d.id)}
+                      style={chipEstilo(departamentoId === d.id)}
+                    >
+                      {d.nome}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs text-muted" style={{ marginTop: '6px' }}>
+                  É de quem o gasto é, não de quem pagou. Seguro, taxa e caixa geral ficam em “Da produção”.
+                </div>
+              </div>
+            )}
 
             {/* Diária em chips */}
             <div>
