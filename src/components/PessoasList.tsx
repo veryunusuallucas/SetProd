@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
 import { syncPerfisDeCadastro, publicarFichaPublica } from '../lib/sync';
 import { useRole } from '../hooks/useRole';
+import { podeVerCamada } from '../lib/camposSensiveis';
 import { linkDoApp } from '../lib/urlPublica';
 import Stepper, { Step } from './ui/Stepper';
 import { ProfileCard } from './ui/ProfileCard';
@@ -91,7 +92,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const camposCustom = projeto?.campos_customizados || [];
   
-  const { canEditProducao } = useRole();
+  const { canEditProducao, role, perfilId: meuPerfilId } = useRole();
   const [showForm, setShowForm] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -269,8 +270,14 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      await syncPerfisDeCadastro(projetoId);
-      alert('Equipe atualizada com sucesso!');
+      const novos = await syncPerfisDeCadastro(projetoId);
+      alert(
+        novos === 0
+          ? 'Nenhum cadastro novo pelo link. A equipe já está em dia.'
+          : novos === 1
+            ? '1 cadastro novo entrou na equipe.'
+            : `${novos} cadastros novos entraram na equipe.`
+      );
     } catch (e) {
       alert('Erro ao sincronizar. Verifique a internet.');
     } finally {
@@ -491,6 +498,8 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                         projeto={projeto!}
                         departamentoNome={getDeptoNome(p.departamento_id)}
                         canEdit={canEditProducao}
+                        verRestrito={podeVerCamada('restrita', { papel: role, meuPerfilId, perfilId: p.id })}
+                        verMedico={podeVerCamada('medica', { papel: role, meuPerfilId, perfilId: p.id })}
                         onClose={closePanel}
                         onEdit={(perfilEditado) => {
                           closePanel();

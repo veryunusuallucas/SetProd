@@ -1,5 +1,5 @@
 import type { Perfil, Projeto } from '../types';
-import { UserCircle, Edit2, Trash2, Copy, X } from 'lucide-react';
+import { UserCircle, Edit2, Trash2, Copy, X, Lock } from 'lucide-react';
 
 interface FichaCompletaProps {
   perfil: Perfil;
@@ -10,42 +10,73 @@ interface FichaCompletaProps {
   onDelete: (id: string, nome: string) => void;
   onViewTransacoes: (id: string) => void;
   canEdit: boolean;
+  /** Documento, endereço, cachê e dados bancários. Ver `camposSensiveis.ts`. */
+  verRestrito: boolean;
+  /** Ficha médica e contato de emergência. */
+  verMedico: boolean;
 }
 
-export function FichaCompleta({ perfil: p, projeto, departamentoNome, onClose, onEdit, onDelete, onViewTransacoes, canEdit }: FichaCompletaProps) {
-  
+export function FichaCompleta({ perfil: p, projeto, departamentoNome, onClose, onEdit, onDelete, onViewTransacoes, canEdit, verRestrito, verMedico }: FichaCompletaProps) {
+
+  /**
+   * O texto copiado segue as mesmas camadas da tela.
+   *
+   * Esconder na tela e liberar tudo no "Copiar Ficha Inteira" não protegeria
+   * nada — seria o mesmo dado, um clique adiante, e ainda por cima na área de
+   * transferência, onde ninguém lembra que ficou.
+   */
   const copiarFichaInteira = () => {
-    const texto = `FICHA CADASTRAL - ${p.nome} ${p.sobrenome || ''}
+    const blocos: string[] = [
+      `FICHA CADASTRAL - ${p.nome} ${p.sobrenome || ''}
 Nome Social: ${p.nome_social || '-'}
+Telefone: ${p.telefone || '-'} | E-mail: ${p.email || '-'}
+Instagram: ${p.instagram || '-'}`,
+      `SET
+Função: ${p.funcao || '-'}
+Depto: ${departamentoNome}
+DRT: ${p.drt || '-'}`,
+    ];
+
+    if (verRestrito) {
+      blocos.push(`DOCUMENTOS
 CPF: ${p.cpf || '-'} | RG: ${p.rg || '-'}
 Nascimento: ${p.data_nascimento || '-'}
-Telefone: ${p.telefone || '-'} | E-mail: ${p.email || '-'}
-Instagram: ${p.instagram || '-'}
-Endereço: ${p.endereco || '-'}
+Endereço: ${p.endereco || '-'}`);
+      blocos.push(`FINANCEIRO
+Diária: R$ ${p.valor_diaria || '-'} | Vínculo: ${p.tipo_vinculo || '-'}
+PIX: ${p.chave_pix || '-'}
+Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`);
+    }
 
-MÉDICA / EMERGÊNCIA
+    if (verMedico) {
+      blocos.push(`MÉDICA / EMERGÊNCIA
 Contato: ${p.contato_emergencia || '-'}
 Sanguíneo: ${p.tipo_sanguineo || '-'}
 Alergias: ${p.alergias || '-'} | Restrições: ${p.restricao_alimentar || '-'}
-Plano Saúde: ${p.plano_saude || '-'}
-
-SET
-Função: ${p.funcao || '-'}
-Depto: ${departamentoNome}
-DRT: ${p.drt || '-'}
-
-FINANCEIRO
-Diária: R$ ${p.valor_diaria || '-'} | Vínculo: ${p.tipo_vinculo || '-'}
-PIX: ${p.chave_pix || '-'}
-Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
+Plano Saúde: ${p.plano_saude || '-'}`);
+    }
 
     const extras = (projeto.campos_customizados || []).filter(c => p.custom?.[c.id]);
-    const textoFinal = extras.length > 0
-      ? texto + '\n\nPERSONALIZADOS\n' + extras.map(c => `${c.nome}: ${p.custom?.[c.id]}`).join('\n')
-      : texto;
-    navigator.clipboard.writeText(textoFinal);
+    if (extras.length > 0) {
+      blocos.push('PERSONALIZADOS\n' + extras.map(c => `${c.nome}: ${p.custom?.[c.id]}`).join('\n'));
+    }
+
+    navigator.clipboard.writeText(blocos.join('\n\n'));
     alert('Ficha copiada para a área de transferência!');
   };
+
+  /**
+   * O lugar vazio, com o motivo.
+   *
+   * Sumir sem explicação faz a pessoa achar que a ficha está incompleta e sair
+   * pedindo para alguém preencher de novo o que já estava lá.
+   */
+  const Escondido = ({ o }: { o: string }) => (
+    <p className="text-xs text-muted" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.5, margin: 0 }}>
+      <Lock size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
+      <span>Só a própria pessoa e quem administra a produção veem {o}.</span>
+    </p>
+  );
 
   const Linha = ({ label, valor, danger = false }: { label: string, valor?: string | number, danger?: boolean }) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -104,17 +135,21 @@ Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
               <h3 className="text-sm font-bold uppercase tracking-widest text-accent border-b border-border-light pb-2">Pessoais e Contato</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <Linha label="Nome Social / Apelido" valor={p.nome_social} />
-                <Linha label="Data de Nascimento" valor={p.data_nascimento} />
-                <Linha label="CPF" valor={p.cpf} />
-                <Linha label="RG" valor={p.rg} />
                 <Linha label="Telefone" valor={p.telefone} />
                 <Linha label="E-mail" valor={p.email} />
+                <Linha label="Instagram" valor={p.instagram} />
+                {/* Documento e endereço saem do bloco público: são a camada
+                    restrita, e estavam à vista de qualquer convidado. */}
+                {verRestrito && <Linha label="Data de Nascimento" valor={p.data_nascimento} />}
+                {verRestrito && <Linha label="CPF" valor={p.cpf} />}
+                {verRestrito && <Linha label="RG" valor={p.rg} />}
               </div>
-              <Linha label="Endereço" valor={p.endereco} />
-              <Linha label="Instagram" valor={p.instagram} />
+              {verRestrito && <Linha label="Endereço" valor={p.endereco} />}
+              {!verRestrito && <Escondido o="documento, nascimento e endereço" />}
             </div>
 
             {/* Bloco: Saúde e Emergência */}
+            {verMedico && (
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 className="text-sm font-bold uppercase tracking-widest text-accent border-b border-border-light pb-2">Saúde e Emergência</h3>
               <Linha label="Contato de Emergência" valor={p.contato_emergencia} danger={!!p.contato_emergencia} />
@@ -127,8 +162,10 @@ Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
               <Linha label="Medicamentos Contínuos" valor={p.medicamentos_continuos} />
               <Linha label="Outras Infos Médicas" valor={p.info_medica} />
             </div>
+            )}
 
             {/* Bloco: Financeiro e Contrato */}
+            {verRestrito && (
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 className="text-sm font-bold uppercase tracking-widest text-accent border-b border-border-light pb-2">Financeiro e Contrato</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -146,6 +183,14 @@ Banco: ${p.banco || '-'} | Ag: ${p.agencia || '-'} | Cc: ${p.conta || '-'}`;
                 <Linha label="Razão Social" valor={p.razao_social} />
               </div>
             </div>
+            )}
+
+            {!verMedico && (
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-accent border-b border-border-light pb-2">Saúde e Emergência</h3>
+                <Escondido o="a ficha médica" />
+              </div>
+            )}
 
             {/* Bloco: Set e Personalizados */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
