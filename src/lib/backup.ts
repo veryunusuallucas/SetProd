@@ -29,6 +29,10 @@ const TABELAS_DO_PROJETO = [
   'cenas', 'planos', 'roteiro_pdfs', 'roteiro_tags', 'elementos', 'stripboard_itens',
   'pastas', 'documentos', 'veiculos', 'motoristas',
   'pesquisas', 'respostas_pesquisa', 'logs',
+  // O que de fato foi gravado. Sem isto, restaurar um backup devolveria o
+  // planejamento e perderia o histórico de filmagem — que é a parte que não se
+  // remonta de memória.
+  'registros_cena', 'registros_plano',
 ] as const;
 
 export interface AnexoNoBackup {

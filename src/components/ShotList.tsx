@@ -1,12 +1,66 @@
 import { useState } from 'react';
 import { db } from '../db/db';
-import { Clapperboard, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import type { Diaria, Cena } from '../types';
+import { Clapperboard, Plus, Trash2, ChevronDown, ChevronRight, Check, CircleSlash, Circle, Scissors, CircleDashed } from 'lucide-react';
+import type { Diaria, Cena, StatusCena } from '../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ordenarPlanos, resumoDePlanos } from '../lib/planos';
+import { marcarCena, proximoStatus, registroDe, ROTULO, MOTIVOS } from '../lib/registroSet';
+import { useRole } from '../hooks/useRole';
+
+/**
+ * Cor E ícone, sempre os dois.
+ *
+ * A Ordem do Dia é fotocopiada, lida no escuro e olhada por gente daltônica. Se
+ * a cor for o único sinal, "gravada" e "não gravada" viram a mesma tarja cinza
+ * na fotocópia — e ninguém percebe até ser tarde.
+ */
+const CORES: Record<StatusCena, string> = {
+  gravada: 'var(--color-success, #4ade80)',
+  parcial: 'var(--color-warning, #fbbf24)',
+  nao_gravada: 'var(--color-danger, #f87171)',
+  cortada: 'var(--text-muted)',
+};
+
+const ICONE: Record<StatusCena, React.ReactNode> = {
+  gravada: <Check size={13} />,
+  parcial: <CircleDashed size={13} />,
+  nao_gravada: <CircleSlash size={13} />,
+  cortada: <Scissors size={13} />,
+};
 
 export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[] }) {
   const [showSelector, setShowSelector] = useState(false);
+  const { perfilId: meuPerfilId } = useRole();
+
+  /**
+   * O que já foi marcado nesta diária.
+   *
+   * Consulta por `diaria_id`, e não o projeto inteiro: numa produção longa são
+   * centenas de linhas, e a tela do set só precisa das de hoje.
+   */
+  const registros = useLiveQuery(
+    () => db.registros_cena.where('diaria_id').equals(diaria.id).toArray(),
+    [diaria.id]
+  ) || [];
+
+  const alternarStatus = async (cenaId: string) => {
+    const atual = registroDe(registros, diaria.id, cenaId);
+    await marcarCena(diaria.projeto_id, diaria.id, cenaId, proximoStatus(atual?.status), {
+      registrado_por: meuPerfilId || undefined,
+    });
+  };
+
+  const definirMotivo = async (cenaId: string, motivo?: string) => {
+    const atual = registroDe(registros, diaria.id, cenaId);
+    if (atual) await db.registros_cena.update(atual.id, { motivo });
+  };
+
+  const definirObservacao = async (cenaId: string, observacao: string) => {
+    const atual = registroDe(registros, diaria.id, cenaId);
+    if (atual && (atual.observacao || '') !== observacao) {
+      await db.registros_cena.update(atual.id, { observacao: observacao || undefined });
+    }
+  };
 
   /** Quais cenas estão com os planos abertos. Recolhido é o padrão. */
   const [aberta, setAberta] = useState<Set<string>>(new Set());
@@ -107,7 +161,8 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
         );
         
         const loc = locacoes.find(l => l.id === cena.locacao_id);
-        
+        const registro = registroDe(registros, diaria.id, cena.id);
+
         return (
           <div key={cena.id} style={{ border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -121,8 +176,73 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
                   {loc && <span>· {loc.nome}</span>}
                 </div>
               </div>
+              {/*
+                O botão de estado, e ele vem ANTES da lixeira de propósito: no
+                set a mão vai para o mesmo canto o dia inteiro, e trocar a ordem
+                depois faria alguém apagar uma cena querendo marcá-la.
+
+                Um toque avança o ciclo. Sem confirmação: marcação errada se
+                desfaz com outro toque, e um modal a cada cena tornaria a tela
+                inútil justamente quando ela precisa ser rápida.
+              */}
+              <button
+                onClick={() => alternarStatus(cena.id)}
+                title={registro ? `${ROTULO[registro.status]} — toque para mudar` : 'Marcar o que aconteceu'}
+                style={{
+                  padding: '6px 10px', borderRadius: '8px', cursor: 'pointer',
+                  fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  border: `1px solid ${registro ? CORES[registro.status] : 'var(--border-color)'}`,
+                  background: 'transparent',
+                  color: registro ? CORES[registro.status] : 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                {/* Cor NUNCA sozinha: OD fotocopiada em preto e branco, set no
+                    escuro, daltonismo. O ícone e o texto carregam o significado. */}
+                {registro ? ICONE[registro.status] : <Circle size={13} />}
+                {registro ? ROTULO[registro.status] : 'marcar'}
+              </button>
+
               <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted" style={{ padding: '6px' }} title="Remover da Diária"><Trash2 size={16} /></button>
             </div>
+
+            {/*
+              O motivo só aparece quando faz sentido perguntar. "Cena 42 adiada
+              por causa de luz, grava amanhã cedo" vale muito mais que "cena 42
+              não gravada" — é o motivo que orienta a decisão seguinte, e é o
+              que a produção vai querer ler quando o cronograma apertar.
+            */}
+            {registro && (registro.status === 'nao_gravada' || registro.status === 'parcial') && (
+              <div style={{ padding: '10px 12px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-primary)', borderTop: '1px solid var(--border-light)' }}>
+                <span className="text-xs text-muted" style={{ marginRight: '2px' }}>por quê:</span>
+                {MOTIVOS.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => definirMotivo(cena.id, registro.motivo === m ? undefined : m)}
+                    style={{
+                      padding: '3px 9px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px',
+                      border: '1px solid var(--border-light)',
+                      background: registro.motivo === m ? 'var(--accent)' : 'transparent',
+                      color: registro.motivo === m ? '#1a1508' : 'var(--text-secondary)',
+                      fontWeight: registro.motivo === m ? 700 : 400,
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+                <input
+                  defaultValue={registro.observacao || ''}
+                  onBlur={e => definirObservacao(cena.id, e.target.value)}
+                  placeholder="ou escreva…"
+                  style={{
+                    flex: 1, minWidth: '120px', padding: '3px 8px', fontSize: '12px',
+                    borderRadius: '6px', border: '1px solid var(--border-light)',
+                    background: 'transparent', color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+            )}
 
             {/*
               Recolhido por padrão, e isso não é preferência estética: uma cena

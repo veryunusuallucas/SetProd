@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal } from '../types';
+import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -15,6 +15,7 @@ export const TABELAS_SINCRONIZADAS = [
   'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos',
   'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos',
   'motoristas', 'elementos', 'stripboard_itens', 'logs',
+  'registros_cena', 'registros_plano',
 ] as const;
 
 /**
@@ -95,6 +96,10 @@ export class SetMoneyDB extends Dexie {
 
   /** Cópia local dos anexos que vivem no Storage. Cache, não dado — não sincroniza. */
   arquivos!: Table<ArquivoLocal, string>;
+
+  // v4.4: o que de fato foi gravado, dia a dia
+  registros_cena!: Table<RegistroCena, string>;
+  registros_plano!: Table<RegistroPlano, string>;
 
   constructor() {
     super('SetMoneyDB');
@@ -183,6 +188,23 @@ export class SetMoneyDB extends Dexie {
     // Fora do sync de propósito — é cache, não dado. Cada aparelho monta o seu.
     this.version(16).stores({
       arquivos: 'caminho, projeto_id'
+    });
+
+    /*
+      v17: o que de fato foi gravado.
+
+      Uma linha por cena POR DIÁRIA, não um campo dentro de `Cena`. Uma cena
+      pode sair pela metade no dia 3 e fechar no dia 7 — um campo só na cena
+      apagaria a primeira metade da história, que é justamente a parte que
+      alguém vai querer consultar quando o cronograma estourar.
+
+      O índice composto `[diaria_id+cena_id]` é o que a tela do set consulta a
+      cada toque: "qual o estado desta cena nesta diária?". Sem ele, marcar uma
+      cena varreria a tabela inteira.
+    */
+    this.version(17).stores({
+      registros_cena: 'id, projeto_id, diaria_id, cena_id, [diaria_id+cena_id]',
+      registros_plano: 'id, projeto_id, diaria_id, plano_id, [diaria_id+plano_id]'
     });
 
     /**

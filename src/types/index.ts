@@ -423,6 +423,69 @@ export interface Plano {
   notas?: string;
 }
 
+// ---- O que de fato foi gravado (Etapa 3 do PLANO-stripboard-od-ciclo) ----
+
+/**
+ * Os quatro estados de uma cena num dia de filmagem.
+ *
+ * `cortada` NÃO é `nao_gravada`, e a diferença é o que impede o app de cobrar
+ * para sempre: cena que a direção abandonou sai da conta de pendências e do
+ * total de páginas. Sem esse estado, ela ficaria eternamente na fila de
+ * repescagem sem que ninguém pudesse tirá-la de lá honestamente.
+ */
+export type StatusCena = 'gravada' | 'parcial' | 'nao_gravada' | 'cortada';
+
+/**
+ * O que aconteceu com uma cena NUM DIA.
+ *
+ * ⚠️ Uma linha por cena POR DIÁRIA, e não um campo `status` dentro de `Cena`.
+ * O motivo é concreto: uma cena pode ser gravada pela metade no dia 3 e
+ * concluída no dia 7. Um campo só na cena apagaria a primeira metade da
+ * história — que é exatamente a parte que alguém vai querer consultar depois,
+ * numa discussão sobre por que o cronograma estourou.
+ *
+ * O status ATUAL de uma cena é derivado: a linha mais recente entre as diárias.
+ * Nunca guarde o derivado; é assim que os dois divergem.
+ */
+export interface RegistroCena {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  cena_id: string;
+  status: StatusCena;
+  /** Por que não gravou. É o motivo que orienta a decisão seguinte, não o fato. */
+  motivo?: string;
+  observacao?: string;
+  /** Quanto da cena saiu, em oitavos de página. */
+  oitavos_gravados?: number;
+  setups?: number;
+  registrado_em: number;
+  /** `perfil_id` de quem marcou — é o que faz o relatório valer como documento. */
+  registrado_por?: string;
+  atualizado_em?: number;
+}
+
+/**
+ * O mesmo, no nível do plano.
+ *
+ * É daqui que sai o "parcial" de forma honesta: cena com 6 planos e 4 marcados
+ * sugere `parcial` sozinha. **Sugere, não decide** — às vezes 4 planos bastam e
+ * a cena está fechada, e só quem estava lá sabe.
+ */
+export interface RegistroPlano {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  plano_id: string;
+  cena_id: string;
+  status: 'ok' | 'pendente';
+  takes?: number;
+  observacao?: string;
+  registrado_em: number;
+  registrado_por?: string;
+  atualizado_em?: number;
+}
+
 export interface RoteiroPDF {
   id: string;
   projeto_id: string;
