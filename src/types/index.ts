@@ -135,6 +135,22 @@ export interface Despesa {
   data_ocorrencia?: string;
   diaria?: string;
   diaria_id?: string; // Vínculo com a diária oficial (quando lançada a partir de uma diária)
+
+  /**
+   * De QUEM é a despesa — a área que gastou.
+   *
+   * ⚠️ Não confundir com o departamento que aparece dentro de `pagadores` /
+   * `devedores` como `QuemTipo = 'departamento'`. Aquilo é QUEM PAGA; isto é DE
+   * QUEM É. São perguntas diferentes, e confundi-las quebra o cálculo de saldos:
+   * a Arte pode comprar uma lente que é da Fotografia, e o Produtor pode pagar
+   * a tinta que é da Arte.
+   *
+   * Serve para o orçamento por área — "quanto a Arte gastou do que tinha" —, que
+   * é a pergunta de toda reunião de produção. Opcional de propósito: despesa da
+   * produção em geral (seguro, taxa, combustível do caixa) não é de área nenhuma,
+   * e obrigar uma escolha ali só produziria classificação errada.
+   */
+  departamento_id?: string;
   pagadores: QuemValor[];
   devedores: QuemValor[];
   tipo_divisao: TipoDivisao;
