@@ -1,5 +1,6 @@
 import { supabase, supabaseConfigurado } from './supabase';
 import { linkDoApp } from './urlPublica';
+import { papelConvidavel, type PapelConvidavel } from './permissoes';
 
 /**
  * Participação: quem entra em qual projeto.
@@ -9,7 +10,17 @@ import { linkDoApp } from './urlPublica';
  * local para o app continuar funcionando sem internet.
  */
 
-export type PapelMembro = 'dono' | 'equipe' | 'leitura';
+/**
+ * Os quatro papéis, e só estes.
+ *
+ * `admin` é o mais novo e existe para um caso concreto: delegar a produção sem
+ * entregar a chave de destruir. A lista é fechada e o banco tem um `check` com
+ * exatamente estes valores (`supabase/sql/papeis.sql`) — inventar um quinto aqui
+ * faria a inserção falhar no servidor, não na tela.
+ *
+ * O que cada um pode está em `permissoes.ts`, num lugar só.
+ */
+export type PapelMembro = 'dono' | 'admin' | 'equipe' | 'leitura';
 
 export interface Participacao {
   projeto_id: string;
@@ -296,12 +307,24 @@ function gerarToken(): string {
   return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Cria o link de convite já com o papel que a pessoa vai ter.
+ *
+ * O papel era chumbado em `'equipe'`, e por isso `'leitura'` nunca chegava a
+ * existir na prática — o tipo previa, mas nada produzia. Agora quem convida
+ * escolhe.
+ *
+ * `dono` não entra na lista de propósito: posse se transfere numa ação própria,
+ * com confirmação, e não por um link que pode ser encaminhado no WhatsApp.
+ */
 export async function criarConvite(
   projetoId: string,
   nomeProjeto: string,
+  papel: PapelConvidavel = 'equipe',
   apelido = 'Equipe B'
 ): Promise<Convite> {
   if (!supabaseConfigurado) throw new Error('Supabase não está configurado neste ambiente.');
+  if (!papelConvidavel(papel)) throw new Error(`Papel inválido para convite: ${papel}`);
 
   const token = gerarToken();
   const expira = new Date(Date.now() + DIAS_DE_VALIDADE * 24 * 60 * 60 * 1000);
@@ -312,7 +335,7 @@ export async function criarConvite(
       token,
       projeto_id: projetoId,
       nome_projeto: nomeProjeto,
-      papel: 'equipe',
+      papel,
       apelido,
       expira_em: expira.toISOString(),
     })

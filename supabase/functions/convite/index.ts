@@ -35,6 +35,24 @@ function responder(corpo: unknown, status = 200) {
 const URL_BASE = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
+/**
+ * Os papéis que um convite pode conceder.
+ *
+ * Precisa existir aqui e não só no app: esta função roda com service role e
+ * passa por cima de toda a RLS, então o que ela grava em `projeto_membros` é
+ * lei. Ela lia `convite.papel` cru do banco e mandava direto para a inserção —
+ * um papel inventado viraria um membro com papel que `permissoes.ts` não
+ * conhece, e a tela dele ficaria sem botão nenhum sem ninguém entender por quê.
+ *
+ * `dono` está fora de propósito: posse se transfere numa ação própria, com
+ * confirmação, e não por um link que pode ser encaminhado no WhatsApp.
+ *
+ * ⚠️ Esta lista tem que bater com `PAPEIS_CONVIDAVEIS` em `src/lib/permissoes.ts`
+ * e com o `check` de `papel` em `supabase/sql/papeis.sql`. Três lugares, mesma
+ * lista — se divergirem, o sintoma é uma inserção que falha longe daqui.
+ */
+const PAPEIS_PERMITIDOS = ['admin', 'equipe', 'leitura'];
+
 /** Consulta o Postgres direto pelo PostgREST, com service role (sem RLS). */
 async function comoServidor(caminho: string, init: RequestInit = {}) {
   return fetch(`${URL_BASE}/rest/v1/${caminho}`, {
@@ -115,13 +133,19 @@ Deno.serve(async req => {
     }
 
     // 4. Entra.
+    //
+    // O papel passa pela lista permitida antes de virar participação. Cair no
+    // 'equipe' quando o valor não é reconhecido é o lado seguro: dá o papel
+    // comum, nunca um mais poderoso do que o convite pedia.
+    const papel = PAPEIS_PERMITIDOS.includes(convite.papel) ? convite.papel : 'equipe';
+
     const entrada = await comoServidor('projeto_membros', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
         projeto_id: convite.projeto_id,
         usuario_id: usuario.id,
-        papel: convite.papel || 'equipe',
+        papel,
         apelido: convite.apelido || 'Equipe B',
       }),
     });
