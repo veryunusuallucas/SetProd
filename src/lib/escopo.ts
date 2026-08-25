@@ -77,6 +77,17 @@ export const ESCOPO: Record<TabelaSincronizada, Escopo> = {
   veiculos: 'comum',
   motoristas: 'comum',
 
+  /*
+    O que foi gravado é registro de produção, não de departamento.
+
+    Quem marca cena como gravada é a direção e a produção — o 1º AD ou a
+    continuísta, no wrap. Não é a Arte nem a Fotografia, e não porque não se
+    confie nelas: é que um DPR com duas versões do mesmo dia não serve para
+    discussão nenhuma. Uma boca, um relatório.
+  */
+  registros_cena: 'restrito',
+  registros_plano: 'restrito',
+
   // Auditoria: ninguém edita, todo mundo escreve o próprio. Ver Etapa 7.
   logs: 'comum',
 };
