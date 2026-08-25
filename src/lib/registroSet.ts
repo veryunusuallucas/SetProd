@@ -1,4 +1,5 @@
 import { db } from '../db/db';
+import { paginasParaOitavos } from './decupagem';
 import type { RegistroCena, StatusCena, Cena } from '../types';
 
 /**
@@ -181,6 +182,9 @@ export interface Progresso {
   cortadas: number;
   /** Ainda falta gravar — exclui as cortadas, que saíram do filme. */
   pendentes: number;
+  /** Oitavos de página do filme, sem as cortadas. */
+  oitavosTotal: number;
+  oitavosGravados: number;
 }
 
 /**
@@ -194,11 +198,27 @@ export function calcularProgresso(cenas: Cena[], registros: RegistroCena[]): Pro
   const atual = estadoAtualDasCenas(registros);
 
   let gravadas = 0, parciais = 0, cortadas = 0;
+  let oitavosTotal = 0, oitavosGravados = 0;
+
   for (const c of cenas) {
-    const s = atual.get(c.id)?.status;
-    if (s === 'gravada') gravadas++;
-    else if (s === 'parcial') parciais++;
-    else if (s === 'cortada') cortadas++;
+    const registro = atual.get(c.id);
+    const s = registro?.status;
+    const oitavos = paginasParaOitavos(c.paginas);
+
+    if (s === 'cortada') { cortadas++; continue; } // sai do filme, sai da conta
+
+    oitavosTotal += oitavos;
+
+    if (s === 'gravada') {
+      gravadas++;
+      oitavosGravados += oitavos;
+    } else if (s === 'parcial') {
+      parciais++;
+      // O que a pessoa anotou vale mais que qualquer palpite. Sem anotação,
+      // meia cena é o chute honesto — e chutar zero faria uma produção que
+      // filmou metade parecer que não filmou nada.
+      oitavosGravados += registro?.oitavos_gravados ?? Math.floor(oitavos / 2);
+    }
   }
 
   const cenasTotal = cenas.length;
@@ -211,7 +231,65 @@ export function calcularProgresso(cenas: Cena[], registros: RegistroCena[]): Pro
     naoGravadas,
     cortadas,
     pendentes: cenasTotal - gravadas - cortadas,
+    oitavosTotal,
+    oitavosGravados,
   };
+}
+
+/**
+ * O relatório de UM dia — o Daily Production Report.
+ *
+ * Só o que aconteceu naquela diária, ao contrário do `calcularProgresso`, que
+ * olha o filme inteiro. É a diferença entre "como foi ontem" e "como estamos".
+ */
+export interface RelatorioDoDia {
+  gravadas: Cena[];
+  parciais: Cena[];
+  naoGravadas: Cena[];
+  cortadas: Cena[];
+  /** Cenas escaladas que ninguém marcou. Perguntar, nunca assumir. */
+  semRegistro: Cena[];
+  oitavosPrevistos: number;
+  oitavosGravados: number;
+  setups: number;
+}
+
+export function relatorioDoDia(
+  cenasDoDia: Cena[],
+  registrosDoDia: RegistroCena[]
+): RelatorioDoDia {
+  const r: RelatorioDoDia = {
+    gravadas: [], parciais: [], naoGravadas: [], cortadas: [], semRegistro: [],
+    oitavosPrevistos: 0, oitavosGravados: 0, setups: 0,
+  };
+
+  for (const cena of cenasDoDia) {
+    const oitavos = paginasParaOitavos(cena.paginas);
+    r.oitavosPrevistos += oitavos;
+
+    const registro = registrosDoDia.find(x => x.cena_id === cena.id);
+    if (!registro) { r.semRegistro.push(cena); continue; }
+
+    r.setups += registro.setups || 0;
+
+    switch (registro.status) {
+      case 'gravada':
+        r.gravadas.push(cena);
+        r.oitavosGravados += oitavos;
+        break;
+      case 'parcial':
+        r.parciais.push(cena);
+        r.oitavosGravados += registro.oitavos_gravados ?? Math.floor(oitavos / 2);
+        break;
+      case 'cortada':
+        r.cortadas.push(cena);
+        break;
+      default:
+        r.naoGravadas.push(cena);
+    }
+  }
+
+  return r;
 }
 
 /**
