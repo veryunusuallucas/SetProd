@@ -282,8 +282,38 @@ export interface Diaria {
   comboios?: Comboio[];
 
   // ---- Fechamento / arquivamento (v4) ----
+  /**
+   * ⚠️ DEPRECATED — use `estado`. Mantido porque telas antigas leem este campo,
+   * e porque é dele que o estado das diárias já existentes é derivado.
+   */
   fechada?: boolean;
   data_fechamento?: number;
+
+  /**
+   * Em que ponto do ciclo a diária está.
+   *
+   * `rascunho`  — ainda se mexendo. ESPELHA O STRIPBOARD: reordenou a linha do
+   *               tempo, as cenas do dia se atualizam sozinhas.
+   * `publicada` — a OD saiu, a equipe recebeu. CONGELA. Mudança no stripboard
+   *               vira aviso, nunca aplicação silenciosa.
+   * `fechada`   — o dia acabou e o relatório foi feito.
+   *
+   * O congelamento na publicação é o ponto todo. Sem ele, alguém reordena o
+   * stripboard às 23h e a Ordem do Dia que a equipe imprimiu muda por baixo dos
+   * pés de quem vai para o set às 6h — sem ninguém ser avisado.
+   */
+  estado?: 'rascunho' | 'publicada' | 'fechada';
+  data_publicacao?: number;
+
+  /**
+   * De qual quebra do stripboard este dia veio.
+   *
+   * O vínculo existia só do outro lado (`StripboardItem.diaria_id`), e um lado
+   * só não basta: para recalcular as cenas é preciso partir da diária e achar a
+   * quebra, não o contrário. `'__ultimo__'` é o bloco final, que não tem quebra
+   * depois dele.
+   */
+  stripboard_item_id?: string;
   anexos?: AnexoOD[]; // Roteiro do dia, decupagem, referências (armazenados como data URL, offline)
   confirmacoes?: string[]; // IDs dos perfis que confirmaram presença
   cena_ids?: string[]; // IDs das cenas globais escaladas para o dia

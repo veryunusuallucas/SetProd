@@ -16,6 +16,7 @@ import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
 import { marcarCena } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
+import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
 
@@ -275,7 +276,10 @@ export function DiariaModule() {
     const jaFechada = !!diaria.fechada;
     if (jaFechada) {
       if (!confirm('Reabrir esta diária para edição?')) return;
-      await db.diarias.update(diariaId!, { fechada: false, data_fechamento: undefined });
+      // Volta a `publicada`, não a `rascunho`: a OD já saiu para a equipe, e
+      // devolver a diária ao espelho faria as cenas se mexerem sozinhas num dia
+      // que já foi impresso e distribuído.
+      await db.diarias.update(diariaId!, { fechada: false, data_fechamento: undefined, estado: 'publicada' });
       if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Reabriu a Diária ${diaria.numero}`);
       return;
     }
@@ -290,6 +294,7 @@ export function DiariaModule() {
   const confirmarFechamento = async (notas: string) => {
     await db.diarias.update(diariaId!, {
       fechada: true,
+      estado: 'fechada',
       data_fechamento: Date.now(),
       // As notas do wrap entram nas observações da diária, que é onde o resto
       // do app já procura o texto livre do dia.
@@ -891,6 +896,10 @@ export function DiariaModule() {
           </div>
         )}
       </div>
+
+      {/* A ponte com o stripboard vem ANTES da lista de cenas: é ela que explica
+          por que a lista é o que é, e por que ela pode ou não mudar sozinha. */}
+      <SincroniaStripboard diaria={diaria} />
 
       {/* Shot List (Cenas e Planos) */}
       <ShotList diaria={diaria as any} locacoes={locacoes} />
