@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
+import { AvisoConflito } from '../components/AvisoConflito';
 import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 
@@ -333,6 +334,10 @@ export function ProjectLayout() {
           <span style={{ fontSize: '10px', fontWeight: 600 }}>Mais</span>
         </button>
       </nav>
+
+      {/* Fica montado sempre: o conflito chega quando chega, e um aviso que só
+          existe se alguma tela específica estiver aberta não avisaria ninguém. */}
+      <AvisoConflito projetoId={id} />
 
       {mostrarCompartilhar && (
         <CompartilharModal

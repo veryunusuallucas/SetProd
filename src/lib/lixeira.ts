@@ -3,6 +3,7 @@ import { supabase, supabaseConfigurado } from './supabase';
 import { participacaoLocal, purgarProjetoNoServidor } from './membros';
 import { apagarAnexosDoProjeto } from './arquivos';
 import { apagarPesquisaPublica } from './pesquisas';
+import { reiniciarCursor } from './sincronizacao';
 import type { Projeto } from '../types';
 
 /**
@@ -90,7 +91,7 @@ export async function apagarSomenteLocal(projetoId: string): Promise<void> {
   // só voltaria como erro na próxima sincronização.
   await new Promise(r => setTimeout(r, 300));
   await db.sync_queue.where('projeto_id').equals(projetoId).delete().catch(() => {});
-  localStorage.removeItem(`setprod_cursor_${projetoId}`);
+  reiniciarCursor(projetoId);
   localStorage.removeItem(`setprod_anexos_migrados_${projetoId}`);
 }
 
