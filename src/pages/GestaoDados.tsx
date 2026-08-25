@@ -14,6 +14,7 @@ import {
   CONJUNTOS, tabelaParaCSV, tabelaParaTXT, baixarArquivo, nomeSeguro,
   type Tabela
 } from '../lib/exportacao';
+import { useRole } from '../hooks/useRole';
 import { diagramarRelatorio } from '../lib/gemini';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 
@@ -26,6 +27,15 @@ export function GestaoDados() {
     () => (projetoId ? db.projetos.get(projetoId) : undefined),
     [projetoId]
   );
+
+  /**
+   * Quem pode tirar CPF, banco e ficha médica do app.
+   *
+   * `gerir_membros` e não uma ação nova: exportar dado pessoal da equipe é do
+   * mesmo nível de confiança que administrar quem entra e quem sai.
+   */
+  const { podeAqui } = useRole();
+  const podeVerFichaCompleta = podeAqui('gerir_membros');
 
   const [selecionados, setSelecionados] = useState<Set<string>>(
     () => new Set(CONJUNTOS.filter(c => !c.sensivel).map(c => c.id))
@@ -56,7 +66,11 @@ export function GestaoDados() {
     setSelecionados(novo);
   };
 
-  const marcarTodos = () => setSelecionados(new Set(CONJUNTOS.map(c => c.id)));
+  // "Marcar todos" respeita o bloqueio: senão ele seria a porta dos fundos que
+  // devolve o conjunto sensível a quem a caixinha não deixa marcar.
+  const marcarTodos = () => setSelecionados(new Set(
+    CONJUNTOS.filter(c => !c.sensivel || podeVerFichaCompleta).map(c => c.id)
+  ));
   const limparTodos = () => setSelecionados(new Set());
 
   const escolhidos = CONJUNTOS.filter(c => selecionados.has(c.id));
@@ -247,12 +261,21 @@ export function GestaoDados() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
                 {doGrupo.map(c => {
                   const marcado = selecionados.has(c.id);
+                  /*
+                    Filtrar a ficha na tela e liberar tudo no CSV não protege
+                    nada — o conjunto "Equipe (ficha completa)" leva CPF, banco
+                    e saúde de todo mundo num arquivo que sai do app e vira
+                    anexo de WhatsApp. Só quem administra a produção exporta.
+                  */
+                  const bloqueado = Boolean(c.sensivel) && !podeVerFichaCompleta;
                   return (
                     <label
                       key={c.id}
+                      title={bloqueado ? 'Só quem é dono ou administra a produção pode exportar dados pessoais.' : undefined}
                       style={{
                         display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px',
-                        borderRadius: '8px', cursor: 'pointer',
+                        borderRadius: '8px', cursor: bloqueado ? 'not-allowed' : 'pointer',
+                        opacity: bloqueado ? 0.5 : 1,
                         backgroundColor: marcado ? 'var(--bg-active)' : 'var(--bg-primary)',
                         border: `1px solid ${marcado ? 'var(--accent)' : 'var(--border-light)'}`,
                         transition: 'background-color 0.15s, border-color 0.15s',
@@ -261,6 +284,7 @@ export function GestaoDados() {
                       <input
                         type="checkbox"
                         checked={marcado}
+                        disabled={bloqueado}
                         onChange={() => alternar(c.id)}
                         style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', marginTop: '2px' }}
                       />
@@ -269,7 +293,11 @@ export function GestaoDados() {
                           {c.nome}
                           {c.sensivel && <ShieldAlert size={13} className="text-warning" />}
                         </div>
-                        <div className="text-xs text-muted">{c.descricao}</div>
+                        <div className="text-xs text-muted">
+                          {bloqueado
+                            ? 'Só quem administra a produção pode exportar isto.'
+                            : c.descricao}
+                        </div>
                       </div>
                     </label>
                   );
