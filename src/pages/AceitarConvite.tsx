@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, ShieldAlert, LogIn, Check } from 'lucide-react';
+import { Users, ShieldAlert, LogIn, UserPlus, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { aceitarConvite, lerConvite, type Convite } from '../lib/membros';
 import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
@@ -144,17 +144,28 @@ export function AceitarConvite() {
 
             {estado === 'precisa_entrar' ? (
               <>
+                {/* Os dois caminhos, lado a lado. Só o "entrar" deixava preso
+                    justamente quem o convite existe para trazer: alguém de fora,
+                    que quase nunca já tem conta no SetProd. */}
                 <Link
-                  to="/login"
+                  to="/criar-conta"
                   state={{ voltarPara: `/convite/${token}` }}
                   className="btn btn-primary"
                   style={{ width: '100%', justifyContent: 'center' }}
                 >
-                  <LogIn size={16} /> Entrar para aceitar
+                  <UserPlus size={16} /> Criar conta e aceitar
+                </Link>
+                <Link
+                  to="/login"
+                  state={{ voltarPara: `/convite/${token}` }}
+                  className="btn"
+                  style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
+                >
+                  <LogIn size={16} /> Já tenho conta
                 </Link>
                 <p className="text-xs text-muted" style={{ marginTop: '10px' }}>
-                  Precisa de uma conta para o SetProd saber quem é você. Depois de
-                  entrar, você volta para cá.
+                  Precisa de uma conta para o SetProd saber quem é você. Seja qual
+                  for o caminho, você volta para cá no fim.
                 </p>
               </>
             ) : (
