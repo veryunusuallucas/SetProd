@@ -5,9 +5,17 @@ import { Users, ShieldAlert, LogIn, UserPlus, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { aceitarConvite, lerConvite, type Convite } from '../lib/membros';
 import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
+import { EscolherMinhaFicha } from '../components/EscolherMinhaFicha';
+import { puxar } from '../lib/sincronizacao';
 import { MOLA } from '../components/ui/ia';
 
-type Estado = 'lendo' | 'precisa_entrar' | 'pronto' | 'aceitando' | 'aceito' | 'ja_era' | 'erro';
+type Estado =
+  | 'lendo' | 'precisa_entrar' | 'pronto' | 'aceitando'
+  /** Já é membro; trazendo a produção antes de perguntar quem ela é. */
+  | 'baixando'
+  /** Convite sem vínculo: falta dizer quem é na equipe. */
+  | 'quem_e_voce'
+  | 'aceito' | 'ja_era' | 'erro';
 
 /**
  * Tela que a Equipe B abre ao clicar no link de convite.
@@ -87,16 +95,42 @@ export function AceitarConvite() {
   const aceitar = async () => {
     setEstado('aceitando');
     try {
-      const { projeto_id, ja_era_membro } = await aceitarConvite(token!);
+      const { projeto_id, ja_era_membro, perfil_id } = await aceitarConvite(token!);
       setProjetoId(projeto_id);
+
       // "Já era membro" merece tela própria, e não um redirecionamento mudo:
       // é o sinal de que o convite foi aberto pela conta errada.
-      setEstado(ja_era_membro ? 'ja_era' : 'aceito');
-      if (!ja_era_membro) setTimeout(() => navigate(`/projeto/${projeto_id}`), 900);
+      if (ja_era_membro) { setEstado('ja_era'); return; }
+
+      // Convite nominal já trouxe quem a pessoa é — não há o que perguntar.
+      if (perfil_id) {
+        setEstado('aceito');
+        setTimeout(() => navigate(`/projeto/${projeto_id}`), 900);
+        return;
+      }
+
+      /*
+        Sem vínculo: perguntar AGORA, e não depois de entrar.
+
+        A equipe da produção ainda não está neste aparelho — a pessoa acabou de
+        virar membro, e o espelho só desce na primeira sincronização. Por isso
+        a descida vem antes da pergunta; sem ela a lista de fichas apareceria
+        vazia e a única opção seria "não estou na lista", que criaria uma ficha
+        duplicada de alguém que já estava cadastrado.
+      */
+      setEstado('baixando');
+      await puxar(projeto_id).catch(() => {});
+      setEstado('quem_e_voce');
     } catch (e: any) {
       setErro(e?.message || 'Não consegui aceitar o convite.');
       setEstado('erro');
     }
+  };
+
+  /** Terminou de dizer quem é (ou pulou): entra na produção. */
+  const entrarNaProducao = () => {
+    setEstado('aceito');
+    setTimeout(() => navigate(`/projeto/${projetoId}`), 400);
   };
 
   /** Sai da conta atual e volta para cá depois de entrar na certa. */
@@ -127,6 +161,24 @@ export function AceitarConvite() {
         </div>
 
         {estado === 'lendo' && <p className="text-sm text-muted">Conferindo o convite…</p>}
+
+        {estado === 'baixando' && (
+          <p className="text-sm text-muted">Você entrou! Trazendo a produção…</p>
+        )}
+
+        {estado === 'quem_e_voce' && projetoId && (
+          <>
+            <p className="text-sm" style={{ lineHeight: 1.5 }}>
+              Pronto, você já faz parte da produção. Falta só uma coisa.
+            </p>
+            <EscolherMinhaFicha
+              projetoId={projetoId}
+              meuEmail={contaAtual}
+              aoResolver={entrarNaProducao}
+              aoPular={entrarNaProducao}
+            />
+          </>
+        )}
 
         {(estado === 'precisa_entrar' || estado === 'pronto' || estado === 'aceitando') && (
           <>

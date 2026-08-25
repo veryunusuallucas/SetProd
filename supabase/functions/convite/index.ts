@@ -100,7 +100,7 @@ Deno.serve(async req => {
 
     // 1. O convite existe?
     const busca = await comoServidor(
-      `convites?token=eq.${encodeURIComponent(token)}&select=token,projeto_id,papel,apelido,expira_em,usado_por`
+      `convites?token=eq.${encodeURIComponent(token)}&select=token,projeto_id,papel,apelido,expira_em,usado_por,perfil_id`
     );
     const achados = await busca.json();
     const convite = Array.isArray(achados) ? achados[0] : null;
@@ -139,16 +139,42 @@ Deno.serve(async req => {
     // comum, nunca um mais poderoso do que o convite pedia.
     const papel = PAPEIS_PERMITIDOS.includes(convite.papel) ? convite.papel : 'equipe';
 
-    const entrada = await comoServidor('projeto_membros', {
+    /*
+      O vínculo com a ficha da equipe entra JUNTO com a participação.
+
+      Podia ser um update depois, mas não deve: se o segundo passo falhasse, a
+      pessoa entraria na produção sem saber quem é — e o único jeito de
+      consertar seria ela achar o dropdown escondido em "Compartilhar". Numa
+      inserção só, ou entra vinculada ou não entra.
+
+      Se o perfil já tiver dono, o índice único recusa a linha inteira. Nesse
+      caso a gente tenta de novo sem o vínculo: ficar de fora da produção seria
+      pior que entrar sem saber quem é.
+    */
+    const linha: Record<string, unknown> = {
+      projeto_id: convite.projeto_id,
+      usuario_id: usuario.id,
+      papel,
+      apelido: convite.apelido || 'Equipe B',
+    };
+    if (convite.perfil_id) linha.perfil_id = convite.perfil_id;
+
+    let entrada = await comoServidor('projeto_membros', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        projeto_id: convite.projeto_id,
-        usuario_id: usuario.id,
-        papel,
-        apelido: convite.apelido || 'Equipe B',
-      }),
+      body: JSON.stringify(linha),
     });
+
+    if (!entrada.ok && convite.perfil_id) {
+      const detalhe = await entrada.text();
+      console.warn('[convite] entrada com perfil_id falhou, tentando sem:', detalhe);
+      delete linha.perfil_id;
+      entrada = await comoServidor('projeto_membros', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify(linha),
+      });
+    }
 
     if (!entrada.ok) {
       const detalhe = await entrada.text();
@@ -172,7 +198,13 @@ Deno.serve(async req => {
       }
     );
 
-    return responder({ projeto_id: convite.projeto_id, ja_era_membro: false });
+    // `perfil_id` volta para a tela saber se ainda precisa perguntar quem a
+    // pessoa é. Sem convite nominal, ele vem nulo e a tela de aceite assume.
+    return responder({
+      projeto_id: convite.projeto_id,
+      ja_era_membro: false,
+      perfil_id: linha.perfil_id ?? null,
+    });
   } catch (erro) {
     console.error('[convite] erro inesperado:', erro);
     return responder({ erro: 'Erro inesperado ao aceitar o convite.' }, 500);
