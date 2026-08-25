@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { ArrowLeft, Users, MapPin, CheckSquare, SplitSquareHorizontal, Plus, Trash2, Clock, Bus, Paperclip, UserCheck, FileDown, CloudSun, Wallet, Cross, Phone, Archive, Lock } from 'lucide-react';
-import type { DiariaTask, HorarioOD, AnexoOD } from '../types';
+import type { DiariaTask, HorarioOD, AnexoOD, Locacao } from '../types';
 import { logAction } from '../lib/audit';
-import { parseCoords, buscarClima, descreverClima, type ClimaDia } from '../lib/clima';
+import { parseCoords, buscarClima, descreverClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
 import { formatarDistancia, linkRota } from '../lib/osm';
 import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
 import { ShotList } from '../components/ShotList';
@@ -70,7 +70,7 @@ export function DiariaModule() {
   const [novaHora, setNovaHora] = useState('');
   const [novoEvento, setNovoEvento] = useState('');
 
-  const [clima, setClima] = useState<ClimaDia | null>(null);
+  const [climas, setClimas] = useState<ClimaPorLocal[]>([]);
   const [climaStatus, setClimaStatus] = useState<'idle' | 'carregando' | 'ok' | 'erro' | 'sem_coords'>('idle');
 
   const [exportModalAberto, setExportModalAberto] = useState(false);
@@ -81,23 +81,57 @@ export function DiariaModule() {
     hospital: true
   });
 
-  // Locação da diária que tenha coordenadas parseáveis
-  const locComCoords = (diaria?.locacoes_ids || [])
+  /*
+    TODAS as locações do dia que tenham coordenadas — não só a primeira.
+
+    Antes isto era um `.find()`: com dois sets, o app buscava o clima de um deles
+    e mostrava sem dizer qual. Numa diária que atravessa a cidade — ou que sai
+    dela — a previsão do set errado é pior que previsão nenhuma, porque a equipe
+    se veste pela informação errada achando que está informada.
+  */
+  const locaisDoDia = (diaria?.locacoes_ids || [])
     .map(id => locacoes.find(l => l.id === id))
-    .find(l => l && parseCoords(l.coordenadas));
-  const coords = parseCoords(locComCoords?.coordenadas);
+    .filter((l): l is Locacao => Boolean(l && parseCoords(l.coordenadas)));
+
   const dataDiaria = diaria?.data;
+  const chaveLocais = locaisDoDia.map(l => `${l.id}:${l.coordenadas}`).join('|');
 
   useEffect(() => {
     let cancelado = false;
-    if (!coords) { setClimaStatus('sem_coords'); setClima(null); return; }
+    if (locaisDoDia.length === 0) { setClimaStatus('sem_coords'); setClimas([]); return; }
     if (!dataDiaria) return;
+
     setClimaStatus('carregando');
-    buscarClima(coords.lat, coords.lng, dataDiaria)
-      .then(res => { if (!cancelado) { setClima(res); setClimaStatus(res ? 'ok' : 'erro'); } })
+    Promise.all(
+      locaisDoDia.map(async loc => {
+        const c = parseCoords(loc.coordenadas)!;
+        const previsao = await buscarClima(c.lat, c.lng, dataDiaria).catch(() => null);
+        // Só o id e o nome viajam: `ClimaPorLocal` não precisa da locação
+        // inteira, e um tipo mínimo deixa a função reaproveitável no calendário.
+        return previsao ? { locacao: { id: loc.id, nome: loc.nome }, clima: previsao } : null;
+      })
+    )
+      .then(res => {
+        if (cancelado) return;
+        const bons = res.filter((r): r is ClimaPorLocal => r !== null);
+        setClimas(bons);
+        setClimaStatus(bons.length ? 'ok' : 'erro');
+      })
       .catch(() => { if (!cancelado) setClimaStatus('erro'); });
+
     return () => { cancelado = true; };
-  }, [coords?.lat, coords?.lng, dataDiaria]);
+    // `chaveLocais` no lugar do array: o array é recriado a cada render e
+    // dispararia uma busca por quadro, batendo na API sem parar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveLocais, dataDiaria]);
+
+  /*
+    Dois sets no mesmo bairro têm a MESMA previsão, e mostrar dois cartões
+    idênticos é ruído que faz a pessoa parar de ler. Quando a previsão bate,
+    junta num cartão só com os dois nomes; quando difere, mostra separado — que
+    é justamente quando a informação importa.
+  */
+  const gruposDeClima = agruparClimasIguais(climas);
 
   if (!diaria) return <div className="screen-padding">Carregando Diária...</div>;
 
@@ -419,7 +453,14 @@ export function DiariaModule() {
       table{border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px}li{margin:2px 0}.muted{color:#666}</style></head><body>
       <h1>${projeto?.nome || 'Produção'}</h1>
       <div class="muted">Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}${diaria.tem_unidade_b ? ' · Unidades A+B' : ''}</div>
-      ${exportConfig.clima && clima ? `<h2>Previsão</h2><p>${descreverClima(clima.code).emoji} ${descreverClima(clima.code).texto} · Nascer ${clima.sunrise||'--'} · Pôr ${clima.sunset||'--'} · Máx ${Math.round(clima.tempMax)}° / Mín ${Math.round(clima.tempMin)}° · Chuva ${clima.chuvaProb}%</p>` : ''}
+      ${/*
+          A previsão impressa traz TODOS os sets do dia, com o nome de cada um.
+          Sem o nome, a equipe lia uma previsão sem saber de onde ela era — e
+          numa diária que atravessa a cidade isso é pior que não imprimir nada.
+        */''}
+      ${exportConfig.clima && gruposDeClima.length > 0 ? `<h2>Previsão</h2>${
+        gruposDeClima.map(g => `<p><b>${g.locais.join(' · ')}</b><br>${descreverClima(g.clima.code).emoji} ${descreverClima(g.clima.code).texto} · Nascer ${g.clima.sunrise||'--'} · Pôr ${g.clima.sunset||'--'} · Máx ${Math.round(g.clima.tempMax)}° / Mín ${Math.round(g.clima.tempMin)}° · Chuva ${g.clima.chuvaProb}%</p>`).join('')
+      }` : ''}
       ${exportConfig.horarios && linhaHorarios ? `<h2>Horários</h2><table>${linhaHorarios}</table>` : ''}
       ${exportConfig.locacoes && linhaLoc ? `<h2>Locações</h2><ul>${linhaLoc}</ul>` : ''}
       ${exportConfig.equipe && linhaEquipe ? `<h2>Equipe Escalada</h2><ul>${linhaEquipe}</ul>` : ''}
@@ -659,20 +700,55 @@ export function DiariaModule() {
         {climaStatus === 'erro' && (
           <div className="text-sm text-muted">Não foi possível obter a previsão (sem internet ou data fora da janela de ~16 dias).</div>
         )}
-        {climaStatus === 'ok' && clima && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '40px', lineHeight: 1 }}>{descreverClima(clima.code).emoji}</div>
-            <div>
-              <div className="font-bold">{descreverClima(clima.code).texto}</div>
-              <div className="text-sm text-secondary">{locComCoords?.nome}</div>
-            </div>
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: '20px', textAlign: 'center' }}>
-                <div><div className="text-xs text-muted uppercase">Nascer</div><div className="font-bold text-secondary">{clima.sunrise || '--'}</div></div>
-                <div><div className="text-xs text-muted uppercase">Pôr</div><div className="font-bold text-secondary">{clima.sunset || '--'}</div></div>
-                <div><div className="text-xs text-muted uppercase">Máx</div><div className="font-bold">{Math.round(clima.tempMax)}°</div></div>
-                <div><div className="text-xs text-muted uppercase">Mín</div><div className="font-bold">{Math.round(clima.tempMin)}°</div></div>
-                <div><div className="text-xs text-muted uppercase">Chuva</div><div className="font-bold" style={{ color: clima.chuvaProb >= 50 ? 'var(--color-danger)' : 'var(--text-primary)' }}>{clima.chuvaProb}%</div></div>
+        {climaStatus === 'ok' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {gruposDeClima.map((g, i) => (
+              <div
+                key={g.locais.join('|')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap',
+                  paddingTop: i > 0 ? '14px' : 0,
+                  borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
+                }}
+              >
+                <div style={{ fontSize: '40px', lineHeight: 1 }}>{descreverClima(g.clima.code).emoji}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-bold">{descreverClima(g.clima.code).texto}</div>
+                  {/* O nome do set SEMPRE aparece, e todos eles. Antes só um era
+                      consultado e mostrado, e não dava para saber qual. */}
+                  <div className="text-sm text-secondary">{g.locais.join(' · ')}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '20px', textAlign: 'center' }}>
+                  <div><div className="text-xs text-muted uppercase">Nascer</div><div className="font-bold text-secondary">{g.clima.sunrise || '--'}</div></div>
+                  <div><div className="text-xs text-muted uppercase">Pôr</div><div className="font-bold text-secondary">{g.clima.sunset || '--'}</div></div>
+                  <div><div className="text-xs text-muted uppercase">Máx</div><div className="font-bold">{Math.round(g.clima.tempMax)}°</div></div>
+                  <div><div className="text-xs text-muted uppercase">Mín</div><div className="font-bold">{Math.round(g.clima.tempMin)}°</div></div>
+                  <div><div className="text-xs text-muted uppercase">Chuva</div><div className="font-bold" style={{ color: g.clima.chuvaProb >= 50 ? 'var(--color-danger)' : 'var(--text-primary)' }}>{g.clima.chuvaProb}%</div></div>
+                </div>
               </div>
+            ))}
+
+            {/* Só aparece quando há de fato diferença — se os sets estão no mesmo
+                bairro, o agrupamento já os juntou e este aviso some. */}
+            {gruposDeClima.length > 1 && (
+              <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                Os sets do dia têm previsões diferentes. Vale conferir qual vale para
+                cada bloco antes de decidir figurino e cobertura.
+              </div>
+            )}
+
+            {/* Locação sem coordenada não some em silêncio: ela existe na diária
+                e a equipe vai para lá do mesmo jeito. */}
+            {(() => {
+              const semCoord = locsDaDiaria.filter(l => !parseCoords(l.coordenadas));
+              if (semCoord.length === 0) return null;
+              return (
+                <div className="text-xs text-muted">
+                  Sem previsão para {semCoord.map(l => l.nome).join(', ')} — falta a
+                  coordenada em Locações.
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

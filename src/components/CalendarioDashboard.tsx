@@ -27,8 +27,24 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
   // Alcance configurável da camada de clima (v4 §1.2). A API gratuita cobre ~16 dias.
   const [alcanceDias, setAlcanceDias] = useState(14);
 
-  // Coordenadas: primeira locação do projeto que tenha coordenadas parseáveis.
-  const coords = locacoes.map(l => parseCoords(l.coordenadas)).find(Boolean) || null;
+  /*
+    De QUAL locação é a previsão do calendário.
+
+    Antes era "a primeira do projeto que tivesse coordenadas" — escolhida em
+    silêncio, sem aparecer em lugar nenhum. Numa produção com sets em cidades
+    diferentes, a pessoa lia a previsão de um lugar achando que era de outro. E
+    o pior: a locação escolhida podia nem ser usada no dia que ela estava
+    olhando.
+
+    Numa célula de calendário não cabem duas previsões, então a saída não é
+    mostrar todas: é DIZER qual é, e deixar trocar. Uma linha por dia, com nome.
+  */
+  const locaisComCoords = locacoes.filter(l => parseCoords(l.coordenadas));
+  const [localDoClima, setLocalDoClima] = useState<string>('');
+
+  const localEscolhido =
+    locaisComCoords.find(l => l.id === localDoClima) || locaisComCoords[0] || null;
+  const coords = parseCoords(localEscolhido?.coordenadas);
 
   useEffect(() => {
     if (!mostrarClima || !coords) {
@@ -80,6 +96,23 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
             <input type="checkbox" checked={mostrarClima} onChange={e => setMostrarClima(e.target.checked)} />
             Mostrar Previsão do Tempo
           </label>
+          {/* O nome do set fica à vista sempre que o clima estiver ligado.
+              Previsão sem origem é pior que previsão nenhuma: parece
+              informação, e não é. */}
+          {mostrarClima && locaisComCoords.length > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+              Clima de:
+              <select
+                value={localEscolhido?.id || ''}
+                onChange={e => setLocalDoClima(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', maxWidth: '180px' }}
+              >
+                {locaisComCoords.map(l => (
+                  <option key={l.id} value={l.id}>{l.nome}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {mostrarClima && (
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
               Alcance:

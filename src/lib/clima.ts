@@ -72,6 +72,58 @@ export async function buscarClima(lat: number, lng: number, data: string): Promi
   };
 }
 
+/** Uma previsão amarrada à locação de onde ela veio. */
+export interface ClimaPorLocal {
+  locacao: { id: string; nome: string };
+  clima: ClimaDia;
+}
+
+/**
+ * Junta as locações que têm a MESMA previsão.
+ *
+ * Uma diária com dois sets no mesmo bairro recebe duas previsões idênticas, e
+ * dois cartões iguais lado a lado são ruído — a pessoa para de ler o bloco
+ * inteiro. Quando batem, viram um cartão com os dois nomes; quando diferem, ficam
+ * separados, que é exatamente quando a informação vale alguma coisa (um set na
+ * serra e outro no litoral não têm o mesmo dia).
+ *
+ * A comparação é por TOLERÂNCIA, não por arredondamento.
+ *
+ * Arredondar parece equivalente e não é: 27,4°C e 27,6°C viram 27 e 28 e caem em
+ * cartões separados, embora sejam o mesmo dia para quem está montando o set.
+ * Qualquer fronteira de arredondamento tem esse problema — dois valores a um
+ * décimo de distância podem cair de lados opostos. Com tolerância, o que decide
+ * é a diferença real entre eles.
+ */
+
+/** Quanto dois sets podem divergir e ainda serem "o mesmo dia". */
+const TOLERANCIA_GRAUS = 2;
+const TOLERANCIA_CHUVA = 15; // pontos percentuais
+
+function mesmoDia(a: ClimaDia, b: ClimaDia): boolean {
+  return (
+    descreverClima(a.code).texto === descreverClima(b.code).texto &&
+    Math.abs(a.tempMax - b.tempMax) <= TOLERANCIA_GRAUS &&
+    Math.abs(a.tempMin - b.tempMin) <= TOLERANCIA_GRAUS &&
+    Math.abs(a.chuvaProb - b.chuvaProb) <= TOLERANCIA_CHUVA
+  );
+}
+
+export function agruparClimasIguais(lista: ClimaPorLocal[]): { locais: string[]; clima: ClimaDia }[] {
+  const grupos: { locais: string[]; clima: ClimaDia }[] = [];
+
+  for (const item of lista) {
+    // Compara com o primeiro de cada grupo. Guloso de propósito: a alternativa
+    // seria agrupamento por similaridade, e para dois ou três sets num dia isso
+    // seria complexidade sem ganho nenhum.
+    const grupo = grupos.find(g => mesmoDia(g.clima, item.clima));
+    if (grupo) grupo.locais.push(item.locacao.nome);
+    else grupos.push({ locais: [item.locacao.nome], clima: item.clima });
+  }
+
+  return grupos;
+}
+
 /** Mapeia o código WMO para emoji + descrição em português. */
 export function descreverClima(code: number): { emoji: string; texto: string } {
   if (code === 0) return { emoji: '☀️', texto: 'Céu limpo' };
