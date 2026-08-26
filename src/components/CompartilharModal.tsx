@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck } from 'lucide-react';
+import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus } from 'lucide-react';
 import { db } from '../db/db';
 import {
   criarConvite, convitesDoProjeto, revogarConvite, linkDoConvite,
@@ -10,6 +10,10 @@ import {
 } from '../lib/membros';
 import { supabaseConfigurado } from '../lib/supabase';
 import { pode, DESCRICAO, PAPEIS_CONVIDAVEIS, type PapelConvidavel } from '../lib/permissoes';
+import {
+  meusAcervos, acervosDaProducao, vincularAcervo, desvincularAcervo,
+  type AcervoDisponivel,
+} from '../lib/acervoVinculado';
 import { MOLA } from './ui/ia';
 
 interface Props {
@@ -43,6 +47,62 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   const minhaParticipacao = participacaoLocal(projetoId);
   const podeConvidar = pode(minhaParticipacao?.papel ?? 'desconhecido', 'convidar');
 
+  /*
+    Vincular um acervo segue a régua de CONVIDAR, não a de editar.
+
+    É conceder acesso a dado da produção — mesmo que seja pouco dado. Quem pode
+    editar uma despesa não deveria poder decidir sozinho que outro app passa a
+    receber o calendário de filmagem.
+  */
+  const podeGerirAcervo = pode(minhaParticipacao?.papel ?? 'desconhecido', 'gerir_membros');
+
+  const [acervos, setAcervos] = useState<AcervoDisponivel[]>([]);
+  const [vinculados, setVinculados] = useState<AcervoDisponivel[]>([]);
+  const [ligando, setLigando] = useState<string | null>(null);
+
+  const recarregarAcervos = async () => {
+    const [todos, ligados] = await Promise.all([
+      meusAcervos().catch(() => []),
+      acervosDaProducao(projetoId).catch(() => []),
+    ]);
+    setAcervos(todos);
+    setVinculados(ligados);
+  };
+
+  const jaLigados = new Set(vinculados.map(a => a.id));
+  const naoVinculados = acervos.filter(a => !jaLigados.has(a.id));
+
+  const ligarAcervo = async (a: AcervoDisponivel) => {
+    setLigando(a.id);
+    try {
+      await vincularAcervo(projetoId, a.id);
+      await recarregarAcervos();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui vincular o acervo.');
+    } finally {
+      setLigando(null);
+    }
+  };
+
+  const soltarAcervo = async (a: AcervoDisponivel) => {
+    // O aviso não é formalidade: o SetGear tem cópia local e funciona offline.
+    // Desvincular corta o acesso dali para frente, não apaga o que já desceu —
+    // exatamente como remover um membro da produção.
+    const seguir = confirm(
+      `Desvincular "${a.nome}" desta produção?\n\n` +
+      'O SetGear para de receber as diárias a partir de agora. O que ele já baixou ' +
+      'continua no aparelho de quem o usa — é assim que um app offline funciona.'
+    );
+    if (!seguir) return;
+
+    try {
+      await desvincularAcervo(projetoId, a.id);
+      await recarregarAcervos();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui desvincular.');
+    }
+  };
+
   const recarregar = async () => {
     try {
       setErro('');
@@ -58,6 +118,10 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
 
   useEffect(() => {
     sincronizarParticipacoes().then(recarregar);
+    // Em paralelo, e nunca bloqueando: se o SQL do SetGear não estiver rodado
+    // neste Supabase, a consulta falha — e falhar ali não pode impedir a tela de
+    // compartilhar de abrir.
+    void recarregarAcervos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projetoId]);
 
@@ -288,6 +352,79 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
             por um canal privado.
           </p>
         </section>
+
+        {/*
+          O acervo de equipamento.
+
+          Fica aqui, e não numa tela própria, porque a pergunta é a mesma que a
+          desta janela: quem mais participa desta produção. Um acervo é
+          exatamente isso — só que em vez de uma pessoa, é o inventário da
+          fotografia.
+
+          Some inteira quando não há acervo nenhum na conta: quem não usa o
+          SetGear não deveria ganhar uma seção vazia explicando um app que ele
+          não tem.
+        */}
+        {(acervos.length > 0 || vinculados.length > 0) && (
+          <section style={{ marginTop: '24px', borderTop: '1px solid var(--border-light)', paddingTop: '20px' }}>
+            <h3 style={tituloSecao}><Package size={14} /> Equipamento (SetGear)</h3>
+
+            {vinculados.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                {vinculados.map(a => (
+                  <div key={a.id} style={linhaEstilo}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="text-sm font-bold">{a.nome}</div>
+                      <div className="text-xs text-muted">recebe as diárias desta produção</div>
+                    </div>
+                    {podeGerirAcervo && (
+                      <button
+                        className="btn-icon"
+                        title="Desvincular"
+                        onClick={() => soltarAcervo(a)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted" style={{ marginBottom: '10px', lineHeight: 1.5 }}>
+                Nenhum acervo vinculado. Ao vincular, o SetGear passa a ver o nome
+                da produção, as datas das diárias e os veículos — <strong>e nada
+                além disso</strong>.
+              </p>
+            )}
+
+            {podeGerirAcervo && naoVinculados.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {naoVinculados.map(a => (
+                  <button
+                    key={a.id}
+                    className="btn"
+                    onClick={() => ligarAcervo(a)}
+                    disabled={ligando === a.id}
+                    style={{ fontSize: '13px', padding: '8px 12px' }}
+                  >
+                    <Plus size={14} /> {ligando === a.id ? 'Vinculando…' : a.nome}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!podeGerirAcervo && (
+              <p className="text-xs text-muted">
+                Só quem é dono ou administra a produção pode vincular um acervo.
+              </p>
+            )}
+
+            <p className="text-xs text-muted" style={{ marginTop: '10px', lineHeight: 1.45 }}>
+              O caminho de volta é só contagem: “Câmera, 46 de 47 voltaram”. O
+              SetProd nunca vê a lista de equipamento.
+            </p>
+          </section>
+        )}
       </motion.div>
     </div>
   );
