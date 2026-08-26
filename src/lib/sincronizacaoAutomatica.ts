@@ -4,6 +4,7 @@ import { EVENTO_ALTERACAO } from '../db/db';
 import { sincronizarParticipacoes } from './membros';
 import { enviarPendentes } from './arquivos';
 import { migrarAnexosDoProjeto } from './migracaoAnexos';
+import { publicarParaAcervo } from './acervoVinculado';
 import { supabaseConfigurado } from './supabase';
 
 /**
@@ -72,13 +73,41 @@ export async function rodada(projetoId: string): Promise<void> {
     // antes do arquivo em si.
     await enviarPendentes(projetoId);
 
-    await sincronizar(projetoId);
+    const { enviadas } = await sincronizar(projetoId);
     anunciar(projetoId, {
       estado: 'salvo',
       pendentes: await pendencias(projetoId),
       ultimoErro: undefined,
       ultimaVez: Date.now(),
     });
+
+    /*
+      A ponte com o SetGear.
+
+      Fica AQUI, e não no `DiariaModule`, por três razões:
+
+        · o atraso já existe — este laço espera 1,5s depois da última alteração,
+          que é exatamente o que a ponte precisa (digitar um horário dispara um
+          evento por tecla, e publicar a cada tecla bateria no servidor à toa);
+        · funciona de qualquer tela. Mexer numa diária pelo stripboard, criar
+          veículo no Transporte ou renomear a produção também mudam o que o
+          SetGear vê, e nenhuma dessas passa pelo DiariaModule;
+        · a publicação sai DEPOIS de o dado subir, então nunca projeta um estado
+          que o resto do app ainda não tem.
+
+      Só quando `enviadas > 0`: sem isso, o laço de 60 segundos ficaria batendo
+      no servidor para republicar exatamente a mesma coisa. Publica-se quando
+      este aparelho de fato mudou algo — e o `publicarParaAcervo` ainda faz a
+      própria checagem de vínculo antes de escrever qualquer coisa.
+
+      Nunca derruba a sincronização: a ponte é acessório, e o sync é o app. Um
+      erro ali não pode virar "Erro" no rodapé de quem nem usa o SetGear.
+    */
+    if (enviadas > 0) {
+      publicarParaAcervo(projetoId).catch(e =>
+        console.warn('[SetProd] Não consegui publicar para o acervo:', e?.message || e)
+      );
+    }
   } catch (e: any) {
     // 42501 = a RLS recusou. Quase sempre significa "ainda não sou membro
     // deste projeto", e não uma falha de verdade — não vale assustar.
