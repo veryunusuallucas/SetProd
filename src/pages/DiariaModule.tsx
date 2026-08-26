@@ -17,6 +17,7 @@ import { planosPorCena } from '../lib/planos';
 import { marcarCena } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
+import { ResumoEquipamento } from '../components/ResumoEquipamento';
 import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
 
@@ -752,6 +753,10 @@ export function DiariaModule() {
           </div>
         )}
       </div>
+
+      {/* O que a fotografia conferiu. Some sozinho quando não há acervo
+          vinculado — ver `ResumoEquipamento`. */}
+      <ResumoEquipamento projetoId={projetoId!} diariaId={diariaId!} />
 
       {/* Emergência — hospital mais próximo das locações do dia */}
       <div className="card">
