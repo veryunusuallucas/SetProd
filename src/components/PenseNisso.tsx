@@ -18,13 +18,27 @@ import { MOLA, MOLA_GESTO, useMovimentoReduzido } from './ui/ia';
  * é gente de fora respondendo um formulário, e a piada não é com ela.
  */
 
+/*
+  RARIDADE É O QUE FAZ A PIADA FUNCIONAR.
+
+  Os números eram 40–90s para a primeira e 4–9min entre uma e outra. Numa tarde
+  de trabalho isso dá dezenas de aparições, e aí a frase deixa de ser um achado
+  e vira uma notificação: a pessoa fecha no automático, sem ler. Veio como
+  sugestão de quem estava testando — "mais raras e mais valiosas" —, e é a
+  crítica certa.
+
+  Agora a primeira demora alguns minutos (quem abriu o app foi fazer alguma
+  coisa; ser interrompido no primeiro minuto é atrapalhar), e o intervalo é de
+  vinte a quarenta minutos — algumas por jornada, não algumas por hora.
+*/
+
 /** Quanto tempo até a primeira aparecer, depois de o app abrir. */
-const PRIMEIRA_MIN_MS = 40_000;
-const PRIMEIRA_MAX_MS = 90_000;
+const PRIMEIRA_MIN_MS = 4 * 60_000;
+const PRIMEIRA_MAX_MS = 8 * 60_000;
 
 /** E o intervalo entre uma e outra, depois que a anterior é fechada. */
-const INTERVALO_MIN_MS = 4 * 60_000;
-const INTERVALO_MAX_MS = 9 * 60_000;
+const INTERVALO_MIN_MS = 20 * 60_000;
+const INTERVALO_MAX_MS = 40 * 60_000;
 
 const aoAcaso = (min: number, max: number) => min + Math.random() * (max - min);
 

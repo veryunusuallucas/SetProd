@@ -11,6 +11,7 @@ import { Bug, HelpCircle } from 'lucide-react';
 import { MenuFlutuante } from './components/ui/MenuFlutuante';
 import { useSlotInferiorOcupado } from './components/ui/slotFlutuante';
 import { HelpButton } from './components/HelpButton';
+import { AvisoDeVersao } from './components/AvisoDeVersao';
 
 /**
  * As telas de dentro do app carregam sob demanda.
@@ -121,6 +122,10 @@ function App() {
           </Suspense>
           <MenuGlobal />
           <PenseNissoQuandoLogado />
+          {/* Fora do ProtectedRoute de propósito: a versão nova importa também
+              para quem está no login — e login quebrado por pacote velho é
+              justamente o caso em que ninguém consegue pedir ajuda de dentro. */}
+          <AvisoDeVersao />
         </div>
       </BrowserRouter>
     </AuthProvider>
