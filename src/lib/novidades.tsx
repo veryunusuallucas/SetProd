@@ -210,6 +210,53 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.5.0',
+    resumo: (
+      <>
+        Nada mudou de lugar. O que mudou é como o app <strong>responde</strong> —
+        e dois botões que estavam quebrados sem ninguém ter reclamado.
+      </>
+    ),
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <Sparkles size={20} />,
+        titulo: 'O app responde no dedo, não quando você solta',
+        texto: 'Havia um silêncio de uns 100ms entre encostar e a tela reagir — o bastante para achar que não funcionou e apertar de novo. Agora o botão afunda na hora, com física de mola, e arrastar o dedo para fora ainda cancela. Os cards também: eles tinham a mola amassada por uma regra de CSS antiga e ninguém tinha percebido.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <MapPin size={20} />,
+        titulo: 'O "Cancelar" transbordava do card, em várias telas',
+        texto: 'No formulário de departamento ele saía por fora da borda, com o texto cortado. E o botão secundário de outras seis telas estava cru — cinza, com a fonte do navegador, de altura diferente do vizinho — porque o estilo dele nunca existiu. Agora o par tem largura honesta e altura de toque de verdade.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <PieChart size={20} />,
+        titulo: 'A cor do departamento ficou legível',
+        texto: 'As amostras viraram círculos, a escolhida ganhou um ✓ dentro dela, e o ✓ escolhe entre preto e branco pelo contraste real da cor. Sobre o verde-água e os amarelos da paleta, um ✓ branco praticamente sumia.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <ClipboardCheck size={20} />,
+        titulo: 'Os painéis nascem de onde você tocou',
+        texto: 'A ajuda e as novidades cresciam do centro da tela, sem ligação com o botão apertado. Agora crescem dali. Confirmação de apagar continua vindo do centro de propósito — ali a interrupção é o ponto.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Clock size={20} />,
+        titulo: 'Relatar um problema não prende mais por dois segundos',
+        texto: 'Depois de enviar, o modal fechava sozinho — e só sozinho. Quem já tinha lido "Enviei!" ficava olhando uma tela que já havia terminado.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <CloudSun size={20} />,
+        titulo: 'A barra de baixo virou vidro de verdade',
+        texto: 'Ela se chamava "glass" e era uma faixa opaca: o conteúdo terminava nela em vez de passar por baixo. Quem pediu menos transparência no sistema continua vendo ela sólida.',
+      },
+    ],
+  },
+  {
     versao: '4.4.2',
     itens: [
       {

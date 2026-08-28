@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles } from 'lucide-react';
 import { MOLA } from './ui/ia';
+import { useOrigemAncorada } from './ui/origemAncorada';
 import { VERSOES, ETIQUETA, itensDa, type Grupo, type Item, type Versao } from '../lib/novidades';
 
 /**
@@ -31,6 +32,8 @@ import { VERSOES, ETIQUETA, itensDa, type Grupo, type Item, type Versao } from '
  */
 
 export function ChangelogModal({ onClose }: { onClose: () => void }) {
+  // Cresce do selo da versão que a abriu, e não do centro da tela.
+  const ancora = useOrigemAncorada();
   const atual = VERSOES[0];
   const anteriores = VERSOES.slice(1);
 
@@ -57,6 +60,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
         initial={{ opacity: 0, scale: 0.97, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={MOLA}
+        ref={ancora}
         className="card"
         style={{ width: '100%', maxWidth: '620px', maxHeight: '86vh', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}
       >

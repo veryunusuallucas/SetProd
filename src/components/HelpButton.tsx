@@ -6,6 +6,7 @@ import { MANUAL, secaoDaRota, type SecaoManual } from '../lib/manual';
 import { responderDuvida } from '../lib/gemini';
 import { iaDisponivel } from '../lib/gemini';
 import { MOLA } from './ui/ia';
+import { useOrigemAncorada } from './ui/origemAncorada';
 
 /**
  * A ajuda do app.
@@ -46,6 +47,7 @@ interface Props {
 export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true, aoPerguntarAoDev }: Props) {
   const [abertoInterno, setAbertoInterno] = useState(false);
   const aberto = abertoExterno ?? abertoInterno;
+  const ancora = useOrigemAncorada();
 
   const fechar = () => {
     setAbertoInterno(false);
@@ -143,6 +145,9 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
             initial={{ opacity: 0, scale: 0.97, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={MOLA}
+            // Cresce do botão de ajuda que a abriu — do cabeçalho ou do menu
+            // flutuante, conforme o caminho que a pessoa tomou.
+            ref={ancora}
             onClick={e => e.stopPropagation()}
             className="card"
             style={{ width: '100%', maxWidth: '620px', maxHeight: '86vh', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}
