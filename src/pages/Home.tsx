@@ -112,7 +112,31 @@ export function Home() {
   const saudacao = SAUDACOES[persona];
 
   const [mostrarStepper, setMostrarStepper] = useState(false);
+
+  /*
+    As novidades aparecem sozinhas quando a versão muda.
+
+    Antes só abriam no selo da versão, lá em cima — e ninguém clica num selo
+    para descobrir o que não sabe que existe. O resultado era o Lucas contando
+    no grupo o que tinha mudado, uma pessoa de cada vez.
+
+    Uma vez por versão, e a marca fica gravada mesmo se a pessoa fechar sem
+    ler: insistir vira aquele aviso que se fecha no reflexo.
+  */
+  const CHAVE_VERSAO_VISTA = 'setprod:novidades-vistas';
   const [mostrarChangelog, setMostrarChangelog] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(CHAVE_VERSAO_VISTA) === __VERSAO_APP__) return;
+      // Quem abre o app pela primeira vez não precisa levar um modal na cara
+      // antes de ver o que é o app: marca como visto e mostra na próxima.
+      const primeiraVez = localStorage.getItem(CHAVE_VERSAO_VISTA) === null;
+      localStorage.setItem(CHAVE_VERSAO_VISTA, __VERSAO_APP__);
+      if (!primeiraVez) setMostrarChangelog(true);
+    } catch { /* navegador sem armazenamento: segue sem o aviso */ }
+  }, []);
+
   const [confirmarSaida, setConfirmarSaida] = useState(false);
   const [termoBusca, setTermoBusca] = useState('');
   
