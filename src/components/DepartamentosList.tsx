@@ -244,9 +244,12 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-              <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editId ? 'Salvar Alterações' : 'Criar Departamento'}</button>
-              <button type="button" onClick={() => setShowForm(false)} className="btn-icon" style={{ backgroundColor: 'var(--bg-primary)' }}>Cancelar</button>
+            <div className="acoes-form" style={{ marginTop: '12px' }}>
+              {/* Cancelar com largura própria: no .btn-icon, que é 40x40 fixo, o
+                  rótulo vazava para fora da área clicável — o próprio CSS avisa
+                  contra isso na definição da classe. */}
+              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
+              <button type="submit" className="btn-primary">{editId ? 'Salvar Alterações' : 'Criar Departamento'}</button>
             </div>
           </form>
         </div>
@@ -350,9 +353,12 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-              <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editGrupoId ? 'Salvar Alterações' : 'Criar Grupo'}</button>
-              <button type="button" onClick={() => setShowGrupoForm(false)} className="btn-icon" style={{ backgroundColor: 'var(--bg-primary)' }}>Cancelar</button>
+            <div className="acoes-form" style={{ marginTop: '12px' }}>
+              {/* Cancelar com largura própria: no .btn-icon, que é 40x40 fixo, o
+                  rótulo vazava para fora da área clicável — o próprio CSS avisa
+                  contra isso na definição da classe. */}
+              <button type="button" onClick={() => setShowGrupoForm(false)} className="btn-secondary">Cancelar</button>
+              <button type="submit" className="btn-primary">{editGrupoId ? 'Salvar Alterações' : 'Criar Grupo'}</button>
             </div>
           </form>
         </div>
