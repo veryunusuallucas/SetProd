@@ -125,7 +125,7 @@ Deno.serve(async req => {
 
     // 1. O convite existe?
     const busca = await comoServidor(
-      `convites?token=eq.${encodeURIComponent(token)}&select=token,projeto_id,papel,apelido,expira_em,usado_por,perfil_id`
+      `convites?token=eq.${encodeURIComponent(token)}&select=token,projeto_id,papel,apelido,expira_em,usado_por,perfil_id,multiuso,ativo,usos`
     );
     const achados = await busca.json();
     const convite = Array.isArray(achados) ? achados[0] : null;
@@ -134,8 +134,28 @@ Deno.serve(async req => {
       return responder({ erro: 'Este convite não existe. Peça um link novo.' }, 404);
     }
 
-    // 2. Ainda vale?
-    if (convite.usado_por) {
+    /*
+      2. Ainda vale?
+
+      DOIS MODOS DE CONVITE, e a ordem das checagens importa.
+
+      O de USO ÚNICO queima em `usado_por` — é o padrão, e limita o estrago de um
+      link encaminhado sem querer.
+
+      O MULTIUSO não queima: aceita quem chegar enquanto estiver ligado. Serve
+      para mandar um link no grupo da produção em vez de cinco links diferentes.
+      Em troca, quem tiver o link entra — por isso o interruptor `ativo`, que é
+      a forma de fechar a porta sem esperar os 7 dias.
+
+      `ativo` é conferido ANTES de tudo: um convite desligado não deveria nem
+      dizer se expirou ou se já foi usado. Quanto menos um link morto conta sobre
+      o projeto, melhor.
+    */
+    if (convite.ativo === false) {
+      return responder({ erro: 'Este link foi desligado por quem administra a produção.' }, 403);
+    }
+
+    if (!convite.multiuso && convite.usado_por) {
       // Se quem já usou foi a própria pessoa, isto é só um link reaberto —
       // dizer "já foi usado" assustaria à toa.
       if (convite.usado_por === usuario.id) {
@@ -207,21 +227,43 @@ Deno.serve(async req => {
       return responder({ erro: 'Não consegui te adicionar ao projeto.' }, 500);
     }
 
-    // 5. Queima o token.
-    //
-    // Só depois da entrada dar certo: queimar antes deixaria a pessoa de fora
-    // com um convite gasto na mão, sem jeito de tentar de novo.
-    //
-    // O filtro `usado_por=is.null` é o que segura duas pessoas clicando no mesmo
-    // link ao mesmo tempo — a segunda atualiza zero linhas.
-    await comoServidor(
-      `convites?token=eq.${encodeURIComponent(token)}&usado_por=is.null`,
-      {
+    /*
+      5. Marca o uso.
+
+      Só depois da entrada dar certo: marcar antes deixaria a pessoa de fora com
+      um convite gasto na mão, sem jeito de tentar de novo.
+
+      NO USO ÚNICO, queima. O filtro `usado_por=is.null` é o que segura duas
+      pessoas clicando no mesmo link ao mesmo tempo — a segunda atualiza zero
+      linhas e não entra.
+
+      NO MULTIUSO, só conta. `usado_por` fica intacto, senão o próximo cairia no
+      "já foi usado por outra pessoa". O contador serve para a tela dizer quantas
+      pessoas entraram — que é a informação que decide quando desligar o link.
+    */
+    if (convite.multiuso) {
+      await comoServidor(`convites?token=eq.${encodeURIComponent(token)}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ usado_por: usuario.id, usado_em: new Date().toISOString() }),
-      }
-    );
+        body: JSON.stringify({
+          usos: (convite.usos ?? 0) + 1,
+          usado_em: new Date().toISOString(),
+        }),
+      });
+    } else {
+      await comoServidor(
+        `convites?token=eq.${encodeURIComponent(token)}&usado_por=is.null`,
+        {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            usado_por: usuario.id,
+            usado_em: new Date().toISOString(),
+            usos: 1,
+          }),
+        }
+      );
+    }
 
     // `perfil_id` volta para a tela saber se ainda precisa perguntar quem a
     // pessoa é. Sem convite nominal, ele vem nulo e a tela de aceite assume.

@@ -44,6 +44,21 @@ export interface Convite {
   perfil_id?: string | null;
   /** Só para conferir na tela. Nunca trava o aceite — ver `AceitarConvite`. */
   email_esperado?: string | null;
+
+  /**
+   * `false` (padrão) = o link queima na primeira pessoa que entrar.
+   * `true` = aceita quantas pessoas entrarem, enquanto estiver ligado.
+   *
+   * O uso único limita o estrago de um link encaminhado sem querer, e por isso
+   * continua sendo o padrão. O multiuso existe porque o caso real é mandar um
+   * link no grupo da produção — com uso único isso vira cinco links, cinco
+   * mensagens e cinco chances de mandar o errado para a pessoa errada.
+   */
+  multiuso?: boolean;
+  /** O interruptor. Desligar fecha a porta sem esperar os 7 dias. */
+  ativo?: boolean;
+  /** Quantas pessoas já entraram por este link. */
+  usos?: number;
 }
 
 /**
@@ -54,7 +69,7 @@ export interface Convite {
  * sem erro nenhum.
  */
 const CAMPOS_CONVITE =
-  'token, projeto_id, nome_projeto, papel, apelido, expira_em, usado_por, perfil_id, email_esperado';
+  'token, projeto_id, nome_projeto, papel, apelido, expira_em, usado_por, perfil_id, email_esperado, multiuso, ativo, usos';
 
 const TABELA_MEMBROS = 'projeto_membros';
 const TABELA_CONVITES = 'convites';
@@ -363,7 +378,15 @@ export async function criarConvite(
    */
   apelido?: string | null,
   /** Convite nominal: já diz quem a pessoa é na ficha da equipe. */
-  pessoa?: { perfil_id: string; email_esperado?: string | null }
+  pessoa?: { perfil_id: string; email_esperado?: string | null },
+  /**
+   * `false` (padrão) = queima na primeira pessoa. `true` = aceita várias.
+   *
+   * O padrão continua sendo o uso único, e de propósito: é o modo que limita o
+   * estrago de um link encaminhado sem querer. Quem escolhe o multiuso está
+   * decidindo abrir mão disso em troca de mandar uma mensagem só.
+   */
+  multiuso = false
 ): Promise<Convite> {
   if (!supabaseConfigurado) throw new Error('Supabase não está configurado neste ambiente.');
   if (!papelConvidavel(papel)) throw new Error(`Papel inválido para convite: ${papel}`);
@@ -382,6 +405,8 @@ export async function criarConvite(
       expira_em: expira.toISOString(),
       perfil_id: pessoa?.perfil_id ?? null,
       email_esperado: pessoa?.email_esperado ?? null,
+      multiuso,
+      ativo: true,
     })
     .select()
     .single();
@@ -422,6 +447,26 @@ export async function convitesDoProjeto(projetoId: string): Promise<Convite[]> {
 
 export async function revogarConvite(token: string): Promise<void> {
   const { error } = await supabase.from(TABELA_CONVITES).delete().eq('token', token);
+  if (error) throw error;
+}
+
+/**
+ * Liga e desliga o link, sem apagá-lo.
+ *
+ * Diferente de revogar: apagar some com o convite e com a contagem de quem
+ * entrou por ele. Desligar fecha a porta e mantém o registro — que é o que você
+ * quer quando o link circulou num grupo e você precisa saber depois quantas
+ * pessoas usaram.
+ *
+ * Só a coluna `ativo` é concedida ao cliente (`convite-multiuso.sql`). Sem esse
+ * grant, "pode dar update em convites" seria "pode trocar o papel do convite
+ * depois de mandá-lo" — ou destravar um de uso único já gasto.
+ */
+export async function ligarConvite(token: string, ativo: boolean): Promise<void> {
+  const { error } = await supabase
+    .from(TABELA_CONVITES)
+    .update({ ativo })
+    .eq('token', token);
   if (error) throw error;
 }
 

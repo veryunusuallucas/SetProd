@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus } from 'lucide-react';
+import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
 import { db } from '../db/db';
 import {
   criarConvite, convitesDoProjeto, revogarConvite, linkDoConvite,
-  membrosDoProjeto, definirMeuPerfil, sincronizarParticipacoes, participacaoLocal,
+  membrosDoProjeto, definirMeuPerfil, sincronizarParticipacoes, participacaoLocal, ligarConvite,
   type Convite, type Participacao,
 } from '../lib/membros';
 import { supabaseConfigurado } from '../lib/supabase';
@@ -38,6 +38,17 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   const [gerando, setGerando] = useState(false);
   /** Que papel o próximo link vai conceder. 'equipe' é o caso comum. */
   const [papelDoConvite, setPapelDoConvite] = useState<PapelConvidavel>('equipe');
+  /** Se o próximo link aceita várias pessoas. Uso único é o padrão, e é o seguro. */
+  const [multiuso, setMultiuso] = useState(false);
+
+  const alternarLink = async (c: Convite) => {
+    try {
+      await ligarConvite(c.token, c.ativo === false);
+      await recarregar();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui mudar o link.');
+    }
+  };
 
   const perfis = useLiveQuery(
     () => db.perfis.where('projeto_id').equals(projetoId).toArray(),
@@ -108,7 +119,12 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
       setErro('');
       const [m, c] = await Promise.all([membrosDoProjeto(projetoId), convitesDoProjeto(projetoId)]);
       setMembros(m);
-      setConvites(c.filter(x => !x.usado_por));
+      /*
+        Some da lista o que não serve mais para nada: convite de uso único que
+        já foi gasto. O multiuso FICA mesmo depois de usado — ele continua vivo,
+        e é justamente a lista que dá o botão para desligá-lo.
+      */
+      setConvites(c.filter(x => x.multiuso || !x.usado_por));
     } catch (e: any) {
       setErro(e?.message || 'Não consegui ler quem tem acesso.');
     } finally {
@@ -132,7 +148,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
       // Sem apelido: a Edge Function preenche com o nome de quem realmente
       // aceitar. Chutar um rótulo aqui, sem saber quem vai abrir o link, é como
       // se chegou no "Equipe C", "Equipe D".
-      const convite = await criarConvite(projetoId, nomeProjeto, papelDoConvite);
+      const convite = await criarConvite(projetoId, nomeProjeto, papelDoConvite, undefined, undefined, multiuso);
       await navigator.clipboard.writeText(linkDoConvite(convite.token)).catch(() => {});
       setCopiado(convite.token);
       setTimeout(() => setCopiado(''), 2500);
@@ -294,19 +310,46 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                 transition={MOLA}
                 style={{ ...linhaEstilo, marginBottom: '8px' }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="text-sm font-bold">{c.apelido || 'Convite em aberto'}</div>
+                <div style={{ flex: 1, minWidth: 0, opacity: c.ativo === false ? 0.55 : 1 }}>
+                  <div className="text-sm font-bold" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    {c.apelido || 'Convite em aberto'}
+                    {c.multiuso && (
+                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: '20px', fontWeight: 700, color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                        vários
+                      </span>
+                    )}
+                    {c.ativo === false && (
+                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: '20px', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
+                        desligado
+                      </span>
+                    )}
+                  </div>
                   {/* O papel na lista, e não só na hora de criar: um link
-                      pendente de dias atrás não diz mais o que vai conceder. */}
+                      pendente de dias atrás não diz mais o que vai conceder.
+                      A contagem é o que decide quando desligar. */}
                   <div className="text-xs text-muted">
                     entra como <strong>{DESCRICAO[c.papel]?.nome ?? c.papel}</strong>
                     {' · '}vale até {new Date(c.expira_em).toLocaleDateString('pt-BR')}
+                    {c.multiuso && ` · ${c.usos || 0} ${(c.usos || 0) === 1 ? 'pessoa entrou' : 'pessoas entraram'}`}
                   </div>
                 </div>
+
+                {/* O interruptor só existe no multiuso: num link de uso único
+                    ele não teria o que fazer — o link já morre sozinho. */}
+                {c.multiuso && podeConvidar && (
+                  <button
+                    className="btn-icon"
+                    onClick={() => alternarLink(c)}
+                    title={c.ativo === false ? 'Religar este link' : 'Desligar este link'}
+                  >
+                    {c.ativo === false ? <ToggleLeft size={18} /> : <ToggleRight size={18} color="var(--accent)" />}
+                  </button>
+                )}
+
                 <button className="btn-icon" onClick={() => copiar(c.token)} title="Copiar link">
                   {copiado === c.token ? <Check size={16} color="var(--color-success, #4ade80)" /> : <Copy size={16} />}
                 </button>
-                <button className="btn-icon" onClick={() => derrubar(c.token)} title="Revogar">
+                <button className="btn-icon" onClick={() => derrubar(c.token)} title="Apagar de vez">
                   <Trash2 size={16} />
                 </button>
               </motion.div>
@@ -328,6 +371,33 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
               <option key={p} value={p}>{DESCRICAO[p].nome} — {DESCRICAO[p].resumo}</option>
             ))}
           </select>
+
+          {/*
+            Uma vez só × várias pessoas.
+
+            O padrão continua sendo UMA VEZ SÓ, e não é conservadorismo: é o modo
+            que limita o estrago de um link encaminhado sem querer. Quem escolhe
+            "várias" está trocando isso por mandar uma mensagem só — uma decisão
+            legítima, mas que precisa ser feita de propósito.
+          */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <button
+              onClick={() => setMultiuso(false)}
+              className="btn"
+              style={{ flex: 1, fontSize: '12px', padding: '9px 10px', borderColor: !multiuso ? 'var(--accent)' : 'var(--border-color)' }}
+              disabled={!podeConvidar}
+            >
+              Uma pessoa só
+            </button>
+            <button
+              onClick={() => setMultiuso(true)}
+              className="btn"
+              style={{ flex: 1, fontSize: '12px', padding: '9px 10px', borderColor: multiuso ? 'var(--accent)' : 'var(--border-color)' }}
+              disabled={!podeConvidar}
+            >
+              Várias pessoas
+            </button>
+          </div>
 
           <button
             className="btn btn-primary"
