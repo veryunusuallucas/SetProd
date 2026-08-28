@@ -6,6 +6,7 @@ import { db } from '../db/db';
 import type { Projeto } from '../types';
 import { Search, Film, Trash2, Sparkles, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
+import { Holofote } from '../components/ui/Holofote';
 import { criarDepartamentosPadrao } from '../lib/creditos';
 import { entrarComoFundador, descobrirPersona, type Persona } from '../lib/membros';
 import { sincronizarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
@@ -21,7 +22,7 @@ import { ChangelogModal } from '../components/ChangelogModal';
 import { useAuth } from '../hooks/useAuth';
 import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
 import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
-import { ContadorAnimado } from '../components/ui/ContadorAnimado';
+import { Numero } from '../components/ui/Numero';
 import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../components/ui/ia';
 import { LogOut } from 'lucide-react';
 
@@ -403,6 +404,10 @@ export function Home() {
                 transition: 'outline-color 0.18s ease',
               }}
             >
+              {/* Segue o ponteiro dentro do card. No celular não aparece — sem
+                  cursor, o brilho ficaria parado como uma mancha. */}
+              <Holofote />
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <span className="badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>ATIVO</span>
                 {modoDeletar ? (
@@ -435,8 +440,8 @@ export function Home() {
               <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
                 <div className="text-xs text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Saldo Atual</div>
                 <div className="font-bold text-lg" style={{ color: ((aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) - (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                  <ContadorAnimado
-                    prefixo="R$ "
+                  <Numero
+                    moeda
                     valor={
                       (aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) -
                       (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)

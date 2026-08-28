@@ -283,14 +283,72 @@ export function AIRecommendation({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
               <Sparkles size={14} color="#c77dff" />
-              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#c77dff' }}>
+              <TextoBrilhante className="text-xs font-bold uppercase tracking-widest">
                 {titulo}
-              </span>
+              </TextoBrilhante>
             </div>
             <div className="text-sm" style={{ lineHeight: 1.6 }}>{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+/**
+ * Texto com um brilho que atravessa.
+ *
+ * ⚠️ ISTO É O ÚNICO LUGAR DO APP ONDE BRILHO É PERMITIDO, e não por capricho:
+ * aqui ele é SIGNIFICADO. Marca que aquele texto veio de uma máquina, e quem lê
+ * precisa saber disso para tratar a frase como sugestão e não como fato apurado.
+ *
+ * É por isso que ele não vale para o resto. Brilho em rótulo comum não informa
+ * nada — e gasta o sinal: se tudo brilha, brilhar deixa de querer dizer "isto
+ * foi a IA que escreveu".
+ *
+ * Sem movimento reduzido, fica a cor sólida de sempre. O brilho é enfeite, e
+ * enfeite é a primeira coisa que sai quando a pessoa pediu menos movimento.
+ */
+export function TextoBrilhante({ children, className }: { children: ReactNode; className?: string }) {
+  const reduzido = useMovimentoReduzido();
+
+  if (reduzido) {
+    return <span className={className} style={{ color: '#c77dff' }}>{children}</span>;
+  }
+
+  return (
+    <motion.span
+      className={className}
+      style={{
+        /*
+          O gradiente é pintado NO TEXTO, e não atrás dele: o fundo é recortado
+          pelas letras (`background-clip: text`) e a cor do texto fica
+          transparente para deixá-lo aparecer.
+
+          O gradiente tem 200% da largura, e o que se anima é a POSIÇÃO dele.
+          Animar `background-position` não recalcula layout nenhum — é a versão
+          barata do efeito. Mover o elemento custaria caro e a cada quadro.
+        */
+        background: 'linear-gradient(100deg, #c77dff 35%, #ffffff 50%, #c77dff 65%)',
+        backgroundSize: '200% 100%',
+        WebkitBackgroundClip: 'text',
+        backgroundClip: 'text',
+        color: 'transparent',
+        // Sem isto, o Safari desenha a caixa do gradiente por cima do texto.
+        WebkitTextFillColor: 'transparent',
+        display: 'inline-block',
+      }}
+      animate={{ backgroundPosition: ['200% 0%', '-100% 0%'] }}
+      transition={{
+        duration: 2.4,
+        // A pausa é o que faz o brilho ser um evento e não um pisca-pisca: ele
+        // passa, some por três segundos, e passa de novo.
+        repeat: Infinity,
+        repeatDelay: 3,
+        ease: 'linear',
+      }}
+    >
+      {children}
+    </motion.span>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { CalendarioDashboard } from './CalendarioDashboard';
 import { FilaRepescagem } from './FilaRepescagem';
 import { calcularProgresso } from '../lib/registroSet';
 import { oitavosParaPaginas } from '../lib/decupagem';
+import { Numero } from './ui/Numero';
 
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
   const navigate = useNavigate();
@@ -35,41 +36,17 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
 
   const progresso = calcularProgresso(cenasProjeto, registrosCena);
 
-  // Contadores animados
-  const [animatedSaldo, setAnimatedSaldo] = useState(0);
-  const [animatedGasto, setAnimatedGasto] = useState(0);
+  /*
+    O contador à mão saiu daqui: virou <Numero>, em ui/Numero.tsx.
 
+    O que estava aqui contava em linha reta (sem desaceleração), ignorava quem
+    pede menos movimento, e escrevia "R$ 1234.56" — notação inglesa num app
+    brasileiro, enquanto o campo de digitar despesa já usava o formato certo.
 
-
-  useEffect(() => {
-    if (!projeto || !despesas || !aportes) return;
-    
-    const totalGasto = despesas.reduce((acc, d) => acc + d.valor_total, 0);
-    const totalAportes = aportes.reduce((acc, a) => acc + a.valor, 0);
-    const saldoAtual = totalAportes - totalGasto;
-
-    let start: number | null = null;
-    const duration = 600;
-    const initialGasto = animatedGasto;
-    const initialSaldo = animatedSaldo;
-
-    const step = (timestamp: number) => {
-      if (!start) start = timestamp;
-      const progress = Math.min((timestamp - start) / duration, 1);
-      
-      setAnimatedGasto(initialGasto + (totalGasto - initialGasto) * progress);
-      setAnimatedSaldo(initialSaldo + (saldoAtual - initialSaldo) * progress);
-
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      } else {
-        setAnimatedGasto(totalGasto);
-        setAnimatedSaldo(saldoAtual);
-      }
-    };
-    
-    window.requestAnimationFrame(step);
-  }, [projeto, despesas]);
+    E tinha um defeito silencioso: o efeito lia `aportes` mas não o listava nas
+    dependências, então um aporte novo não mexia no saldo da tela até alguma
+    despesa mudar. O número ficava desatualizado sem nada indicar isso.
+  */
 
   const [subAba, setSubAba] = useState<'geral' | 'calendario'>('geral');
 
@@ -306,14 +283,14 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Saldo Disponível</span>
                   <span className="text-2xl font-bold" style={{ color: saldoAtual < 0 ? 'var(--color-danger)' : 'var(--text-primary)', transition: 'color 0.3s ease' }}>
-                    R$ {animatedSaldo.toFixed(2)}
+                    <Numero valor={saldoAtual} moeda />
                   </span>
                 </div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                   <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px', color: isEstourado ? 'var(--color-danger)' : 'var(--text-secondary)' }}>Total Gasto</span>
                   <span className="text-lg font-bold" style={{ color: isEstourado ? 'var(--color-danger)' : 'var(--text-primary)' }}>
-                    R$ {animatedGasto.toFixed(2)}
+                    <Numero valor={totalGasto} moeda />
                   </span>
                 </div>
               </div>
