@@ -29,9 +29,9 @@ import { MOLA } from './ui/ia';
  * o manual, que está logo abaixo e funciona offline, e a caixa de dúvida, que
  * chega em mim.
  */
-const IA_DEU_CHABU =
-  'A IA deu chabu e não respondeu. Tenta de novo em um minuto, procura nas seções aqui embaixo, ' +
-  'ou manda a dúvida que ela chega no Viol e ele te explica.';
+const IA_VIADINHA =
+  'A IA VIADINHA NÃO RESPONDEU. Manda a dúvida na caixa aqui embaixo ou chama o Viol que ele te explica. ' +
+  '(Se for pressa, o manual está logo abaixo e funciona sem internet.)';
 
 interface Props {
   style?: React.CSSProperties;
@@ -100,7 +100,7 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
       // O motivo real fica aqui, para quem está depurando. Na tela vai a frase
       // que a pessoa consegue usar.
       console.error('[SetProd] a IA não respondeu a pergunta de ajuda:', e);
-      setErroIA(IA_DEU_CHABU);
+      setErroIA(IA_VIADINHA);
     } finally {
       setPensando(false);
     }
