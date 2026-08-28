@@ -1,3 +1,4 @@
+import { dinheiro } from '../lib/formato';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -75,7 +76,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
       const linhasDeve = detalharParticipante(despesas, 'pessoa', perfil.id).linhas.filter(l => l.tipo === 'deve');
       if (linhasDeve.length > 0) {
         msg += '\n\nDetalhamento:\n' + linhasDeve
-          .map(l => `- ${l.descricao}${l.diaria ? ` (${l.diaria})` : ''}: R$ ${l.valor.toFixed(2)}`)
+          .map(l => `- ${l.descricao}${l.diaria ? ` (${l.diaria})` : ''}: ${dinheiro(l.valor)}`)
           .join('\n');
       }
     }
@@ -85,7 +86,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
   const gerarRelatorioCaixa = () => {
     let msg = `*Resumo Financeiro - ${projeto.nome}*\n\nPendências:\n`;
     transacoesSugeridas.forEach(t => {
-      msg += `- ${nomePorId(t.de.id_ref)} → ${nomePorId(t.para.id_ref)}: R$ ${t.valor.toFixed(2)}\n`;
+      msg += `- ${nomePorId(t.de.id_ref)} → ${nomePorId(t.para.id_ref)}: ${dinheiro(t.valor)}\n`;
     });
     setMensagemGerada({ id: 'caixa_central', msg });
   };
@@ -133,7 +134,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                   <span className="text-xs text-muted uppercase tracking-widest font-bold">1. A Receber (Pendências da Equipe)</span>
                   <span className="text-sm text-secondary">Soma do que as pessoas devem à Produção</span>
                 </div>
-                <div className="font-bold text-success text-lg">+ R$ {aReceberPend.toFixed(2)}</div>
+                <div className="font-bold text-success text-lg">+ {dinheiro(aReceberPend)}</div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
@@ -141,7 +142,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                   <span className="text-xs text-muted uppercase tracking-widest font-bold">2. A Pagar (Dívidas da Produção)</span>
                   <span className="text-sm text-secondary">Soma do que a Produção deve repassar/reembolsar</span>
                 </div>
-                <div className="font-bold text-danger text-lg">- R$ {aPagarPend.toFixed(2)}</div>
+                <div className="font-bold text-danger text-lg">- {dinheiro(aPagarPend)}</div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: '12px', border: '1px solid var(--accent)' }}>
@@ -150,7 +151,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                   <span className="text-sm text-secondary">Depois de receber tudo e pagar todos</span>
                 </div>
                 <div className={`font-bold text-lg ${aReceberPend - aPagarPend >= 0 ? 'text-success' : 'text-danger'}`}>
-                  R$ {(aReceberPend - aPagarPend).toFixed(2)}
+                  {dinheiro((aReceberPend - aPagarPend))}
                 </div>
               </div>
 
@@ -190,7 +191,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
             const isPositivo = saldoComp > 0;
             const saldoFormatado = Math.abs(saldoComp) < 0.01
               ? 'Quite ✓'
-              : `${isPositivo ? 'A receber' : 'A pagar'} R$ ${Math.abs(saldoComp).toFixed(2)}`;
+              : `${isPositivo ? 'A receber' : 'A pagar'} ${dinheiro(Math.abs(saldoComp))}`;
 
             return (
               <ProfileCard
@@ -232,7 +233,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
                             <div>
                               <div className="text-xs text-muted uppercase tracking-widest">{isPagar ? 'Deve à Produção' : 'A receber da Produção'}</div>
-                              <div className={`text-lg font-bold ${isPagar ? 'text-danger' : 'text-success'}`}>R$ {t.valor.toFixed(2)}</div>
+                              <div className={`text-lg font-bold ${isPagar ? 'text-danger' : 'text-success'}`}>{dinheiro(t.valor)}</div>
                             </div>
                             <button onClick={() => registrarPagamento(t)} className="btn-icon" style={{ backgroundColor: 'var(--color-success-bg)', borderColor: 'transparent', color: 'var(--color-success)' }} title="Confirmar pagamento">
                               <Check size={20} />
@@ -244,11 +245,11 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                       {/* Explicação do saldo */}
                       {(detalhe.total_adiantou > 0 || detalhe.total_deve > 0) && (
                         <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', fontSize: '0.8rem' }}>
-                          <div><div className="text-xs text-muted uppercase">Adiantou</div><div className="font-bold text-success">R$ {detalhe.total_adiantou.toFixed(2)}</div></div>
+                          <div><div className="text-xs text-muted uppercase">Adiantou</div><div className="font-bold text-success">{dinheiro(detalhe.total_adiantou)}</div></div>
                           <div className="text-muted" style={{ alignSelf: 'center' }}>−</div>
-                          <div><div className="text-xs text-muted uppercase">Deve</div><div className="font-bold text-danger">R$ {detalhe.total_deve.toFixed(2)}</div></div>
+                          <div><div className="text-xs text-muted uppercase">Deve</div><div className="font-bold text-danger">{dinheiro(detalhe.total_deve)}</div></div>
                           <div className="text-muted" style={{ alignSelf: 'center' }}>=</div>
-                          <div><div className="text-xs text-muted uppercase">Saldo</div><div className={`font-bold ${isPositivo ? 'text-success' : 'text-danger'}`}>R$ {Math.abs(detalhe.saldo).toFixed(2)}</div></div>
+                          <div><div className="text-xs text-muted uppercase">Saldo</div><div className={`font-bold ${isPositivo ? 'text-success' : 'text-danger'}`}>{dinheiro(Math.abs(detalhe.saldo))}</div></div>
                         </div>
                       )}
 
@@ -256,22 +257,22 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
                         {linhasDeve.length > 0 && (
                           <div style={{ borderLeft: '2px solid var(--color-danger)', paddingLeft: '8px' }}>
-                            <div className="text-xs text-danger font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Deve — R$ {detalhe.total_deve.toFixed(2)}</div>
+                            <div className="text-xs text-danger font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Deve — {dinheiro(detalhe.total_deve)}</div>
                             {linhasDeve.map((l, i) => (
                               <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span className="text-muted">{l.descricao}{l.diaria ? ` · ${l.diaria}` : ''}</span>
-                                <span>R$ {l.valor.toFixed(2)}</span>
+                                <span>{dinheiro(l.valor)}</span>
                               </div>
                             ))}
                           </div>
                         )}
                         {linhasAdiantou.length > 0 && (
                           <div style={{ borderLeft: '2px solid var(--color-success)', paddingLeft: '8px', marginTop: '8px' }}>
-                            <div className="text-xs text-success font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Adiantou — R$ {detalhe.total_adiantou.toFixed(2)}</div>
+                            <div className="text-xs text-success font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Adiantou — {dinheiro(detalhe.total_adiantou)}</div>
                             {linhasAdiantou.map((l, i) => (
                               <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span className="text-muted">{l.descricao}{l.diaria ? ` · ${l.diaria}` : ''}</span>
-                                <span>R$ {l.valor.toFixed(2)}</span>
+                                <span>{dinheiro(l.valor)}</span>
                               </div>
                             ))}
                           </div>
@@ -303,7 +304,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                             <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                               <span className="text-muted">{recebeu ? 'Recebeu' : 'Pagou'} · {new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                R$ {a.valor.toFixed(2)}
+                                {dinheiro(a.valor)}
                                 <button onClick={(e) => { e.stopPropagation(); estornarPagamento(a.id); }} className="btn-icon" style={{ width: '26px', height: '26px' }} title="Estornar"><RotateCcw size={12} /></button>
                               </span>
                             </div>
@@ -334,7 +335,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                     <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
                   </div>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="font-bold">R$ {a.valor.toFixed(2)}</span>
+                    <span className="font-bold">{dinheiro(a.valor)}</span>
                     <button onClick={() => estornarPagamento(a.id)} className="btn-icon" style={{ width: '28px', height: '28px' }} title="Estornar"><RotateCcw size={13} /></button>
                   </span>
                 </div>

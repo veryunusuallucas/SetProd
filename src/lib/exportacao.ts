@@ -1,4 +1,5 @@
 import { db } from '../db/db';
+import { dinheiro } from './formato';
 import type { Perfil } from '../types';
 
 /**
@@ -22,7 +23,7 @@ export interface ConjuntoDados {
   carregar: (projetoId: string) => Promise<Tabela>;
 }
 
-const brl = (v?: number) => (v === undefined || v === null ? '' : `R$ ${v.toFixed(2)}`);
+const brl = (v?: number) => (v === undefined || v === null ? '' : `${dinheiro(v)}`);
 const dataBr = (ts?: number) => (ts ? new Date(ts).toLocaleDateString('pt-BR') : '');
 const dataIso = (iso?: string) => {
   if (!iso) return '';

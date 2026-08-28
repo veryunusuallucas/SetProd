@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { dinheiro } from '../lib/formato';
 import { db } from '../db/db';
 import { PieChart } from 'lucide-react';
 
@@ -79,7 +80,7 @@ export function GastoPorArea({ projetoId }: { projetoId: string }) {
                   {l.nome}
                 </span>
                 <span className="text-sm" style={{ whiteSpace: 'nowrap', color: estourou ? 'var(--color-danger)' : 'var(--text-primary)' }}>
-                  R$ {l.gasto.toFixed(2)}
+                  {dinheiro(l.gasto)}
                   {l.orcamento > 0 && (
                     <span className="text-muted" style={{ fontWeight: 400 }}> de {l.orcamento.toFixed(2)}</span>
                   )}

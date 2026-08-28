@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { Plus, Download, Edit2, Trash2, Check } from 'lucide-react';
 import { ProfileCard } from './ui/ProfileCard';
 import { useRole } from '../hooks/useRole';
+import { dinheiro } from '../lib/formato';
 import { contrasteSobre } from '../lib/contraste';
 
 export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDepartamento?: (id: string) => void }) {
@@ -309,12 +310,12 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <div className="text-xs text-muted font-bold uppercase tracking-widest">Orçamento</div>
-                      <div className="text-sm">R$ {max.toFixed(2)}</div>
+                      <div className="text-sm">{dinheiro(max)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted font-bold uppercase tracking-widest">Consumido</div>
                       <div className={`text-sm font-bold ${stats.estourou > 0 ? 'text-danger' : 'text-primary'}`}>
-                        R$ {stats.gastoTotal.toFixed(2)}
+                        {dinheiro(stats.gastoTotal)}
                       </div>
                     </div>
                   </div>
@@ -327,9 +328,9 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
                       <div className="text-xs" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', color: 'var(--text-muted)' }}>
                         <span>0%</span>
                         {stats.estourou > 0 ? (
-                          <span className="text-danger">Excedido: R$ {stats.estourou.toFixed(2)}</span>
+                          <span className="text-danger">Excedido: {dinheiro(stats.estourou)}</span>
                         ) : (
-                          <span>Restante: R$ {stats.falta.toFixed(2)}</span>
+                          <span>Restante: {dinheiro(stats.falta)}</span>
                         )}
                       </div>
                     </div>

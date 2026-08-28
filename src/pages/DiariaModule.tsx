@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { dinheiro } from '../lib/formato';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -373,7 +374,7 @@ export function DiariaModule() {
         const pf = perfis.find(x => x.id === p.id_ref);
         return pf ? `${pf.nome} ${pf.sobrenome || ''}`.trim() : '—';
       }).join(', ');
-      return `<tr><td>${d.descricao}</td><td>${d.categoria || '-'}</td><td>${quemPagou}</td><td style="text-align:right"><b>R$ ${d.valor_total.toFixed(2)}</b></td></tr>`;
+      return `<tr><td>${d.descricao}</td><td>${d.categoria || '-'}</td><td>${quemPagou}</td><td style="text-align:right"><b>${dinheiro(d.valor_total)}</b></td></tr>`;
     }).join('');
 
     const linhasCenas = (diaria.cena_ids || []).map(cid => {
@@ -407,9 +408,9 @@ export function DiariaModule() {
       <div class="muted">Fechamento da Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
 
       <div class="kpis">
-        <div class="kpi"><div class="rot">Gasto do dia</div><div class="val ${estouro ? 'alerta' : ''}">R$ ${totalGasto.toFixed(2)}</div></div>
-        <div class="kpi"><div class="rot">Valor ideal</div><div class="val">${valorIdeal > 0 ? `R$ ${valorIdeal.toFixed(2)}` : '—'}</div></div>
-        <div class="kpi"><div class="rot">Valor máximo</div><div class="val">${limiteGasto > 0 ? `R$ ${limiteGasto.toFixed(2)}` : '—'}</div></div>
+        <div class="kpi"><div class="rot">Gasto do dia</div><div class="val ${estouro ? 'alerta' : ''}">${dinheiro(totalGasto)}</div></div>
+        <div class="kpi"><div class="rot">Valor ideal</div><div class="val">${valorIdeal > 0 ? `${dinheiro(valorIdeal)}` : '—'}</div></div>
+        <div class="kpi"><div class="rot">Valor máximo</div><div class="val">${limiteGasto > 0 ? `${dinheiro(limiteGasto)}` : '—'}</div></div>
         <div class="kpi"><div class="rot">Equipe</div><div class="val">${confirmados}/${escalados.length}</div></div>
         <div class="kpi"><div class="rot">Checklist</div><div class="val">${tarefasFeitas}/${tasks.length}</div></div>
       </div>
@@ -421,7 +422,7 @@ export function DiariaModule() {
       <h2>Prestação de contas</h2>
       ${linhasDespesas
         ? `<table><tr><th>Descrição</th><th>Categoria</th><th>Quem pagou</th><th style="text-align:right">Valor</th></tr>${linhasDespesas}
-           <tr><td colspan="3"><b>Total</b></td><td style="text-align:right"><b>R$ ${totalGasto.toFixed(2)}</b></td></tr></table>`
+           <tr><td colspan="3"><b>Total</b></td><td style="text-align:right"><b>${dinheiro(totalGasto)}</b></td></tr></table>`
         : '<p class="muted">Nenhuma despesa lançada nesta diária.</p>'}
 
       ${diaria.observacoes ? `<h2>Observações</h2><p>${diaria.observacoes.replace(/\n/g, '<br>')}</p>` : ''}
@@ -633,7 +634,7 @@ export function DiariaModule() {
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '110px' }}>
             <div className="text-xs text-muted uppercase">Gasto Registrado</div>
-            <div className="font-bold text-lg" style={{ color: statusOrc.cor }}>R$ {totalGasto.toFixed(2)}</div>
+            <div className="font-bold text-lg" style={{ color: statusOrc.cor }}>{dinheiro(totalGasto)}</div>
           </div>
           <div style={{ flex: 1, minWidth: '90px' }}>
             <div className="text-xs text-muted uppercase">Valor Ideal</div>
@@ -659,7 +660,7 @@ export function DiariaModule() {
             <div style={{ flex: 1, minWidth: '90px' }}>
               <div className="text-xs text-muted uppercase">Saldo (p/ máximo)</div>
               <div className="font-bold text-lg" style={{ color: saldoGasto < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                R$ {saldoGasto.toFixed(2)}
+                {dinheiro(saldoGasto)}
               </div>
             </div>
           )}

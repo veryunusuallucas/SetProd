@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { dinheiro } from '../lib/formato';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Plus, Trash2 } from 'lucide-react';
@@ -67,7 +68,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
               <div>
                 <span className="font-bold">Saldo Inicial (Configuração do Projeto)</span>
               </div>
-              <span className="text-accent font-bold">R$ {projeto.saldo_inicial.toFixed(2)}</span>
+              <span className="text-accent font-bold">{dinheiro(projeto.saldo_inicial)}</span>
             </div>
           )}
           {aportes.map(a => (
@@ -77,7 +78,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
                 <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })} {a.obs && `- ${a.obs}`}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span className="text-accent font-bold">R$ {a.valor.toFixed(2)}</span>
+                <span className="text-accent font-bold">{dinheiro(a.valor)}</span>
                 <button onClick={() => handleDeleteAporte(a.id)} className="btn-icon text-danger" style={{ padding: '8px' }} title="Excluir"><Trash2 size={16} /></button>
               </div>
             </div>

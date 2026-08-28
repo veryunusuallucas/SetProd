@@ -210,6 +210,30 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.5.2',
+    resumo: <>Tudo no formato brasileiro — dinheiro e data.</>,
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <DollarSign size={20} />,
+        titulo: 'O dinheiro estava em notação inglesa no app inteiro',
+        texto: 'Eram 51 lugares escrevendo "R$ 1234.56" — ponto no lugar da vírgula e sem separador de milhar. E o campo de digitar despesa já usava "R$ 1.234,56": dava para teclar certo e ver errado na linha seguinte. Agora é um formato só, do painel ao CSV exportado.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Clock size={20} />,
+        titulo: 'A data da despesa aparecia um dia antes',
+        texto: 'No extrato, uma despesa lançada no dia 28 aparecia como 27 — e uma lançada no dia 1º pulava para o mês anterior. Era o fuso: a data sem hora era lida como se fosse de Londres, e o Brasil está três horas atrás.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Clock size={20} />,
+        titulo: 'A data de ocorrência saía sem formatação',
+        texto: 'Na lista de despesas ela aparecia como 2026-08-28, do jeito que o computador guarda, em vez de 28/08/26. Só acontecia na despesa que tinha data de ocorrência preenchida.',
+      },
+    ],
+  },
+  {
     versao: '4.5.1',
     itens: [
       {
