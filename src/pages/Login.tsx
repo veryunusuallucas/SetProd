@@ -42,7 +42,7 @@ export function Login() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(traduzirErro(error.message));
     } else {
       // De quais projetos esta conta participa. Sem isto, quem acabou de
       // entrar veria o app como se não fosse membro de nada.
@@ -129,4 +129,29 @@ export function Login() {
       </motion.div>
     </div>
   );
+}
+
+/**
+ * As mensagens do Supabase vêm em inglês e falam com programador.
+ *
+ * "Invalid login credentials" é a que mais aparece, e ela é DELIBERADAMENTE
+ * vaga: o Supabase não diz se o e-mail não existe ou se a senha está errada,
+ * porque distinguir os dois transformaria a tela de login num verificador de
+ * quem tem conta. A tradução mantém essa vagueza — e acrescenta o que fazer,
+ * que é o que faltava.
+ */
+function traduzirErro(mensagem: string): string {
+  if (/invalid login credentials/i.test(mensagem)) {
+    return 'E-mail ou senha não conferem. Se não lembra a senha, use "Esqueci a senha" logo abaixo — e confira se o e-mail é mesmo o da conta do SetProd.';
+  }
+  if (/email not confirmed/i.test(mensagem)) {
+    return 'Esta conta ainda não foi confirmada. Procure o e-mail de confirmação (veja o lixo eletrônico) e abra o link antes de entrar.';
+  }
+  if (/rate limit|too many/i.test(mensagem)) {
+    return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
+  }
+  if (/failed to fetch|network/i.test(mensagem)) {
+    return 'Não consegui falar com o servidor. Confira a internet e tente de novo.';
+  }
+  return mensagem;
 }
