@@ -12,6 +12,7 @@ import { MenuFlutuante } from './components/ui/MenuFlutuante';
 import { useSlotInferiorOcupado } from './components/ui/slotFlutuante';
 import { HelpButton } from './components/HelpButton';
 import { AvisoDeVersao } from './components/AvisoDeVersao';
+import { Faiscas } from './components/ui/Faisca';
 
 /**
  * As telas de dentro do app carregam sob demanda.
@@ -126,6 +127,9 @@ function App() {
               para quem está no login — e login quebrado por pacote velho é
               justamente o caso em que ninguém consegue pedir ajuda de dentro. */}
           <AvisoDeVersao />
+          {/* Anfitrião das faíscas de confirmação. Monta uma vez; quem dispara
+              é o manipulador da ação, que sabe se aquilo foi uma confirmação. */}
+          <Faiscas />
         </div>
       </BrowserRouter>
     </AuthProvider>

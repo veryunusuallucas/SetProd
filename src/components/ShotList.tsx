@@ -6,6 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ordenarPlanos, resumoDePlanos } from '../lib/planos';
 import { marcarCena, limparMarcacao, proximoStatus, registroDe, ROTULO, MOTIVOS } from '../lib/registroSet';
 import { useRole } from '../hooks/useRole';
+import { faiscar } from './ui/Faisca';
 
 /**
  * Cor E ícone, sempre os dois.
@@ -43,9 +44,18 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
     [diaria.id]
   ) || [];
 
-  const alternarStatus = async (cenaId: string) => {
+  const alternarStatus = async (cenaId: string, evento?: { clientX: number; clientY: number }) => {
     const atual = registroDe(registros, diaria.id, cenaId);
     const proximo = proximoStatus(atual?.status);
+
+    /*
+      A faísca sai SÓ em "gravada", e não a cada toque do ciclo.
+
+      Marcar gravada é a confirmação — é o momento em que a cena saiu. Passar
+      por "parcial" ou "cortada" é atravessar o ciclo, não confirmar nada. Se
+      todo toque faiscasse, faiscar deixaria de significar alguma coisa.
+    */
+    if (proximo === 'gravada' && evento) faiscar(evento);
 
     /*
       Depois de `cortada`, o toque APAGA a marcação em vez de dar a volta.
@@ -201,7 +211,7 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
                 inútil justamente quando ela precisa ser rápida.
               */}
               <button
-                onClick={() => alternarStatus(cena.id)}
+                onClick={e => alternarStatus(cena.id, e)}
                 title={
                   !registro
                     ? 'Marcar o que aconteceu'

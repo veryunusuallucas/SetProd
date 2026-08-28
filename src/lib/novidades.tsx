@@ -2,7 +2,7 @@ import {
   Sparkles, HelpCircle,
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
-  RefreshCw, MessageCircleQuestion, Undo2,
+  RefreshCw, MessageCircleQuestion, Undo2, DollarSign,
 } from 'lucide-react';
 
 /**
@@ -209,6 +209,41 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.5.1',
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <DollarSign size={20} />,
+        titulo: 'O dinheiro estava escrito em notação inglesa',
+        texto: 'A tela mostrava "R$ 1234.56" — ponto no lugar da vírgula e sem separador de milhar. Você digitava a despesa como "R$ 1.234,56" e via outra coisa na linha seguinte. Nos números de resumo isso acabou.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <DollarSign size={20} />,
+        titulo: 'Saldo e total gasto sobem até o valor',
+        texto: 'Número que aparece pronto é lido como rótulo; número que sobe é lido como resultado de uma conta. E ele para de tremer enquanto conta — os algarismos agora têm largura fixa. Só nos números de resumo: em lista de despesa, valor em movimento atrapalha quem está conferindo.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <DollarSign size={20} />,
+        titulo: 'Um aporte novo não mexia no saldo do painel',
+        texto: 'O contador do painel da produção só se atualizava quando alguma despesa mudava. Lançar dinheiro e não ver o saldo mexer fazia parecer que o lançamento não pegou.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Clapperboard size={20} />,
+        titulo: 'Marcar uma cena como gravada solta uma faísca no dedo',
+        texto: 'A confirmação acontece onde você tocou, não num aviso que sobe do rodapé. Só em "gravada": passar por parcial ou cortada é atravessar o ciclo, não confirmar nada.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Sparkles size={20} />,
+        titulo: 'Detalhes de acabamento',
+        texto: 'Os cards da tela inicial ganharam um brilho que segue o cursor, e os rótulos da IA um brilho que atravessa o texto — o único lugar do app onde brilho quer dizer alguma coisa: aquilo foi uma máquina que escreveu.',
+      },
+    ],
+  },
   {
     versao: '4.5.0',
     resumo: (
