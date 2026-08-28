@@ -1,3 +1,4 @@
+import { dinheiro } from '../lib/formato';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
@@ -63,7 +64,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
           </div>
           <div>
             <div className="text-xs text-muted font-bold uppercase tracking-widest">Total Arrecadado</div>
-            <div className="text-xl font-bold mt-1">R$ {totalEntradas.toFixed(2)}</div>
+            <div className="text-xl font-bold mt-1">{dinheiro(totalEntradas)}</div>
           </div>
         </div>
         
@@ -73,7 +74,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
           </div>
           <div>
             <div className="text-xs text-muted font-bold uppercase tracking-widest">Total Gasto</div>
-            <div className="text-xl font-bold mt-1">R$ {totalGasto.toFixed(2)}</div>
+            <div className="text-xl font-bold mt-1">{dinheiro(totalGasto)}</div>
           </div>
         </div>
 
@@ -83,7 +84,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
           </div>
           <div>
             <div className="text-xs text-muted font-bold uppercase tracking-widest">Saldo Atual</div>
-            <div className="text-xl font-bold mt-1">R$ {saldoAtual.toFixed(2)}</div>
+            <div className="text-xl font-bold mt-1">{dinheiro(saldoAtual)}</div>
           </div>
         </div>
       </div>
@@ -113,7 +114,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`} />
+                <RechartsTooltip formatter={(value: any) => `${dinheiro(Number(value))}`} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -129,7 +130,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
               <BarChart data={dataDepto} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <XAxis type="number" tickFormatter={(v) => `R$${v}`} />
                 <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                <RechartsTooltip formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`} />
+                <RechartsTooltip formatter={(value: any) => `${dinheiro(Number(value))}`} />
                 <Bar dataKey="Gasto" fill="#8884d8" radius={[0, 4, 4, 0]}>
                   {dataDepto.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

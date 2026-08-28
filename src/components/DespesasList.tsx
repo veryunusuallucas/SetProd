@@ -1,3 +1,4 @@
+import { dinheiro, dataCurta } from '../lib/formato';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -572,13 +573,18 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div className="text-base font-bold" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.descricao}</div>
-                    <div className="text-base font-bold text-danger" style={{ whiteSpace: 'nowrap' }}>R$ {d.valor_total.toFixed(2)}</div>
+                    <div className="text-base font-bold text-danger" style={{ whiteSpace: 'nowrap' }}>{dinheiro(d.valor_total)}</div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
                     {d.diaria && <span className="badge badge-warning">{d.diaria}</span>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)' }}>
                       <Calendar size={12} />
-                      <span className="text-xs">{d.data_ocorrencia || new Date(d.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                      {/* `data_ocorrencia` é uma string "AAAA-MM-DD" e estava
+                          indo CRUA para a tela: a linha mostrava 2026-08-28 em
+                          vez de 28/08/26. Passava despercebido porque só
+                          aparece na despesa que tem data de ocorrência — as
+                          outras caíam no ramo formatado do lado direito. */}
+                      <span className="text-xs">{dataCurta(d.data_ocorrencia || d.data)}</span>
                     </div>
                   </div>
                   <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>

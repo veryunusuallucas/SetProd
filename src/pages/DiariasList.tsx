@@ -1,3 +1,4 @@
+import { dinheiro } from '../lib/formato';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -142,7 +143,7 @@ export function DiariasList() {
                 <div style={{ textAlign: 'right', minWidth: '100px' }}>
                   <div className="text-xs text-muted font-bold uppercase tracking-widest">Gastos do Dia</div>
                   <div className="font-bold" style={{ color: totalDespesas > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                    R$ {totalDespesas.toFixed(2)}
+                    {dinheiro(totalDespesas)}
                   </div>
                 </div>
                 

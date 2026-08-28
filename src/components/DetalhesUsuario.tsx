@@ -1,3 +1,4 @@
+import { dinheiro } from '../lib/formato';
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -75,7 +76,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
       transacoesSugeridas.forEach(t => {
         const deNome = t.de.id_ref === 'caixa_central' ? 'Produção' : 'Membro';
         const paraNome = t.para.id_ref === 'caixa_central' ? 'Produção' : 'Membro';
-        msgFinal += `- ${deNome} transfere R$ ${t.valor.toFixed(2)} para ${paraNome}\n`;
+        msgFinal += `- ${deNome} transfere ${dinheiro(t.valor)} para ${paraNome}\n`;
       });
       setMensagemGerada(msgFinal);
       return;
@@ -106,7 +107,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
     // Cobrança detalhada: anexa de onde vem a dívida
     if (isDevedor && linhasDeve.length > 0) {
       msgFinal += '\n\nDetalhamento:\n' + linhasDeve
-        .map(l => `- ${l.descricao}${l.diaria ? ` (${l.diaria})` : ''}: R$ ${l.valor.toFixed(2)}`)
+        .map(l => `- ${l.descricao}${l.diaria ? ` (${l.diaria})` : ''}: ${dinheiro(l.valor)}`)
         .join('\n');
     }
     setMensagemGerada(msgFinal);
@@ -257,7 +258,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                 <Pie data={dataGraficoCaixa} cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" dataKey="valor">
                   {dataGraficoCaixa.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} formatter={(value) => `${dinheiro(Number(value))}`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -309,18 +310,18 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
             <div className="card" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
               <div>
                 <div className="text-xs text-muted uppercase tracking-widest">Adiantou</div>
-                <div className="font-bold text-success">R$ {detalhe.total_adiantou.toFixed(2)}</div>
+                <div className="font-bold text-success">{dinheiro(detalhe.total_adiantou)}</div>
               </div>
               <div className="text-muted">−</div>
               <div>
                 <div className="text-xs text-muted uppercase tracking-widest">Deve</div>
-                <div className="font-bold text-danger">R$ {detalhe.total_deve.toFixed(2)}</div>
+                <div className="font-bold text-danger">{dinheiro(detalhe.total_deve)}</div>
               </div>
               <div className="text-muted">=</div>
               <div>
                 <div className="text-xs text-muted uppercase tracking-widest">Saldo</div>
                 <div className={`font-bold ${detalhe.saldo >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {detalhe.saldo >= 0 ? '+' : '−'} R$ {Math.abs(detalhe.saldo).toFixed(2)}
+                  {detalhe.saldo >= 0 ? '+' : '−'} {dinheiro(Math.abs(detalhe.saldo))}
                 </div>
               </div>
             </div>
@@ -337,7 +338,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                   <div key={i} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div className="text-xs text-muted uppercase tracking-widest">{isPagar ? 'Deve pagar à Produção' : 'A receber da Produção'}</div>
-                      <div className={`text-lg font-bold ${isPagar ? 'text-danger' : 'text-success'}`}>R$ {t.valor.toFixed(2)}</div>
+                      <div className={`text-lg font-bold ${isPagar ? 'text-danger' : 'text-success'}`}>{dinheiro(t.valor)}</div>
                     </div>
                     <button onClick={() => registrarPagamento(t)} className="btn-icon" style={{ backgroundColor: 'var(--color-success-bg)', borderColor: 'transparent', color: 'var(--color-success)' }} title="Marcar como Pago">
                       <Check size={20} />
@@ -350,7 +351,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
               {linhasDeve.length > 0 && (
                 <div className="card">
                   <div className="text-xs text-danger font-bold uppercase tracking-widest" style={{ marginBottom: '12px' }}>
-                    Deve — R$ {detalhe.total_deve.toFixed(2)}
+                    Deve — {dinheiro(detalhe.total_deve)}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {linhasDeve.map((l, i) => (
@@ -359,7 +360,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                           <div>{l.descricao}</div>
                           <div className="text-xs text-muted">{[l.diaria, l.categoria].filter(Boolean).join(' · ')}</div>
                         </div>
-                        <span className="font-bold text-danger">R$ {l.valor.toFixed(2)}</span>
+                        <span className="font-bold text-danger">{dinheiro(l.valor)}</span>
                       </div>
                     ))}
                   </div>
@@ -370,7 +371,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
               {linhasAdiantou.length > 0 && (
                 <div className="card">
                   <div className="text-xs text-success font-bold uppercase tracking-widest" style={{ marginBottom: '12px' }}>
-                    Adiantou — R$ {detalhe.total_adiantou.toFixed(2)}
+                    Adiantou — {dinheiro(detalhe.total_adiantou)}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {linhasAdiantou.map((l, i) => (
@@ -379,7 +380,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                           <div>{l.descricao}</div>
                           <div className="text-xs text-muted">{[l.diaria, l.categoria].filter(Boolean).join(' · ')}</div>
                         </div>
-                        <span className="font-bold text-success">R$ {l.valor.toFixed(2)}</span>
+                        <span className="font-bold text-success">{dinheiro(l.valor)}</span>
                       </div>
                     ))}
                   </div>
@@ -402,7 +403,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                         <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="font-bold" style={{ color: recebeu ? 'var(--color-success)' : 'var(--text-primary)' }}>R$ {a.valor.toFixed(2)}</span>
+                        <span className="font-bold" style={{ color: recebeu ? 'var(--color-success)' : 'var(--text-primary)' }}>{dinheiro(a.valor)}</span>
                         <button onClick={() => estornarPagamento(a.id)} className="btn-icon" style={{ width: '28px', height: '28px' }} title="Estornar (desfazer)">
                           <RotateCcw size={13} />
                         </button>

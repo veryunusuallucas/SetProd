@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { dinheiro, paraData } from '../lib/formato';
 import { db } from '../db/db';
 import { ArrowDownToLine, ArrowUpToLine, Calendar, FileText } from 'lucide-react';
 
@@ -45,7 +46,12 @@ export function MovimentoList({ projetoId }: { projetoId: string }) {
     movimentos.push({
       id: `despesa_${d.id}`,
       tipo: 'saida',
-      data: d.data_ocorrencia ? new Date(d.data_ocorrencia).getTime() : (d.data || 0),
+      /*
+        `new Date('2026-08-28')` daria meia-noite em UTC — 21h do dia 27 aqui.
+        O extrato mostrava a despesa um dia antes do que a pessoa digitou, e no
+        dia 1º do mês ela pulava para o mês anterior.
+      */
+      data: (paraData(d.data_ocorrencia) ?? paraData(d.data))?.getTime() ?? 0,
       descricao: d.descricao,
       valor: d.valor_total,
       detalhes: `Pago por: ${pagadorNome} | Categ: ${d.categoria}${d.diaria ? ` | ${d.diaria}` : ''}`
@@ -86,7 +92,7 @@ export function MovimentoList({ projetoId }: { projetoId: string }) {
                 </div>
 
                 <div className={`font-bold text-lg ${m.tipo === 'entrada' ? 'text-success' : 'text-danger'}`} style={{ whiteSpace: 'nowrap' }}>
-                  {m.tipo === 'entrada' ? '+' : '-'} R$ {m.valor.toFixed(2)}
+                  {m.tipo === 'entrada' ? '+' : '-'} {dinheiro(m.valor)}
                 </div>
               </div>
             ))}
