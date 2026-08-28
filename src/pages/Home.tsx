@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { Projeto } from '../types';
-import { Search, Film, Trash2, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Search, Film, Trash2, Sparkles, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { criarDepartamentosPadrao } from '../lib/creditos';
 import { entrarComoFundador, descobrirPersona, type Persona } from '../lib/membros';
@@ -54,6 +54,9 @@ export function Home() {
   const [posso, setPosso] = useState(false);
   const [destruindo, setDestruindo] = useState(false);
 
+  /** A primeira busca no servidor ainda está rolando. Ver o estado vazio abaixo. */
+  const [buscandoNoServidor, setBuscandoNoServidor] = useState(true);
+
   /**
    * Busca as produções que compartilharam comigo.
    *
@@ -81,9 +84,16 @@ export function Home() {
          produção deixou de ser nossa.
     */
     (async () => {
-      await varrerLixeira().catch(() => []);
-      await sincronizarProjetosCompartilhados().catch(() => 0);
-      await limparProducoesDestruidas().catch(() => []);
+      try {
+        await varrerLixeira().catch(() => []);
+        await sincronizarProjetosCompartilhados().catch(() => 0);
+        await limparProducoesDestruidas().catch(() => []);
+      } finally {
+        // No `finally`: se a busca falhar, a tela precisa parar de dizer
+        // "buscando" e mostrar o que tem — ficar girando para sempre seria pior
+        // que a mensagem errada que isto veio consertar.
+        setBuscandoNoServidor(false);
+      }
     })();
   }, []);
 
@@ -319,8 +329,30 @@ export function Home() {
       <div className="home-projects" style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 1 }}>
         {projetosFiltrados.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-            <Film size={40} style={{ margin: '0 auto 16px', color: 'var(--text-muted)' }} />
-            <p className="text-secondary">Nenhuma produção encontrada.</p>
+            {/*
+              "Buscando" e "não existe" são coisas diferentes, e o app dizia a
+              segunda enquanto fazia a primeira.
+
+              Quem acabava de aceitar um convite abria a tela inicial e lia
+              "Nenhuma produção encontrada" — porque as produções compartilhadas
+              ainda estavam descendo do servidor. Recarregar "resolvia", e a
+              pessoa concluía que o app tinha falhado. Não tinha: ela chegou
+              antes da resposta.
+            */}
+            {buscandoNoServidor ? (
+              <>
+                <RefreshCw size={36} className="girando" style={{ margin: '0 auto 16px', color: 'var(--text-muted)' }} />
+                <p className="text-secondary">Buscando suas produções…</p>
+                <p className="text-xs text-muted" style={{ marginTop: '6px' }}>
+                  As que foram compartilhadas com você vêm do servidor.
+                </p>
+              </>
+            ) : (
+              <>
+                <Film size={40} style={{ margin: '0 auto 16px', color: 'var(--text-muted)' }} />
+                <p className="text-secondary">Nenhuma produção encontrada.</p>
+              </>
+            )}
           </div>
         ) : (
           projetosFiltrados.map((projeto, indice) => (
