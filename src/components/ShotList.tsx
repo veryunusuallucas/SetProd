@@ -4,7 +4,7 @@ import { Clapperboard, Plus, Trash2, ChevronDown, ChevronRight, Check, CircleSla
 import type { Diaria, Cena, StatusCena } from '../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ordenarPlanos, resumoDePlanos } from '../lib/planos';
-import { marcarCena, proximoStatus, registroDe, ROTULO, MOTIVOS } from '../lib/registroSet';
+import { marcarCena, limparMarcacao, proximoStatus, registroDe, ROTULO, MOTIVOS } from '../lib/registroSet';
 import { useRole } from '../hooks/useRole';
 
 /**
@@ -45,7 +45,22 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
 
   const alternarStatus = async (cenaId: string) => {
     const atual = registroDe(registros, diaria.id, cenaId);
-    await marcarCena(diaria.projeto_id, diaria.id, cenaId, proximoStatus(atual?.status), {
+    const proximo = proximoStatus(atual?.status);
+
+    /*
+      Depois de `cortada`, o toque APAGA a marcação em vez de dar a volta.
+
+      É a única saída de quem marcou a cena errada: sem isto, os quatro rótulos
+      eram um caminho de mão única, e nenhum deles significa "eu não sei". E
+      apagar de verdade importa — o motivo e a observação que ficaram na linha
+      não podem sobreviver a um estado que não existe mais.
+    */
+    if (!proximo) {
+      await limparMarcacao(diaria.id, cenaId);
+      return;
+    }
+
+    await marcarCena(diaria.projeto_id, diaria.id, cenaId, proximo, {
       registrado_por: meuPerfilId || undefined,
     });
   };
@@ -187,7 +202,16 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
               */}
               <button
                 onClick={() => alternarStatus(cena.id)}
-                title={registro ? `${ROTULO[registro.status]} — toque para mudar` : 'Marcar o que aconteceu'}
+                title={
+                  !registro
+                    ? 'Marcar o que aconteceu'
+                    : registro.status === 'cortada'
+                      // O último do ciclo: o próximo toque limpa. Dizer isso
+                      // aqui é o que torna a saída encontrável — ninguém
+                      // descobre sozinho que existe um quinto toque.
+                      ? 'Cortada — toque para tirar a marcação'
+                      : `${ROTULO[registro.status]} — toque para mudar`
+                }
                 style={{
                   padding: '6px 10px', borderRadius: '8px', cursor: 'pointer',
                   fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap',

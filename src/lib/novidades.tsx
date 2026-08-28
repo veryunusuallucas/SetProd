@@ -2,7 +2,7 @@ import {
   Sparkles, HelpCircle,
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
-  RefreshCw, MessageCircleQuestion,
+  RefreshCw, MessageCircleQuestion, Undo2,
 } from 'lucide-react';
 
 /**
@@ -209,6 +209,17 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.4.2',
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <Undo2 size={20} />,
+        titulo: 'Dá para tirar a marcação de uma cena',
+        texto: 'Marcou a cena errada e não havia volta: o toque girava entre Gravada, Parcial, Não gravada e Cortada, e nenhum desses quatro significa "eu não sei". Agora, depois de Cortada, mais um toque limpa e a cena volta a ficar sem marcação — que não é a mesma coisa que "não gravada", e o relatório do dia trata as duas de forma diferente.',
+      },
+    ],
+  },
   {
     versao: '4.4.1',
     itens: [

@@ -95,11 +95,26 @@ export async function limparMarcacao(diariaId: string, cenaId: string): Promise<
   if (existente) await db.registros_cena.delete(existente.id);
 }
 
-/** O próximo estado no ciclo. Sem marcação nenhuma, começa em `gravada`. */
-export function proximoStatus(atual?: StatusCena): StatusCena {
+/**
+ * O próximo estado no ciclo. Sem marcação nenhuma, começa em `gravada`.
+ *
+ * ⚠️ DEPOIS DE `cortada` VEM `undefined` — VOLTAR A NÃO TER MARCAÇÃO.
+ *
+ * Antes o ciclo dava a volta direto para `gravada`, e não havia caminho
+ * nenhum de volta ao estado inicial: quem marcasse a cena errada ficava
+ * obrigado a escolher entre quatro rótulos, todos falsos. "Sem marcação" não é
+ * o mesmo que "não gravada" — o relatório trata os dois de forma diferente de
+ * propósito, porque cena que ninguém marcou pode ter saído.
+ *
+ * Custa um toque a mais para dar a volta inteira, e o caso comum continua a um
+ * toque só. Desfazer valendo mais que a volta rápida: quem errou precisa de
+ * saída, quem acertou não dá a volta.
+ */
+export function proximoStatus(atual?: StatusCena): StatusCena | undefined {
   if (!atual) return CICLO[0];
   const i = CICLO.indexOf(atual);
-  return CICLO[(i + 1) % CICLO.length];
+  // O fim do ciclo é o vazio, e só depois dele recomeça.
+  return i === CICLO.length - 1 ? undefined : CICLO[i + 1];
 }
 
 // ---------------------------------------------------------------------------
