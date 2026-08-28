@@ -101,6 +101,31 @@ async function chamarIA(prompt: string, schema?: unknown, prazoMs = PRAZO_PADRAO
 
   if (error) {
     /*
+      O PRAZO ESTOURADO CHEGA AQUI, NÃO NO `catch` ACIMA.
+
+      O `functions-js` embrulha toda rejeição do fetch — inclusive o
+      `AbortError` do nosso próprio cancelamento — em `FunctionsFetchError`, e a
+      devolve no campo `error` em vez de lançá-la:
+
+          }).catch((fetchError) => { throw new FunctionsFetchError(fetchError); })
+
+      Então o `catch (e)` lá em cima só pega abort quando ele acontece FORA do
+      fetch, que é quase nunca. Sem esta checagem, "a IA demorou" virava "o
+      navegador não recebeu resposta" — e mandava procurar defeito na função, na
+      rede e no deploy, quando a função estava respondendo normalmente, só
+      devagar.
+
+      Por isso o sinal vem antes de qualquer leitura do corpo: se nós mesmos
+      cancelamos, não há corpo nenhum para ler.
+    */
+    if (cancelamento.signal.aborted) {
+      throw new Error(
+        `A IA demorou mais de ${Math.round(prazoMs / 1000)}s e eu desisti de esperar. ` +
+        'Pode ser fila cheia ou instabilidade — tente de novo em alguns minutos.'
+      );
+    }
+
+    /*
       Desembrulhar o motivo real, sem NUNCA perder informação no caminho.
 
       A função responde `{erro: "..."}` no corpo mesmo quando o status não é 2xx,
@@ -658,13 +683,20 @@ export async function responderDuvida(params: {
   ].filter(Boolean).join('\n');
 
   /*
-    Prazo curto, e não o padrão de dois minutos.
+    Prazo curto, e não o padrão de dois minutos: a pergunta de ajuda é um prompt
+    pequeno com resposta de quatro frases, e deixar a pessoa esperando o prazo da
+    análise de roteiro seria travar a tela por engano.
 
-    A pergunta de ajuda é um prompt pequeno com resposta de quatro frases: se ela
-    não voltou em trinta segundos, alguma coisa está errada. Deixar a pessoa
-    esperando o prazo da análise de roteiro seria travar a tela por engano.
+    ⚠️ MAS NÃO TÃO CURTO QUANTO OS TRINTA SEGUNDOS QUE ESTAVAM AQUI. A conta
+    esquecia dois pedaços que não dependem do tamanho da resposta: a partida a
+    frio da Edge Function, que sozinha come alguns segundos quando ninguém usou
+    a IA há um tempo, e o manual inteiro — quase 11 mil caracteres — que vai
+    junto em toda pergunta para a IA não inventar funcionalidade.
+
+    Trinta segundos estouravam no uso normal, e o estouro chegava disfarçado de
+    falha de rede (ver o bloco do `signal.aborted` em `chamarIA`).
   */
-  return (await chamarIA(prompt, undefined, 30_000)).trim();
+  return (await chamarIA(prompt, undefined, 60_000)).trim();
 }
 
 /**
