@@ -3,26 +3,15 @@ import { supabase, supabaseConfigurado } from './supabase';
 
 export const TABELA_FICHA = 'fichas_publicas';
 
-/** Mensagem única quando a tabela ainda não existe no Supabase. */
-export const SQL_FICHA_PUBLICA = `create table fichas_publicas (
-  projeto_id    text primary key,
-  nome_projeto  text,
-  campos        jsonb not null default '[]'::jsonb,
-  obrigatorios  jsonb not null default '[]'::jsonb,
-  atualizado_em timestamptz not null default now()
-);
-
-alter table fichas_publicas enable row level security;
-
--- quem preenche o link NÃO está logado, por isso a leitura é pública
-create policy "ficha: leitura publica" on fichas_publicas
-  for select to anon, authenticated using (true);
-
--- só quem está logado no app publica
-create policy "ficha: escrita autenticada" on fichas_publicas
-  for insert to authenticated with check (true);
-create policy "ficha: atualizacao autenticada" on fichas_publicas
-  for update to authenticated using (true) with check (true);`;
+/**
+ * Onde mora o schema desta tabela.
+ *
+ * O `create table` inteiro vivia AQUI, como string. Duas cópias do mesmo SQL —
+ * uma no código e outra no banco — divergem no primeiro ajuste, e a que fica
+ * errada é sempre a que ninguém roda. Agora o arquivo é a fonte da verdade e
+ * esta constante só aponta para ele.
+ */
+export const ARQUIVO_SQL_PUBLICO = 'supabase/sql/tabelas-publicas.sql';
 
 function ehTabelaAusente(erro: any) {
   return erro?.code === 'PGRST205' || /schema cache|does not exist/i.test(erro?.message || '');
@@ -62,7 +51,7 @@ export async function publicarFichaPublica(projetoId: string): Promise<void> {
 
   console.error('[SetProd] Falha ao publicar a ficha:', error);
   if (ehTabelaAusente(error)) {
-    throw new Error(`a tabela "${TABELA_FICHA}" não existe no Supabase (crie-a com o SQL da documentação).`);
+    throw new Error(`a tabela "${TABELA_FICHA}" não existe no Supabase. Rode ${ARQUIVO_SQL_PUBLICO} no SQL Editor.`);
   }
   throw new Error(error.message || 'não foi possível publicar no Supabase.');
 }
