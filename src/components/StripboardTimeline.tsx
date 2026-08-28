@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { CalendarPlus, GripVertical, Trash2, Utensils, Truck, StickyNote, Scissors, Shuffle, FileText } from 'lucide-react';
+import { CalendarPlus, GripVertical, Trash2, Utensils, Truck, StickyNote, Scissors, Shuffle, FileText, Check, CircleDashed, CircleSlash } from 'lucide-react';
 import { db } from '../db/db';
-import type { Cena, Locacao, StripboardItem, TipoStripboardItem } from '../types';
+import type { Cena, Locacao, StripboardItem, TipoStripboardItem, RegistroCena } from '../types';
+import { estadoAtualDasCenas } from '../lib/registroSet';
 import { getStripboardColor } from '../lib/decupagem';
 import {
   montarLinha, resumirDias, agruparPorLocacao, cenasDoDia, diaNaPosicao,
@@ -36,6 +38,27 @@ export function StripboardTimeline({
 
   const linha = useMemo(() => montarLinha(cenas, itens), [cenas, itens]);
   const resumos = useMemo(() => resumirDias(linha, nomeLocacao), [linha, locacoes]);
+
+  /*
+    O que já foi gravado, para a tira mostrar.
+
+    Vem de duas consultas: os registros de filmagem e as diárias — as diárias
+    porque "não gravou" só vira alerta depois que o dia dela FECHOU, e essa
+    informação não está no registro.
+  */
+  const registros = useLiveQuery(
+    () => db.registros_cena.where('projeto_id').equals(projetoId).toArray(),
+    [projetoId]
+  ) || [];
+  const diarias = useLiveQuery(
+    () => db.diarias.where('projeto_id').equals(projetoId).toArray(),
+    [projetoId]
+  ) || [];
+
+  const gravacoes = useMemo(
+    () => estadosDaTira(registros, new Set(diarias.filter(d => d.fechada).map(d => d.id))),
+    [registros, diarias]
+  );
 
   /**
    * Grava a ordem de todos os itens de uma vez.
@@ -125,6 +148,19 @@ export function StripboardTimeline({
             </span>
           );
         })}
+
+        {/* Os sinais de filmagem só entram na legenda quando existe filmagem —
+            legenda de coisa que não aparece na tela é ruído. */}
+        {gravacoes.size > 0 && (
+          <>
+            <span style={{ width: '1px', background: 'var(--border-light)', margin: '0 4px' }} />
+            {(['gravada', 'parcial', 'vencida', 'cortada'] as EstadoNaTira[]).map(e => (
+              <span key={e} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-muted)' }}>
+                {ICONE_TIRA[e]} {ROTULO_TIRA[e]}
+              </span>
+            ))}
+          </>
+        )}
       </div>
 
       <DragDropContext onDragEnd={aoSoltar}>
@@ -151,6 +187,7 @@ export function StripboardTimeline({
                           cena={it.cena}
                           locacao={nomeLocacao(it.cena)}
                           alca={arraste.dragHandleProps}
+                          gravacao={gravacoes.get(it.cena.id)}
                           onVerNoRoteiro={() => {
                             const p = paginaDaCena(it.cena);
                             if (p) onVerNoRoteiro(p);
@@ -191,13 +228,63 @@ export function StripboardTimeline({
   );
 }
 
+/**
+ * O que a tira mostra sobre a filmagem.
+ *
+ * Note que `vencida` não existe em `StatusCena` — ele é derivado: uma cena não
+ * gravada só vira alerta depois que a diária dela FECHOU. Antes disso ela não
+ * está atrasada, o dia só não acabou. Marcar as duas coisas igual encheria o
+ * stripboard de vermelho no meio da própria diária.
+ */
+export type EstadoNaTira = 'gravada' | 'parcial' | 'cortada' | 'vencida';
+
+const ICONE_TIRA: Record<EstadoNaTira, React.ReactNode> = {
+  gravada: <Check size={14} />,
+  parcial: <CircleDashed size={14} />,
+  cortada: <Scissors size={14} />,
+  vencida: <CircleSlash size={14} />,
+};
+
+const ROTULO_TIRA: Record<EstadoNaTira, string> = {
+  gravada: 'Gravada',
+  parcial: 'Gravada pela metade',
+  cortada: 'Cortada do filme',
+  vencida: 'Não gravou, e a diária já fechou',
+};
+
+/**
+ * Junta os registros de filmagem num mapa `cena → estado da tira`.
+ *
+ * Vale o registro MAIS RECENTE de cada cena, como em todo o resto: uma cena
+ * parcial no dia 3 e gravada no dia 7 está gravada.
+ */
+export function estadosDaTira(
+  registros: RegistroCena[],
+  diariasFechadas: Set<string>
+): Map<string, EstadoNaTira> {
+  const mapa = new Map<string, EstadoNaTira>();
+
+  for (const [cenaId, r] of estadoAtualDasCenas(registros)) {
+    if (r.status === 'gravada') mapa.set(cenaId, 'gravada');
+    else if (r.status === 'parcial') mapa.set(cenaId, 'parcial');
+    else if (r.status === 'cortada') mapa.set(cenaId, 'cortada');
+    // Só é alerta se o dia dela já acabou. Cena não gravada numa diária em
+    // andamento é o dia acontecendo, não uma pendência.
+    else if (diariasFechadas.has(r.diaria_id)) mapa.set(cenaId, 'vencida');
+  }
+
+  return mapa;
+}
+
 // ---- Tira de cena ----
 
-function TiraCena({ cena, locacao, alca, onVerNoRoteiro }: {
+function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
   cena: Cena;
   locacao: string;
   alca: any;
   onVerNoRoteiro: () => void;
+  /** O que aconteceu com esta cena no set. `undefined` = ninguém marcou ainda. */
+  gravacao?: EstadoNaTira;
 }) {
   const strip = getStripboardColor(cena.ambiente, cena.periodo);
   const campo: React.CSSProperties = {
@@ -206,14 +293,55 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro }: {
     color: strip.text, fontWeight: 'bold',
   };
 
+  /*
+    O QUE JÁ FOI GRAVADO, SEM USAR COR.
+
+    A tarja JÁ usa cor para dizer INT/EXT e dia/noite — é o padrão do stripboard
+    de papel, e é o que a produção lê de relance. Sobrepor um terceiro
+    significado em cor tornaria a tela ilegível: "amarelo" passaria a querer
+    dizer duas coisas ao mesmo tempo.
+
+    Então o estado entra por OPACIDADE, TEXTURA e ÍCONE, que são canais livres:
+
+      gravada          esmaecida e riscada — ela saiu, está resolvida
+      parcial          hachurada — metade feita, metade não
+      cortada          fantasma — saiu do filme, mas continua na ordem
+      não gravada
+        e vencida      contorno de alerta — a diária dela fechou e ela ficou
+  */
+  const risco = gravacao === 'gravada';
+  const fantasma = gravacao === 'cortada';
+  const alerta = gravacao === 'vencida';
+
   return (
     <div style={{
       display: 'flex', gap: '10px', alignItems: 'center', padding: '8px 12px',
       backgroundColor: strip.bg, color: strip.text, borderRadius: '4px',
+      opacity: fantasma ? 0.35 : risco ? 0.55 : 1,
+      // A hachura da parcial vai POR CIMA da cor da tarja, sem substituí-la —
+      // as duas informações continuam legíveis ao mesmo tempo.
+      backgroundImage: gravacao === 'parcial'
+        ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.16) 0 6px, transparent 6px 12px)'
+        : undefined,
+      outline: alerta ? '2px solid var(--color-danger, #f87171)' : undefined,
+      outlineOffset: alerta ? '-2px' : undefined,
     }}>
       <span {...alca} style={{ cursor: 'grab', display: 'flex', flexShrink: 0, opacity: 0.6 }}>
         <GripVertical size={16} />
       </span>
+
+      {/* O ícone é o sinal que sobrevive à fotocópia em preto e branco e a quem
+          não distingue os tons. A opacidade e a textura reforçam; sozinhas,
+          nenhuma delas basta. */}
+      {gravacao && (
+        <span
+          title={ROTULO_TIRA[gravacao]}
+          aria-label={ROTULO_TIRA[gravacao]}
+          style={{ display: 'flex', flexShrink: 0, opacity: 0.9 }}
+        >
+          {ICONE_TIRA[gravacao]}
+        </span>
+      )}
 
       <button
         onClick={onVerNoRoteiro}
@@ -227,7 +355,13 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro }: {
         {cena.numero}
       </button>
 
-      <span style={{ flex: 1, minWidth: 0, fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <span style={{
+        flex: 1, minWidth: 0, fontWeight: 'bold', whiteSpace: 'nowrap',
+        overflow: 'hidden', textOverflow: 'ellipsis',
+        // Riscar é o gesto que a produção já faz no stripboard de papel quando
+        // a cena sai. Aqui ele diz a mesma coisa, sem precisar de legenda.
+        textDecoration: risco || fantasma ? 'line-through' : undefined,
+      }}>
         {cena.descricao}
       </span>
       <span className="desktop-only" style={{ width: '76px', flexShrink: 0, fontSize: '10px', fontWeight: 'bold', opacity: 0.85 }}>
