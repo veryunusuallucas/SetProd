@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
+import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight, UserMinus } from 'lucide-react';
 import { db } from '../db/db';
 import {
   criarConvite, convitesDoProjeto, revogarConvite, linkDoConvite,
   membrosDoProjeto, definirMeuPerfil, sincronizarParticipacoes, participacaoLocal, ligarConvite,
-  type Convite, type Participacao,
+  type Convite, type Participacao, type PapelMembro,
 } from '../lib/membros';
 import { supabaseConfigurado } from '../lib/supabase';
 import { pode, DESCRICAO, PAPEIS_CONVIDAVEIS, type PapelConvidavel } from '../lib/permissoes';
@@ -14,6 +14,7 @@ import {
   meusAcervos, acervosDaProducao, vincularAcervo, desvincularAcervo,
   type AcervoDisponivel,
 } from '../lib/acervoVinculado';
+import { listarMembros, mudarPapel, removerMembro, type MembroDetalhado } from '../lib/painelMembros';
 import { MOLA } from './ui/ia';
 
 interface Props {
@@ -66,6 +67,57 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
     receber o calendário de filmagem.
   */
   const podeGerirAcervo = pode(minhaParticipacao?.papel ?? 'desconhecido', 'gerir_membros');
+
+  /**
+   * O e-mail e o nome de cada conta.
+   *
+   * Vem da Edge Function porque a RLS de `auth.users` não deixa o app ler o
+   * e-mail de ninguém além de si. Fica separado de `membros` de propósito: se a
+   * função não estiver publicada, a lista continua aparecendo — só sem o e-mail.
+   */
+  const [detalhes, setDetalhes] = useState<MembroDetalhado[]>([]);
+  const [mexendo, setMexendo] = useState<string | null>(null);
+
+  const trocarPapel = async (m: Participacao, papel: PapelMembro) => {
+    if (papel === m.papel) return;
+    setMexendo(m.usuario_id);
+    try {
+      await mudarPapel(projetoId, m.usuario_id, papel);
+      await recarregar();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui mudar o papel.');
+    } finally {
+      setMexendo(null);
+    }
+  };
+
+  const expulsar = async (m: Participacao, email?: string | null) => {
+    /*
+      O aviso diz a verdade inteira, inclusive a parte incômoda.
+
+      Remover corta o acesso ao servidor, mas NÃO apaga a cópia que já está no
+      IndexedDB do aparelho da pessoa. É a natureza do offline-first, e quem
+      clica precisa saber disso antes — descobrir depois é pior.
+    */
+    const quem = email || m.apelido || 'esta pessoa';
+    const seguir = confirm(
+      `Remover ${quem} desta produção?\n\n` +
+      'Ela perde o acesso agora. Mas o que já baixou continua no aparelho dela — ' +
+      'é assim que um app que funciona offline funciona.\n\n' +
+      'Para voltar, vai precisar de um convite novo.'
+    );
+    if (!seguir) return;
+
+    setMexendo(m.usuario_id);
+    try {
+      await removerMembro(projetoId, m.usuario_id);
+      await recarregar();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui remover.');
+    } finally {
+      setMexendo(null);
+    }
+  };
 
   const [acervos, setAcervos] = useState<AcervoDisponivel[]>([]);
   const [vinculados, setVinculados] = useState<AcervoDisponivel[]>([]);
@@ -125,6 +177,12 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
         e é justamente a lista que dá o botão para desligá-lo.
       */
       setConvites(c.filter(x => x.multiuso || !x.usado_por));
+
+      // Em separado e sem derrubar nada: se a função `membros` não estiver
+      // publicada, a lista aparece do mesmo jeito, só sem os e-mails.
+      listarMembros(projetoId)
+        .then(setDetalhes)
+        .catch(e => console.warn('[SetProd] Sem os e-mails dos membros:', e?.message));
     } catch (e: any) {
       setErro(e?.message || 'Não consegui ler quem tem acesso.');
     } finally {
@@ -261,6 +319,13 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {membros.map(m => {
                 /*
+                  O e-mail e o nome da conta vêm da Edge Function — a RLS de
+                  `auth.users` não deixa o app ler o e-mail de mais ninguém além
+                  de si mesmo. Sem ela, a lista mostrava uuid.
+                */
+                const conta = detalhes.find(d => d.usuario_id === m.usuario_id);
+                const souEu = m.usuario_id === minhaParticipacao?.usuario_id;
+                /*
                   Os dois eixos lado a lado, e nunca misturados:
 
                     Maira · Direção de Arte    ← quem ela é no filme
@@ -277,18 +342,51 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                 const funcao = ficha?.funcao;
 
                 return (
-                  <div key={m.usuario_id} style={linhaEstilo}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                  <div key={m.usuario_id} style={{ ...linhaEstilo, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '150px' }}>
                       <div className="text-sm font-bold">
-                        {nome}
+                        {nome || conta?.nome || 'Sem nome'}
                         {funcao && <span className="text-muted" style={{ fontWeight: 400 }}> · {funcao}</span>}
                       </div>
-                      <div className="text-xs text-muted">
+                      <div className="text-xs text-muted" style={{ wordBreak: 'break-all' }}>
+                        {conta?.email && <>{conta.email} · </>}
                         {m.papel === 'dono' ? 'criou a produção' : (DESCRICAO[m.papel]?.nome ?? m.papel)}
-                        {m.usuario_id === minhaParticipacao?.usuario_id && ' · você'}
+                        {souEu && ' · você'}
                         {!m.perfil_id && ' · ainda não disse quem é na equipe'}
                       </div>
                     </div>
+
+                    {/*
+                      O painel só aparece para quem administra, e nunca sobre a
+                      própria linha: rebaixar a si mesmo por engano é o jeito
+                      mais rápido de ficar de fora da própria produção.
+                    */}
+                    {podeGerirAcervo && !souEu && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                        <select
+                          value={m.papel}
+                          onChange={e => trocarPapel(m, e.target.value as PapelMembro)}
+                          disabled={mexendo === m.usuario_id}
+                          style={{ ...campoEstilo, width: 'auto', padding: '6px 8px', fontSize: '12px' }}
+                        >
+                          {/* `dono` na lista só quando a pessoa JÁ é: passar posse
+                              é ação própria, com confirmação, e não um dropdown. */}
+                          {m.papel === 'dono' && <option value="dono">Dono</option>}
+                          {PAPEIS_CONVIDAVEIS.map(p => (
+                            <option key={p} value={p}>{DESCRICAO[p].nome}</option>
+                          ))}
+                        </select>
+
+                        <button
+                          className="btn-icon"
+                          title="Remover desta produção"
+                          onClick={() => expulsar(m, conta?.email)}
+                          disabled={mexendo === m.usuario_id}
+                        >
+                          <UserMinus size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
