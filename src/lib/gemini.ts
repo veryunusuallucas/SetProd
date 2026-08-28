@@ -10,8 +10,41 @@ import { DEPARTAMENTOS_PADRAO_IA, normalizarCategoria } from './decupagem';
  * de rede ou consultar a tabela de configuração.
  */
 
+/**
+ * Sem Supabase configurado não há para onde ligar. Este é o único caso em que o
+ * app tem CERTEZA do motivo — por isso ele afirma, e os outros não.
+ */
 export const ERRO_SEM_CHAVE =
-  'A IA não está disponível: a função `gemini` não está publicada no Supabase ou está sem a chave.';
+  'A IA não está disponível: este app não está conectado a um Supabase.';
+
+/**
+ * A chamada não voltou, e o navegador não deixou ler o porquê.
+ *
+ * ⚠️ ESTA MENSAGEM NÃO CONCLUI NADA, DE PROPÓSITO. A versão anterior afirmava
+ * "a função não está publicada" — e estava errada: a função estava publicada,
+ * ativa, na versão 6. Uma mensagem que afirma o motivo errado é pior que uma
+ * que diz "não sei", porque manda procurar defeito no lugar certo de um
+ * problema que não existe.
+ *
+ * Quando o navegador não consegue ler a resposta, as causas possíveis são no
+ * mínimo três e o cliente não tem como distinguir entre elas:
+ *
+ *   · a função não está publicada;
+ *   · a função QUEBROU antes de responder — e o erro da plataforma vem sem
+ *     cabeçalho CORS, então o navegador o bloqueia e o app vê "não chegou";
+ *   · rede, extensão ou antivírus barraram a chamada.
+ *
+ * Por isso a frase lista as três e anexa a causa crua entre colchetes. O texto
+ * cru é feio, mas é a única coisa ali que não é palpite.
+ */
+function erroSemResposta(cru: string, status?: number): string {
+  return (
+    'Não consegui falar com a IA: o navegador não recebeu resposta da função `gemini`. ' +
+    'Pode ser que ela não esteja publicada, que tenha quebrado antes de responder, ' +
+    'ou que a rede tenha barrado a chamada. ' +
+    `[${cru}${status ? ` · HTTP ${status}` : ''}]`
+  );
+}
 
 /** A IA só pode ser usada com Supabase configurado e usuário logado. */
 export function iaDisponivel(): boolean {
@@ -123,10 +156,10 @@ async function chamarIA(prompt: string, schema?: unknown, prazoMs = PRAZO_PADRAO
 
     const detalhe = cru.slice(0, 300) || error.message;
 
-    // O SDK devolve "Failed to send a request to the Edge Function" quando a
-    // função não existe — e aí sim o palpite é o certo.
+    // O SDK devolve "Failed to send a request to the Edge Function" tanto para
+    // função inexistente quanto para resposta bloqueada pelo navegador.
     if (/failed to send a request/i.test(error.message) || resposta?.status === 404) {
-      throw new Error(ERRO_SEM_CHAVE);
+      throw new Error(erroSemResposta(error.message, resposta?.status));
     }
     if (resposta?.status === 401 || resposta?.status === 403) {
       throw new Error('Sessão expirada. Saia e entre de novo para usar a IA.');

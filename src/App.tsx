@@ -9,6 +9,7 @@ import { PenseNisso } from './components/PenseNisso';
 import { lazy, Suspense, useState } from 'react';
 import { Bug, HelpCircle } from 'lucide-react';
 import { MenuFlutuante } from './components/ui/MenuFlutuante';
+import { useSlotInferiorOcupado } from './components/ui/slotFlutuante';
 import { HelpButton } from './components/HelpButton';
 
 /**
@@ -146,11 +147,21 @@ function MenuGlobal() {
   /** Pergunta que a IA não soube responder, levada para o formulário. */
   const [duvidaInicial, setDuvidaInicial] = useState('');
 
+  /*
+    Ele desce para o canto quando o canto está livre.
+
+    Dentro da produção não há botão amarelo, e o menu ficava parado na altura de
+    quem tem um botão embaixo — flutuando com um vão vazio embaixo, ancorado em
+    nada. Na tela inicial ele sobe, porque ali o "criar produção" ocupa o canto.
+  */
+  const ocupado = useSlotInferiorOcupado();
+
   return (
     <>
       <MenuFlutuante
         icone={<HelpCircle size={22} />}
         rotulo="Ajuda e problemas"
+        base={ocupado ? 96 : 24}
         z={2000}
         acoes={[
           {
