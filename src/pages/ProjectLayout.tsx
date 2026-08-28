@@ -3,6 +3,7 @@ import { useParams, useNavigate, Outlet, useLocation, Link, NavLink } from 'reac
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { HelpButton } from '../components/HelpButton';
+import { useOcuparRodape } from '../components/ui/slotFlutuante';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
@@ -70,6 +71,9 @@ export function ProjectLayout() {
   }, [currentPath]);
 
   // Mobile sidebar state
+  /** A barra de baixo do celular, medida para o menu flutuante não cair em cima dela. */
+  const barraDeBaixo = useOcuparRodape();
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // `undefined` é o Dexie ainda respondendo; `null` é resposta dada e não achou.
@@ -308,7 +312,10 @@ export function ProjectLayout() {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="glass-nav mobile-only">
+      {/* Ela se anuncia como ocupante do rodapé, para o menu de ajuda ficar
+          acima dela em vez de por cima do "Mais". No desktop ela vira barra
+          lateral e a medida vai a zero sozinha. */}
+      <nav ref={barraDeBaixo} className="glass-nav mobile-only">
         <NavLink to={`/projeto/${id}`} className={({ isActive }) => `nav-item ${isActive && currentPath === `/projeto/${id}` ? 'active' : ''}`} end>
           <LayoutDashboard size={20} />
           <span style={{ fontSize: '10px', fontWeight: 600 }}>Dash</span>

@@ -8,9 +8,11 @@ interface FloatingActionMenuProps {
 }
 
 export function FloatingActionMenu({ onCriarProjeto }: FloatingActionMenuProps) {
-  // Avisa que o canto de baixo está ocupado, para o menu de ajuda subir e não
-  // desenhar por cima. Quem sai da tela devolve o lugar.
-  useEffect(() => ocuparSlotInferior(), []);
+  /*
+    Anuncia quanto do rodapé ele toma: 24px de folga embaixo mais os 56px do
+    círculo. O menu de ajuda soma a folga dele por cima disso.
+  */
+  useEffect(() => ocuparSlotInferior(24 + 56).soltar, []);
 
   return (
     <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>

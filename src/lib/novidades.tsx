@@ -210,9 +210,15 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
-    versao: '4.5.2',
+    versao: '4.5.3',
     resumo: <>Tudo no formato brasileiro — dinheiro e data.</>,
     itens: [
+      {
+        tipo: 'corrigido',
+        icone: <HelpCircle size={20} />,
+        titulo: 'O botão de ajuda ficava em cima do menu "Mais"',
+        texto: 'No celular e na janela estreita ele caía por cima da barra de baixo, tapando o último botão. Agora ele pousa acima do que estiver ali — a barra no celular, o botão de criar na tela inicial, ou o próprio canto quando não há nada.',
+      },
       {
         tipo: 'corrigido',
         icone: <DollarSign size={20} />,
