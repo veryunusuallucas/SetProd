@@ -21,6 +21,18 @@ import { MOLA } from './ui/ia';
  *   a dúvida, em vez de inventar uma funcionalidade que o app não tem.
  */
 
+/**
+ * O que a tela diz quando a IA não responde.
+ *
+ * Motivo técnico nenhum: "503 UNAVAILABLE, high demand" é verdade e é inútil
+ * para quem está no set com uma dúvida. A frase dá as duas saídas que existem —
+ * o manual, que está logo abaixo e funciona offline, e a caixa de dúvida, que
+ * chega em mim.
+ */
+const IA_DEU_CHABU =
+  'A IA deu chabu e não respondeu. Tenta de novo em um minuto, procura nas seções aqui embaixo, ' +
+  'ou manda a dúvida que ela chega no Viol e ele te explica.';
+
 interface Props {
   style?: React.CSSProperties;
   /** Controle externo — o menu flutuante abre a ajuda sem renderizar o botão. */
@@ -85,7 +97,10 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
       });
       setResposta(texto);
     } catch (e: any) {
-      setErroIA(e?.message || 'Não consegui responder agora. O manual está logo abaixo.');
+      // O motivo real fica aqui, para quem está depurando. Na tela vai a frase
+      // que a pessoa consegue usar.
+      console.error('[SetProd] a IA não respondeu a pergunta de ajuda:', e);
+      setErroIA(IA_DEU_CHABU);
     } finally {
       setPensando(false);
     }
@@ -178,34 +193,52 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
                     </div>
                   )}
 
-                  {erroIA && <div className="text-xs" style={{ marginTop: '8px', color: 'var(--color-danger)' }}>{erroIA}</div>}
+                  {/*
+                    A MENSAGEM DE FALHA NÃO É TÉCNICA, DE PROPÓSITO.
+
+                    Quem abre esta caixa é gente de set com uma dúvida — não vai
+                    fazer nada com "503 UNAVAILABLE, high demand". Erro que a
+                    pessoa não pode resolver e não pode interpretar só serve para
+                    fazê-la achar que quebrou alguma coisa.
+
+                    O detalhe técnico não some: vai para o console, onde é útil
+                    para quem está depurando e invisível para quem não está.
+                  */}
+                  {erroIA && (
+                    <div className="text-xs" style={{ marginTop: '8px', color: 'var(--color-danger)', lineHeight: 1.5 }}>
+                      {erroIA}
+                    </div>
+                  )}
 
                   {resposta && (
-                    <div style={{ marginTop: '12px' }}>
-                      <p className="text-sm" style={{ margin: 0, lineHeight: 1.6 }}>{resposta}</p>
+                    <p className="text-sm" style={{ margin: '12px 0 0', lineHeight: 1.6 }}>{resposta}</p>
+                  )}
 
-                      {/*
-                        A escada de saída.
+                  {/*
+                    A escada de saída.
 
-                        Quando a IA não sabe, o caminho já existia: o formulário
-                        de problema tem o tipo "dúvida" desde sempre, escondido
-                        atrás de um ícone de inseto que ninguém associava a
-                        perguntar. Aqui ele aparece na hora certa, já com a
-                        pergunta digitada.
+                    Quando a IA não sabe, o caminho já existia: o formulário de
+                    problema tem o tipo "dúvida" desde sempre, escondido atrás de
+                    um ícone de inseto que ninguém associava a perguntar. Aqui ele
+                    aparece na hora certa, já com a pergunta digitada.
 
-                        E isso fecha um ciclo útil: as dúvidas que a IA não soube
-                        responder viram a lista do que falta no manual.
-                      */}
-                      {aoPerguntarAoDev && (
-                        <button
-                          onClick={() => { aoPerguntarAoDev(pergunta); fechar(); }}
-                          className="text-xs"
-                          style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px' }}
-                        >
-                          <MessageCircleQuestion size={13} /> Não era isso — mandar a dúvida para o Viol
-                        </button>
-                      )}
-                    </div>
+                    E isso fecha um ciclo útil: as dúvidas que a IA não soube
+                    responder viram a lista do que falta no manual.
+
+                    ⚠️ APARECE NO ERRO TAMBÉM, e antes não aparecia. O botão só
+                    vinha junto da resposta — então justamente quando a IA
+                    falhava, a saída sumia: a mensagem mandava a pessoa relatar a
+                    dúvida e não dava onde. Falha é quando a escada mais importa.
+                  */}
+                  {(resposta || erroIA) && aoPerguntarAoDev && (
+                    <button
+                      onClick={() => { aoPerguntarAoDev(pergunta); fechar(); }}
+                      className="text-xs"
+                      style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                    >
+                      <MessageCircleQuestion size={13} />
+                      {erroIA ? 'Mandar esta dúvida para o Viol' : 'Não era isso — mandar a dúvida para o Viol'}
+                    </button>
                   )}
                 </div>
               )}
