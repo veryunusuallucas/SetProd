@@ -9,7 +9,7 @@ import { PenseNisso } from './components/PenseNisso';
 import { lazy, Suspense, useState } from 'react';
 import { Bug, HelpCircle } from 'lucide-react';
 import { MenuFlutuante } from './components/ui/MenuFlutuante';
-import { useSlotInferiorOcupado } from './components/ui/slotFlutuante';
+import { useAlturaOcupada } from './components/ui/slotFlutuante';
 import { HelpButton } from './components/HelpButton';
 import { AvisoDeVersao } from './components/AvisoDeVersao';
 import { Faiscas } from './components/ui/Faisca';
@@ -157,20 +157,26 @@ function MenuGlobal() {
   const [duvidaInicial, setDuvidaInicial] = useState('');
 
   /*
-    Ele desce para o canto quando o canto está livre.
+    Ele pousa em cima do que estiver embaixo dele — seja o que for.
 
-    Dentro da produção não há botão amarelo, e o menu ficava parado na altura de
-    quem tem um botão embaixo — flutuando com um vão vazio embaixo, ancorado em
-    nada. Na tela inicial ele sobe, porque ali o "criar produção" ocupa o canto.
+    A altura vem de quem ocupa o rodapé, que se anuncia medindo a si mesmo. Na
+    tela inicial é o botão amarelo de criar; dentro da produção, no celular, é a
+    barra de navegação; no desktop ela vira barra lateral e o canto fica livre.
+
+    Altura fixa já errou das duas formas aqui: primeiro alta demais, flutuando
+    num vão vazio dentro da produção; depois baixa demais, caindo em cima do
+    botão "Mais" da barra do celular.
   */
-  const ocupado = useSlotInferiorOcupado();
+  const ocupado = useAlturaOcupada();
+  /** 16px de respiro acima de quem estiver embaixo; 24 do rodapé quando não há ninguém. */
+  const base = ocupado > 0 ? ocupado + 16 : 24;
 
   return (
     <>
       <MenuFlutuante
         icone={<HelpCircle size={22} />}
         rotulo="Ajuda e problemas"
-        base={ocupado ? 96 : 24}
+        base={base}
         z={2000}
         acoes={[
           {
