@@ -7,7 +7,9 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { BugReportModal } from './components/BugReportModal';
 import { PenseNisso } from './components/PenseNisso';
 import { lazy, Suspense, useState } from 'react';
-import { Bug } from 'lucide-react';
+import { Bug, HelpCircle } from 'lucide-react';
+import { MenuFlutuante } from './components/ui/MenuFlutuante';
+import { HelpButton } from './components/HelpButton';
 
 /**
  * As telas de dentro do app carregam sob demanda.
@@ -116,7 +118,7 @@ function App() {
             </Route>
           </Routes>
           </Suspense>
-          <GlobalBugButton />
+          <MenuGlobal />
           <PenseNissoQuandoLogado />
         </div>
       </BrowserRouter>
@@ -124,36 +126,63 @@ function App() {
   );
 }
 
-function GlobalBugButton() {
-  const [show, setShow] = useState(false);
+/**
+ * O botão flutuante do app.
+ *
+ * Era só o de relatar bug. E ali estava escondido, atrás de um ícone de inseto,
+ * o tipo "dúvida" do formulário — que ninguém achava, porque ninguém associa um
+ * inseto a "tenho uma pergunta".
+ *
+ * Agora ele abre duas ações, e a de AJUDA vem em destaque: perguntar é muito
+ * mais comum que relatar defeito, e a ajuda resolve boa parte do que hoje chega
+ * como bug relatado.
+ *
+ * Fica em `z: 2000` — ABAIXO dos modais que ele abre (a ajuda usa 3000). Um menu
+ * flutuante que fica por cima desenha em cima do próprio conteúdo que abriu.
+ */
+function MenuGlobal() {
+  const [bug, setBug] = useState(false);
+  const [ajuda, setAjuda] = useState(false);
+  /** Pergunta que a IA não soube responder, levada para o formulário. */
+  const [duvidaInicial, setDuvidaInicial] = useState('');
 
   return (
     <>
-      <button
-        onClick={() => setShow(true)}
-        className="btn-primary"
-        style={{
-          position: 'fixed',
-          bottom: '96px',
-          right: '24px',
-          zIndex: 9999,
-          borderRadius: '50px',
-          width: '48px',
-          height: '48px',
-          padding: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'var(--bg-surface)',
-          color: 'var(--text-primary)',
-          border: '1px solid var(--border-color)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-        }}
-        title="Relatar Bug ou Sugestão"
-      >
-        <Bug size={24} className="text-danger" />
-      </button>
-      {show && <BugReportModal onClose={() => setShow(false)} />}
+      <MenuFlutuante
+        icone={<HelpCircle size={22} />}
+        rotulo="Ajuda e problemas"
+        z={2000}
+        acoes={[
+          {
+            id: 'bug',
+            icone: <Bug size={16} />,
+            rotulo: 'Relatar problema',
+            onClick: () => { setDuvidaInicial(''); setBug(true); },
+          },
+          {
+            id: 'ajuda',
+            icone: <HelpCircle size={16} />,
+            rotulo: 'Como funciona esta tela',
+            destaque: true,
+            onClick: () => setAjuda(true),
+          },
+        ]}
+      />
+
+      <HelpButton
+        mostrarBotao={false}
+        abertoExterno={ajuda}
+        aoFechar={() => setAjuda(false)}
+        aoPerguntarAoDev={p => { setDuvidaInicial(p); setBug(true); }}
+      />
+
+      {bug && (
+        <BugReportModal
+          onClose={() => { setBug(false); setDuvidaInicial(''); }}
+          descricaoInicial={duvidaInicial}
+          tipoInicial={duvidaInicial ? 'duvida' : 'bug'}
+        />
+      )}
     </>
   );
 }

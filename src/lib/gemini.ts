@@ -508,3 +508,41 @@ ${cabecalhoCena}`);
 
   return resultado;
 }
+
+/**
+ * A ajuda que responde por escrito, só a partir do manual.
+ *
+ * POR QUE NÃO PRECISA DE RAG, EMBEDDINGS NEM BANCO VETORIAL
+ * O manual inteiro são ~20 parágrafos. Cabe no prompt com folga. Toda a
+ * maquinaria de recuperação existe para quando o material não cabe — montá-la
+ * aqui seria resolver um problema que este app não tem.
+ *
+ * A REGRA 1 É A QUE DECIDE SE ISTO PRESTA. Uma IA que inventa funcionalidade
+ * gera um chamado pior do que a dúvida original, e derruba a confiança na ajuda
+ * inteira — inclusive nas respostas que estavam certas.
+ */
+export async function responderDuvida(params: {
+  pergunta: string;
+  manual: string;
+  tela?: string;
+}): Promise<string> {
+  const prompt = [
+    'Você é o assistente de ajuda do SetProd, um app de produção audiovisual.',
+    'Responda à dúvida da pessoa usando SOMENTE o manual abaixo.',
+    '',
+    'REGRAS ABSOLUTAS:',
+    '1. Se a resposta não estiver no manual, diga exatamente que não sabe e sugira',
+    '   mandar a dúvida para o desenvolvedor. NUNCA invente funcionalidade que não existe.',
+    '2. Não descreva como o app é feito por dentro. Descreva o que a pessoa VÊ e FAZ.',
+    '3. Responda em português do Brasil, no máximo 4 frases, direto ao ponto.',
+    '4. Nada de saudação nem de "segundo o manual". Vá direto à resposta.',
+    params.tela ? `5. A pessoa está na tela: ${params.tela}. Prefira o que for relevante a ela.` : '',
+    '',
+    'MANUAL:',
+    params.manual,
+    '',
+    `DÚVIDA: ${params.pergunta}`,
+  ].filter(Boolean).join('\n');
+
+  return (await chamarIA(prompt)).trim();
+}
