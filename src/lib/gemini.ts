@@ -67,15 +67,46 @@ async function chamarIA(prompt: string, schema?: unknown, prazoMs = PRAZO_PADRAO
   }
 
   if (error) {
-    // A função responde o motivo no corpo mesmo quando o status não é 2xx.
-    let detalhe = error.message;
-    try {
-      const corpo = await (error as any).context?.json?.();
-      if (corpo?.erro) detalhe = corpo.erro;
-      // `motivo` traz o texto do próprio Google (cota, modelo inexistente).
-      // Sem ele, todo problema virava a mesma mensagem genérica na tela.
-      if (corpo?.motivo) detalhe += ` [${corpo.motivo}]`;
-    } catch { /* mantém a mensagem original */ }
+    /*
+      Desembrulhar o motivo real, sem NUNCA perder informação no caminho.
+
+      A função responde `{erro: "..."}` no corpo mesmo quando o status não é 2xx,
+      e `error.context` é a própria `Response` — o corpo não foi consumido pelo
+      SDK, então dá para lê-lo.
+
+      ⚠️ MAS NEM SEMPRE O CORPO É JSON. Quando a função QUEBRA — em vez de
+      responder —, a plataforma devolve um texto puro, e o `.json()` estoura. A
+      versão anterior tinha um `catch` vazio ali: o motivo real ia para o lixo e
+      a tela mostrava "Edge Function returned a non-2xx status code" para
+      qualquer coisa. Cota estourada, chave errada e função quebrada viravam a
+      mesma frase, que não diz nada.
+
+      Agora cai para o texto cru, e por último acrescenta o status — que sozinho
+      já separa "429, é cota" de "500, quebrou".
+    */
+    let detalhe = '';
+    const resposta = (error as any).context as Response | undefined;
+
+    if (resposta && typeof resposta.text === 'function') {
+      try {
+        const cru = await resposta.text();
+        try {
+          const corpo = JSON.parse(cru);
+          detalhe = corpo?.erro || '';
+          // `motivo` traz o texto do próprio Google (cota, modelo inexistente).
+          if (corpo?.motivo) detalhe += ` [${corpo.motivo}]`;
+        } catch {
+          // Não era JSON: é o texto de uma função que quebrou. Vale mais que a
+          // mensagem genérica do SDK.
+          detalhe = cru.slice(0, 300);
+        }
+      } catch { /* corpo ilegível; segue para o fallback */ }
+    }
+
+    if (!detalhe) detalhe = error.message;
+    if (resposta?.status && !detalhe.includes(String(resposta.status))) {
+      detalhe += ` (HTTP ${resposta.status})`;
+    }
 
     // Quando a função não existe, o SDK devolve "Failed to send a request to
     // the Edge Function" — que não diz nada a quem está usando o app.
