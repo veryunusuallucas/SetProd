@@ -163,6 +163,21 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
                     </button>
                   </div>
 
+                  {/*
+                    Espera precisa parecer espera.
+
+                    Um botão com "…" e nada mais é indistinguível de uma tela
+                    travada — e a IA pode levar alguns segundos de partida a
+                    frio. A linha diz que está viva, e diz o que fazer enquanto
+                    isso: o manual está logo abaixo, e ele responde offline.
+                  */}
+                  {pensando && (
+                    <div className="text-xs text-muted" style={{ marginTop: '9px', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      <Sparkles size={12} className="girando" />
+                      Consultando o manual… se demorar, a resposta provavelmente está nas seções abaixo.
+                    </div>
+                  )}
+
                   {erroIA && <div className="text-xs" style={{ marginTop: '8px', color: 'var(--color-danger)' }}>{erroIA}</div>}
 
                   {resposta && (

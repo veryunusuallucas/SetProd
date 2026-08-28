@@ -22,15 +22,49 @@ export function iaDisponivel(): boolean {
  * Envia um prompt e devolve o texto. Erros vêm em português, prontos para a tela.
  * Com `schema`, o modelo é obrigado a responder JSON naquele formato.
  */
-async function chamarIA(prompt: string, schema?: unknown): Promise<string> {
+/**
+ * Quanto tempo esperar antes de desistir.
+ *
+ * ⚠️ SEM PRAZO, UMA CHAMADA QUE NÃO VOLTA TRAVA A TELA PARA SEMPRE. O
+ * `functions.invoke` não tem tempo limite próprio: se a função demorar por
+ * partida a frio, cota do Google ou fila cheia, a promessa simplesmente nunca
+ * se resolve — e o botão fica em "…" até a pessoa recarregar a página, sem erro
+ * nenhum no console para explicar.
+ *
+ * O padrão é generoso porque a análise de roteiro é lenta de verdade. Chamadas
+ * curtas passam um prazo menor: esperar dois minutos por uma pergunta de ajuda
+ * é o mesmo que travar.
+ */
+const PRAZO_PADRAO_MS = 120_000;
+
+async function chamarIA(prompt: string, schema?: unknown, prazoMs = PRAZO_PADRAO_MS): Promise<string> {
   if (!supabaseConfigurado) throw new Error(ERRO_SEM_CHAVE);
 
-  // O modelo NÃO vai daqui de propósito: quem escolhe é a Edge Function, que só
-  // aceita Flash. Mandar o modelo pelo navegador seria pedir para alguém trocar
-  // por um caro no inspetor de rede.
-  const { data, error } = await supabase.functions.invoke('gemini', {
-    body: { prompt, ...(schema ? { schema } : {}) },
-  });
+  // AbortController de verdade, e não `Promise.race`: a corrida só faz parar de
+  // esperar, e a requisição continuaria de pé consumindo cota lá atrás.
+  const cancelamento = new AbortController();
+  const relogio = setTimeout(() => cancelamento.abort(), prazoMs);
+
+  let data: any, error: any;
+  try {
+    // O modelo NÃO vai daqui de propósito: quem escolhe é a Edge Function, que
+    // só aceita Flash. Mandar o modelo pelo navegador seria pedir para alguém
+    // trocar por um caro no inspetor de rede.
+    ({ data, error } = await supabase.functions.invoke('gemini', {
+      body: { prompt, ...(schema ? { schema } : {}) },
+      signal: cancelamento.signal,
+    }));
+  } catch (e: any) {
+    if (e?.name === 'AbortError' || cancelamento.signal.aborted) {
+      throw new Error(
+        `A IA demorou mais de ${Math.round(prazoMs / 1000)}s e eu desisti de esperar. ` +
+        'Pode ser fila cheia ou instabilidade — tente de novo em alguns minutos.'
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(relogio);
+  }
 
   if (error) {
     // A função responde o motivo no corpo mesmo quando o status não é 2xx.
@@ -544,5 +578,12 @@ export async function responderDuvida(params: {
     `DÚVIDA: ${params.pergunta}`,
   ].filter(Boolean).join('\n');
 
-  return (await chamarIA(prompt)).trim();
+  /*
+    Prazo curto, e não o padrão de dois minutos.
+
+    A pergunta de ajuda é um prompt pequeno com resposta de quatro frases: se ela
+    não voltou em trinta segundos, alguma coisa está errada. Deixar a pessoa
+    esperando o prazo da análise de roteiro seria travar a tela por engano.
+  */
+  return (await chamarIA(prompt, undefined, 30_000)).trim();
 }
