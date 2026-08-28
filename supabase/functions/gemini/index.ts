@@ -45,6 +45,30 @@ let modeloQueFunciona: string | null = null;
 
 const LIMITE_PROMPT = 200_000; // ~50k tokens: evita conta surpresa
 
+/**
+ * ORÇAMENTO DE TEMPO DA CASCATA.
+ *
+ * ⚠️ A LISTA DE MODELOS É UMA REDE DE SEGURANÇA QUE VIRA ARMADILHA SEM PRAZO.
+ *
+ * Quando um modelo não serve, a função tenta o próximo — e ao fim da lista fixa
+ * ela ainda pergunta ao Google o que mais existe, o que hoje devolve DEZENOVE
+ * modelos Flash. Nenhuma dessas chamadas tinha tempo limite.
+ *
+ * Em dia normal isso não aparece: o primeiro modelo responde. Em dia de
+ * congestionamento — que é exatamente quando a cascata seria útil — cada
+ * tentativa demora, e vinte tentativas lentas somam mais que o prazo do
+ * navegador. Aí a pessoa não recebe "sem cota" nem "modelo indisponível": recebe
+ * silêncio até o app desistir, e o servidor continua tentando para ninguém.
+ *
+ * Dois relógios, então:
+ *
+ *   POR TENTATIVA — um modelo travado não come o orçamento inteiro sozinho.
+ *   PARA A CASCATA — fica abaixo do prazo do cliente (60s), para a resposta ser
+ *   sempre uma frase explicando, e nunca o app cansando de esperar.
+ */
+const PRAZO_POR_MODELO_MS = 20_000;
+const PRAZO_DA_CASCATA_MS = 45_000;
+
 /** Teto por usuário. Uma decupagem de 30 cenas gasta ~60 chamadas no modo minucioso. */
 const LIMITE_POR_USUARIO = 300;
 const JANELA_MS = 60 * 60 * 1000; // 1 hora
@@ -272,8 +296,28 @@ Deno.serve(async (req: Request) => {
   let candidatos = modelosPermitidos();
   let jaDescobriu = false;
 
+  const fimDaCascata = Date.now() + PRAZO_DA_CASCATA_MS;
+
   for (let i = 0; i < candidatos.length; i++) {
     const modelo = candidatos[i];
+
+    /*
+      Parar de tentar ANTES de o cliente desistir.
+
+      Sem isto, o navegador cortava a espera no meio da cascata e a pessoa via
+      "a IA demorou" — uma frase que não diz nada sobre o que houve. Chegando
+      até aqui, o último erro de verdade (sem cota, modelo indisponível) volta
+      como resposta, que é uma informação útil.
+    */
+    if (Date.now() >= fimDaCascata) {
+      console.error(`[gemini] orçamento de ${PRAZO_DA_CASCATA_MS}ms esgotado após ${i} modelo(s).`);
+      ultimoErro = {
+        status: 504,
+        mensagem: 'A IA está lenta demais agora e desisti antes de te deixar esperando. Tente de novo em alguns minutos.',
+        motivo: ultimoErro.motivo,
+      };
+      break;
+    }
 
     // Chegou ao fim da lista fixa sem sucesso: amplia com a descoberta.
     if (i === candidatos.length - 1 && !jaDescobriu) {
@@ -282,10 +326,21 @@ Deno.serve(async (req: Request) => {
       if (achados.length) candidatos = [...candidatos, ...achados];
     }
 
+    // O relógio da tentativa: o que sobra do orçamento, no máximo o teto por
+    // modelo. Assim a última tentativa nunca estoura a cascata inteira.
+    const sobra = Math.min(PRAZO_POR_MODELO_MS, fimDaCascata - Date.now());
+    const cancelamento = new AbortController();
+    const relogio = setTimeout(() => cancelamento.abort(), sobra);
+
     try {
       const resposta = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${chave}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: requisicao }
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: requisicao,
+          signal: cancelamento.signal,
+        }
       );
 
       if (resposta.ok) {
@@ -308,16 +363,25 @@ Deno.serve(async (req: Request) => {
         return json({ erro: 'A chave da IA no servidor é inválida.' }, 500);
       }
 
-      // 404 = modelo não existe para esta chave. 429 = sem cota NESTE modelo
-      // (o nível gratuito varia por modelo). Nos dois casos vale tentar o
-      // próximo da lista antes de desistir — parar no primeiro 429 escondia
-      // um modelo que teria funcionado.
-      if (resposta.status === 404 || resposta.status === 429) {
+      /*
+        404 = modelo não existe para esta chave. 429 = sem cota NESTE modelo (o
+        nível gratuito varia por modelo). 503 = este modelo está congestionado
+        agora. Nos três casos vale tentar o próximo antes de desistir — parar no
+        primeiro escondia um modelo que teria funcionado.
+
+        O 503 estava de fora, e não devia: a própria mensagem do Google diz
+        "spikes in demand are usually temporary", e a lista tem dezenove modelos.
+        Desistir da produção inteira porque UM deles está cheio é jogar fora a
+        rede de segurança bem no dia em que ela existe para isso.
+      */
+      if (resposta.status === 404 || resposta.status === 429 || resposta.status === 503) {
         ultimoErro = {
-          status: resposta.status === 429 ? 429 : 502,
+          status: resposta.status === 404 ? 502 : resposta.status,
           mensagem: resposta.status === 429
             ? 'Sem cota gratuita em nenhum modelo Flash agora. Espere alguns minutos e tente de novo.'
-            : 'Nenhum modelo Flash está disponível para esta chave.',
+            : resposta.status === 503
+              ? 'A IA está congestionada no momento. Espere um minuto e tente de novo.'
+              : 'Nenhum modelo Flash está disponível para esta chave.',
           motivo: resumirErroDoGoogle(detalhe),
         };
         continue;
@@ -328,8 +392,20 @@ Deno.serve(async (req: Request) => {
         motivo: resumirErroDoGoogle(detalhe),
       }, 502);
     } catch (e) {
-      console.error(`Falha ao chamar o Gemini (${modelo}):`, e);
-      ultimoErro = { status: 502, mensagem: 'Não foi possível falar com a IA.', motivo: String(e).slice(0, 200) };
+      // Cancelamento por prazo não é falha da rede: é este modelo demorando. O
+      // próximo pode responder na hora, então a cascata continua.
+      const porPrazo = cancelamento.signal.aborted;
+      console.error(`Falha ao chamar o Gemini (${modelo}):`, porPrazo ? `sem resposta em ${sobra}ms` : e);
+      ultimoErro = {
+        status: porPrazo ? 504 : 502,
+        mensagem: porPrazo
+          ? 'A IA está lenta demais agora e desisti antes de te deixar esperando. Tente de novo em alguns minutos.'
+          : 'Não foi possível falar com a IA.',
+        motivo: porPrazo ? `${modelo} não respondeu em ${Math.round(sobra / 1000)}s` : String(e).slice(0, 200),
+      };
+    } finally {
+      // Sem isto o timer segura a instância viva depois da resposta pronta.
+      clearTimeout(relogio);
     }
   }
 
