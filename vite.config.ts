@@ -20,7 +20,33 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      /*
+        `prompt`, e NÃO `autoUpdate` — que era o que estava aqui e quebrava a
+        tela de quem já estava com o app aberto.
+
+        Com `autoUpdate`, o service worker novo chama `skipWaiting()` assim que
+        chega: assume o controle na hora e apaga o cache do anterior. Só que a
+        aba aberta continua rodando o `index.html` ANTIGO, que carrega as telas
+        sob demanda por nomes com hash — `DashboardGeral-C9rGlOfJ.js`. Esses
+        arquivos acabaram de sumir do cache E do servidor, que agora só tem os
+        novos.
+
+        O resultado apareceu num relato do dia 28:
+
+            TypeError: error loading dynamically imported module:
+            .../assets/DashboardGeral-C9rGlOfJ.js
+
+        A pessoa clica numa aba e a tela não abre. Nada de errado com a
+        internet, nada de errado com o código — o app se serrou pela metade
+        sozinho, e a única saída era o Ctrl+Shift+F5 que o Lucas tinha que ficar
+        pedindo no grupo.
+
+        Com `prompt`, o service worker novo ESPERA. O cache antigo continua de
+        pé, a aba aberta segue funcionando, e a troca acontece quando a pessoa
+        aceita — no `AvisoDeVersao`. Trocar durante a diária, sem avisar, é o
+        que não pode.
+      */
+      registerType: 'prompt',
       includeAssets: ['favicon.svg'],
       workbox: {
         // As fontes base do pdf.js (.pfb/.ttf) entram no cache offline: sem
