@@ -241,8 +241,29 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
             return (
               <div
                 key={grupo.id}
+                /*
+                  `flexShrink: 0` NÃO É ENFEITE — SEM ELE O MODAL NÃO ROLA.
+
+                  O pai é uma coluna flex com `overflow-y: auto`. Nessa
+                  combinação, item de flex ENCOLHE antes de transbordar: em vez
+                  de o conteúdo passar do fundo e virar barra de rolagem, os
+                  cartões espremem-se para caber. O contêiner então mede que
+                  cabe tudo e não oferece rolagem nenhuma.
+
+                  E o que estava sobrando era cortado aqui mesmo, pelo
+                  `overflow: hidden` que existe só para o conteúdo respeitar o
+                  canto arredondado. Ou seja: o card ficava em 344px com 479px
+                  de texto dentro, e os 135px que faltavam não eram alcançáveis
+                  por rolagem nem por nada — sumiam.
+
+                  Normalmente o `min-height: auto` do flex impede esse encolhimento.
+                  Mas ele vale só para item com `overflow: visible`; qualquer outro
+                  valor faz o mínimo automático virar zero. O arredondamento da
+                  borda, portanto, foi o que autorizou o card a encolher — e é por
+                  isso que o defeito parecia não ter relação com layout.
+                */
                 style={{
-                  borderRadius: '14px', overflow: 'hidden',
+                  borderRadius: '14px', overflow: 'hidden', flexShrink: 0,
                   border: '1px solid var(--border-light)',
                   borderLeft: `3px solid ${grupo.cor}`,
                   backgroundColor: 'var(--bg-primary)',
