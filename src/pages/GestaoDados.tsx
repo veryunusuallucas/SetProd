@@ -74,6 +74,16 @@ export function GestaoDados() {
   const limparTodos = () => setSelecionados(new Set());
 
   const escolhidos = CONJUNTOS.filter(c => selecionados.has(c.id));
+
+  /**
+   * Está tudo o que dá para marcar já marcado?
+   *
+   * Conta só o que a pessoa PODE escolher: quem não administra nunca alcança os
+   * conjuntos sensíveis, e comparar com o total faria o botão nunca virar
+   * Limpar para ela.
+   */
+  const selecionaveis = CONJUNTOS.filter(c => !c.sensivel || podeVerFichaCompleta);
+  const tudoMarcado = selecionaveis.length > 0 && selecionaveis.every(c => selecionados.has(c.id));
   const temSensivel = escolhidos.some(c => c.sensivel);
 
   /** Carrega as tabelas dos conjuntos escolhidos, na ordem em que aparecem na tela. */
@@ -239,14 +249,23 @@ export function GestaoDados() {
             <h3 className="text-lg font-bold">O que exportar</h3>
             <p className="text-xs text-muted">{escolhidos.length} de {CONJUNTOS.length} conjuntos selecionados</p>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={marcarTodos} className="btn-icon" style={{ padding: '6px 12px', border: '1px solid var(--border-light)', fontSize: '12px', gap: '6px' }}>
-              <CheckSquare size={14} /> Tudo
-            </button>
-            <button onClick={limparTodos} className="btn-icon" style={{ padding: '6px 12px', border: '1px solid var(--border-light)', fontSize: '12px', gap: '6px' }}>
-              <Square size={14} /> Limpar
-            </button>
-          </div>
+          {/*
+            UM BOTÃO QUE ALTERNA, no lugar de "Tudo" e "Limpar" lado a lado.
+
+            Eram dois retângulos apertados no canto, e um deles estava sempre
+            errado: com 14 de 15 marcados, "Tudo" quase não faz nada e "Limpar"
+            é a ação óbvia. Deixar as duas ali obriga a pessoa a decidir o que a
+            própria tela já sabe.
+
+            E eram `.btn-icon` com texto dentro — a classe é 40x40 fixo, e o
+            próprio CSS avisa contra isso. `.btn-chip` é a que aceita rótulo.
+          */}
+          <button
+            onClick={tudoMarcado ? limparTodos : marcarTodos}
+            className="btn-chip"
+          >
+            {tudoMarcado ? <><Square size={14} /> Limpar seleção</> : <><CheckSquare size={14} /> Selecionar tudo</>}
+          </button>
         </div>
 
         {ORDEM_GRUPOS.map(grupo => {
@@ -258,7 +277,7 @@ export function GestaoDados() {
               <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '6px' }}>
                 {grupo}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
                 {doGrupo.map(c => {
                   const marcado = selecionados.has(c.id);
                   /*

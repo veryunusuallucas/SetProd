@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Download, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Download, Edit2, Trash2, Check } from 'lucide-react';
 import { ProfileCard } from './ui/ProfileCard';
 import { useRole } from '../hooks/useRole';
+import { contrasteSobre } from '../lib/contraste';
 
 export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDepartamento?: (id: string) => void }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -210,37 +211,67 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
             
             <div>
               <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Cor do Departamento (Mural de Tarefas)</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <input 
-                  type="color" 
-                  value={corDepto}
-                  onChange={e => setCorDepto(e.target.value)}
-                  style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    padding: 0, 
-                    border: 'none', 
-                    borderRadius: '8px', 
-                    cursor: 'pointer',
-                    backgroundColor: 'transparent'
-                  }}
-                />
-                <span className="text-sm font-bold">{corDepto}</span>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {CORES_DISPONIVEIS.map(c => (
+
+              {/*
+                As amostras são REDONDAS agora, e não quadradinhos de canto
+                arredondado. Quadrado com raio pequeno lê como botão; círculo lê
+                como cor. Eram onze retângulos numa fileira e o olho não sabia
+                qual deles era o seletor livre e quais eram as opções.
+
+                A marca de escolha vai DENTRO da amostra: a borda fina de antes
+                mal se via sobre cor escura, e sobre cor clara se confundia com
+                a própria borda do elemento.
+              */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {CORES_DISPONIVEIS.map(c => {
+                  const escolhida = corDepto.toLowerCase() === c.toLowerCase();
+                  return (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setCorDepto(c)}
                       title={c}
+                      aria-pressed={escolhida}
                       style={{
-                        width: '24px', height: '24px', borderRadius: '6px', backgroundColor: c,
-                        border: corDepto.toLowerCase() === c.toLowerCase() ? '2px solid var(--text-primary)' : '1px solid var(--border-light)',
-                        cursor: 'pointer', padding: 0
+                        width: '30px', height: '30px', borderRadius: '50%', backgroundColor: c,
+                        border: escolhida ? '2px solid var(--text-primary)' : '1px solid var(--border-light)',
+                        cursor: 'pointer', padding: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        // Área de toque real sem inchar o desenho: o círculo tem
+                        // 30px, o alvo do dedo tem 30 + a folga do gap.
+                        outlineOffset: '2px',
                       }}
-                    />
-                  ))}
-                </div>
+                    >
+                      {/* ✓ com contraste CALCULADO sobre a cor, nunca branco fixo:
+                          sobre amarelo ou verde-claro o branco simplesmente some,
+                          e a amostra escolhida ficaria igual às outras. */}
+                      {escolhida && <Check size={15} strokeWidth={3} color={contrasteSobre(c)} />}
+                    </button>
+                  );
+                })}
+
+                {/* O seletor livre fica no fim e ANUNCIADO, porque antes ele era
+                    o primeiro da fileira e parecia mais uma opção da paleta. */}
+                <label
+                  className="btn-chip"
+                  style={{ cursor: 'pointer', gap: '8px' }}
+                  title="Escolher outra cor"
+                >
+                  <span
+                    style={{
+                      width: '16px', height: '16px', borderRadius: '50%',
+                      backgroundColor: corDepto, border: '1px solid var(--border-light)',
+                      display: 'inline-block', flexShrink: 0,
+                    }}
+                  />
+                  Outra…
+                  <input
+                    type="color"
+                    value={corDepto}
+                    onChange={e => setCorDepto(e.target.value)}
+                    style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+                  />
+                </label>
               </div>
             </div>
 

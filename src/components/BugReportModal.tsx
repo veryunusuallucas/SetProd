@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { db } from '../db/db';
 import { supabase } from '../lib/supabase';
 import { obterEventos, coletarAmbiente } from '../lib/diagnostico';
@@ -22,6 +22,12 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [copiado, setCopiado] = useState(false);
+
+  /** O relógio do fechamento automático, para poder cancelá-lo ao desmontar. */
+  const fechamentoAutomatico = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (fechamentoAutomatico.current) clearTimeout(fechamentoAutomatico.current);
+  }, []);
 
   const eventos = obterEventos();
   const qtdErros = eventos.filter(e => e.nivel !== 'warn').length;
@@ -86,7 +92,24 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
       }
 
       setEnviado(true);
-      setTimeout(onClose, 2000);
+
+      /*
+        O fechamento é automático, mas NÃO É UMA PRISÃO DE DOIS SEGUNDOS.
+
+        Antes o `setTimeout` era a única saída: a pessoa lia "Enviei!", entendia
+        na hora, e ficava presa olhando um modal que já tinha terminado. Nunca
+        travar a entrada durante uma transição vale mais ainda quando não há
+        transição nenhuma — só espera.
+
+        O ✕ continua funcionando o tempo todo; o relógio abaixo só cuida de quem
+        não fez nada. E ele é cancelado ao desmontar, senão `onClose` dispararia
+        depois de o modal já ter saído.
+
+        Clique fora este modal não tem, e é de propósito: ele guarda um texto
+        digitado, e fechar sem querer custaria o relato inteiro.
+      */
+      const relogio = setTimeout(onClose, 2000);
+      fechamentoAutomatico.current = relogio;
     } catch (e: any) {
       setErro('Erro ao processar: ' + (e?.message || e));
     } finally {
