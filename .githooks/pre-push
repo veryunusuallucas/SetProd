@@ -1,0 +1,4 @@
+#!/bin/sh
+# Roda antes de cada push. Ver scripts/verifica-novidades.mjs.
+# Ligado por: git config core.hooksPath .githooks
+exec node scripts/verifica-novidades.mjs
