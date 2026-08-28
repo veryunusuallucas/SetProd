@@ -84,39 +84,54 @@ async function chamarIA(prompt: string, schema?: unknown, prazoMs = PRAZO_PADRAO
       Agora cai para o texto cru, e por último acrescenta o status — que sozinho
       já separa "429, é cota" de "500, quebrou".
     */
-    let detalhe = '';
+    let daFuncao = '';
+    let cru = '';
     const resposta = (error as any).context as Response | undefined;
 
     if (resposta && typeof resposta.text === 'function') {
       try {
-        const cru = await resposta.text();
-        try {
-          const corpo = JSON.parse(cru);
-          detalhe = corpo?.erro || '';
-          // `motivo` traz o texto do próprio Google (cota, modelo inexistente).
-          if (corpo?.motivo) detalhe += ` [${corpo.motivo}]`;
-        } catch {
-          // Não era JSON: é o texto de uma função que quebrou. Vale mais que a
-          // mensagem genérica do SDK.
-          detalhe = cru.slice(0, 300);
-        }
-      } catch { /* corpo ilegível; segue para o fallback */ }
+        cru = await resposta.text();
+        const corpo = JSON.parse(cru);
+        daFuncao = corpo?.erro || '';
+        // `motivo` traz o texto do próprio Google (cota, modelo inexistente).
+        if (corpo?.motivo) daFuncao += ` [${corpo.motivo}]`;
+      } catch { /* não era JSON: `cru` continua valendo como texto */ }
     }
 
-    if (!detalhe) detalhe = error.message;
-    if (resposta?.status && !detalhe.includes(String(resposta.status))) {
-      detalhe += ` (HTTP ${resposta.status})`;
+    /*
+      QUANDO A FUNÇÃO RESPONDEU, ELA É A VERDADE. Ponto.
+
+      A versão anterior reinterpretava o texto inteiro procurando "404" e "not
+      found" — e a mensagem da função CARREGA esses termos, porque o `motivo`
+      dela é o texto cru do Google, e o Google diz "model ... is not found" quando
+      um modelo não existe para a chave.
+
+      Resultado: um problema de MODELO virava na tela "a função não está publicada
+      no Supabase", que é falso e manda procurar defeito no lugar errado — eu
+      mesmo teria ido conferir o deploy de uma função que estava lá o tempo todo.
+
+      Os palpites abaixo só valem quando NÃO houve resposta estruturada, que é
+      justamente quando não há nada melhor a dizer.
+    */
+    if (daFuncao) {
+      throw new Error(
+        resposta?.status && resposta.status !== 502
+          ? `${daFuncao} (HTTP ${resposta.status})`
+          : daFuncao
+      );
     }
 
-    // Quando a função não existe, o SDK devolve "Failed to send a request to
-    // the Edge Function" — que não diz nada a quem está usando o app.
-    if (/not found|404|failed to send a request/i.test(detalhe)) {
+    const detalhe = cru.slice(0, 300) || error.message;
+
+    // O SDK devolve "Failed to send a request to the Edge Function" quando a
+    // função não existe — e aí sim o palpite é o certo.
+    if (/failed to send a request/i.test(error.message) || resposta?.status === 404) {
       throw new Error(ERRO_SEM_CHAVE);
     }
-    if (/401|403|jwt/i.test(detalhe)) {
+    if (resposta?.status === 401 || resposta?.status === 403) {
       throw new Error('Sessão expirada. Saia e entre de novo para usar a IA.');
     }
-    throw new Error(detalhe);
+    throw new Error(resposta?.status ? `${detalhe} (HTTP ${resposta.status})` : detalhe);
   }
 
   if (data?.erro) throw new Error(data.erro);
@@ -617,4 +632,24 @@ export async function responderDuvida(params: {
     esperando o prazo da análise de roteiro seria travar a tela por engano.
   */
   return (await chamarIA(prompt, undefined, 30_000)).trim();
+}
+
+/**
+ * Que modelos a chave do servidor de fato aceita.
+ *
+ * A função já tinha esse diagnóstico embutido e nada no app o chamava — então
+ * "nenhum modelo Flash disponível para esta chave" era um beco: a mensagem
+ * dizia o problema e não havia como conferir a lista sem abrir o painel do
+ * Google.
+ *
+ * Devolve só nomes de modelo. A chave nunca sai do servidor.
+ */
+export async function modelosDisponiveis(): Promise<string[]> {
+  if (!supabaseConfigurado) throw new Error(ERRO_SEM_CHAVE);
+
+  const { data, error } = await supabase.functions.invoke('gemini', {
+    body: { listarModelos: true },
+  });
+  if (error) throw new Error(error.message);
+  return (data?.modelos as string[]) ?? [];
 }
