@@ -3,9 +3,21 @@ import { db } from '../db/db';
 import { supabase } from '../lib/supabase';
 import { obterEventos, coletarAmbiente } from '../lib/diagnostico';
 
-export function BugReportModal({ onClose }: { onClose: () => void }) {
-  const [tipo, setTipo] = useState<'bug' | 'sugestao' | 'duvida'>('bug');
-  const [descricao, setDescricao] = useState('');
+interface Props {
+  onClose: () => void;
+  /**
+   * A pergunta que a IA da ajuda não soube responder.
+   *
+   * Chega já escrita para a pessoa não ter que redigitar — quem acabou de não
+   * ser atendido não deveria pagar o preço de repetir a dúvida.
+   */
+  descricaoInicial?: string;
+  tipoInicial?: 'bug' | 'sugestao' | 'duvida';
+}
+
+export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = 'bug' }: Props) {
+  const [tipo, setTipo] = useState<'bug' | 'sugestao' | 'duvida'>(tipoInicial);
+  const [descricao, setDescricao] = useState(descricaoInicial);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
