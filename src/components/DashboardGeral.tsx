@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText } from 'lucide-react';
 import { CalendarioDashboard } from './CalendarioDashboard';
 import { FilaRepescagem } from './FilaRepescagem';
+import { AvisoDeRitmo } from './AvisoDeRitmo';
 import { calcularProgresso } from '../lib/registroSet';
 import { oitavosParaPaginas } from '../lib/decupagem';
 import { Numero } from './ui/Numero';
@@ -108,6 +109,16 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
           <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>{projeto.nome}</h2>
         </div>
       </div>
+
+      {/*
+        O ritmo vem ANTES da fila, e a ordem importa.
+
+        A fila diz "estas cenas ficaram para trás"; o ritmo diz "e por isso o
+        filme não cabe mais nos dias que sobraram". Uma é a lista de tarefas, a
+        outra é a consequência — e é a consequência que faz alguém marcar mais
+        um dia enquanto ainda dá tempo.
+      */}
+      <AvisoDeRitmo projetoId={projetoId} />
 
       {/* No topo, e não no fim: cena que ficou para trás é a informação mais
           perecível do app. Enterrada no rodapé, ela vira descoberta na véspera

@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Archive, X, AlertTriangle, Check, CircleDashed, CircleSlash, Scissors } from 'lucide-react';
 import { oitavosParaPaginas } from '../lib/decupagem';
-import { marcarCena, relatorioDoDia, ROTULO } from '../lib/registroSet';
+import { marcarCena, relatorioDoDia, ROTULO, MOTIVOS } from '../lib/registroSet';
+import { db } from '../db/db';
 import { MOLA } from './ui/ia';
 import type { Cena, RegistroCena, StatusCena } from '../types';
 
@@ -47,6 +48,24 @@ export function FechamentoDiaria({
   const [fechando, setFechando] = useState(false);
 
   const r = relatorioDoDia(cenas, registros);
+
+  /**
+   * O que ficou para trás e ainda não tem motivo.
+   *
+   * ⚠️ O MOTIVO É OBRIGATÓRIO, E ESTE É O ÚNICO CAMPO DO APP QUE TRANCA UM BOTÃO.
+   *
+   * "Cena 12 não gravada" não serve para decidir nada — a decisão seguinte
+   * depende do porquê: chuva reagenda para o mesmo set, elenco reagenda para a
+   * agenda da pessoa, tempo significa que o dia foi mal dimensionado. Sem o
+   * motivo, a repescagem vira uma lista de dívidas sem explicação, e daqui a
+   * duas semanas ninguém lembra.
+   *
+   * É também o campo em que a indústria insiste no DPR, e pela mesma razão.
+   */
+  const semMotivo = [...r.naoGravadas, ...r.parciais].filter(cena => {
+    const reg = registros.find(x => x.cena_id === cena.id);
+    return !reg?.motivo;
+  });
   const cumprimento = r.oitavosPrevistos > 0
     ? Math.round((r.oitavosGravados / r.oitavosPrevistos) * 100)
     : null;
@@ -56,7 +75,14 @@ export function FechamentoDiaria({
     await marcarCena(projetoId, diariaId, cenaId, status, { registrado_por: meuPerfilId });
   };
 
+  /** Grava o porquê na marcação que já existe. */
+  const definirMotivo = async (cenaId: string, motivo: string) => {
+    const atual = registros.find(x => x.cena_id === cenaId);
+    if (atual) await db.registros_cena.update(atual.id, { motivo });
+  };
+
   const confirmar = async () => {
+    if (semMotivo.length > 0) return;
     setFechando(true);
     aoFechar(notas.trim());
   };
@@ -172,13 +198,67 @@ export function FechamentoDiaria({
               {[...r.naoGravadas, ...r.parciais].map(cena => {
                 const reg = registros.find(x => x.cena_id === cena.id);
                 return (
-                  <div key={cena.id} className="text-sm" style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{reg && ICONE[reg.status]}</span>
-                    <span style={{ flex: 1 }}>
-                      <strong>Cena {cena.numero}</strong> · {cena.descricao}
-                      {reg?.motivo && <span className="text-muted"> — {reg.motivo}</span>}
-                      {reg?.observacao && <span className="text-muted"> ({reg.observacao})</span>}
-                    </span>
+                  <div
+                    key={cena.id}
+                    style={{
+                      padding: '10px 12px', borderRadius: '10px',
+                      background: 'var(--bg-primary)',
+                      border: `1px solid ${reg?.motivo ? 'var(--border-light)' : 'var(--color-danger)'}`,
+                    }}
+                  >
+                    <div className="text-sm" style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{reg && ICONE[reg.status]}</span>
+                      <span style={{ flex: 1 }}>
+                        <strong>Cena {cena.numero}</strong> · {cena.descricao}
+                        {reg?.observacao && <span className="text-muted"> ({reg.observacao})</span>}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      <span className="text-xs text-muted" style={{ alignSelf: 'center' }}>por quê:</span>
+                      {MOTIVOS.map(m => {
+                        const escolhido = reg?.motivo === m;
+                        return (
+                          <button
+                            key={m}
+                            onClick={() => definirMotivo(cena.id, m)}
+                            className="text-xs"
+                            style={{
+                              padding: '3px 10px', borderRadius: '20px', cursor: 'pointer',
+                              border: `1px solid ${escolhido ? 'var(--accent)' : 'var(--border-light)'}`,
+                              background: escolhido ? 'var(--accent)' : 'transparent',
+                              color: escolhido ? '#000' : 'var(--text-secondary)',
+                            }}
+                          >
+                            {m}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/*
+                      O texto livre fica ao lado da etiqueta, não no lugar dela.
+
+                      A etiqueta é o que o app consegue somar depois ("três dias
+                      perdidos por chuva"); a frase é o que a pessoa vai ler
+                      daqui a um mês. "Company move levou 90min a mais por
+                      estacionamento e carga" vale muito mais que "atrasou".
+                    */}
+                    <input
+                      defaultValue={reg?.observacao || ''}
+                      onBlur={async e => {
+                        if (reg && (reg.observacao || '') !== e.target.value) {
+                          await db.registros_cena.update(reg.id, { observacao: e.target.value || undefined });
+                        }
+                      }}
+                      placeholder="O que aconteceu, com detalhe (opcional)"
+                      className="text-xs"
+                      style={{
+                        width: '100%', marginTop: '8px', padding: '6px 8px', borderRadius: '8px',
+                        border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
                   </div>
                 );
               })}
@@ -207,13 +287,21 @@ export function FechamentoDiaria({
           <button className="btn" onClick={aoCancelar} style={{ flex: 1, justifyContent: 'center' }}>
             Cancelar
           </button>
-          <button className="btn btn-primary" onClick={confirmar} disabled={fechando} style={{ flex: 2, justifyContent: 'center' }}>
-            <Archive size={16} /> {fechando ? 'Fechando…' : 'Fechar e gerar relatório'}
+          <button
+            className="btn btn-primary"
+            onClick={confirmar}
+            disabled={fechando || semMotivo.length > 0}
+            style={{ flex: 2, justifyContent: 'center', opacity: semMotivo.length > 0 ? 0.5 : 1 }}
+            title={semMotivo.length > 0 ? 'Falta dizer por que cada cena não saiu' : undefined}
+          >
+            <Archive size={16} /> {fechando ? 'Fechando…' : 'Fechar e gerar o DPR'}
           </button>
         </div>
 
-        <p className="text-xs text-muted" style={{ marginTop: '10px', textAlign: 'center' }}>
-          A diária pode ser reaberta depois. Nada é apagado.
+        <p className="text-xs" style={{ marginTop: '10px', textAlign: 'center', color: semMotivo.length > 0 ? 'var(--color-danger)' : 'var(--text-muted)' }}>
+          {semMotivo.length > 0
+            ? `Falta o motivo de ${semMotivo.map(c => `Cena ${c.numero}`).join(', ')}.`
+            : 'A diária pode ser reaberta depois. Nada é apagado.'}
         </p>
       </motion.div>
     </div>,

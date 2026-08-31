@@ -56,7 +56,7 @@ export function StripboardTimeline({
   ) || [];
 
   const gravacoes = useMemo(
-    () => estadosDaTira(registros, new Set(diarias.filter(d => d.fechada).map(d => d.id))),
+    () => estadosDaTira(registros, new Map(diarias.filter(d => d.fechada).map(d => [d.id, d.numero]))),
     [registros, diarias]
   );
 
@@ -252,25 +252,38 @@ const ROTULO_TIRA: Record<EstadoNaTira, string> = {
   vencida: 'Não gravou, e a diária já fechou',
 };
 
+export interface EstadoDaCena {
+  estado: EstadoNaTira;
+  /** De qual diária a pendência veio. Só existe quando o estado é `vencida`. */
+  veioDaDiaria?: number;
+}
+
 /**
  * Junta os registros de filmagem num mapa `cena → estado da tira`.
  *
  * Vale o registro MAIS RECENTE de cada cena, como em todo o resto: uma cena
  * parcial no dia 3 e gravada no dia 7 está gravada.
+ *
+ * O número da diária viaja junto com a pendência porque "esta cena ficou para
+ * trás" é metade da informação — a outra metade é DE QUANDO. Uma cena que caiu
+ * na diária de ontem e uma que caiu há três semanas pedem decisões diferentes,
+ * e a tira precisa dizer qual é qual sem obrigar ninguém a abrir a fila.
  */
 export function estadosDaTira(
   registros: RegistroCena[],
-  diariasFechadas: Set<string>
-): Map<string, EstadoNaTira> {
-  const mapa = new Map<string, EstadoNaTira>();
+  diariasFechadas: Map<string, number>
+): Map<string, EstadoDaCena> {
+  const mapa = new Map<string, EstadoDaCena>();
 
   for (const [cenaId, r] of estadoAtualDasCenas(registros)) {
-    if (r.status === 'gravada') mapa.set(cenaId, 'gravada');
-    else if (r.status === 'parcial') mapa.set(cenaId, 'parcial');
-    else if (r.status === 'cortada') mapa.set(cenaId, 'cortada');
+    if (r.status === 'gravada') mapa.set(cenaId, { estado: 'gravada' });
+    else if (r.status === 'parcial') mapa.set(cenaId, { estado: 'parcial' });
+    else if (r.status === 'cortada') mapa.set(cenaId, { estado: 'cortada' });
     // Só é alerta se o dia dela já acabou. Cena não gravada numa diária em
     // andamento é o dia acontecendo, não uma pendência.
-    else if (diariasFechadas.has(r.diaria_id)) mapa.set(cenaId, 'vencida');
+    else if (diariasFechadas.has(r.diaria_id)) {
+      mapa.set(cenaId, { estado: 'vencida', veioDaDiaria: diariasFechadas.get(r.diaria_id) });
+    }
   }
 
   return mapa;
@@ -284,7 +297,7 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
   alca: any;
   onVerNoRoteiro: () => void;
   /** O que aconteceu com esta cena no set. `undefined` = ninguém marcou ainda. */
-  gravacao?: EstadoNaTira;
+  gravacao?: EstadoDaCena;
 }) {
   const strip = getStripboardColor(cena.ambiente, cena.periodo);
   const campo: React.CSSProperties = {
@@ -309,9 +322,9 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
       não gravada
         e vencida      contorno de alerta — a diária dela fechou e ela ficou
   */
-  const risco = gravacao === 'gravada';
-  const fantasma = gravacao === 'cortada';
-  const alerta = gravacao === 'vencida';
+  const risco = gravacao?.estado === 'gravada';
+  const fantasma = gravacao?.estado === 'cortada';
+  const alerta = gravacao?.estado === 'vencida';
 
   return (
     <div style={{
@@ -320,7 +333,7 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
       opacity: fantasma ? 0.35 : risco ? 0.55 : 1,
       // A hachura da parcial vai POR CIMA da cor da tarja, sem substituí-la —
       // as duas informações continuam legíveis ao mesmo tempo.
-      backgroundImage: gravacao === 'parcial'
+      backgroundImage: gravacao?.estado === 'parcial'
         ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.16) 0 6px, transparent 6px 12px)'
         : undefined,
       outline: alerta ? '2px solid var(--color-danger, #f87171)' : undefined,
@@ -335,11 +348,34 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
           nenhuma delas basta. */}
       {gravacao && (
         <span
-          title={ROTULO_TIRA[gravacao]}
-          aria-label={ROTULO_TIRA[gravacao]}
+          title={ROTULO_TIRA[gravacao.estado]}
+          aria-label={ROTULO_TIRA[gravacao.estado]}
           style={{ display: 'flex', flexShrink: 0, opacity: 0.9 }}
         >
-          {ICONE_TIRA[gravacao]}
+          {ICONE_TIRA[gravacao.estado]}
+        </span>
+      )}
+
+      {/*
+        A ETIQUETA DA PENDÊNCIA (spec §7.1).
+
+        O contorno vermelho diz que algo está errado; só a etiqueta diz o quê.
+        Ela vem em cima da própria tarja, com a cor de fundo escura por baixo do
+        texto, para não depender de contraste com as quatro cores possíveis de
+        tarja — o mesmo texto teria que ser legível sobre amarelo e sobre
+        azul-escuro, e nenhuma cor de letra sozinha resolve isso.
+      */}
+      {alerta && (
+        <span
+          className="desktop-only"
+          style={{
+            flexShrink: 0, padding: '2px 8px', borderRadius: '20px',
+            fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.06em',
+            backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffb4b4', whiteSpace: 'nowrap',
+          }}
+          title="Ela foi programada, o dia fechou e ela não saiu. Arraste para um novo dia."
+        >
+          PENDENTE{gravacao?.veioDaDiaria !== undefined ? ` — D${String(gravacao.veioDaDiaria).padStart(2, '0')}` : ''}
         </span>
       )}
 

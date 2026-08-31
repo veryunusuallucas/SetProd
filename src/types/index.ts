@@ -294,6 +294,51 @@ export interface Diaria {
 
   // ---- Blocos da Ordem do Dia ----
   horarios?: HorarioOD[]; // Cronograma do dia (chamada, refeições, wrap...)
+
+  /**
+   * A linha do tempo do dia — cenas, refeições, deslocamentos e marcos juntos.
+   *
+   * ⚠️ SUBSTITUI `horarios` + `cena_ids` COMO ORDEM DO DIA, mas não apaga
+   * nenhum dos dois. `cena_ids` continua sendo a verdade sobre QUAIS cenas
+   * foram escaladas — é ele que o stripboard escreve, que a exportação lê e que
+   * o fechamento confere. A linha do tempo diz QUANDO e EM QUE ORDEM.
+   *
+   * Quando este campo não existe, `lib/linhaDoDia.ts` monta uma a partir dos
+   * outros dois. Foi de propósito: nenhuma diária antiga precisa ser migrada, e
+   * a linha só é gravada quando alguém de fato mexe nela.
+   */
+  linha_do_tempo?: ItemDoDia[];
+
+  /** Chamada geral — o horário de onde todo o resto é encadeado. */
+  chamada?: string;
+
+  /**
+   * O dia dividido em frentes, por grupo/equipe (spec §3).
+   *
+   * ⚠️ NÃO EXISTE UM BOTÃO "DIVIDIR DIÁRIA", E ISSO É O DESENHO, NÃO UM ATRASO.
+   *
+   * A divisão *é* a escalação: escalou dois grupos, o dia tem duas frentes;
+   * tirou um, volta a ser um dia só. Um botão à parte criaria o estado que
+   * envenena esse tipo de tela — a frente existindo vazia, ou duas equipes
+   * escaladas num dia que o app insiste em mostrar como único.
+   *
+   * A chave é o `id` do grupo em `Projeto.grupos`. Só guarda o que é PRÓPRIO
+   * de cada frente; data, financeiro e projeto continuam do dia inteiro.
+   */
+  frentes?: Record<string, {
+    /**
+     * As cenas desta frente.
+     *
+     * As cenas NÃO se dividem sozinhas entre as frentes — quem filma o quê é
+     * decisão de produção, e um rateio automático acertaria por acaso. Cena
+     * escalada no dia e ainda fora de todas as frentes aparece num aviso, para
+     * ser colocada; ela nunca some em silêncio.
+     */
+    cena_ids?: string[];
+    locacoes_ids?: string[];
+    linha_do_tempo?: ItemDoDia[];
+    chamada?: string;
+  }>;
   transporte?: string; // Logística: vans, quem vai com quem, pontos de encontro
   comboios?: Comboio[];
 
@@ -374,6 +419,42 @@ export interface HorarioOD {
   id: string;
   hora: string; // "07:00"
   evento: string; // "Chamada geral", "Almoço", "Wrap"
+}
+
+/**
+ * O que pode ocupar um pedaço do dia.
+ *
+ * São os mesmos tipos do stripboard, e isso é proposital: o dia que sai da
+ * quebra do stripboard chega aqui sem tradução, com as pausas e os
+ * deslocamentos que já estavam planejados lá.
+ */
+export type TipoItemDia = 'cena' | 'marco' | 'almoco' | 'move' | 'nota';
+
+export interface ItemDoDia {
+  id: string;
+  tipo: TipoItemDia;
+  /** Só quando `tipo === 'cena'`. Aponta para uma cena global do projeto. */
+  cena_id?: string;
+  /** Texto do marco/banner. Cena não usa: o rótulo dela é o próprio heading. */
+  titulo?: string;
+  /**
+   * Minutos que o item consome do dia.
+   *
+   * Cena sem este campo cai na `estimativa` dela (do Master Shot List). Ter os
+   * dois é o que permite dizer "hoje esta cena vai demorar mais" sem mudar a
+   * estimativa do projeto inteiro.
+   */
+  duracao_min?: number;
+  /**
+   * Horário escrito à mão. O cálculo automático NÃO mexe nele — pelo
+   * contrário, reinicia o encadeamento a partir dele.
+   *
+   * É a válvula de escape da §2.2. Horário calculado é sugestão; horário
+   * travado é decisão, e decisão de gente ganha de conta de máquina.
+   */
+  hora_travada?: string;
+  /** Modo interativo: a hora em que o item de fato começou. */
+  hora_real?: string;
 }
 
 export interface AnexoOD {

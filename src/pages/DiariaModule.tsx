@@ -3,8 +3,8 @@ import { dinheiro } from '../lib/formato';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { ArrowLeft, Users, MapPin, CheckSquare, SplitSquareHorizontal, Plus, Trash2, Clock, Bus, Paperclip, UserCheck, FileDown, CloudSun, Wallet, Cross, Phone, Archive, Lock } from 'lucide-react';
-import type { DiariaTask, HorarioOD, AnexoOD, Locacao } from '../types';
+import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, UserCheck, FileDown, Wallet, Archive, Lock } from 'lucide-react';
+import type { DiariaTask, AnexoOD, Locacao, ItemDoDia } from '../types';
 import { logAction } from '../lib/audit';
 import { parseCoords, buscarClima, descreverClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
 import { formatarDistancia, linkRota } from '../lib/osm';
@@ -15,10 +15,15 @@ import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
-import { marcarCena } from '../lib/registroSet';
+import { marcarCena, relatorioDoDia } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
+import { LinhaDoDia } from '../components/LinhaDoDia';
+import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, emMinutos } from '../lib/linhaDoDia';
 import { ResumoEquipamento } from '../components/ResumoEquipamento';
+import { CardDeLocacao } from '../components/CardDeLocacao';
+import { AvisoDeRitmo } from '../components/AvisoDeRitmo';
+import { Colapsavel } from '../components/ui/Colapsavel';
 import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
 
@@ -64,13 +69,12 @@ export function DiariaModule() {
   ) || [];
 
   const [fechamentoAberto, setFechamentoAberto] = useState(false);
-  const { perfilId: meuPerfilId } = useRole();
+  const { perfilId: meuPerfilId, canEditProducao: podeMarcarODia } = useRole();
 
   const [newTask, setNewTask] = useState('');
+  const [frenteAberta, setFrenteAberta] = useState<string | null>(null);
   const [selecionandoEquipe, setSelecionandoEquipe] = useState(false);
   const [selecionandoLocacoes, setSelecionandoLocacoes] = useState(false);
-  const [novaHora, setNovaHora] = useState('');
-  const [novoEvento, setNovoEvento] = useState('');
 
   const [climas, setClimas] = useState<ClimaPorLocal[]>([]);
   const [climaStatus, setClimaStatus] = useState<'idle' | 'carregando' | 'ok' | 'erro' | 'sem_coords'>('idle');
@@ -84,6 +88,41 @@ export function DiariaModule() {
   });
 
   /*
+    ---- AS FRENTES DO DIA (spec §3) ----
+
+    O conceito de "Unidade A/B" deixou de existir como sistema próprio. A
+    divisão do dia vem dos GRUPOS que já se criam na Produção — eram dois
+    conceitos fazendo quase a mesma coisa, e manter os dois obrigava a produção
+    a escalar a equipe duas vezes, uma em cada lugar.
+
+    Um grupo conta como escalado quando TODA a gente dele está no dia. Meia
+    equipe escalada não é uma frente: é uma escalação em andamento, e transformar
+    isso em duas abas atrapalharia justamente quem ainda está montando o dia.
+  */
+  const gruposDoProjeto = projeto?.grupos || [];
+  const idsEscalados = new Set(diaria?.equipe_escalada || []);
+  const gruposEscalados = gruposDoProjeto.filter(
+    g => g.perfis_ids.length > 0 && g.perfis_ids.every(id => idsEscalados.has(id))
+  );
+  const dividido = gruposEscalados.length >= 2;
+  const frenteId = dividido
+    ? (gruposEscalados.some(g => g.id === frenteAberta) ? frenteAberta! : gruposEscalados[0].id)
+    : null;
+  const grupoDaFrente = gruposEscalados.find(g => g.id === frenteId);
+  const frente = frenteId ? (diaria?.frentes || {})[frenteId] : undefined;
+
+  /**
+   * Todas as locações do dia — a união das frentes quando ele está dividido.
+   *
+   * A previsão do tempo e o hospital são buscados por aqui, e não pela aba
+   * aberta: trocar de aba não pode disparar uma busca nova, e a OD impressa
+   * precisa dos dois sets, não só do que estava na tela na hora de exportar.
+   */
+  const idsDasLocacoesDoDia = dividido
+    ? Array.from(new Set(gruposEscalados.flatMap(g => (diaria?.frentes || {})[g.id]?.locacoes_ids || [])))
+    : (diaria?.locacoes_ids || []);
+
+  /*
     TODAS as locações do dia que tenham coordenadas — não só a primeira.
 
     Antes isto era um `.find()`: com dois sets, o app buscava o clima de um deles
@@ -91,7 +130,7 @@ export function DiariaModule() {
     dela — a previsão do set errado é pior que previsão nenhuma, porque a equipe
     se veste pela informação errada achando que está informada.
   */
-  const locaisDoDia = (diaria?.locacoes_ids || [])
+  const locaisDoDia = idsDasLocacoesDoDia
     .map(id => locacoes.find(l => l.id === id))
     .filter((l): l is Locacao => Boolean(l && parseCoords(l.coordenadas)));
 
@@ -139,8 +178,55 @@ export function DiariaModule() {
 
   const escalados = perfis.filter(p => (diaria.equipe_escalada || []).includes(p.id));
 
-  const toggleUnidadeB = async () => {
-    await db.diarias.update(diariaId!, { tem_unidade_b: !diaria.tem_unidade_b });
+  /** Quem aparece na aba aberta. Sem divisão, é o dia inteiro. */
+  const escaladosDaVisao = dividido
+    ? escalados.filter(p => grupoDaFrente?.perfis_ids.includes(p.id))
+    : escalados;
+
+  /** As locações da aba aberta. */
+  const locacoesDaVisao = dividido ? (frente?.locacoes_ids || []) : (diaria.locacoes_ids || []);
+
+  /**
+   * De onde a linha do tempo sai, e para onde ela volta.
+   *
+   * Estes quatro juntos são o que permite a `LinhaDoDia` não saber se está
+   * mexendo na diária ou numa frente dentro dela.
+   */
+  const visaoDoDia = dividido
+    ? { linha_do_tempo: frente?.linha_do_tempo, cena_ids: frente?.cena_ids || [] }
+    : diaria;
+  const chamadaDaVisao = dividido ? frente?.chamada : diaria.chamada;
+
+  const gravarNaFrente = async (campos: Record<string, unknown>) => {
+    if (!frenteId) return;
+    const frentes = { ...(diaria.frentes || {}) };
+    frentes[frenteId] = { ...(frentes[frenteId] || {}), ...campos };
+    await db.diarias.update(diariaId!, { frentes });
+  };
+
+  const gravarLinha = (linha: ItemDoDia[]) =>
+    dividido ? gravarNaFrente({ linha_do_tempo: linha }) : db.diarias.update(diariaId!, { linha_do_tempo: linha });
+
+  const gravarChamada = (hora: string) =>
+    dividido ? gravarNaFrente({ chamada: hora }) : db.diarias.update(diariaId!, { chamada: hora });
+
+  /** Cenas escaladas no dia que ainda não foram para nenhuma frente. */
+  const cenasEmFrentes = new Set(
+    gruposEscalados.flatMap(g => (diaria.frentes || {})[g.id]?.cena_ids || [])
+  );
+  const cenasOrfas = dividido ? cenasDaDiaria.filter(c => !cenasEmFrentes.has(c.id)) : [];
+
+  const trazerOrfasParaAFrente = () =>
+    gravarNaFrente({ cena_ids: [...(frente?.cena_ids || []), ...cenasOrfas.map(c => c.id)] });
+
+  const climaDaLocacao = (locacaoId: string) =>
+    climas.find(c => c.locacao.id === locacaoId)?.clima;
+
+  /** Por que este set não tem previsão. Silêncio aqui vira "o app está quebrado". */
+  const motivoSemClima = (loc: Locacao) => {
+    if (!parseCoords(loc.coordenadas)) return 'Falta a coordenada desta locação — cadastre em Locações.';
+    if (climaStatus === 'carregando') return 'Consultando a previsão…';
+    return 'Previsão indisponível: sem internet, ou data fora da janela de ~16 dias.';
   };
 
   const addTask = async (e: React.FormEvent) => {
@@ -174,22 +260,12 @@ export function DiariaModule() {
     await db.diarias.update(diariaId!, { equipe_escalada: Array.from(equipeAtual) });
   };
   const toggleLocacao = async (locId: string) => {
-    const locs = diaria.locacoes_ids || [];
+    const locs = locacoesDaVisao;
     const novas = locs.includes(locId) ? locs.filter(id => id !== locId) : [...locs, locId];
-    await db.diarias.update(diariaId!, { locacoes_ids: novas });
-  };
-
-  // ---- Horários ----
-  const addHorario = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!novaHora || !novoEvento.trim()) return;
-    const item: HorarioOD = { id: crypto.randomUUID(), hora: novaHora, evento: novoEvento.trim() };
-    const lista = [...(diaria.horarios || []), item].sort((a, b) => a.hora.localeCompare(b.hora));
-    await db.diarias.update(diariaId!, { horarios: lista });
-    setNovaHora(''); setNovoEvento('');
-  };
-  const removeHorario = async (hid: string) => {
-    await db.diarias.update(diariaId!, { horarios: (diaria.horarios || []).filter(h => h.id !== hid) });
+    // Dia dividido: a locação é da frente, não do dia. É o ponto todo de dividir —
+    // duas equipes em dois lugares diferentes ao mesmo tempo.
+    if (dividido) await gravarNaFrente({ locacoes_ids: novas });
+    else await db.diarias.update(diariaId!, { locacoes_ids: novas });
   };
 
   // ---- Transporte & Comboios ----
@@ -294,9 +370,19 @@ export function DiariaModule() {
 
   const formataData = (d: string) => { const [a, m, dia] = d.split('-'); return `${dia}/${m}/${a.slice(-2)}`; };
 
-  // Locações da diária que têm hospital confirmado (v4 §4.2)
-  const locsDaDiaria = (diaria.locacoes_ids || []).map(lid => locacoes.find(l => l.id === lid)).filter(Boolean) as typeof locacoes;
-  const locsComHospital = locsDaDiaria.filter(l => l.hospital_proximo);
+  /** As locações da aba aberta — são estas que viram cartão na tela. */
+  const locsDaDiaria = locacoesDaVisao.map(lid => locacoes.find(l => l.id === lid)).filter(Boolean) as typeof locacoes;
+
+  /*
+    O bloco de emergência da OD impressa olha o DIA INTEIRO, não a aba.
+
+    Quem imprime está exportando o documento do dia, e um papel de segurança que
+    traz o hospital de uma frente e omite o da outra é pior que nenhum: quem
+    está na frente que ficou de fora acha que está coberto.
+  */
+  const locsComHospital = idsDasLocacoesDoDia
+    .map(lid => locacoes.find(l => l.id === lid))
+    .filter((l): l is Locacao => Boolean(l?.hospital_proximo));
 
   const rotaHospital = (loc: typeof locacoes[number]) => {
     const origem = parseCoords(loc.coordenadas);
@@ -360,12 +446,22 @@ export function DiariaModule() {
 
     if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Fechou a Diária ${diaria.numero}`);
     setFechamentoAberto(false);
-    gerarResumoFechamento();
+    gerarDPR();
   };
 
-  const gerarResumoFechamento = () => {
+  /**
+   * O DPR — Relatório Diário de Produção (spec §6).
+   *
+   * O nome na indústria é Daily Production Report, e ele não é um resumo bonito
+   * do dia: é o documento de prestação de contas. O que ele tem de diferente de
+   * um resumo é o que ficou de FORA — cena agendada e não filmada, com o motivo
+   * de cada uma; hora real contra hora planejada; quem faltou. É a metade
+   * incômoda, e é justamente a que decide o que acontece amanhã.
+   */
+  const gerarDPR = () => {
     const tarefasFeitas = tasks.filter(t => t.status === 'concluido').length;
     const confirmados = (diaria.confirmacoes || []).filter(cid => (diaria.equipe_escalada || []).includes(cid)).length;
+    const relatorio = relatorioDoDia(cenasDaDiaria, registrosDoDia);
 
     const linhasDespesas = despesasDiaria.map(d => {
       const quemPagou = d.pagadores.map(p => {
@@ -377,19 +473,49 @@ export function DiariaModule() {
       return `<tr><td>${d.descricao}</td><td>${d.categoria || '-'}</td><td>${quemPagou}</td><td style="text-align:right"><b>${dinheiro(d.valor_total)}</b></td></tr>`;
     }).join('');
 
-    const linhasCenas = (diaria.cena_ids || []).map(cid => {
-      const c = cenasGlobais.find(x => x.id === cid);
-      if (!c) return '';
-      return `<li><b>Cena ${c.numero}</b> — ${c.descricao} (${(c.ambiente || 'ext').toUpperCase()} / ${c.periodo || 'dia'})</li>`;
+    /*
+      Planejado contra realizado, lado a lado.
+
+      É a leitura que o DPR existe para permitir. Só os horários reais não dizem
+      nada; só os planejados descrevem um dia que não aconteceu. A diferença
+      entre as duas colunas é o relatório.
+    */
+    const dia = calcularDia(montarLinhaDoDia(diaria), diaria.chamada, id => cenasGlobais.find(c => c.id === id));
+    const atraso = calcularAtraso(dia);
+    const linhasTempo = dia.itens.map(c => {
+      const rotulo = c.cena
+        ? `<b>Cena ${c.cena.numero}</b> — ${c.cena.descricao}`
+        : (c.item.titulo || '—');
+      const real = c.item.hora_real;
+      const diff = real ? emMinutos(real)! - c.inicio : null;
+      return `<tr>
+        <td style="white-space:nowrap">${c.hora}</td>
+        <td style="white-space:nowrap"><b>${real || '—'}</b></td>
+        <td style="white-space:nowrap" class="${diff !== null && diff > 5 ? 'alerta' : 'muted'}">${diff !== null && Math.abs(diff) >= 5 ? descreverAtraso(diff) : ''}</td>
+        <td>${rotulo}</td>
+      </tr>`;
     }).join('');
 
-    const linhasEquipe = escalados
-      .map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔' : ''}</li>`)
-      .join('');
+    const linhaCena = (c: typeof cenasDaDiaria[number]) => {
+      const reg = registrosDoDia.find(x => x.cena_id === c.id);
+      return `<li><b>Cena ${c.numero}</b> — ${c.descricao} <span class="muted">(${(c.ambiente || 'ext').toUpperCase()} / ${c.periodo || 'dia'})</span>${
+        reg?.motivo ? ` — <b class="alerta">${reg.motivo}</b>` : ''
+      }${reg?.observacao ? ` <span class="muted">${reg.observacao}</span>` : ''}</li>`;
+    };
+
+    /*
+      Ausência é campo do DPR, não fofoca.
+
+      Quem foi escalado e não confirmou presença aparece aqui porque isso muda
+      dinheiro (diária paga a quem não veio), escala (o dia seguinte conta com
+      essa pessoa) e responsabilidade. Sai como "sem confirmação", que é o que o
+      app de fato sabe — dizer "faltou" seria afirmar mais do que se pode.
+    */
+    const semConfirmar = escalados.filter(p => !(diaria.confirmacoes || []).includes(p.id));
 
     const estouro = limiteGasto > 0 && totalGasto > limiteGasto;
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Fechamento — Diária ${diaria.numero}</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>DPR — Diária ${diaria.numero}</title>
       <style>
         body{font-family:Arial,sans-serif;color:#111;padding:40px;max-width:820px;margin:0 auto}
         h1{margin:0;font-size:26px}
@@ -405,19 +531,32 @@ export function DiariaModule() {
         .alerta{color:#c0392b}
       </style></head><body>
       <h1>${projeto?.nome || 'Produção'}</h1>
-      <div class="muted">Fechamento da Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
+      <div class="muted">Relatório Diário de Produção (DPR) — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
 
       <div class="kpis">
+        <div class="kpi"><div class="rot">Cenas filmadas</div><div class="val">${relatorio.gravadas.length} de ${cenasDaDiaria.length}</div></div>
+        <div class="kpi"><div class="rot">Não filmadas</div><div class="val ${relatorio.naoGravadas.length ? 'alerta' : ''}">${relatorio.naoGravadas.length}</div></div>
+        <div class="kpi"><div class="rot">Wrap</div><div class="val">${atraso.wrapPrevisto || '—'}</div></div>
         <div class="kpi"><div class="rot">Gasto do dia</div><div class="val ${estouro ? 'alerta' : ''}">${dinheiro(totalGasto)}</div></div>
-        <div class="kpi"><div class="rot">Valor ideal</div><div class="val">${valorIdeal > 0 ? `${dinheiro(valorIdeal)}` : '—'}</div></div>
-        <div class="kpi"><div class="rot">Valor máximo</div><div class="val">${limiteGasto > 0 ? `${dinheiro(limiteGasto)}` : '—'}</div></div>
         <div class="kpi"><div class="rot">Equipe</div><div class="val">${confirmados}/${escalados.length}</div></div>
         <div class="kpi"><div class="rot">Checklist</div><div class="val">${tarefasFeitas}/${tasks.length}</div></div>
       </div>
       ${estouro ? '<p class="alerta"><b>Atenção:</b> o gasto do dia passou do valor máximo definido.</p>' : ''}
+      ${atraso.marcados > 0 && Math.abs(atraso.minutos) >= 5
+        ? `<p class="${atraso.minutos > 0 ? 'alerta' : ''}"><b>O dia terminou ${descreverAtraso(atraso.minutos)}</b> — wrap às ${atraso.wrapPrevisto}, planejado ${atraso.wrapPlanejado}.</p>`
+        : ''}
 
-      ${linhasCenas ? `<h2>Cenas programadas</h2><ul>${linhasCenas}</ul>` : ''}
-      ${linhasEquipe ? `<h2>Equipe do dia (✔ = presença confirmada)</h2><ul>${linhasEquipe}</ul>` : ''}
+      ${linhasTempo ? `<h2>Horários — planejado × real</h2>
+        <table><tr><th>Previsto</th><th>Real</th><th>Diferença</th><th>O quê</th></tr>${linhasTempo}</table>` : ''}
+
+      ${relatorio.gravadas.length ? `<h2>Cenas filmadas</h2><ul>${relatorio.gravadas.map(linhaCena).join('')}</ul>` : ''}
+      ${relatorio.parciais.length ? `<h2>Cenas parciais</h2><ul>${relatorio.parciais.map(linhaCena).join('')}</ul>` : ''}
+      ${relatorio.naoGravadas.length ? `<h2>Cenas agendadas e NÃO filmadas</h2><ul>${relatorio.naoGravadas.map(linhaCena).join('')}</ul>
+        <p class="muted" style="font-size:12px">Voltam ao stripboard como pendentes, prontas para reagendar.</p>` : ''}
+
+      <h2>Equipe do dia</h2>
+      <ul>${escalados.map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔' : ''}</li>`).join('')}</ul>
+      ${semConfirmar.length ? `<p class="alerta"><b>Sem confirmação de presença:</b> ${semConfirmar.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}.</p>` : ''}
 
       <h2>Prestação de contas</h2>
       ${linhasDespesas
@@ -425,19 +564,32 @@ export function DiariaModule() {
            <tr><td colspan="3"><b>Total</b></td><td style="text-align:right"><b>${dinheiro(totalGasto)}</b></td></tr></table>`
         : '<p class="muted">Nenhuma despesa lançada nesta diária.</p>'}
 
-      ${diaria.observacoes ? `<h2>Observações</h2><p>${diaria.observacoes.replace(/\n/g, '<br>')}</p>` : ''}
+      ${diaria.observacoes ? `<h2>Ocorrências e observações</h2><p>${diaria.observacoes.replace(/\n/g, '<br>')}</p>` : ''}
 
       <p class="muted" style="margin-top:40px;font-size:11px">Gerado pelo SetProd em ${new Date().toLocaleString('pt-BR')}. Os dados permanecem salvos no projeto.</p>
       </body></html>`;
 
-    if (!imprimirHtml(html)) baixarHtml(html, `resumo-diaria-${diaria.numero}`);
+    if (!imprimirHtml(html)) baixarHtml(html, `dpr-diaria-${diaria.numero}`);
   };
 
   // ---- Exportar OD em PDF (via impressão do navegador) ----
   const exportarPDF = async () => {
-    const nomeLoc = (diaria.locacoes_ids || []).map(id => locacoes.find(l => l.id === id)).filter(Boolean);
+    const nomeLoc = idsDasLocacoesDoDia.map(id => locacoes.find(l => l.id === id)).filter(Boolean);
     const linhaEquipe = escalados.map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔ confirmado' : ''}</li>`).join('');
-    const linhaHorarios = (diaria.horarios || []).map(h => `<tr><td style="padding:4px 12px;font-weight:bold">${h.hora}</td><td style="padding:4px 12px">${h.evento}</td></tr>`).join('');
+    /*
+      O cronograma impresso sai da MESMA linha do tempo que está na tela.
+
+      Antes ele lia `diaria.horarios`, que era outra lista — a equipe recebia um
+      papel com a chamada e o almoço, e nenhuma das cenas do dia. Agora sai o
+      dia inteiro, cenas incluídas, com os horários já encadeados.
+    */
+    const diaCalculado = calcularDia(montarLinhaDoDia(diaria), diaria.chamada, id => cenasGlobais.find(c => c.id === id));
+    const linhaHorarios = diaCalculado.itens.map(c => {
+      const rotulo = c.cena
+        ? `<b>Cena ${c.cena.numero}</b> — ${c.cena.descricao} <span class="muted">(${(c.cena.ambiente || 'ext').toUpperCase()} / ${c.cena.periodo || 'dia'})</span>`
+        : (c.item.titulo || '—');
+      return `<tr><td style="padding:4px 12px;font-weight:bold;white-space:nowrap">${c.hora}</td><td style="padding:4px 12px">${rotulo}</td></tr>`;
+    }).join('');
     const linhaLoc = nomeLoc.map((l: any) => `<li><b>${l.nome}</b> — ${l.endereco}${l.hospital_proximo ? ` · Hospital: ${l.hospital_proximo}` : ''}</li>`).join('');
     const linhaTasks = tasks.map(t => `<li>${t.status === 'concluido' ? '☑' : '☐'} ${t.descricao}</li>`).join('');
 
@@ -454,7 +606,7 @@ export function DiariaModule() {
       h1{margin:0}h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:24px;font-size:15px;text-transform:uppercase}
       table{border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px}li{margin:2px 0}.muted{color:#666}</style></head><body>
       <h1>${projeto?.nome || 'Produção'}</h1>
-      <div class="muted">Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}${diaria.tem_unidade_b ? ' · Unidades A+B' : ''}</div>
+      <div class="muted">Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
       ${/*
           A previsão impressa traz TODOS os sets do dia, com o nome de cada um.
           Sem o nome, a equipe lia uma previsão sem saber de onde ela era — e
@@ -463,7 +615,7 @@ export function DiariaModule() {
       ${exportConfig.clima && gruposDeClima.length > 0 ? `<h2>Previsão</h2>${
         gruposDeClima.map(g => `<p><b>${g.locais.join(' · ')}</b><br>${descreverClima(g.clima.code).emoji} ${descreverClima(g.clima.code).texto} · Nascer ${g.clima.sunrise||'--'} · Pôr ${g.clima.sunset||'--'} · Máx ${Math.round(g.clima.tempMax)}° / Mín ${Math.round(g.clima.tempMin)}° · Chuva ${g.clima.chuvaProb}%</p>`).join('')
       }` : ''}
-      ${exportConfig.horarios && linhaHorarios ? `<h2>Horários</h2><table>${linhaHorarios}</table>` : ''}
+      ${exportConfig.horarios && linhaHorarios ? `<h2>Linha do dia</h2><table style="width:100%">${linhaHorarios}</table>${diaCalculado.wrap ? `<p class="muted" style="font-size:12px">Wrap previsto: <b>${diaCalculado.wrap}</b></p>` : ''}` : ''}
       ${exportConfig.locacoes && linhaLoc ? `<h2>Locações</h2><ul>${linhaLoc}</ul>` : ''}
       ${exportConfig.equipe && linhaEquipe ? `<h2>Equipe Escalada</h2><ul>${linhaEquipe}</ul>` : ''}
       ${exportConfig.transporte && ((diaria.comboios && diaria.comboios.length > 0) || diaria.transporte) ? `
@@ -502,38 +654,59 @@ export function DiariaModule() {
     if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Exportou OD da Diária ${diaria.numero}`);
   };
 
-  const card: React.CSSProperties = { };
-
   return (
-    <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      {/*
+        ---- NÍVEL 1: a faixa de contexto (spec §10) ----
+        Densa e pequena de propósito. Ela responde "que dia é este e em que pé
+        ele está" numa linha, e devolve a tela para o cronograma, que é o que se
+        olha o tempo todo no set.
+      */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         <button onClick={() => navigate(`/projeto/${projetoId}/diarias`)} className="btn-icon"><ArrowLeft size={20} /></button>
-        <div style={{ flex: 1 }}>
-          <h1 className="text-xl font-bold">Diária {String(diaria.numero).padStart(2, '0')}</h1>
-          <p className="text-sm text-secondary">{formataData(diaria.data)}</p>
-        </div>
-        
-        <AIButton onClick={() => setGeradorAberto(true)}>
-          Gerar OD com IA
-        </AIButton>
 
-        <button onClick={() => setExportModalAberto(true)} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)' }}>
-          <FileDown size={16} /> OD Simples
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <h1 className="text-xl font-bold" style={{ lineHeight: 1.2 }}>
+            Diária {String(diaria.numero).padStart(2, '0')}
+          </h1>
+          <div className="text-sm text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>{formataData(diaria.data)}</span>
+            <span className="text-muted">·</span>
+            <span>{escalados.length} na equipe</span>
+            <span className="text-muted">·</span>
+            <span
+              className="text-xs font-bold uppercase tracking-widest"
+              style={{ color: diaria.fechada ? 'var(--color-success)' : diaria.estado === 'publicada' ? 'var(--cor-set)' : 'var(--text-muted)' }}
+            >
+              {diaria.fechada ? 'Fechada' : diaria.estado === 'publicada' ? 'Publicada' : 'Rascunho'}
+            </span>
+          </div>
+        </div>
+
+        <AIButton onClick={() => setGeradorAberto(true)}>Gerar OD com IA</AIButton>
+
+        <button onClick={() => setExportModalAberto(true)} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', width: 'auto', padding: '0 14px', }}>
+          <FileDown size={16} /> Exportar OD
         </button>
 
         <button
           onClick={fecharDiaria}
           className="btn-icon"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)' }}
-          title={diaria.fechada ? 'Reabrir a diária para edição' : 'Gerar o resumo de fechamento (os dados continuam salvos)'}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', width: 'auto', padding: '0 14px', }}
+          title={diaria.fechada ? 'Reabrir a diária para edição' : 'Fazer o relatório do dia (DPR) e arquivar'}
         >
           {diaria.fechada ? <><Lock size={16} /> Reabrir</> : <><Archive size={16} /> Fechar Diária</>}
         </button>
       </div>
 
+      {/* O atraso acumulado do projeto também aparece aqui, e não só no
+          dashboard: quem está montando o dia de amanhã é exatamente quem pode
+          fazer alguma coisa a respeito. Some sozinho quando não há atraso. */}
+      <AvisoDeRitmo projetoId={projetoId!} />
+
       {diaria.fechada && (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '4px solid var(--color-success)' }}>
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '3px solid var(--color-success)' }}>
           <Archive size={18} className="text-success" />
           <div style={{ flex: 1 }}>
             <div className="font-bold text-sm">Diária fechada</div>
@@ -541,289 +714,289 @@ export function DiariaModule() {
               Arquivada em {diaria.data_fechamento ? new Date(diaria.data_fechamento).toLocaleString('pt-BR') : '—'}. Os dados continuam no banco.
             </div>
           </div>
-          <button onClick={gerarResumoFechamento} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border-light)', padding: '6px 12px' }}>
-            <FileDown size={14} /> <span className="text-xs">Resumo</span>
+          <button onClick={gerarDPR} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border-light)', padding: '6px 12px' }}>
+            <FileDown size={14} /> <span className="text-xs">Relatório (DPR)</span>
           </button>
         </div>
       )}
 
-      {/* Overview */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-widest text-secondary mb-1">Estrutura</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-              <SplitSquareHorizontal size={18} /> {diaria.tem_unidade_b ? 'Unidade A + B' : 'Unidade Única (A)'}
+      {/*
+        ---- As frentes do dia (spec §3) ----
+        Aparecem só quando dois ou mais grupos estão escalados. Com um grupo, ou
+        nenhum, esta faixa não existe — e é por isso que a caixa "Estrutura —
+        Unidade Única (A)" foi embora: ela ocupava lugar em 95% das diárias para
+        dizer que nada de especial estava acontecendo.
+      */}
+      {dividido && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span className="text-xs text-muted uppercase tracking-widest" style={{ marginRight: '4px' }}>
+            <Users size={12} style={{ display: 'inline', verticalAlign: '-2px' }} /> Duas frentes hoje
+          </span>
+          {gruposEscalados.map(g => (
+            <button
+              key={g.id}
+              onClick={() => setFrenteAberta(g.id)}
+              className="text-sm font-bold"
+              style={{
+                padding: '7px 16px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
+                border: `1px solid ${frenteId === g.id ? 'var(--cor-equipe)' : 'var(--border-light)'}`,
+                backgroundColor: frenteId === g.id ? 'var(--cor-equipe)' : 'transparent',
+                color: frenteId === g.id ? '#062c28' : 'var(--text-secondary)',
+              }}
+            >
+              {g.nome} <span style={{ opacity: 0.7, fontWeight: 'normal' }}>· {g.perfis_ids.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/*
+        ---- Layout assimétrico (spec §12.1) ----
+        ~2/3 para o cronograma, ~1/3 para os cartões de apoio. Colunas iguais
+        ficariam monótonas e não respeitariam a forma do conteúdo: a linha do
+        dia é vertical e longa, os cartões são compactos.
+
+        `minmax(0, …)` nas duas faixas, e não `2fr 1fr` puro: sem isso, uma
+        tabela larga dentro da coluna principal força a grade a crescer e a
+        página inteira ganha rolagem horizontal.
+      */}
+      <div className="diaria-grade">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0 }}>
+
+          {/* A ponte com o stripboard vem ANTES da linha: é ela que explica por
+              que o dia é o que é, e se ele ainda pode mudar sozinho. */}
+          <SincroniaStripboard diaria={diaria} />
+
+          {/* Cenas do dia que ainda não foram para nenhuma frente. Sem este
+              aviso elas sumiriam da tela ao dia se dividir — escaladas no
+              banco, invisíveis para quem monta o dia. */}
+          {dividido && cenasOrfas.length > 0 && (
+            <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', borderLeft: '3px solid var(--color-warning)' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <div className="text-sm font-bold">
+                  {cenasOrfas.length} cena{cenasOrfas.length > 1 ? 's' : ''} do dia ainda sem frente
+                </div>
+                <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                  {cenasOrfas.map(c => `Cena ${c.numero}`).join(', ')} — decida qual equipe filma cada uma.
+                </div>
+              </div>
+              <button onClick={trazerOrfasParaAFrente} className="btn-secondary text-xs">
+                Trazer para {grupoDaFrente?.nome}
+              </button>
             </div>
-          </div>
-          <button onClick={toggleUnidadeB} className="text-xs btn-icon" style={{ padding: '4px 12px', border: '1px solid var(--border-color)' }}>Alternar</button>
+          )}
+
+          <LinhaDoDia
+            diaria={diaria}
+            visao={visaoDoDia}
+            chamada={chamadaDaVisao}
+            aoGravar={gravarLinha}
+            aoMudarChamada={gravarChamada}
+            cenas={cenasGlobais}
+            registros={registrosDoDia}
+            meuPerfilId={meuPerfilId || undefined}
+            podeMarcar={podeMarcarODia}
+            planosPorCena={planosDaCena}
+          />
+
+          {/* Shot List (cenas e planos decupados) */}
+          <ShotList diaria={diaria as any} locacoes={locacoes} />
         </div>
 
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <div className="text-xs font-bold uppercase tracking-widest text-secondary">Locações (Sets)</div>
-            <button onClick={() => setSelecionandoLocacoes(!selecionandoLocacoes)} className="text-xs text-accent font-bold" style={{ background: 'none', border: 'none' }}>Editar</button>
+        {/* ---- NÍVEL 3: cartões de apoio ---- */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0 }}>
+
+          {/* Locação: o exemplo-mestre do agrupamento por afinidade (§9.1).
+              Lugar, tempo daquele lugar e hospital daquele lugar, juntos. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MapPin size={15} style={{ color: 'var(--cor-logistica)' }} /> Locações do dia
+            </h2>
+            <button onClick={() => setSelecionandoLocacoes(!selecionandoLocacoes)} className="text-xs text-accent font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              {selecionandoLocacoes ? 'Pronto' : 'Editar'}
+            </button>
           </div>
+
           {selecionandoLocacoes ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
               {locacoes.length === 0 && <div className="text-muted text-xs">Cadastre locações no módulo Locações.</div>}
               {locacoes.map(loc => (
                 <label key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={(diaria.locacoes_ids || []).includes(loc.id)} onChange={() => toggleLocacao(loc.id)} />
+                  <input type="checkbox" checked={locacoesDaVisao.includes(loc.id)} onChange={() => toggleLocacao(loc.id)} />
                   {loc.nome}
                 </label>
               ))}
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {(diaria.locacoes_ids || []).map(locId => {
-                const loc = locacoes.find(l => l.id === locId);
-                return loc ? <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}><MapPin size={14} className="text-muted" /> {loc.nome}</div> : null;
-              })}
-              {(!diaria.locacoes_ids || diaria.locacoes_ids.length === 0) && <div className="text-muted text-sm">Nenhuma locação definida.</div>}
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <div className="text-xs font-bold uppercase tracking-widest text-secondary">Equipe Escalada</div>
-            <button onClick={() => setSelecionandoEquipe(!selecionandoEquipe)} className="text-xs text-accent font-bold" style={{ background: 'none', border: 'none' }}>Editar</button>
-          </div>
-          {selecionandoEquipe ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }} className="hide-scrollbar">
-                {departamentos.map(dep => (
-                  <button key={dep.id} onClick={() => escalarDepartamento(dep.id)} className="text-xs" style={{ padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', whiteSpace: 'nowrap' }}>
-                    + {dep.nome}
-                  </button>
-                ))}
-                {(projeto?.grupos || []).map(g => (
-                  <button key={g.id} onClick={() => escalarGrupo(g.id)} className="text-xs" style={{ padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--accent)', backgroundColor: 'var(--bg-primary)', color: 'var(--accent)', whiteSpace: 'nowrap', fontWeight: 'bold' }} title={`Grupo com ${g.perfis_ids.length} pessoa(s)`}>
-                    + {g.nome}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
-                {perfis.filter(p => p.id !== 'caixa_central').map(p => (
-                  <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={(diaria.equipe_escalada || []).includes(p.id)} onChange={() => toggleMembro(p.id)} />
-                    {p.nome} {p.sobrenome} <span className="text-xs text-muted">({p.funcao || 'Equipe'})</span>
-                  </label>
-                ))}
-              </div>
+          ) : locsDaDiaria.length === 0 ? (
+            <div className="card text-sm text-muted" style={{ lineHeight: 1.6 }}>
+              Nenhuma locação neste dia. Sem ela não há previsão do tempo nem hospital de
+              referência — toque em <b>Editar</b> para escolher.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <Users size={16} className="text-muted" /> <span className="font-bold">{escalados.length}</span> membros
-              </div>
-              <div className="text-xs text-muted">{escalados.map(p => p.nome).join(', ')}</div>
-            </div>
+            locsDaDiaria.map(loc => (
+              <CardDeLocacao
+                key={loc.id}
+                locacao={loc}
+                clima={climaDaLocacao(loc.id)}
+                climaIndisponivel={motivoSemClima(loc)}
+              />
+            ))
           )}
-        </div>
-      </div>
 
-      {/* Controle de Gastos */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Wallet size={16} /> Controle Financeiro da Diária
-          </h2>
-        </div>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '110px' }}>
-            <div className="text-xs text-muted uppercase">Gasto Registrado</div>
-            <div className="font-bold text-lg" style={{ color: statusOrc.cor }}>{dinheiro(totalGasto)}</div>
-          </div>
-          <div style={{ flex: 1, minWidth: '90px' }}>
-            <div className="text-xs text-muted uppercase">Valor Ideal</div>
-            <input
-              type="number"
-              placeholder="0.00"
-              value={diaria.valor_ideal || ''}
-              onChange={async e => await db.diarias.update(diariaId!, { valor_ideal: Number(e.target.value) || 0 })}
-              style={{ padding: '6px', fontSize: '16px', fontWeight: 'bold', width: '100px', backgroundColor: 'transparent', borderBottom: '1px solid var(--border-color)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}
-            />
-          </div>
-          <div style={{ flex: 1, minWidth: '90px' }}>
-            <div className="text-xs text-muted uppercase">Valor Máximo</div>
-            <input
-              type="number"
-              placeholder="0.00"
-              value={diaria.limite_gasto || ''}
-              onChange={async e => await db.diarias.update(diariaId!, { limite_gasto: Number(e.target.value) || 0 })}
-              style={{ padding: '6px', fontSize: '16px', fontWeight: 'bold', width: '100px', backgroundColor: 'transparent', borderBottom: '1px solid var(--border-color)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}
-            />
-          </div>
-          {limiteGasto > 0 && (
-            <div style={{ flex: 1, minWidth: '90px' }}>
-              <div className="text-xs text-muted uppercase">Saldo (p/ máximo)</div>
-              <div className="font-bold text-lg" style={{ color: saldoGasto < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                {dinheiro(saldoGasto)}
+          {/* Financeiro do dia */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderLeft: '3px solid var(--cor-financeiro)' }}>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Wallet size={15} style={{ color: 'var(--cor-financeiro)' }} /> Financeiro do dia
+            </h2>
+
+            <div>
+              <div className="text-xs text-muted uppercase">Gasto registrado</div>
+              <div className="font-bold" style={{ fontSize: '26px', color: statusOrc.cor }}>{dinheiro(totalGasto)}</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '92px' }}>
+                <div className="text-xs text-muted uppercase">Ideal</div>
+                <input
+                  type="number"
+                  placeholder="0,00"
+                  value={diaria.valor_ideal || ''}
+                  onChange={async e => await db.diarias.update(diariaId!, { valor_ideal: Number(e.target.value) || 0 })}
+                  style={{ padding: '4px 0', fontSize: '15px', fontWeight: 'bold', width: '100%', backgroundColor: 'transparent', borderBottom: '1px solid var(--border-color)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}
+                />
               </div>
-            </div>
-          )}
-        </div>
-        <div style={{ marginTop: '12px', fontWeight: 'bold', fontSize: '13px', color: statusOrc.cor }}>{statusOrc.texto}</div>
-      </div>
-
-      {/* Horários */}
-      <div className="card" style={card}>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Clock size={16} /> Horários / Cronograma
-        </h2>
-        <form onSubmit={addHorario} style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <input type="time" value={novaHora} onChange={e => setNovaHora(e.target.value)} style={{ width: '120px' }} />
-          <input placeholder="Evento (ex: Chamada geral, Almoço, Wrap)" value={novoEvento} onChange={e => setNovoEvento(e.target.value)} style={{ flex: 1, minWidth: '160px' }} />
-          <button type="submit" className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }}><Plus size={20} /></button>
-        </form>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {(diaria.horarios || []).length === 0 && <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px' }}>Sem horários definidos.</div>}
-          {(diaria.horarios || []).map(h => (
-            <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-              <span className="font-bold text-accent" style={{ minWidth: '52px' }}>{h.hora}</span>
-              <span style={{ flex: 1 }}>{h.evento}</span>
-              <button onClick={() => removeHorario(h.id)} className="btn-icon text-muted" style={{ padding: '6px', border: 'none', background: 'transparent' }}><Trash2 size={14} /></button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Clima */}
-      <div className="card">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <CloudSun size={16} /> Previsão do Tempo
-        </h2>
-        {climaStatus === 'sem_coords' && (
-          <div className="text-sm text-muted">Adicione coordenadas (lat,lng ou link do Maps) a uma locação da diária para ver a previsão.</div>
-        )}
-        {climaStatus === 'carregando' && <div className="text-sm text-muted">Consultando previsão…</div>}
-        {climaStatus === 'erro' && (
-          <div className="text-sm text-muted">Não foi possível obter a previsão (sem internet ou data fora da janela de ~16 dias).</div>
-        )}
-        {climaStatus === 'ok' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {gruposDeClima.map((g, i) => (
-              <div
-                key={g.locais.join('|')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap',
-                  paddingTop: i > 0 ? '14px' : 0,
-                  borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
-                }}
-              >
-                <div style={{ fontSize: '40px', lineHeight: 1 }}>{descreverClima(g.clima.code).emoji}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="font-bold">{descreverClima(g.clima.code).texto}</div>
-                  {/* O nome do set SEMPRE aparece, e todos eles. Antes só um era
-                      consultado e mostrado, e não dava para saber qual. */}
-                  <div className="text-sm text-secondary">{g.locais.join(' · ')}</div>
+              <div style={{ flex: 1, minWidth: '92px' }}>
+                <div className="text-xs text-muted uppercase">Máximo</div>
+                <input
+                  type="number"
+                  placeholder="0,00"
+                  value={diaria.limite_gasto || ''}
+                  onChange={async e => await db.diarias.update(diariaId!, { limite_gasto: Number(e.target.value) || 0 })}
+                  style={{ padding: '4px 0', fontSize: '15px', fontWeight: 'bold', width: '100%', backgroundColor: 'transparent', borderBottom: '1px solid var(--border-color)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}
+                />
+              </div>
+              {limiteGasto > 0 && (
+                <div style={{ flex: 1, minWidth: '92px' }}>
+                  <div className="text-xs text-muted uppercase">Saldo</div>
+                  <div className="font-bold" style={{ fontSize: '15px', color: saldoGasto < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                    {dinheiro(saldoGasto)}
+                  </div>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '20px', textAlign: 'center' }}>
-                  <div><div className="text-xs text-muted uppercase">Nascer</div><div className="font-bold text-secondary">{g.clima.sunrise || '--'}</div></div>
-                  <div><div className="text-xs text-muted uppercase">Pôr</div><div className="font-bold text-secondary">{g.clima.sunset || '--'}</div></div>
-                  <div><div className="text-xs text-muted uppercase">Máx</div><div className="font-bold">{Math.round(g.clima.tempMax)}°</div></div>
-                  <div><div className="text-xs text-muted uppercase">Mín</div><div className="font-bold">{Math.round(g.clima.tempMin)}°</div></div>
-                  <div><div className="text-xs text-muted uppercase">Chuva</div><div className="font-bold" style={{ color: g.clima.chuvaProb >= 50 ? 'var(--color-danger)' : 'var(--text-primary)' }}>{g.clima.chuvaProb}%</div></div>
+              )}
+            </div>
+
+            <div className="text-xs font-bold" style={{ color: statusOrc.cor }}>{statusOrc.texto}</div>
+          </div>
+
+          {/* Equipe do dia */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderLeft: '3px solid var(--cor-equipe)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={15} style={{ color: 'var(--cor-equipe)' }} /> {dividido ? grupoDaFrente?.nome : 'Equipe do dia'}
+              </h2>
+              <button onClick={() => setSelecionandoEquipe(!selecionandoEquipe)} className="text-xs text-accent font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                {selecionandoEquipe ? 'Pronto' : 'Escalar'}
+              </button>
+            </div>
+
+            {selecionandoEquipe ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Escalar por departamento ou por grupo. Escalar DOIS grupos é
+                    o que divide o dia — não existe botão separado para isso. */}
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }} className="hide-scrollbar">
+                  {departamentos.map(dep => (
+                    <button key={dep.id} onClick={() => escalarDepartamento(dep.id)} className="text-xs" style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                      + {dep.nome}
+                    </button>
+                  ))}
+                  {(projeto?.grupos || []).map(g => (
+                    <button key={g.id} onClick={() => escalarGrupo(g.id)} className="text-xs" style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', border: '1px solid var(--cor-equipe)', backgroundColor: 'var(--bg-primary)', color: 'var(--cor-equipe)', whiteSpace: 'nowrap', fontWeight: 'bold', cursor: 'pointer' }} title={`Grupo com ${g.perfis_ids.length} pessoa(s)`}>
+                      + {g.nome}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                  {perfis.filter(p => p.id !== 'caixa_central').map(p => (
+                    <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={(diaria.equipe_escalada || []).includes(p.id)} onChange={() => toggleMembro(p.id)} />
+                      {p.nome} {p.sobrenome} <span className="text-xs text-muted">({p.funcao || 'Equipe'})</span>
+                    </label>
+                  ))}
                 </div>
               </div>
-            ))}
-
-            {/* Só aparece quando há de fato diferença — se os sets estão no mesmo
-                bairro, o agrupamento já os juntou e este aviso some. */}
-            {gruposDeClima.length > 1 && (
-              <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
-                Os sets do dia têm previsões diferentes. Vale conferir qual vale para
-                cada bloco antes de decidir figurino e cobertura.
+            ) : escaladosDaVisao.length === 0 ? (
+              <div className="text-sm text-muted" style={{ lineHeight: 1.6 }}>
+                Ninguém escalado ainda. Toque em <b>Escalar</b> — dá para chamar um
+                departamento ou um grupo inteiro de uma vez.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {escaladosDaVisao.map(p => {
+                  const confirmou = (diaria.confirmacoes || []).includes(p.id);
+                  return (
+                    <span
+                      key={p.id}
+                      className="text-xs"
+                      style={{
+                        padding: '4px 10px', borderRadius: 'var(--radius-full)',
+                        border: `1px solid ${confirmou ? 'var(--color-success)' : 'var(--border-light)'}`,
+                        color: confirmou ? 'var(--color-success)' : 'var(--text-secondary)',
+                      }}
+                      title={`${p.funcao || 'Equipe'}${confirmou ? ' · presença confirmada' : ''}`}
+                    >
+                      {p.nome}{confirmou ? ' ✓' : ''}
+                    </span>
+                  );
+                })}
               </div>
             )}
-
-            {/* Locação sem coordenada não some em silêncio: ela existe na diária
-                e a equipe vai para lá do mesmo jeito. */}
-            {(() => {
-              const semCoord = locsDaDiaria.filter(l => !parseCoords(l.coordenadas));
-              if (semCoord.length === 0) return null;
-              return (
-                <div className="text-xs text-muted">
-                  Sem previsão para {semCoord.map(l => l.nome).join(', ')} — falta a
-                  coordenada em Locações.
-                </div>
-              );
-            })()}
           </div>
-        )}
+
+          {/* O que a fotografia conferiu. Some sozinho quando não há acervo
+              vinculado — ver `ResumoEquipamento`. */}
+          <ResumoEquipamento projetoId={projetoId!} diariaId={diariaId!} />
+        </div>
       </div>
 
-      {/* O que a fotografia conferiu. Some sozinho quando não há acervo
-          vinculado — ver `ResumoEquipamento`. */}
-      <ResumoEquipamento projetoId={projetoId!} diariaId={diariaId!} />
+      {/*
+        ---- NÍVEL 4: o apoio, fechado por padrão (spec §10) ----
+        Existe, é consultado de vez em quando, e não pode ficar empurrando o
+        cronograma para fora da tela. O número no cabeçalho é o que decide se
+        vale abrir.
 
-      {/* Emergência — hospital mais próximo das locações do dia */}
-      <div className="card">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <Cross size={16} className="text-danger" /> Emergência — Hospital Mais Próximo
-        </h2>
-        {locsDaDiaria.length === 0 ? (
-          <div className="text-sm text-muted">Defina as locações da diária para ver o hospital de referência.</div>
-        ) : locsComHospital.length === 0 ? (
-          <div className="text-sm text-muted">
-            Nenhuma locação do dia tem hospital confirmado. Abra o módulo Locações e use "Achar Hospital Próximo (OSM)".
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {locsComHospital.map(l => {
-              const rota = rotaHospital(l);
-              return (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '180px' }}>
-                    <div className="font-bold">{l.hospital_proximo}</div>
-                    <div className="text-xs text-muted">
-                      a partir de {l.nome}
-                      {l.hospital_distancia !== undefined ? ` · ${formatarDistancia(l.hospital_distancia)}` : ''}
-                    </div>
-                  </div>
-                  {l.hospital_telefone && (
-                    <a href={`tel:${l.hospital_telefone}`} className="text-sm text-accent font-bold" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
-                      <Phone size={14} /> {l.hospital_telefone}
-                    </a>
-                  )}
-                  {rota && (
-                    <a href={rota} target="_blank" rel="noreferrer" className="btn-icon" style={{ padding: '6px 12px', border: '1px solid var(--border-light)', fontSize: '12px', textDecoration: 'none', color: 'var(--text-primary)' }}>
-                      Abrir rota
-                    </a>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Transporte */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Bus size={16} /> Transporte / Logística
-          </h2>
+        O transporte fica AQUI, e não na coluna estreita como a §10 sugere: o
+        editor de comboio tem cinco campos lado a lado e um seletor de
+        passageiros, e espremido em um terço da tela ele deixa de ser usável.
+        A intenção da spec — transporte é apoio, não protagonista — continua de
+        pé; o lugar é que mudou.
+      */}
+      <Colapsavel
+        titulo="Transporte e logística"
+        icone={<Bus size={15} />}
+        cor="var(--cor-logistica)"
+        resumo={(diaria.comboios || []).length > 0
+          ? `${(diaria.comboios || []).length} comboio(s) · ${(diaria.comboios || []).reduce((a, c) => a + c.passageiros_ids.length, 0)} a bordo`
+          : 'nenhum comboio'}
+      >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
           <button onClick={addComboio} className="btn-primary" style={{ padding: '4px 12px', fontSize: '12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <Plus size={14} /> Novo Comboio/Van
+            <Plus size={14} /> Novo comboio/van
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {(diaria.comboios || []).length === 0 && (
-            <div className="text-muted text-sm text-center" style={{ padding: '16px 0' }}>
-              Nenhum veículo cadastrado. Adicione um comboio para distribuir a equipe.
+            <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px 0', lineHeight: 1.6 }}>
+              Nenhum veículo neste dia. Um comboio diz quem vai com quem, de onde e a que horas.
             </div>
           )}
-          
+
           {(diaria.comboios || []).map((comboio) => (
-            <div key={comboio.id} style={{ padding: '16px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
-              
+            <div key={comboio.id} style={{ padding: '16px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
+
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
                 <div style={{ flex: 1, minWidth: '150px' }}>
-                  <div className="text-xs text-muted font-bold uppercase mb-1">Veículo / Van</div>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Veículo / van</div>
                   {veiculos.length > 0 && (
                     <select
                       value={comboio.veiculo_id || ''}
@@ -845,7 +1018,7 @@ export function DiariaModule() {
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: '150px' }}>
-                  <div className="text-xs text-muted font-bold uppercase mb-1">Motorista / Ref</div>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Motorista / ref</div>
                   {motoristas.length > 0 && (
                     <select
                       value={comboio.motorista_id || ''}
@@ -862,12 +1035,12 @@ export function DiariaModule() {
                     type="text"
                     value={comboio.motorista}
                     onChange={e => updateComboio(comboio.id, 'motorista', e.target.value)}
-                    placeholder="Ex: João (Placa XYZ)"
+                    placeholder="Ex: João (placa XYZ)"
                     style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: '150px' }}>
-                  <div className="text-xs text-muted font-bold uppercase mb-1">Ponto de Encontro</div>
+                  <div className="text-xs text-muted font-bold uppercase mb-1">Ponto de encontro</div>
                   <input
                     type="text"
                     value={comboio.ponto_encontro || ''}
@@ -886,45 +1059,42 @@ export function DiariaModule() {
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button onClick={() => removeComboio(comboio.id)} className="btn-icon hover-danger" style={{ padding: '8px', marginBottom: '2px' }} title="Excluir Comboio">
+                  <button onClick={() => removeComboio(comboio.id)} className="btn-icon hover-danger" style={{ padding: '8px', marginBottom: '2px' }} title="Excluir comboio">
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
 
               <div className="text-xs text-muted font-bold uppercase mb-2">Passageiros ({comboio.passageiros_ids.length})</div>
-              
+
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {escalados.length === 0 && <span className="text-xs text-muted">Ninguém escalado na diária ainda.</span>}
                 {escalados.map(p => {
                   const noComboio = comboio.passageiros_ids.includes(p.id);
+                  const noutro = !noComboio && (diaria.comboios || []).some(c => c.id !== comboio.id && c.passageiros_ids.includes(p.id));
                   return (
-                    <button 
+                    <button
                       key={p.id}
                       onClick={() => togglePassageiro(comboio.id, p.id)}
-                      style={{ 
-                        padding: '4px 8px', 
-                        fontSize: '12px', 
-                        borderRadius: '12px', 
-                        cursor: 'pointer',
+                      style={{
+                        padding: '4px 8px', fontSize: '12px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                         border: noComboio ? '1px solid var(--accent)' : '1px solid var(--border-light)',
                         backgroundColor: noComboio ? 'var(--accent)' : 'var(--bg-surface)',
-                        color: noComboio ? '#fff' : 'var(--text-primary)',
-                        opacity: !noComboio && (diaria.comboios || []).some(c => c.id !== comboio.id && c.passageiros_ids.includes(p.id)) ? 0.3 : 1
+                        color: noComboio ? '#000' : 'var(--text-primary)',
+                        opacity: noutro ? 0.3 : 1,
                       }}
-                      title={!noComboio && (diaria.comboios || []).some(c => c.id !== comboio.id && c.passageiros_ids.includes(p.id)) ? 'Já alocado em outro veículo' : ''}
+                      title={noutro ? 'Já alocado em outro veículo' : ''}
                     >
                       {p.nome}
                     </button>
                   );
                 })}
               </div>
-
             </div>
           ))}
-          
-          <div style={{ borderTop: '1px dashed var(--border-light)', margin: '8px 0' }}></div>
-          <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Informações Adicionais (Transporte)</div>
+
+          <div style={{ borderTop: '1px dashed var(--border-light)', margin: '8px 0' }} />
+          <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Informações adicionais</div>
           <textarea
             defaultValue={diaria.transporte || ''}
             onBlur={e => salvarTransporte(e.target.value)}
@@ -932,73 +1102,22 @@ export function DiariaModule() {
             rows={2}
           />
         </div>
-      </div>
+      </Colapsavel>
 
-      {/* Anexos */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Paperclip size={16} /> Anexos
-          </h2>
-          <label className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)', cursor: 'pointer', width: 'auto', padding: '0 12px', gap: '6px' }}>
-            <Plus size={16} /> <span className="text-xs">Adicionar</span>
-            <input type="file" onChange={addAnexo} style={{ display: 'none' }} />
-          </label>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {(diaria.anexos || []).length === 0 && <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px' }}>Roteiro do dia, decupagem, referências...</div>}
-          {(diaria.anexos || []).map(a => (
-            <LinhaAnexo key={a.id} anexo={a} aoRemover={() => removeAnexo(a.id)} />
-          ))}
-        </div>
-      </div>
-
-      {/* Confirmação de presença */}
-      <div className="card">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <UserCheck size={16} /> Confirmação de Presença
-        </h2>
-        {escalados.length === 0 ? (
-          <div className="text-muted text-sm">Escale a equipe primeiro para confirmar presença.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div className="text-xs text-muted" style={{ marginBottom: '4px' }}>
-              {(diaria.confirmacoes || []).filter(id => (diaria.equipe_escalada || []).includes(id)).length} de {escalados.length} confirmaram
-            </div>
-            {escalados.map(p => {
-              const ok = (diaria.confirmacoes || []).includes(p.id);
-              return (
-                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={ok} onChange={() => toggleConfirmacao(p.id)} style={{ width: '18px', height: '18px', accentColor: 'var(--color-success)' }} />
-                  <span style={{ flex: 1 }}>{p.nome} {p.sobrenome} <span className="text-xs text-muted">· {p.funcao || 'Equipe'}</span></span>
-                  {ok && <span className="text-xs text-success font-bold">confirmado</span>}
-                </label>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* A ponte com o stripboard vem ANTES da lista de cenas: é ela que explica
-          por que a lista é o que é, e por que ela pode ou não mudar sozinha. */}
-      <SincroniaStripboard diaria={diaria} />
-
-      {/* Shot List (Cenas e Planos) */}
-      <ShotList diaria={diaria as any} locacoes={locacoes} />
-
-      {/* Checklist / Tasks */}
-      <div className="card">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <CheckSquare size={16} /> Checklist de Produção
-        </h2>
+      <Colapsavel
+        titulo="Checklist de produção"
+        icone={<CheckSquare size={15} />}
+        cor="var(--cor-set)"
+        resumo={tasks.length ? `${tasks.filter(t => t.status === 'concluido').length}/${tasks.length}` : 'vazio'}
+      >
         <form onSubmit={addTask} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <input placeholder="Nova tarefa... (ex: Pegar rádios, Comprar gelo)" value={newTask} onChange={e => setNewTask(e.target.value)} style={{ flex: 1 }} />
+          <input placeholder="Nova tarefa... (ex: pegar rádios, comprar gelo)" value={newTask} onChange={e => setNewTask(e.target.value)} style={{ flex: 1 }} />
           <button type="submit" className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }}><Plus size={20} /></button>
         </form>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {tasks.length === 0 && <div className="text-muted text-sm" style={{ padding: '16px 0', textAlign: 'center' }}>Nenhuma tarefa para o dia.</div>}
+          {tasks.length === 0 && <div className="text-muted text-sm" style={{ padding: '8px 0', textAlign: 'center' }}>Nenhuma tarefa para o dia.</div>}
           {tasks.map(task => (
-            <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+            <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, cursor: 'pointer', textDecoration: task.status === 'concluido' ? 'line-through' : 'none', color: task.status === 'concluido' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                 <input type="checkbox" checked={task.status === 'concluido'} onChange={() => toggleTask(task)} style={{ width: '20px', height: '20px', accentColor: 'var(--accent)' }} />
                 {task.descricao}
@@ -1007,7 +1126,57 @@ export function DiariaModule() {
             </div>
           ))}
         </div>
-      </div>
+      </Colapsavel>
+
+      <Colapsavel
+        titulo="Confirmação de presença"
+        icone={<UserCheck size={15} />}
+        cor="var(--cor-equipe)"
+        resumo={escalados.length
+          ? `${(diaria.confirmacoes || []).filter(id => (diaria.equipe_escalada || []).includes(id)).length}/${escalados.length}`
+          : '—'}
+      >
+        {escalados.length === 0 ? (
+          <div className="text-muted text-sm">Escale a equipe primeiro para confirmar presença.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {escalados.map(p => {
+              const ok = (diaria.confirmacoes || []).includes(p.id);
+              return (
+                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={ok} onChange={() => toggleConfirmacao(p.id)} style={{ width: '18px', height: '18px', accentColor: 'var(--color-success)' }} />
+                  <span style={{ flex: 1 }}>{p.nome} {p.sobrenome} <span className="text-xs text-muted">· {p.funcao || 'Equipe'}</span></span>
+                  {ok && <span className="text-xs text-success font-bold">confirmado</span>}
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </Colapsavel>
+
+      <Colapsavel
+        titulo="Anexos"
+        icone={<Paperclip size={15} />}
+        cor="var(--cor-criativo)"
+        resumo={(diaria.anexos || []).length ? `${(diaria.anexos || []).length} arquivo(s)` : 'nenhum'}
+      >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+          <label className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)', cursor: 'pointer', width: 'auto', padding: '0 12px', gap: '6px' }}>
+            <Plus size={16} /> <span className="text-xs">Adicionar</span>
+            <input type="file" onChange={addAnexo} style={{ display: 'none' }} />
+          </label>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {(diaria.anexos || []).length === 0 && (
+            <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px', lineHeight: 1.6 }}>
+              Roteiro do dia, decupagem, referências — o que a equipe precisa abrir no set.
+            </div>
+          )}
+          {(diaria.anexos || []).map(a => (
+            <LinhaAnexo key={a.id} anexo={a} aoRemover={() => removeAnexo(a.id)} />
+          ))}
+        </div>
+      </Colapsavel>
 
       {exportModalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
