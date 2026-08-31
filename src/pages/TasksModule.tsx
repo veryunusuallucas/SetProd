@@ -1,12 +1,52 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db/db';
-import { Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle, CalendarClock } from 'lucide-react';
+import {
+  Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle, CalendarClock,
+  Circle, CircleDashed, ChevronDown, ChevronRight, X, User, Building2, Link2,
+} from 'lucide-react';
 import type { Task } from '../types';
 import { logAction } from '../lib/audit';
 import { notificar } from '../lib/notificacoes';
 import { useRole } from '../hooks/useRole';
+import { dataCurta } from '../lib/formato';
+import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
+import { useOrigemAncorada } from '../components/ui/origemAncorada';
+import { BotaoTatil } from '../components/ui/BotaoTatil';
+import { faiscar } from '../components/ui/Faisca';
+
+/**
+ * As tarefas da produção.
+ *
+ * ⚠️ ISTO ERA UM KANBAN DE TRÊS COLUNAS, E DEIXOU DE SER A PEDIDO.
+ *
+ * A troca conserta de quebra o defeito que ninguém tinha explicado: a tela era
+ * `height: 100vh` e as colunas eram itens de flex com `flex: 1`. A altura delas
+ * ficava travada na da linha, e os cartões que não cabiam simplesmente
+ * TRANSBORDAVAM para fora da moldura — apareciam soltos embaixo do retângulo
+ * arredondado da coluna, sem barra de rolagem que os alcançasse.
+ *
+ * Coluna é um formato que exige altura fixa para funcionar, e altura fixa numa
+ * lista que só cresce sempre acaba assim. Uma lista rola com a página, e não
+ * tem como transbordar.
+ *
+ * O que a coluna dava e a lista precisa devolver: a noção de EM QUE PÉ ESTÁ.
+ * Por isso a lista é agrupada por status, com contador em cada grupo — e
+ * "Feito" nasce recolhido, porque é o grupo que mais cresce e menos se lê.
+ */
+
+type Status = Task['status'];
+
+const GRUPOS: { status: Status; titulo: string; cor: string; icone: React.ReactNode }[] = [
+  { status: 'todo', titulo: 'A fazer', cor: 'var(--text-secondary)', icone: <Circle size={15} /> },
+  { status: 'doing', titulo: 'Fazendo', cor: 'var(--color-warning)', icone: <CircleDashed size={15} /> },
+  { status: 'done', titulo: 'Feito', cor: 'var(--color-success)', icone: <CheckCircle2 size={15} /> },
+];
+
+/** O próximo estado quando a pessoa toca no círculo da esquerda. */
+const AVANCA: Record<Status, Status> = { todo: 'doing', doing: 'done', done: 'todo' };
 
 export function TasksModule() {
   const { id: projetoId } = useParams();
@@ -15,22 +55,48 @@ export function TasksModule() {
   const tasks = useLiveQuery(() => db.tasks.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
 
-  // Quem eu sou na equipe desta produção — vem da participação, não mais de um
-  // seletor de simulação no rodapé.
   const { perfilId: meuPerfilId } = useRole();
+  const reduzido = useMovimentoReduzido();
 
   const [filtro, setFiltro] = useState<'todas' | 'minhas'>('todas');
-  
   const [novaTaskTitulo, setNovaTaskTitulo] = useState('');
-  const [editandoTask, setEditandoTask] = useState<Task | null>(null);
   const [toastMsg, setToastMsg] = useState('');
+  const [recolhidos, setRecolhidos] = useState<Set<Status>>(() => new Set<Status>(['done']));
 
-  // DFS para detectar ciclo
+  /*
+    GUARDA O ID, NÃO A TAREFA.
+
+    Antes isto era `useState<Task | null>` com uma CÓPIA da tarefa, tirada no
+    momento em que o modal abria. Toda edição escrevia no banco, mas a cópia na
+    tela nunca era atualizada — e o resultado eram dois defeitos que pareciam
+    não ter relação:
+
+      · criar uma subtarefa atualizava o cartão atrás e NÃO aparecia no modal;
+      · digitar o nome de uma subtarefa não pegava, porque o campo voltava ao
+        valor congelado a cada tecla.
+
+    Alguns campos funcionavam (prazo, dependências) porque tinham um
+    `setEditandoTask({...})` remendado junto do gravar. Um remendo por campo é o
+    aviso de que o modelo está errado: quem esquecer o remendo cria o mesmo
+    defeito de novo.
+
+    Com o id, a tarefa vem sempre da consulta viva. Não há cópia para
+    dessincronizar.
+  */
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const editando = tasks.find(t => t.id === editandoId) ?? null;
+
+  /** A subtarefa recém-criada, para o campo já nascer com o cursor dentro. */
+  const [subEmFoco, setSubEmFoco] = useState<string | null>(null);
+
+  const ancora = useOrigemAncorada();
+
+  // ---- regras ----
+
   const wouldCreateCycle = (taskId: string, targetDepId: string): boolean => {
     if (taskId === targetDepId) return true;
     const targetTask = tasks.find(t => t.id === targetDepId);
     if (!targetTask || !targetTask.depends_on) return false;
-    
     for (const dep of targetTask.depends_on) {
       if (dep === taskId) return true;
       if (wouldCreateCycle(taskId, dep)) return true;
@@ -46,18 +112,23 @@ export function TasksModule() {
     });
   };
 
-  const getDependenciesNames = (task: Task) => {
-    if (!task.depends_on) return '';
-    return task.depends_on.map(depId => {
-      const depTask = tasks.find(t => t.id === depId);
-      return depTask ? depTask.titulo : 'Task excluída';
-    }).join(', ');
+  const getDependenciesNames = (task: Task) =>
+    (task.depends_on || [])
+      .map(depId => tasks.find(t => t.id === depId)?.titulo ?? 'Task excluída')
+      .join(', ');
+
+  const avisar = (msg: string, ms = 4000) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), ms);
   };
+
+  // ---- ações ----
 
   const adicionarTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!novaTaskTitulo.trim()) return;
-    if (!projetoId) { setToastMsg('Erro: projeto não identificado.'); setTimeout(() => setToastMsg(''), 4000); return; }
+    if (!projetoId) return avisar('Erro: projeto não identificado.');
+
     const task: Task = {
       id: crypto.randomUUID(),
       projeto_id: projetoId,
@@ -66,34 +137,35 @@ export function TasksModule() {
       responsavel_id: meuPerfilId || undefined,
       subtarefas: [],
       depends_on: [],
-      data_criacao: Date.now()
+      data_criacao: Date.now(),
     };
+
     try {
       await db.tasks.add(task);
       setNovaTaskTitulo('');
     } catch (err: any) {
       console.error('[SetProd] Erro ao criar task:', err);
-      setToastMsg(`Erro ao criar task: ${err?.name || ''} ${err?.message || err}`);
-      setTimeout(() => setToastMsg(''), 8000);
-      return;
+      return avisar(`Erro ao criar task: ${err?.name || ''} ${err?.message || err}`, 8000);
     }
-    // Log de auditoria não deve derrubar a criação se falhar
+    // O log de auditoria não pode derrubar a criação se falhar.
     try { await logAction(projetoId, 'criar', 'task', task.id, `Criou task: ${task.titulo}`); } catch { /* ignore */ }
   };
 
-  const mudarStatus = async (taskId: string, status: Task['status']) => {
+  const mudarStatus = async (taskId: string, status: Status, evento?: { clientX: number; clientY: number }) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     if (status !== 'todo' && isTaskLocked(task)) {
-      setToastMsg('Não é possível iniciar ou concluir uma task bloqueada.');
-      setTimeout(() => setToastMsg(''), 3000);
-      return;
+      return avisar('Não dá para iniciar ou concluir uma task bloqueada.', 3000);
     }
+
+    // Concluir é confirmação — faísca no ponto do dedo. Voltar para "a fazer"
+    // não é, e por isso não faísca: o sinal precisa querer dizer uma coisa só.
+    if (status === 'done' && task.status !== 'done' && evento) faiscar(evento);
+
     const antes = task.status;
     await db.tasks.update(taskId, { status });
 
-    // Status de cada dep considerando a mudança que acabou de acontecer
-    const statusDe = (id: string) => id === taskId ? status : tasks.find(t => t.id === id)?.status;
+    const statusDe = (id: string) => (id === taskId ? status : tasks.find(t => t.id === id)?.status);
     const bloqueada = (t: Task) => (t.depends_on || []).some(dep => statusDe(dep) !== 'done');
     const bloqueadaAntes = (t: Task) => (t.depends_on || []).some(dep => tasks.find(x => x.id === dep)?.status !== 'done');
     const dependentes = tasks.filter(t => t.depends_on?.includes(taskId));
@@ -114,362 +186,538 @@ export function TasksModule() {
   };
 
   const deletarTask = async (taskId: string) => {
-    const isDependency = tasks.some(t => t.depends_on?.includes(taskId));
-    if (isDependency) {
-      if (!confirm('Outras tasks dependem desta. Se excluir, a dependência será removida delas. Continuar?')) return;
-    } else {
-      if (!confirm('Deletar esta task?')) return;
-    }
-
-    // Remover dependências órfãs
     const dependentes = tasks.filter(t => t.depends_on?.includes(taskId));
+    const aviso = dependentes.length
+      ? 'Outras tasks dependem desta. Se excluir, a dependência sai delas. Continuar?'
+      : 'Deletar esta task?';
+    if (!confirm(aviso)) return;
+
     for (const d of dependentes) {
       await db.tasks.update(d.id, { depends_on: d.depends_on!.filter(id => id !== taskId) });
     }
-
     await db.tasks.delete(taskId);
   };
 
-  const tasksFiltradas = tasks.filter(t => filtro === 'todas' || t.responsavel_id === meuPerfilId);
+  // ---- subtarefas ----
 
-  /**
-   * Card inteiro na cor do departamento (estilo ClickUp, v4 §5.3).
-   * A cor vem como hex do cadastro de departamentos; usamos ela em opacidade baixa
-   * no fundo para o texto continuar legível nos dois temas.
-   */
-  const corDeFundo = (hex?: string, locked?: boolean) => {
-    if (locked) return 'var(--bg-default)';
-    if (!hex) return 'var(--bg-surface)';
-    const m = hex.replace('#', '').match(/^([0-9a-f]{6})$/i);
-    if (!m) return 'var(--bg-surface)';
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, 0.18)`;
+  const gravarSubs = (t: Task, subs: NonNullable<Task['subtarefas']>) =>
+    db.tasks.update(t.id, { subtarefas: subs });
+
+  const novaSub = (t: Task) => {
+    const id = crypto.randomUUID();
+    // Nasce VAZIA, e não com "Nova subtarefa..." escrito dentro. Texto de
+    // exemplo dentro do campo é texto que alguém esquece de apagar — e vira
+    // item de checklist chamado "Nova subtarefa..." na lista de verdade.
+    gravarSubs(t, [...(t.subtarefas || []), { id, titulo: '', concluida: false }]);
+    setSubEmFoco(id);
   };
 
+  const tarefasVisiveis = tasks.filter(t => filtro === 'todas' || t.responsavel_id === meuPerfilId);
   const hoje = new Date().toISOString().slice(0, 10);
-  const formataPrazo = (iso: string) => {
-    const [a, m, d] = iso.split('-');
-    return `${d}/${m}/${a.slice(-2)}`;
-  };
 
-  const renderColuna = (status: Task['status'], titulo: string, cor: string) => {
-    const ts = tasksFiltradas.filter(t => t.status === status);
-    
-    const handleDragOver = (e: React.DragEvent) => {
-      e.preventDefault(); // Necessário para permitir o drop
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-      e.preventDefault();
-      const taskId = e.dataTransfer.getData('taskId');
-      if (taskId) {
-        mudarStatus(taskId, status);
-      }
-    };
-    
-    return (
-      <div 
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        style={{ flex: 1, minWidth: '280px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: `1px solid var(--border-light)` }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 className="font-bold text-sm uppercase tracking-widest" style={{ color: cor }}>{titulo} ({ts.length})</h3>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {ts.map(t => {
-            const resp = perfis.find(p => p.id === t.responsavel_id);
-            const numSubs = (t.subtarefas || []).length;
-            const subsFeitas = (t.subtarefas || []).filter(s => s.concluida).length;
-            const locked = isTaskLocked(t);
-            const depto = departamentos.find(d => d.id === t.departamento_id);
-
-            return (
-              <div 
-                key={t.id} 
-                className="card" 
-                draggable={!locked}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('taskId', t.id);
-                }}
-                style={{
-                  padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'grab',
-                  borderLeft: `3px solid ${depto?.cor || cor}`,
-                  opacity: locked ? 0.6 : 1,
-                  backgroundColor: corDeFundo(depto?.cor, locked),
-                  position: 'relative'
-                }}
-              >
-                {/* Tag do Departamento */}
-                {depto && (
-                  <div style={{ position: 'absolute', top: '-10px', right: '12px', backgroundColor: depto.cor || '#8884d8', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px', zIndex: 1 }}>
-                    {depto.nome}
-                  </div>
-                )}
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }} onClick={() => setEditandoTask(t)}>
-                  <div className="font-bold" style={{ fontSize: '14px', textDecoration: locked ? 'line-through' : 'none', color: locked ? 'var(--text-muted)' : 'inherit', marginTop: depto ? '4px' : '0' }}>
-                    {t.titulo}
-                  </div>
-                  {locked && <span title={`Aguardando: ${getDependenciesNames(t)}`} style={{ display: 'inline-flex', marginTop: depto ? '4px' : '0' }}><Lock size={14} className="text-warning" /></span>}
-                </div>
-                
-                {locked && (
-                  <div className="text-xs text-warning" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <AlertTriangle size={12} /> Aguardando dependências
-                  </div>
-                )}
-
-                {t.data_conclusao && (
-                  <div
-                    className="text-xs"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '4px',
-                      color: t.status !== 'done' && t.data_conclusao < hoje ? 'var(--color-danger)' : 'var(--text-secondary)',
-                      fontWeight: t.status !== 'done' && t.data_conclusao < hoje ? 'bold' : 'normal'
-                    }}
-                  >
-                    <CalendarClock size={12} /> {formataPrazo(t.data_conclusao)}
-                    {t.status !== 'done' && t.data_conclusao < hoje ? ' · atrasada' : ''}
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                  <div className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {resp ? `${resp.nome} ${resp.sobrenome || ''}` : 'Sem dono'}
-                  </div>
-                  {numSubs > 0 && (
-                    <div className="text-xs font-bold" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: subsFeitas === numSubs ? 'var(--color-success)' : 'var(--text-secondary)' }}>
-                      <ListChecks size={12} /> {subsFeitas}/{numSubs}
-                    </div>
-                  )}
-                </div>
-
-                {/* Setas para mover no Mobile (Ocultas no Desktop via CSS, mas faremos visível se a tela for pequena, ou apenas deixaremos sutis) */}
-                {!locked && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '4px' }}>
-                    {status !== 'todo' ? (
-                      <button onClick={(e) => { e.stopPropagation(); mudarStatus(t.id, status === 'done' ? 'doing' : 'todo'); }} className="text-muted" style={{ background: 'none', border: 'none', fontSize: '16px', padding: '0 8px', cursor: 'pointer' }}>&larr;</button>
-                    ) : <span />}
-                    {status !== 'done' ? (
-                      <button onClick={(e) => { e.stopPropagation(); mudarStatus(t.id, status === 'todo' ? 'doing' : 'done'); }} className="text-muted" style={{ background: 'none', border: 'none', fontSize: '16px', padding: '0 8px', cursor: 'pointer' }}>&rarr;</button>
-                    ) : <span />}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {ts.length === 0 && <div className="text-muted text-xs text-center" style={{ padding: '20px 0' }}>Vazio</div>}
-        </div>
-      </div>
-    );
-  };
+  const alternarGrupo = (s: Status) => setRecolhidos(atual => {
+    const p = new Set(atual);
+    if (p.has(s)) p.delete(s); else p.add(s);
+    return p;
+  });
 
   return (
-    <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', height: '100vh', gap: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 className="text-xl font-bold">Tasks (Kanban)</h1>
-          <p className="text-sm text-secondary">Acompanhamento de tarefas da produção</p>
+          <h1 className="text-xl font-bold">Tasks</h1>
+          <p className="text-sm text-secondary">O que a produção precisa fazer</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '8px' }}>
-          <button onClick={() => setFiltro('todas')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', background: filtro === 'todas' ? 'var(--accent)' : 'transparent', color: filtro === 'todas' ? '#000' : 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>
-            Todas as Tasks
-          </button>
-          <button onClick={() => setFiltro('minhas')} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', background: filtro === 'minhas' ? 'var(--accent)' : 'transparent', color: filtro === 'minhas' ? '#000' : 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>
-            Minhas Tasks
-          </button>
+        <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '10px' }}>
+          {(['todas', 'minhas'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFiltro(f)}
+              style={{
+                padding: '7px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 700,
+                background: filtro === f ? 'var(--accent)' : 'transparent',
+                color: filtro === f ? '#000' : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer',
+              }}
+            >
+              {f === 'todas' ? 'Todas' : 'Minhas'}
+            </button>
+          ))}
         </div>
       </div>
 
-      <form onSubmit={adicionarTask} style={{ display: 'flex', gap: '12px' }}>
-        <input 
-          placeholder="Nova tarefa... (ex: Confirmar van para sexta)" 
-          value={novaTaskTitulo} 
-          onChange={e => setNovaTaskTitulo(e.target.value)} 
-          style={{ flex: 1, padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+      <form onSubmit={adicionarTask} className="acoes-form">
+        <input
+          placeholder="Nova tarefa… (ex: Confirmar van para sexta)"
+          value={novaTaskTitulo}
+          onChange={e => setNovaTaskTitulo(e.target.value)}
+          style={{ flex: 1, minWidth: 0 }}
         />
-        <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '12px' }}>
+        <BotaoTatil type="submit" className="btn-primary" style={{ flexShrink: 0 }}>
           <Plus size={18} /> Adicionar
-        </button>
+        </BotaoTatil>
       </form>
 
-      <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', flex: 1, paddingBottom: '20px' }} className="hide-scrollbar">
-        {renderColuna('todo', 'A Fazer', 'var(--text-secondary)')}
-        {renderColuna('doing', 'Fazendo', 'var(--color-warning)')}
-        {renderColuna('done', 'Feito', 'var(--color-success)')}
-      </div>
+      {/* A lista, agrupada por status. Sem coluna, sem altura travada. */}
+      {GRUPOS.map(g => {
+        const doGrupo = tarefasVisiveis.filter(t => t.status === g.status);
+        const recolhido = recolhidos.has(g.status);
 
-      {/* Modal Edição da Task */}
-      {editandoTask && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
-            
-            <input 
-              value={editandoTask.titulo} 
-              onChange={e => db.tasks.update(editandoTask.id, { titulo: e.target.value })} 
-              style={{ fontSize: '18px', fontWeight: 'bold', border: 'none', background: 'transparent', padding: 0 }}
-            />
-            
-            <div>
-              <div className="text-xs text-muted uppercase tracking-widest mb-1">Status</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => mudarStatus(editandoTask.id, 'todo')} 
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `1px solid ${editandoTask.status === 'todo' ? 'var(--text-secondary)' : 'var(--border-light)'}`, background: editandoTask.status === 'todo' ? 'rgba(255,255,255,0.1)' : 'transparent', opacity: isTaskLocked(editandoTask) ? 0.5 : 1 }}
-                >
-                  A Fazer
-                </button>
-                <button 
-                  onClick={() => mudarStatus(editandoTask.id, 'doing')} 
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `1px solid ${editandoTask.status === 'doing' ? 'var(--color-warning)' : 'var(--border-light)'}`, background: editandoTask.status === 'doing' ? 'rgba(255,165,0,0.1)' : 'transparent', color: editandoTask.status === 'doing' ? 'var(--color-warning)' : 'var(--text-primary)', opacity: isTaskLocked(editandoTask) ? 0.5 : 1, cursor: isTaskLocked(editandoTask) ? 'not-allowed' : 'pointer' }}
-                  disabled={isTaskLocked(editandoTask)}
-                >
-                  Fazendo
-                </button>
-                <button 
-                  onClick={() => mudarStatus(editandoTask.id, 'done')} 
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `1px solid ${editandoTask.status === 'done' ? 'var(--color-success)' : 'var(--border-light)'}`, background: editandoTask.status === 'done' ? 'rgba(0,255,0,0.1)' : 'transparent', color: editandoTask.status === 'done' ? 'var(--color-success)' : 'var(--text-primary)', opacity: isTaskLocked(editandoTask) ? 0.5 : 1, cursor: isTaskLocked(editandoTask) ? 'not-allowed' : 'pointer' }}
-                  disabled={isTaskLocked(editandoTask)}
-                >
-                  Feito
-                </button>
-              </div>
-              {isTaskLocked(editandoTask) && <div className="text-xs text-warning mt-1">Status bloqueado. Conclua as dependências primeiro.</div>}
-            </div>
+        return (
+          <section key={g.status} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button
+              onClick={() => alternarGrupo(g.status)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
+                borderBottom: '1px solid var(--border-light)', color: 'var(--text-primary)',
+              }}
+            >
+              {recolhido ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              <span style={{ color: g.cor, display: 'inline-flex' }}>{g.icone}</span>
+              <span className="text-sm font-bold uppercase tracking-widest" style={{ color: g.cor }}>
+                {g.titulo}
+              </span>
+              <span className="text-xs text-muted">({doGrupo.length})</span>
+            </button>
 
-            <div>
-              <div className="text-xs text-muted uppercase tracking-widest mb-1">Responsável & Departamento</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select 
-                  value={editandoTask.responsavel_id || ''} 
-                  onChange={e => db.tasks.update(editandoTask.id, { responsavel_id: e.target.value || undefined })}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', flex: 1 }}
+            <AnimatePresence initial={false}>
+              {!recolhido && (
+                <motion.div
+                  initial={reduzido ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={reduzido ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  style={{ overflow: 'hidden' }}
                 >
-                  <option value="">Sem dono</option>
-                  {perfis.filter(p => p.id !== 'caixa_central').map(p => (
-                    <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
-                  ))}
-                </select>
-                <select 
-                  value={editandoTask.departamento_id || ''} 
-                  onChange={e => db.tasks.update(editandoTask.id, { departamento_id: e.target.value || undefined })}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', flex: 1 }}
-                >
-                  <option value="">Geral (Sem Depto)</option>
-                  {departamentos.map(d => (
-                    <option key={d.id} value={d.id}>{d.nome}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {doGrupo.length === 0 && (
+                      <div className="text-xs text-muted" style={{ padding: '10px 2px' }}>
+                        {g.status === 'todo' ? 'Nada pendente por aqui.' : 'Vazio.'}
+                      </div>
+                    )}
 
-            <div>
-              <div className="text-xs text-muted uppercase tracking-widest mb-1">Prazo / Data de Conclusão</div>
-              <input
-                type="date"
-                value={editandoTask.data_conclusao || ''}
-                onChange={e => {
-                  const valor = e.target.value || undefined;
-                  db.tasks.update(editandoTask.id, { data_conclusao: valor });
-                  setEditandoTask({ ...editandoTask, data_conclusao: valor });
-                }}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', width: '100%' }}
-              />
-              <div className="text-xs text-muted mt-1">Aparece no calendário do Dashboard.</div>
-            </div>
-
-            <div>
-              <div className="text-xs text-muted uppercase tracking-widest mb-1">Depende de: (Bloqueadores)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                {(editandoTask.depends_on || []).map(depId => {
-                  const dt = tasks.find(t => t.id === depId);
-                  return (
-                    <div key={depId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-primary)', padding: '6px 12px', borderRadius: '8px' }}>
-                      <span className="text-sm">{dt ? dt.titulo : 'Task Desconhecida'} {dt?.status === 'done' && <CheckCircle2 size={14} color="var(--color-success)" style={{ display: 'inline' }} />}</span>
-                      <button onClick={() => {
-                        const nd = editandoTask.depends_on!.filter(d => d !== depId);
-                        db.tasks.update(editandoTask.id, { depends_on: nd });
-                        setEditandoTask({ ...editandoTask, depends_on: nd });
-                      }} className="btn-icon text-muted" style={{ padding: '4px' }}><Trash2 size={14} /></button>
-                    </div>
-                  );
-                })}
-              </div>
-              <select 
-                onChange={(e) => {
-                  const targetId = e.target.value;
-                  if (!targetId) return;
-                  if (targetId === editandoTask.id) return alert('Task não pode depender de si mesma.');
-                  if (wouldCreateCycle(editandoTask.id, targetId)) return alert('Erro: Isso criaria uma dependência circular.');
-                  if (editandoTask.depends_on?.includes(targetId)) return;
-                  
-                  const nd = [...(editandoTask.depends_on || []), targetId];
-                  db.tasks.update(editandoTask.id, { depends_on: nd });
-                  setEditandoTask({ ...editandoTask, depends_on: nd });
-                  e.target.value = ''; // reset select
-                }}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', width: '100%' }}
-              >
-                <option value="">+ Adicionar Dependência</option>
-                {tasks.filter(t => t.id !== editandoTask.id).map(t => (
-                  <option key={t.id} value={t.id}>{t.titulo} ({t.status === 'done' ? 'Concluída' : 'Pendente'})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div className="text-xs text-muted uppercase tracking-widest mb-1">Checklist</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                {(editandoTask.subtarefas || []).map(sub => (
-                  <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={sub.concluida} 
-                      onChange={e => {
-                        const subs = (editandoTask.subtarefas || []).map(s => s.id === sub.id ? { ...s, concluida: e.target.checked } : s);
-                        db.tasks.update(editandoTask.id, { subtarefas: subs });
-                      }}
-                      style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
-                    />
-                    <input 
-                      value={sub.titulo} 
-                      onChange={e => {
-                        const subs = (editandoTask.subtarefas || []).map(s => s.id === sub.id ? { ...s, titulo: e.target.value } : s);
-                        db.tasks.update(editandoTask.id, { subtarefas: subs });
-                      }}
-                      style={{ flex: 1, padding: '4px', border: 'none', background: 'transparent', textDecoration: sub.concluida ? 'line-through' : 'none', color: sub.concluida ? 'var(--text-muted)' : 'var(--text-primary)' }}
-                    />
-                    <button onClick={() => {
-                      const subs = (editandoTask.subtarefas || []).filter(s => s.id !== sub.id);
-                      db.tasks.update(editandoTask.id, { subtarefas: subs });
-                    }} className="btn-icon text-muted" style={{ padding: '4px', border: 'none', background: 'transparent' }}><Trash2 size={14} /></button>
+                    {doGrupo.map(t => (
+                      <LinhaTask
+                        key={t.id}
+                        task={t}
+                        depto={departamentos.find(d => d.id === t.departamento_id)}
+                        responsavel={perfis.find(p => p.id === t.responsavel_id)}
+                        bloqueada={isTaskLocked(t)}
+                        motivoBloqueio={getDependenciesNames(t)}
+                        atrasada={!!t.data_conclusao && t.status !== 'done' && t.data_conclusao < hoje}
+                        aoAbrir={() => setEditandoId(t.id)}
+                        aoAvancar={e => mudarStatus(t.id, AVANCA[t.status], e)}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button onClick={() => {
-                const subs = [...(editandoTask.subtarefas || []), { id: crypto.randomUUID(), titulo: 'Nova subtarefa...', concluida: false }];
-                db.tasks.update(editandoTask.id, { subtarefas: subs });
-              }} className="text-xs font-bold" style={{ background: 'none', border: 'none', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Plus size={14} /> Adicionar Item
-              </button>
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+        );
+      })}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-              <button onClick={() => { deletarTask(editandoTask.id); setEditandoTask(null); }} className="text-danger font-bold text-sm" style={{ background: 'none', border: 'none' }}>Excluir Task</button>
-              <button onClick={() => setEditandoTask(null)} className="btn-primary" style={{ padding: '8px 24px' }}>Salvar</button>
-            </div>
+      {/* ---------------- Modal ---------------- */}
+      <AnimatePresence>
+        {editando && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000, display: 'flex',
+              alignItems: 'center', justifyContent: 'center', padding: '16px',
+              backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => setEditandoId(null)}
+          >
+            <motion.div
+              initial={reduzido ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={MOLA}
+              ref={ancora}
+              onClick={e => e.stopPropagation()}
+              className="card"
+              style={{
+                width: '100%', maxWidth: '560px', maxHeight: '88vh',
+                backgroundColor: 'var(--bg-surface)',
+                display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden',
+              }}
+            >
+              {/* Cabeçalho fixo: o título é o campo, sem rótulo em cima dele. */}
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <textarea
+                  value={editando.titulo}
+                  onChange={e => db.tasks.update(editando.id, { titulo: e.target.value })}
+                  rows={1}
+                  className="font-bold text-lg"
+                  style={{
+                    flex: 1, minWidth: 0, resize: 'none', border: 'none', background: 'transparent',
+                    color: 'var(--text-primary)', padding: 0, fontFamily: 'inherit', lineHeight: 1.3,
+                  }}
+                />
+                <button onClick={() => setEditandoId(null)} className="btn-icon" aria-label="Fechar" style={{ flexShrink: 0 }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ padding: '18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* Status */}
+                <Campo rotulo="Status">
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {GRUPOS.map(g => {
+                      const ativo = editando.status === g.status;
+                      const travado = g.status !== 'todo' && isTaskLocked(editando);
+                      return (
+                        <button
+                          key={g.status}
+                          onClick={e => mudarStatus(editando.id, g.status, e)}
+                          disabled={travado}
+                          style={{
+                            flex: 1, padding: '10px 6px', borderRadius: '10px', cursor: travado ? 'not-allowed' : 'pointer',
+                            border: `1px solid ${ativo ? g.cor : 'var(--border-light)'}`,
+                            background: ativo ? 'var(--bg-active)' : 'transparent',
+                            color: ativo ? g.cor : 'var(--text-secondary)',
+                            fontWeight: ativo ? 700 : 600, fontSize: '12px',
+                            opacity: travado ? 0.45 : 1,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          }}
+                        >
+                          {g.icone} {g.titulo}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {isTaskLocked(editando) && (
+                    <div className="text-xs text-warning" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Lock size={12} /> Bloqueada por: {getDependenciesNames(editando)}
+                    </div>
+                  )}
+                </Campo>
+
+                {/* Quem e onde — dois campos com rótulo próprio, e não um rótulo
+                    para os dois: "Responsável & Departamento" obrigava a ler a
+                    ordem para saber qual seletor era qual. */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' }}>
+                  <Campo rotulo="Responsável" icone={<User size={12} />}>
+                    <select
+                      value={editando.responsavel_id || ''}
+                      onChange={e => db.tasks.update(editando.id, { responsavel_id: e.target.value || undefined })}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">Sem dono</option>
+                      {perfis.filter(p => p.id !== 'caixa_central').map(p => (
+                        <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
+                      ))}
+                    </select>
+                  </Campo>
+
+                  <Campo rotulo="Departamento" icone={<Building2 size={12} />}>
+                    <select
+                      value={editando.departamento_id || ''}
+                      onChange={e => db.tasks.update(editando.id, { departamento_id: e.target.value || undefined })}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">Geral (sem departamento)</option>
+                      {departamentos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                    </select>
+                  </Campo>
+                </div>
+
+                <Campo rotulo="Prazo" icone={<CalendarClock size={12} />} ajuda="Aparece no calendário do painel.">
+                  <input
+                    type="date"
+                    value={editando.data_conclusao || ''}
+                    onChange={e => db.tasks.update(editando.id, { data_conclusao: e.target.value || undefined })}
+                    style={{ width: '100%' }}
+                  />
+                </Campo>
+
+                {/* Checklist */}
+                <Campo
+                  rotulo="Checklist"
+                  icone={<ListChecks size={12} />}
+                  contador={(editando.subtarefas || []).length > 0
+                    ? `${(editando.subtarefas || []).filter(s => s.concluida).length}/${(editando.subtarefas || []).length}`
+                    : undefined}
+                >
+                  {(editando.subtarefas || []).length > 0 && (
+                    <BarraProgresso
+                      feito={(editando.subtarefas || []).filter(s => s.concluida).length}
+                      total={(editando.subtarefas || []).length}
+                    />
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '8px' }}>
+                    {(editando.subtarefas || []).map(sub => (
+                      <div
+                        key={sub.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '6px 8px', borderRadius: '8px',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={sub.concluida}
+                          onChange={e => gravarSubs(editando, (editando.subtarefas || []).map(s => s.id === sub.id ? { ...s, concluida: e.target.checked } : s))}
+                          style={{ width: '17px', height: '17px', accentColor: 'var(--accent)', flexShrink: 0 }}
+                        />
+                        <input
+                          value={sub.titulo}
+                          autoFocus={sub.id === subEmFoco}
+                          onFocus={() => setSubEmFoco(sub.id)}
+                          placeholder="O que precisa ser feito?"
+                          onChange={e => gravarSubs(editando, (editando.subtarefas || []).map(s => s.id === sub.id ? { ...s, titulo: e.target.value } : s))}
+                          // Enter cria a próxima: escrever cinco itens seguidos
+                          // sem tirar a mão do teclado é o uso normal de checklist.
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); novaSub(editando); } }}
+                          style={{
+                            flex: 1, minWidth: 0, padding: '4px 0', border: 'none', background: 'transparent',
+                            fontSize: '13px',
+                            textDecoration: sub.concluida ? 'line-through' : 'none',
+                            color: sub.concluida ? 'var(--text-muted)' : 'var(--text-primary)',
+                          }}
+                        />
+                        <button
+                          onClick={() => gravarSubs(editando, (editando.subtarefas || []).filter(s => s.id !== sub.id))}
+                          className="btn-icon text-muted"
+                          aria-label="Remover item"
+                          style={{ padding: 0, width: '28px', height: '28px', flexShrink: 0, border: 'none', background: 'transparent' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => novaSub(editando)}
+                    className="text-xs font-bold"
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 8px', cursor: 'pointer' }}
+                  >
+                    <Plus size={14} /> Adicionar item
+                  </button>
+                </Campo>
+
+                {/* Dependências */}
+                <Campo rotulo="Depende de" icone={<Link2 size={12} />} ajuda="Enquanto não concluírem, esta fica bloqueada.">
+                  {(editando.depends_on || []).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                      {(editando.depends_on || []).map(depId => {
+                        const dt = tasks.find(t => t.id === depId);
+                        const feita = dt?.status === 'done';
+                        return (
+                          <div key={depId} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '7px 10px', borderRadius: '8px' }}>
+                            {feita
+                              ? <CheckCircle2 size={14} color="var(--color-success)" style={{ flexShrink: 0 }} />
+                              : <Circle size={14} className="text-muted" style={{ flexShrink: 0 }} />}
+                            <span className="text-sm" style={{ flex: 1, minWidth: 0, color: feita ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                              {dt ? dt.titulo : 'Task excluída'}
+                            </span>
+                            <button
+                              onClick={() => db.tasks.update(editando.id, { depends_on: (editando.depends_on || []).filter(d => d !== depId) })}
+                              className="btn-icon text-muted"
+                              aria-label="Remover dependência"
+                              style={{ padding: 0, width: '26px', height: '26px', flexShrink: 0, border: 'none', background: 'transparent' }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <select
+                    value=""
+                    onChange={e => {
+                      const alvo = e.target.value;
+                      if (!alvo) return;
+                      if (alvo === editando.id) return avisar('Uma task não pode depender de si mesma.');
+                      if (wouldCreateCycle(editando.id, alvo)) return avisar('Isso criaria uma dependência circular.');
+                      if (editando.depends_on?.includes(alvo)) return;
+                      db.tasks.update(editando.id, { depends_on: [...(editando.depends_on || []), alvo] });
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">+ Adicionar dependência</option>
+                    {tasks.filter(t => t.id !== editando.id).map(t => (
+                      <option key={t.id} value={t.id}>{t.titulo} {t.status === 'done' ? '(concluída)' : ''}</option>
+                    ))}
+                  </select>
+                </Campo>
+              </div>
+
+              {/* Rodapé fixo. "Salvar" só FECHA — tudo já foi gravado a cada
+                  toque, e é por isso que ele diz "Pronto": um botão chamado
+                  Salvar sugere que sair sem clicar perderia o trabalho. */}
+              <div style={{ padding: '14px 18px', borderTop: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                <button
+                  onClick={() => { deletarTask(editando.id); setEditandoId(null); }}
+                  className="text-danger font-bold text-sm"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  Excluir task
+                </button>
+                <BotaoTatil onClick={() => setEditandoId(null)} className="btn-primary">
+                  Pronto
+                </BotaoTatil>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {toastMsg && (
         <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'var(--color-danger)', color: 'white', padding: '12px 24px', borderRadius: '24px', zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', fontWeight: 'bold' }}>
           {toastMsg}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** Uma seção do modal: rótulo, contador opcional, e a linha de ajuda embaixo. */
+function Campo({ rotulo, icone, contador, ajuda, children }: {
+  rotulo: string;
+  icone?: React.ReactNode;
+  contador?: string;
+  ajuda?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+        {icone && <span className="text-muted" style={{ display: 'inline-flex' }}>{icone}</span>}
+        <span className="text-xs text-muted uppercase tracking-widest font-bold">{rotulo}</span>
+        {contador && <span className="text-xs text-muted">· {contador}</span>}
+      </div>
+      {children}
+      {ajuda && <div className="text-xs text-muted" style={{ marginTop: '6px' }}>{ajuda}</div>}
+    </div>
+  );
+}
+
+function BarraProgresso({ feito, total }: { feito: number; total: number }) {
+  const pct = total > 0 ? (feito / total) * 100 : 0;
+  const completo = total > 0 && feito === total;
+  return (
+    <div style={{ height: '5px', borderRadius: '3px', background: 'var(--bg-primary)', overflow: 'hidden' }}>
+      <motion.div
+        animate={{ width: `${pct}%` }}
+        transition={MOLA}
+        style={{ height: '100%', background: completo ? 'var(--color-success)' : 'var(--accent)' }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Uma tarefa na lista.
+ *
+ * O círculo da esquerda é o controle de status — um toque avança. Ele fica fora
+ * da área que abre o modal de propósito: marcar como feito é o gesto mais comum
+ * da tela, e ter que abrir um modal para isso seria três toques onde cabe um.
+ */
+function LinhaTask({ task, depto, responsavel, bloqueada, motivoBloqueio, atrasada, aoAbrir, aoAvancar }: {
+  task: Task;
+  depto?: { nome: string; cor?: string };
+  responsavel?: { nome: string; sobrenome?: string };
+  bloqueada: boolean;
+  motivoBloqueio: string;
+  atrasada: boolean;
+  aoAbrir: () => void;
+  aoAvancar: (e: React.MouseEvent) => void;
+}) {
+  const feito = task.status === 'done';
+  const subs = task.subtarefas || [];
+  const subsFeitas = subs.filter(s => s.concluida).length;
+
+  const icone = feito
+    ? <CheckCircle2 size={19} color="var(--color-success)" />
+    : task.status === 'doing'
+      ? <CircleDashed size={19} color="var(--color-warning)" />
+      : <Circle size={19} className="text-muted" />;
+
+  return (
+    <div
+      className="card"
+      style={{
+        padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '12px',
+        borderLeft: `3px solid ${depto?.cor || 'var(--border-color)'}`,
+        opacity: bloqueada ? 0.65 : 1,
+      }}
+    >
+      <button
+        onClick={aoAvancar}
+        disabled={bloqueada && !feito}
+        title={bloqueada ? `Aguardando: ${motivoBloqueio}` : 'Mudar o estado'}
+        style={{
+          background: 'none', border: 'none', padding: 0, flexShrink: 0,
+          cursor: bloqueada && !feito ? 'not-allowed' : 'pointer', display: 'inline-flex',
+        }}
+      >
+        {bloqueada && !feito ? <Lock size={17} className="text-warning" /> : icone}
+      </button>
+
+      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={aoAbrir}>
+        <div
+          className="font-bold"
+          style={{
+            fontSize: '14px',
+            textDecoration: feito ? 'line-through' : 'none',
+            color: feito ? 'var(--text-muted)' : 'var(--text-primary)',
+            // Título longo não empurra os chips para fora nem estica a linha:
+            // corta com reticências, e o modal mostra ele inteiro.
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
+        >
+          {task.titulo || 'Sem título'}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '3px' }}>
+          {depto && (
+            <span className="text-xs" style={{ color: depto.cor || 'var(--text-muted)', fontWeight: 700 }}>
+              {depto.nome}
+            </span>
+          )}
+          <span className="text-xs text-muted">
+            {responsavel ? `${responsavel.nome} ${responsavel.sobrenome || ''}`.trim() : 'Sem dono'}
+          </span>
+          {task.data_conclusao && (
+            <span
+              className="text-xs"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                color: atrasada ? 'var(--color-danger)' : 'var(--text-muted)',
+                fontWeight: atrasada ? 700 : 400,
+              }}
+            >
+              <CalendarClock size={11} /> {dataCurta(task.data_conclusao)}{atrasada ? ' · atrasada' : ''}
+            </span>
+          )}
+          {subs.length > 0 && (
+            <span
+              className="text-xs"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                color: subsFeitas === subs.length ? 'var(--color-success)' : 'var(--text-muted)',
+              }}
+            >
+              <ListChecks size={11} /> {subsFeitas}/{subs.length}
+            </span>
+          )}
+          {bloqueada && !feito && (
+            <span className="text-xs text-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <AlertTriangle size={11} /> bloqueada
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -183,6 +183,12 @@ export const MANUAL: SecaoManual[] = [
     titulo: '🎬 Decupagem & Storyboard',
     rotas: ['decupagem', 'breakdown'],
     texto:
+      // A lacuna que a IA da ajuda expôs: perguntaram "como que eu crio uma
+      // cena" e ela respondeu "não sei", porque o manual falava do roteiro em
+      // PDF e nunca do caminho mais simples. A pergunta que fica sem resposta é
+      // a medida do que falta escrever aqui.
+      'CRIAR UMA CENA: vá em Decupagem e clique no botão "+ Cena", no topo. Ela nasce com o próximo número, EXT e DIA, e você troca o que precisar. ' +
+      'A cena existe no projeto inteiro, não dentro de uma diária: por isso o "Adicionar Cena" da Ordem do Dia só mostra cenas que já existem, e é lá na Decupagem que elas nascem. ' +
       'Suba o roteiro em PDF e a IA lê cena por cena, marcando elenco, objetos, figurino, som e veículos direto no texto. ' +
       'As cenas são separadas pelo padrão de cabeçalho — inclusive 7A e 7B, que são cenas diferentes — e a locação vem sozinha do cabeçalho. ' +
       'Você também marca à mão, selecionando no PDF. Subir uma revisão não apaga o trabalho da versão anterior — dá para voltar. ' +
@@ -222,8 +228,11 @@ export const MANUAL: SecaoManual[] = [
     titulo: '✅ Tasks',
     rotas: ['tasks'],
     texto:
-      'Um quadro de tarefas da produção, com responsável, prazo e departamento. ' +
-      'O filtro "Minhas" usa a pessoa que você escolheu em "Quem tem acesso" — se ele vier vazio, é porque esse vínculo ainda não foi feito.',
+      'A lista de tarefas da produção, agrupada por A FAZER, FAZENDO e FEITO — o grupo Feito começa recolhido. ' +
+      'O círculo à esquerda de cada tarefa muda o estado num toque; o resto da linha abre a tarefa. ' +
+      'Dentro dela você define responsável, departamento, prazo, checklist e DEPENDÊNCIAS: enquanto o que ela espera não estiver feito, ela fica bloqueada e não deixa ser concluída. ' +
+      'Tudo é gravado a cada toque — o botão do rodapé só fecha. ' +
+      'O filtro "Minhas" usa a pessoa que você escolheu em "Quem tem acesso"; se vier vazio, é porque esse vínculo ainda não foi feito.',
   },
   {
     id: 'equipamento',

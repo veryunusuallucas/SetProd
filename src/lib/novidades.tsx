@@ -2,7 +2,7 @@ import {
   Sparkles, HelpCircle,
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
-  RefreshCw, MessageCircleQuestion, Undo2, DollarSign,
+  RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks,
 } from 'lucide-react';
 
 /**
@@ -209,6 +209,42 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.6.0',
+    resumo: <>As tarefas deixaram de ser um quadro de colunas e viraram uma lista.</>,
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <ListChecks size={20} />,
+        titulo: 'Tasks virou uma lista, sem o quadro de colunas',
+        texto: 'Agrupada por A fazer, Fazendo e Feito — o grupo Feito começa recolhido, porque é o que mais cresce e menos se lê. O círculo à esquerda muda o estado num toque; o resto da linha abre a tarefa.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <ListChecks size={20} />,
+        titulo: 'As tarefas vazavam para fora da coluna',
+        texto: 'Quando passavam da altura da tela, os cartões apareciam soltos embaixo da moldura, sem barra de rolagem que os alcançasse. Coluna precisa de altura fixa para funcionar, e altura fixa numa lista que só cresce sempre acaba assim.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <ListChecks size={20} />,
+        titulo: 'A subtarefa criada não aparecia, e o nome dela não mudava',
+        texto: 'A janela da tarefa trabalhava com uma cópia congelada do momento em que abriu: o item novo era gravado e não aparecia ali dentro, e o nome voltava ao valor antigo a cada tecla. Agora ela lê a tarefa de verdade. O item novo já nasce com o cursor dentro, e o Enter cria o próximo.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Sparkles size={20} />,
+        titulo: 'A janela da tarefa ficou organizada',
+        texto: 'Cada campo com o seu próprio rótulo, checklist com barra de progresso, dependências mostrando o que já foi concluído, e o rodapé dizendo Pronto em vez de Salvar — porque tudo já é gravado a cada toque.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <MessageCircleQuestion size={20} />,
+        titulo: 'A ajuda passou a saber como se cria uma cena',
+        texto: 'Perguntaram e ela respondeu que não sabia: o manual falava do roteiro em PDF e nunca do caminho simples. Agora explica o botão de nova cena na Decupagem, e por que a Ordem do Dia só oferece cenas que já existem.',
+      },
+    ],
+  },
   {
     versao: '4.5.3',
     resumo: <>Tudo no formato brasileiro — dinheiro e data.</>,
