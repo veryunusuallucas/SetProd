@@ -20,6 +20,7 @@ const PAGINA: Record<EntidadeLog, string> = {
   despesa: 'Financeiro',
   acerto: 'Financeiro',
   configuracao: 'Configurações',
+  evento: 'Eventos',
   diaria: 'Diárias / OD',
   locacao: 'Locações',
   equipamento: 'Equipamentos',

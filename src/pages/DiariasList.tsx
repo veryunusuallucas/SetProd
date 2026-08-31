@@ -6,6 +6,7 @@ import { db } from '../db/db';
 import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X } from 'lucide-react';
 import type { Diaria } from '../types';
 import { logAction } from '../lib/audit';
+import { EventosPanel } from '../components/EventosPanel';
 
 export function DiariasList() {
   const { id: projetoId } = useParams();
@@ -26,6 +27,22 @@ export function DiariasList() {
   const [data, setData] = useState('');
   
   const [editModal, setEditModal] = useState<{ open: boolean, diaria: Diaria | null, num: string, date: string }>({ open: false, diaria: null, num: '', date: '' });
+
+  /*
+    Duas abas, e não duas telas no menu.
+
+    A pergunta é a mesma — "o que a produção tem marcado" — e separar em dois
+    itens de menu faria a pessoa escolher antes de saber onde a coisa está. Mas
+    o CONTEÚDO é separado de propósito: diária tem número, cenas e relatório;
+    evento tem hora e convidados. Ver os dois numa lista só embaralharia a
+    numeração das diárias, que é a espinha do planejamento.
+  */
+  const [aba, setAba] = useState<'diarias' | 'eventos'>('diarias');
+  const eventosFuturos = useLiveQuery(async () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const todos = await db.eventos.where('projeto_id').equals(projetoId!).toArray();
+    return todos.filter(e => e.data >= hoje).length;
+  }, [projetoId]) || 0;
 
   const criarDiaria = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,12 +100,49 @@ export function DiariasList() {
           </h1>
           <p className="text-sm text-secondary">Planejamento e acompanhamento por diária</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={16} /> Criar Diária
-        </button>
+        {aba === 'diarias' && (
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={16} /> Criar Diária
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
+        {([
+          { id: 'diarias' as const, nome: 'Diárias', contagem: diarias.length },
+          { id: 'eventos' as const, nome: 'Eventos', contagem: eventosFuturos },
+        ]).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setAba(t.id)}
+            style={{
+              flex: 1, padding: '12px', border: 'none', background: 'none',
+              color: aba === t.id ? 'var(--accent)' : 'var(--text-muted)',
+              borderBottom: aba === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+              fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            {t.nome}
+            {t.contagem > 0 && (
+              <span
+                className="text-xs"
+                style={{
+                  backgroundColor: aba === t.id ? 'var(--accent)' : 'var(--bg-surface)',
+                  color: aba === t.id ? '#000' : 'var(--text-muted)',
+                  borderRadius: '20px', padding: '1px 8px', fontWeight: 700,
+                }}
+              >
+                {t.contagem}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'eventos' && <EventosPanel projetoId={projetoId!} />}
+
+      {aba === 'diarias' && showForm && (
         <form onSubmit={criarDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)' }}>
           <div style={{ flex: 1 }}>
             <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Número da Diária (ex: 1)</label>
@@ -102,7 +156,7 @@ export function DiariasList() {
         </form>
       )}
 
-      {diarias.length === 0 && !showForm && (
+      {aba === 'diarias' && diarias.length === 0 && !showForm && (
         <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
           Nenhuma diária cadastrada. Comece o seu plano de filmagem criando a Diária 01.
         </div>

@@ -82,8 +82,15 @@ export function AvisoDeVersao() {
           transition={MOLA}
           style={{
             position: 'fixed', left: '20px', bottom: '20px', zIndex: 3500,
-            maxWidth: 'calc(100vw - 40px)',
-            display: 'flex', alignItems: 'center', gap: '12px',
+            // `right` junto com `left` para o aviso ter uma largura de verdade
+            // no celular, e `maxWidth` para ele não atravessar a tela inteira no
+            // desktop — onde uma faixa de 1400px para três palavras seria um
+            // banner, não um aviso.
+            right: '20px', maxWidth: '420px',
+            // Envolve em vez de espremer: com o texto e dois botões na mesma
+            // linha, a tela estreita quebrava o título no meio e o aviso ficava
+            // com cara de erro de layout.
+            display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 12px',
             padding: '12px 14px', borderRadius: '14px',
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
@@ -93,7 +100,7 @@ export function AvisoDeVersao() {
         >
           <Sparkles size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
 
-          <div style={{ minWidth: 0 }}>
+          <div style={{ flex: '1 1 190px', minWidth: 0 }}>
             <div className="text-sm font-bold">Tem versão nova do SetProd</div>
             <div className="text-xs text-muted" style={{ lineHeight: 1.45 }}>
               Atualiza quando puder — vai recarregar a tela.

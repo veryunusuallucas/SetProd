@@ -2,7 +2,7 @@ import {
   Sparkles, HelpCircle,
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
-  RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks,
+  RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
 } from 'lucide-react';
 
 /**
@@ -209,6 +209,30 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.7.0',
+    resumo: <>A produção tem mais coisa marcada além das diárias — e agora o app sabe disso.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <MapPin size={20} />,
+        titulo: 'Eventos: visita de locação, teste, reunião',
+        texto: 'Nova aba dentro da Ordem do Dia. Cada evento tem data, hora, locação e QUEM VAI — você marca as pessoas da equipe, e a pergunta "fui chamado?" deixa de depender de rolar o grupo do WhatsApp. Escolhendo a locação, o endereço dela aparece dentro do evento: na véspera, o que se quer saber é para onde ir.',
+      },
+      {
+        tipo: 'novo',
+        icone: <CalendarDays size={20} />,
+        titulo: 'O evento aparece no calendário e na semana à frente',
+        texto: 'Junto das diárias e dos prazos, com a cor e o ícone do tipo. É ali que ele importa: visita marcada para quinta só serve se aparecer antes de quinta.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <RefreshCw size={20} />,
+        titulo: 'O aviso de versão nova ficou legível na tela estreita',
+        texto: 'O texto e os dois botões disputavam a mesma linha, e o título quebrava no meio. Agora o aviso quebra em duas linhas quando precisa.',
+      },
+    ],
+  },
   {
     versao: '4.6.1',
     resumo: <>As colunas voltaram — foi eu que exagerei na versão passada.</>,

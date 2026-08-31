@@ -65,6 +65,15 @@ export const ESCOPO: Record<TabelaSincronizada, Escopo> = {
   diaria_tasks: 'departamental',
 
   // Trabalho de todo mundo ao mesmo tempo. Restringir aqui só atrapalharia.
+  /*
+    `eventos` é COMUM, e não restrito como `diarias`, porque as duas coisas têm
+    peso diferente. Criar diária é ato de produção: mexe na numeração e na conta
+    de páginas gravadas. Marcar uma visita de locação para quinta é combinar um
+    horário — a Arte marca a dela, a Fotografia marca a dela, e obrigar as duas
+    a passar por quem administra faria a agenda voltar para o WhatsApp, que é de
+    onde ela veio.
+  */
+  eventos: 'comum',
   locacoes: 'comum',
   documentos: 'comum',
   pastas: 'comum',

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import { tipoDoEvento } from './EventosPanel';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,6 +23,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
   
   const diarias = useLiveQuery(() => db.diarias.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const tasks = useLiveQuery(() => db.tasks.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
+  const eventos = useLiveQuery(() => db.eventos.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const locacoes = useLiveQuery(() => db.locacoes.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
 
   // Alcance configurável da camada de clima (v4 §1.2). A API gratuita cobre ~16 dias.
@@ -157,6 +159,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
           
           const diariasNoDia = (diarias || []).filter(d => d.data === diaIso);
           const tasksNoDia = (tasks || []).filter(t => t.data_conclusao === diaIso);
+          const eventosNoDia = (eventos || []).filter(e => e.data === diaIso);
 
           let weatherNode = null;
           if (mostrarClima && weatherData) {
@@ -211,6 +214,29 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                   </div>
                 ))}
                 
+                {/* Evento vem ANTES das tasks e DEPOIS da diária: a diária é o
+                    que manda no dia, o evento é compromisso marcado, e a task é
+                    prazo. Essa é a ordem em que a pessoa lê o dia. */}
+                {eventosNoDia.map(e => {
+                  const t = tipoDoEvento(e.tipo);
+                  return (
+                    <div
+                      key={e.id}
+                      title={`${t.nome}${e.hora_inicio ? ` · ${e.hora_inicio}` : ''}`}
+                      style={{
+                        fontSize: '10px', backgroundColor: 'var(--bg-surface)',
+                        borderLeft: `3px solid ${t.cor}`, padding: '2px 6px',
+                        borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}
+                    >
+                      <span>{t.emoji}</span>
+                      {e.hora_inicio && <strong>{e.hora_inicio}</strong>}
+                      {e.titulo}
+                    </div>
+                  );
+                })}
+
                 {tasksNoDia.map(t => (
                   <div key={t.id} style={{ fontSize: '10px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <CheckSquare size={10} className={t.status === 'done' ? 'text-success' : 'text-warning'} />
