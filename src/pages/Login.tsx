@@ -125,6 +125,20 @@ export function Login() {
           <Link to="/esqueci-senha" className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Esqueci a senha
           </Link>
+
+          {/*
+            A VERSÃO, na porta de entrada.
+
+            É a primeira pergunta de todo suporte — "qual versão você está?" — e
+            até agora a resposta exigia entrar, achar o selo na tela inicial e
+            ler. Quem está travado no login não consegue fazer nada disso, e é
+            justamente quem mais precisa responder.
+
+            Discreta de propósito: informação de rodapé, não convite.
+          */}
+          <div className="text-xs text-muted" style={{ letterSpacing: '0.06em', opacity: 0.7 }}>
+            versão {__VERSAO_APP__}
+          </div>
         </div>
       </motion.div>
     </div>
