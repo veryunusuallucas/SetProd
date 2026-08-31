@@ -211,6 +211,122 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.8.0',
+    resumo: <>A tela da diária foi refeita em volta de uma coisa só: a linha do dia.</>,
+    grupos: [
+      {
+        id: 'linha',
+        titulo: 'O dia inteiro numa lista só',
+        resumo: 'Cronograma e cenas eram duas caixas que não se falavam. No set elas sempre foram a mesma coisa.',
+        cor: '#4cc9f0',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Clock size={20} />,
+            titulo: 'A Linha do Dia',
+            texto: 'Cenas, refeições, deslocamentos e marcos numa lista só, cada um com o seu horário. Antes as cenas não tinham horário nenhum, e o cronograma era uma lista de texto à parte que ninguém conseguia manter em pé quando o dia mudava.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Clock size={20} />,
+            titulo: 'Os horários se calculam sozinhos',
+            texto: 'Você define a chamada e o app encadeia o resto: cada item empurra o seguinte pelo tempo que consome, usando a estimativa que a cena já tem no stripboard. Toque num horário para travá-lo — dali em diante a conta recomeça dele, e o resto do dia se ajusta. Horário calculado é sugestão; travado é decisão.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'Dois modos: Montar e No set',
+            texto: 'Montar é planejar na véspera. No set é marcar o dia acontecendo — a hora real de cada item e o estado de cada cena, com um toque. Quando algo atrasa, o app refaz a conta na hora: "o dia está 40min de atraso, wrap agora às 19:40, planejado 19:00".',
+          },
+          {
+            tipo: 'melhor',
+            icone: <GitMerge size={20} />,
+            titulo: 'O dia chega pronto do Stripboard',
+            texto: 'Mandar um dia do stripboard para a diária agora traz o bloco inteiro — cenas na ordem, almoço e company move com a duração de cada um. O cronograma se monta praticamente sozinho. Se você já tinha montado a linha à mão, ela não é tocada.',
+          },
+        ],
+      },
+      {
+        id: 'tela',
+        titulo: 'A tela parou de ser doze caixas iguais',
+        resumo: 'Tudo tinha o mesmo tamanho e a mesma cor, e o olho não sabia onde pousar.',
+        cor: 'var(--accent)',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <MapPin size={20} />,
+            titulo: 'Um cartão por locação, com tudo do lugar',
+            texto: 'Endereço, previsão do tempo daquele set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local — tudo junto. Eram três caixas separadas falando do mesmo lugar, e numa diária que atravessa a cidade dava para ler a previsão de um set e o hospital de outro sem perceber.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ListChecks size={20} />,
+            titulo: 'O cronograma virou o protagonista',
+            texto: 'A tela agora tem duas colunas: a linha do dia grande de um lado, os cartões de apoio do outro. Transporte, checklist, presença e anexos ficam fechados no rodapé, com o número do lado — "2 comboios", "3/8" — para você saber se vale abrir.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <PieChart size={20} />,
+            titulo: 'Cor com significado',
+            texto: 'Cada área do app tem a sua cor: amarelo é set, verde é dinheiro, azul é logística, ciano é equipe, roxo é criativo. Cor de área diz onde você está; cor de status (vermelho, verde, âmbar) diz como as coisas estão. Nunca as duas no mesmo lugar.',
+          },
+        ],
+      },
+      {
+        id: 'frentes',
+        titulo: 'Duas equipes no mesmo dia',
+        resumo: 'O conceito de "Unidade A/B" acabou. Quem divide o dia é a escalação.',
+        cor: '#2dd4bf',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <GitCompare size={20} />,
+            titulo: 'Escalou dois grupos, o dia se divide',
+            texto: 'Não existe botão de dividir diária. Escale dois grupos e as abas aparecem sozinhas, cada uma com a sua locação, o seu cronograma e a sua equipe. Tirou um grupo, volta a ser um dia só. Cena que ainda não está em nenhuma frente aparece num aviso, para não sumir em silêncio.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Trash2 size={20} />,
+            titulo: 'Some a caixa "Unidade Única (A)"',
+            texto: 'Ela ocupava lugar em quase toda diária para avisar que nada de especial estava acontecendo. Eram dois conceitos fazendo a mesma coisa — grupos e unidades — e a produção tinha que escalar a equipe duas vezes.',
+          },
+        ],
+      },
+      {
+        id: 'dpr',
+        titulo: 'O relatório do dia ficou sério',
+        resumo: 'O que o dia deixou de fazer é a metade que decide o dia seguinte.',
+        cor: '#f87171',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'O DPR sai em PDF de verdade',
+            texto: 'Horário planejado contra horário real linha por linha, cenas filmadas, cenas agendadas e não filmadas com o motivo de cada uma, quem não confirmou presença e a prestação de contas do dia. É o Relatório Diário de Produção que a indústria pede.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Lock size={20} />,
+            titulo: 'O motivo virou obrigatório',
+            texto: 'Não dá mais para fechar a diária deixando uma cena sem explicação. "Cena 12 não gravada" não serve para decidir nada — chuva reagenda para o mesmo set, elenco reagenda para a agenda da pessoa. É o único campo do app que tranca um botão, e é de propósito.',
+          },
+          {
+            tipo: 'novo',
+            icone: <RotateCcw size={20} />,
+            titulo: 'A cena volta ao stripboard marcada PENDENTE',
+            texto: 'Ela mantém a cor de sempre (a informação de INT/EXT e dia/noite não se perde) e ganha contorno vermelho com a etiqueta e o número da diária de onde caiu. Uma cena que caiu ontem e uma que caiu há três semanas pedem decisões diferentes.',
+          },
+          {
+            tipo: 'novo',
+            icone: <CalendarDays size={20} />,
+            titulo: 'O app avisa quando o filme não cabe mais',
+            texto: '"No ritmo atual, faltam 2 diárias para o filme fechar." Ele compara as cenas que saíram por dia com o que ainda falta e com os dias que sobraram. Aparece no painel e na tela da diária, e some sozinho quando não há atraso — um aviso que aparece sempre é um aviso que ninguém lê.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     versao: '4.7.2',
     itens: [
       {

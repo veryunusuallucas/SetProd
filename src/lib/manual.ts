@@ -161,11 +161,17 @@ export const MANUAL: SecaoManual[] = [
     titulo: '📅 Diárias e Eventos',
     rotas: ['diarias', 'diaria/'],
     texto:
-      'Cada diária tem horários, equipe escalada, locações, comboios com veículo e motorista, checklist e anexos. ' +
-      'O clima entra sozinho para cada locação que tenha coordenadas, e o hospital mais próximo aparece na OD. ' +
-      'Escale uma pessoa, um departamento inteiro ou um grupo salvo. ' +
+      'A LINHA DO DIA é o centro da tela: cenas, refeições, deslocamentos e marcos numa lista só, cada um com o seu horário. ' +
+      'Defina a CHAMADA e o app encadeia o resto — cada item empurra o seguinte pelo tempo que consome, e a estimativa de cada cena vem do stripboard. ' +
+      'Toque num horário para TRAVÁ-LO: dali em diante a conta recomeça daquele horário, e o resto do dia se ajusta sozinho. Horário calculado é sugestão; travado é decisão. ' +
+      'Arraste os itens para reordenar. O botão "Acrescentar ao dia" põe almoço, deslocamento, marco ou nota. ' +
+      'A linha tem dois modos: MONTAR (planejar, na véspera) e NO SET (marcar o dia acontecendo — a hora real de cada item e o estado de cada cena). Marcar é coisa de AD e produção. ' +
+      'Quando algo atrasa, aparece o wrap refeito: "o dia está 40min de atraso — wrap agora às 19:40, planejado 19:00". ' +
+      'Ao lado ficam os cartões de apoio. O CARTÃO DE LOCAÇÃO junta tudo do lugar: endereço, previsão do tempo DAQUELE set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local. ' +
+      'Mais abaixo, fechados por padrão: transporte e comboios, checklist, confirmação de presença e anexos. ' +
+      'DUAS FRENTES NO MESMO DIA: não existe botão de dividir. Escale DOIS GRUPOS e as abas aparecem sozinhas, cada uma com a sua locação, o seu cronograma e a sua equipe — tirou um grupo, volta a ser um dia só. O conceito antigo de "Unidade A/B" acabou. ' +
       'A diária tem três estados: RASCUNHO acompanha o stripboard (arrastou uma cena lá, muda aqui); PUBLICADA congela, e mudança no stripboard vira aviso em vez de mudar sozinha — a equipe já está com o PDF na mão; FECHADA é depois do relatório do dia. ' +
-      'No fim, exporte a Ordem do Dia em PDF escolhendo o que entra — ou peça para a IA montar o texto.',
+      'No fim, exporte a Ordem do Dia em PDF escolhendo o que entra — a linha do dia inteira sai impressa, com horários — ou peça para a IA montar o texto.',
   },
   {
     id: 'gravacao',
@@ -175,8 +181,11 @@ export const MANUAL: SecaoManual[] = [
       'Sem confirmação, de propósito — no set você está de pé, com pressa, e marcação errada se desfaz com outro toque. ' +
       'Quando não gravou, escolha o motivo nos atalhos (chuva, luz, elenco, equipamento) ou escreva. É o motivo que decide onde a cena cabe depois. ' +
       'CORTADA é diferente de NÃO GRAVADA: cena cortada sai da conta do que falta, e não fica cobrando para sempre. ' +
-      'Ao fechar a diária, o app monta o relatório do dia e destaca as cenas que ninguém marcou — "ninguém marcou" não é "não gravou". ' +
-      'O que ficou para trás vai para a repescagem, no painel, e pode ser reencaixado em outro dia.',
+      'Ao fechar a diária, o app monta o DPR (Relatório Diário de Produção) e destaca as cenas que ninguém marcou — "ninguém marcou" não é "não gravou". ' +
+      'O MOTIVO É OBRIGATÓRIO para fechar: cena que não saiu sem explicação vira uma dívida que ninguém entende duas semanas depois. É o único campo do app que tranca um botão. ' +
+      'O DPR sai em PDF com os horários planejados contra os reais, as cenas filmadas, as não filmadas com o motivo de cada uma, quem não confirmou presença e a prestação de contas. ' +
+      'O que ficou para trás vai para a repescagem, no painel, e volta ao stripboard marcado PENDENTE, com contorno vermelho e o número da diária de onde caiu. ' +
+      'E no painel aparece o ritmo do projeto: "no ritmo atual, faltam 2 diárias para o filme fechar". Some sozinho quando não há atraso.',
   },
   {
     id: 'decupagem',

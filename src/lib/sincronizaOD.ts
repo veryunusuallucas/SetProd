@@ -1,6 +1,6 @@
 import { db } from '../db/db';
-import { montarLinha, cenasDaQuebra } from './stripboard';
-import type { Cena, Diaria, StripboardItem } from '../types';
+import { montarLinha, cenasDaQuebra, blocoDaQuebra, ROTULOS, type ItemLinha } from './stripboard';
+import type { Cena, Diaria, StripboardItem, ItemDoDia, TipoItemDia } from '../types';
 
 /**
  * A ponte entre o stripboard e a Ordem do Dia — a Opção C do plano.
@@ -95,15 +95,56 @@ export async function aplicarDoStripboard(
   if (!diaria.stripboard_item_id) return false;
 
   const linha = montarLinha(cenas, itens);
-  const doStripboard = cenasDaQuebra(linha, diaria.stripboard_item_id);
-  if (doStripboard === null) return false;
+  const bloco = blocoDaQuebra(linha, diaria.stripboard_item_id);
+  if (bloco === null) return false;
 
-  const novos = doStripboard.map(c => c.id);
+  const novos = bloco.flatMap(i => (i.tipo === 'SCENE' ? [i.cena.id] : []));
   const atuais = diaria.cena_ids || [];
-  if (novos.length === atuais.length && novos.every((id, i) => id === atuais[i])) return false;
+  const mesmasCenas = novos.length === atuais.length && novos.every((id, i) => id === atuais[i]);
 
-  await db.diarias.update(diaria.id, { cena_ids: novos });
+  /*
+    A LINHA DO TEMPO SÓ NASCE UMA VEZ (spec §2.3).
+
+    Quando a diária ainda não tem uma, ela é semeada com o bloco inteiro do
+    stripboard — cenas, almoço e deslocamentos, na ordem, com a estimativa de
+    cada cena. É o que faz o cronograma se montar praticamente sozinho.
+
+    ⚠️ Se ela JÁ existe, não se toca nela, nem quando as cenas mudam. Alguém
+    passou a noite ajustando horários e travando a chamada; refazer a linha a
+    cada sincronia apagaria esse trabalho em silêncio. As cenas novas entram
+    pelo fim, pela reconciliação em `montarLinhaDoDia`, onde dá para ver.
+  */
+  const semLinha = !diaria.linha_do_tempo || diaria.linha_do_tempo.length === 0;
+  if (mesmasCenas && !semLinha) return false;
+
+  await db.diarias.update(diaria.id, {
+    cena_ids: novos,
+    ...(semLinha ? { linha_do_tempo: linhaDoTempoDoBloco(bloco) } : {}),
+  });
   return true;
+}
+
+/** Traduz o bloco do stripboard para os itens da linha do dia. */
+function linhaDoTempoDoBloco(bloco: ItemLinha[]): ItemDoDia[] {
+  const TIPO: Partial<Record<string, TipoItemDia>> = {
+    BANNER_LUNCH: 'almoco',
+    BANNER_MOVE: 'move',
+    BANNER_NOTE: 'nota',
+  };
+
+  return bloco.map(i => {
+    if (i.tipo === 'SCENE') {
+      return { id: `cena-${i.cena.id}`, tipo: 'cena' as const, cena_id: i.cena.id };
+    }
+    return {
+      id: i.item.id,
+      tipo: TIPO[i.tipo] || 'marco',
+      titulo: i.item.titulo || ROTULOS[i.tipo],
+      // A duração vem do banner quando ela foi definida lá. `undefined` cai no
+      // padrão do tipo — 60min de almoço, 30 de deslocamento.
+      ...(i.item.duracao_min !== undefined ? { duracao_min: i.item.duracao_min } : {}),
+    };
+  });
 }
 
 /**

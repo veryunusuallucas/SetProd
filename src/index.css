@@ -23,6 +23,23 @@
   --color-danger-bg: rgba(248, 113, 113, 0.1);
   --color-warning: #fb923c;
   --color-warning-bg: rgba(251, 146, 60, 0.1);
+
+  /*
+    CORES POR ÁREA DO APP (spec §11).
+
+    A regra de ouro, e ela não é decorativa: **cor de área diz ONDE você está;
+    cor de status diz COMO as coisas estão.** Nunca os dois papéis no mesmo
+    elemento — um card de despesa estourada é verde de área com vermelho de
+    status, não um card vermelho que ninguém sabe se é "financeiro" ou "erro".
+
+    Usar em ícone, borda e detalhe. NUNCA em fundo inteiro: num app escuro,
+    superfície colorida grande cansa a vista em meia hora de set.
+  */
+  --cor-set: var(--accent);          /* Diárias, ordem do dia — a identidade do app */
+  --cor-financeiro: #4ade80;         /* Dinheiro */
+  --cor-criativo: #a78bfa;           /* Roteiro, decupagem */
+  --cor-logistica: #38bdf8;          /* Locações, transporte, equipamentos */
+  --cor-equipe: #2dd4bf;             /* Pessoas, créditos, departamentos */
   
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -572,4 +589,29 @@ input[type="radio"]:checked::before {
 }
 @media (prefers-reduced-motion: reduce) {
   .girando { animation: none; opacity: 0.6; }
+}
+
+/*
+  A grade da tela da diária (spec §12).
+
+  Assimétrica de propósito: ~2/3 para a linha do dia, ~1/3 para os cartões de
+  apoio. Colunas iguais ficam monótonas e não respeitam a forma do conteúdo —
+  o cronograma é vertical e longo, os cartões são compactos.
+
+  `minmax(0, …)` nas duas faixas, e não `2fr 1fr` puro: o mínimo automático de
+  um item de grade é o tamanho do conteúdo dele, então uma tabela larga na
+  coluna principal esticaria a grade e daria rolagem horizontal na página
+  inteira. É o mesmo tropeço do `min-height: auto` no flex, na outra direção.
+*/
+.diaria-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* Abaixo de 1100px a coluna estreita fica estreita demais para o cartão de
+   locação, e o dia empilha: contexto, cronograma, apoio (spec §12.2). */
+@media (max-width: 1100px) {
+  .diaria-grade { grid-template-columns: minmax(0, 1fr); }
 }

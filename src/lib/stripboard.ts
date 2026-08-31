@@ -150,6 +150,24 @@ export function cenasDoDia(linha: ItemLinha[], numeroDoDia: number): Cena[] {
   return out;
 }
 
+/**
+ * TUDO de um dia — cenas E banners — na ordem em que está no stripboard.
+ *
+ * `cenasDoDia` devolve só as cenas, e por muito tempo isso bastou: a Ordem do
+ * Dia só queria a lista. A linha do tempo quer o dia inteiro, porque o almoço e
+ * o company move que alguém já planejou no stripboard são exatamente o que faz
+ * os horários baterem — sem eles, a conta dá um dia sem pausa nenhuma.
+ */
+export function blocoDoDia(linha: ItemLinha[], numeroDoDia: number): ItemLinha[] {
+  const out: ItemLinha[] = [];
+  let dia = 1;
+  for (const it of linha) {
+    if (it.tipo === 'DAY_BREAK') { dia += 1; continue; }
+    if (dia === numeroDoDia) out.push(it);
+  }
+  return out;
+}
+
 /** O bloco final, que não tem quebra depois dele. */
 export const ULTIMO_BLOCO = '__ultimo__';
 
@@ -165,15 +183,21 @@ export const ULTIMO_BLOCO = '__ultimo__';
  * Dia esvaziar sozinha porque alguém removeu um marcador.
  */
 export function cenasDaQuebra(linha: ItemLinha[], quebraId: string): Cena[] | null {
+  const bloco = blocoDaQuebra(linha, quebraId);
+  return bloco === null ? null : bloco.flatMap(i => (i.tipo === 'SCENE' ? [i.cena] : []));
+}
+
+/** O mesmo bloco, mas inteiro — com os banners. Mesma regra do `null`. */
+export function blocoDaQuebra(linha: ItemLinha[], quebraId: string): ItemLinha[] | null {
   if (quebraId === ULTIMO_BLOCO) {
     const totalDias = linha.filter(i => i.tipo === 'DAY_BREAK').length + 1;
-    return cenasDoDia(linha, totalDias);
+    return blocoDoDia(linha, totalDias);
   }
 
   const indice = linha.findIndex(i => i.id === quebraId);
   if (indice < 0) return null;
 
-  return cenasDoDia(linha, diaNaPosicao(linha, indice));
+  return blocoDoDia(linha, diaNaPosicao(linha, indice));
 }
 
 /**
