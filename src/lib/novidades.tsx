@@ -210,6 +210,24 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.6.1',
+    resumo: <>As colunas voltaram — foi eu que exagerei na versão passada.</>,
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <ListChecks size={20} />,
+        titulo: 'O quadro de colunas está de volta',
+        texto: 'O pedido era tirar a palavra "Kanban" do título, e na 4.6.0 eu troquei o formato inteiro por uma lista. O quadro era o certo. Só a palavra saiu: ela nomeia o formato para quem já conhece o formato, e não diz nada para o resto.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Sparkles size={20} />,
+        titulo: 'E voltou melhor do que era',
+        texto: 'Cada coluna mostra quantas tarefas tem. A coluna que vai receber o cartão se destaca enquanto você arrasta — antes o alvo era um chute até soltar. O cartão ganhou uma alça, porque sem sinal visível a única forma de descobrir que dava para arrastar era tentar por acaso. E tarefa bloqueada não arrasta, em vez de arrastar e ser recusada no fim.',
+      },
+    ],
+  },
+  {
     versao: '4.6.0',
     resumo: <>As tarefas deixaram de ser um quadro de colunas e viraram uma lista.</>,
     itens: [
@@ -217,13 +235,13 @@ export const VERSOES: Versao[] = [
         tipo: 'melhor',
         icone: <ListChecks size={20} />,
         titulo: 'Tasks virou uma lista, sem o quadro de colunas',
-        texto: 'Agrupada por A fazer, Fazendo e Feito — o grupo Feito começa recolhido, porque é o que mais cresce e menos se lê. O círculo à esquerda muda o estado num toque; o resto da linha abre a tarefa.',
+        texto: 'Agrupada por A fazer, Fazendo e Feito. (Durou uma versão: as colunas voltaram na 4.6.1.)',
       },
       {
         tipo: 'corrigido',
         icone: <ListChecks size={20} />,
         titulo: 'As tarefas vazavam para fora da coluna',
-        texto: 'Quando passavam da altura da tela, os cartões apareciam soltos embaixo da moldura, sem barra de rolagem que os alcançasse. Coluna precisa de altura fixa para funcionar, e altura fixa numa lista que só cresce sempre acaba assim.',
+        texto: 'Passando da altura da tela, os cartões apareciam soltos embaixo da moldura, sem barra de rolagem que os alcançasse. A altura das colunas era travada na da tela; agora cada uma cresce com o que tem dentro e quem rola é a página.',
       },
       {
         tipo: 'corrigido',

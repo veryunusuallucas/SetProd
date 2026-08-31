@@ -228,8 +228,9 @@ export const MANUAL: SecaoManual[] = [
     titulo: '✅ Tasks',
     rotas: ['tasks'],
     texto:
-      'A lista de tarefas da produção, agrupada por A FAZER, FAZENDO e FEITO — o grupo Feito começa recolhido. ' +
-      'O círculo à esquerda de cada tarefa muda o estado num toque; o resto da linha abre a tarefa. ' +
+      'Um quadro com três colunas: A FAZER, FAZENDO e FEITO, com a contagem de cada uma no topo. ' +
+      'No computador, arraste o cartão de uma coluna para a outra. No celular, o círculo à esquerda do cartão avança o estado num toque — arrastar entre colunas que nem cabem na mesma tela não funciona. ' +
+      'O resto do cartão abre a tarefa. ' +
       'Dentro dela você define responsável, departamento, prazo, checklist e DEPENDÊNCIAS: enquanto o que ela espera não estiver feito, ela fica bloqueada e não deixa ser concluída. ' +
       'Tudo é gravado a cada toque — o botão do rodapé só fecha. ' +
       'O filtro "Minhas" usa a pessoa que você escolheu em "Quem tem acesso"; se vier vazio, é porque esse vínculo ainda não foi feito.',
