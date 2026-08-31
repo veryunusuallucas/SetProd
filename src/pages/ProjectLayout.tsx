@@ -107,7 +107,7 @@ export function ProjectLayout() {
       title: 'SET',
       items: [
         { name: 'Dashboard', path: `/projeto/${id}`, icon: LayoutDashboard, exact: true },
-        { name: 'Diárias / OD', path: `/projeto/${id}/diarias`, icon: CalendarDays, exact: false },
+        { name: 'Diárias e Eventos', path: `/projeto/${id}/diarias`, icon: CalendarDays, exact: false },
         { name: 'Tasks', path: `/projeto/${id}/tasks`, icon: CheckSquare, exact: false },
       ]
     },
@@ -323,7 +323,10 @@ export function ProjectLayout() {
 
         <NavLink to={`/projeto/${id}/diarias`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <CalendarDays size={20} />
-          <span style={{ fontSize: '10px', fontWeight: 600 }}>OD</span>
+          {/* No celular são cinco itens dividindo a largura da tela, então o
+              rótulo tem que caber em uma palavra. "Diárias" é o que a pessoa
+              procura; os eventos moram lá dentro e aparecem na aba. */}
+          <span style={{ fontSize: '10px', fontWeight: 600 }}>Diárias</span>
         </NavLink>
 
         <NavLink to={`/projeto/${id}/financeiro`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>

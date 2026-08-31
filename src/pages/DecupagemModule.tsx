@@ -129,7 +129,7 @@ export function DecupagemModule() {
       const seguir = confirm(
         `A Diária ${String(diaria.numero).padStart(2, '0')} é de ${new Date(diaria.data + 'T12:00').toLocaleDateString('pt-BR')} — esse dia já passou.\n\n` +
         'Cena mandada para um dia que já aconteceu não aparece no que falta gravar.\n\n' +
-        'Quer mandar mesmo assim? (Cancele para criar uma diária nova em Diárias / OD.)'
+        'Quer mandar mesmo assim? (Cancele para criar uma diária nova em Diárias e Eventos.)'
       );
       if (!seguir) return;
     }
