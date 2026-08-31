@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db/db';
 import {
   Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle, CalendarClock,
-  Circle, CircleDashed, ChevronDown, ChevronRight, X, User, Building2, Link2,
+  Circle, CircleDashed, X, User, Building2, Link2, GripVertical,
 } from 'lucide-react';
 import type { Task } from '../types';
 import { logAction } from '../lib/audit';
@@ -18,23 +18,24 @@ import { BotaoTatil } from '../components/ui/BotaoTatil';
 import { faiscar } from '../components/ui/Faisca';
 
 /**
- * As tarefas da produção.
+ * As tarefas da produção — três colunas, arrastáveis.
  *
- * ⚠️ ISTO ERA UM KANBAN DE TRÊS COLUNAS, E DEIXOU DE SER A PEDIDO.
+ * A palavra "Kanban" saiu do título a pedido: ela nomeia o formato para quem
+ * conhece o formato, e não diz nada para o resto. O que a tela é continua
+ * sendo o que ela sempre foi.
  *
- * A troca conserta de quebra o defeito que ninguém tinha explicado: a tela era
- * `height: 100vh` e as colunas eram itens de flex com `flex: 1`. A altura delas
- * ficava travada na da linha, e os cartões que não cabiam simplesmente
- * TRANSBORDAVAM para fora da moldura — apareciam soltos embaixo do retângulo
- * arredondado da coluna, sem barra de rolagem que os alcançasse.
+ * ⚠️ A ALTURA DAS COLUNAS É SOLTA, E ISSO NÃO É DESCUIDO.
  *
- * Coluna é um formato que exige altura fixa para funcionar, e altura fixa numa
- * lista que só cresce sempre acaba assim. Uma lista rola com a página, e não
- * tem como transbordar.
+ * A versão anterior tinha `height: 100vh` na tela e `flex: 1` nas colunas. Item
+ * de flex numa linha ESTICA na altura por padrão, então cada coluna ficava com a
+ * altura da linha — travada — e o cartão que não coubesse transbordava para fora
+ * da moldura: aparecia solto embaixo do retângulo arredondado, sem barra de
+ * rolagem que o alcançasse.
  *
- * O que a coluna dava e a lista precisa devolver: a noção de EM QUE PÉ ESTÁ.
- * Por isso a lista é agrupada por status, com contador em cada grupo — e
- * "Feito" nasce recolhido, porque é o grupo que mais cresce e menos se lê.
+ * Com `alignItems: flex-start`, cada coluna toma a altura do próprio conteúdo e
+ * quem rola é a página. Coluna comprida fica comprida — o contador no topo já
+ * avisa que ali tem muita coisa, e esconder o excesso atrás de um limite é
+ * exatamente o que fazia o cartão sumir.
  */
 
 type Status = Task['status'];
@@ -61,7 +62,8 @@ export function TasksModule() {
   const [filtro, setFiltro] = useState<'todas' | 'minhas'>('todas');
   const [novaTaskTitulo, setNovaTaskTitulo] = useState('');
   const [toastMsg, setToastMsg] = useState('');
-  const [recolhidos, setRecolhidos] = useState<Set<Status>>(() => new Set<Status>(['done']));
+  /** Sobre qual coluna o cartão está sendo arrastado, para destacar o alvo. */
+  const [arrastandoSobre, setArrastandoSobre] = useState<Status | null>(null);
 
   /*
     GUARDA O ID, NÃO A TAREFA.
@@ -215,12 +217,6 @@ export function TasksModule() {
   const tarefasVisiveis = tasks.filter(t => filtro === 'todas' || t.responsavel_id === meuPerfilId);
   const hoje = new Date().toISOString().slice(0, 10);
 
-  const alternarGrupo = (s: Status) => setRecolhidos(atual => {
-    const p = new Set(atual);
-    if (p.has(s)) p.delete(s); else p.add(s);
-    return p;
-  });
-
   return (
     <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
 
@@ -259,65 +255,101 @@ export function TasksModule() {
         </BotaoTatil>
       </form>
 
-      {/* A lista, agrupada por status. Sem coluna, sem altura travada. */}
-      {GRUPOS.map(g => {
-        const doGrupo = tarefasVisiveis.filter(t => t.status === g.status);
-        const recolhido = recolhidos.has(g.status);
+      {/*
+        O QUADRO DE COLUNAS, COM A ALTURA SOLTA.
 
-        return (
-          <section key={g.status} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={() => alternarGrupo(g.status)}
+        Ele voltou a pedido, e o que muda em relação à versão que vazava é uma
+        linha: `alignItems: flex-start`.
+
+        Antes a tela era `height: 100vh` e as colunas eram itens de flex com
+        `flex: 1`. O padrão de um item de flex numa linha é ESTICAR na altura
+        (`stretch`), então cada coluna ficava com a altura da linha — travada —
+        e os cartões que não cabiam transbordavam para fora da moldura,
+        aparecendo soltos embaixo do retângulo arredondado, sem barra de rolagem
+        que os alcançasse.
+
+        Com `flex-start`, cada coluna toma a altura do próprio conteúdo. Quem
+        rola é a página. Coluna comprida fica comprida — que é o certo: a
+        contagem no topo já diz que ali tem muita coisa, e esconder o excesso
+        atrás de um limite é o que fazia o cartão sumir.
+      */}
+      <div
+        style={{
+          display: 'flex', gap: '14px', overflowX: 'auto', alignItems: 'flex-start',
+          paddingBottom: '8px',
+        }}
+        className="hide-scrollbar"
+      >
+        {GRUPOS.map(g => {
+          const doGrupo = tarefasVisiveis.filter(t => t.status === g.status);
+          const recebendo = arrastandoSobre === g.status;
+
+          return (
+            <div
+              key={g.status}
+              onDragOver={e => { e.preventDefault(); setArrastandoSobre(g.status); }}
+              onDragLeave={() => setArrastandoSobre(a => (a === g.status ? null : a))}
+              onDrop={e => {
+                e.preventDefault();
+                setArrastandoSobre(null);
+                const taskId = e.dataTransfer.getData('taskId');
+                if (taskId) mudarStatus(taskId, g.status);
+              }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
-                borderBottom: '1px solid var(--border-light)', color: 'var(--text-primary)',
+                // `1 0 280px`: cresce para dividir a largura no desktop, NÃO
+                // encolhe abaixo de 280 no celular — aí a linha rola de lado, em
+                // vez de espremer três colunas ilegíveis na mesma tela.
+                flex: '1 0 280px', minWidth: '280px',
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: '14px', padding: '12px',
+                display: 'flex', flexDirection: 'column', gap: '10px',
+                border: `1px solid ${recebendo ? g.cor : 'var(--border-light)'}`,
+                // O destaque ao arrastar por cima diz ONDE vai cair, antes de
+                // soltar. Sem ele o alvo é um chute.
+                transition: 'border-color 0.15s ease, background-color 0.15s ease',
               }}
             >
-              {recolhido ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-              <span style={{ color: g.cor, display: 'inline-flex' }}>{g.icone}</span>
-              <span className="text-sm font-bold uppercase tracking-widest" style={{ color: g.cor }}>
-                {g.titulo}
-              </span>
-              <span className="text-xs text-muted">({doGrupo.length})</span>
-            </button>
-
-            <AnimatePresence initial={false}>
-              {!recolhido && (
-                <motion.div
-                  initial={reduzido ? { opacity: 0 } : { opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={reduzido ? { opacity: 0 } : { opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  style={{ overflow: 'hidden' }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
+                <span style={{ color: g.cor, display: 'inline-flex' }}>{g.icone}</span>
+                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: g.cor, flex: 1 }}>
+                  {g.titulo}
+                </span>
+                <span
+                  className="text-xs font-bold"
+                  style={{
+                    color: g.cor, backgroundColor: 'var(--bg-surface)',
+                    borderRadius: '20px', padding: '2px 9px', minWidth: '24px', textAlign: 'center',
+                  }}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {doGrupo.length === 0 && (
-                      <div className="text-xs text-muted" style={{ padding: '10px 2px' }}>
-                        {g.status === 'todo' ? 'Nada pendente por aqui.' : 'Vazio.'}
-                      </div>
-                    )}
+                  {doGrupo.length}
+                </span>
+              </div>
 
-                    {doGrupo.map(t => (
-                      <LinhaTask
-                        key={t.id}
-                        task={t}
-                        depto={departamentos.find(d => d.id === t.departamento_id)}
-                        responsavel={perfis.find(p => p.id === t.responsavel_id)}
-                        bloqueada={isTaskLocked(t)}
-                        motivoBloqueio={getDependenciesNames(t)}
-                        atrasada={!!t.data_conclusao && t.status !== 'done' && t.data_conclusao < hoje}
-                        aoAbrir={() => setEditandoId(t.id)}
-                        aoAvancar={e => mudarStatus(t.id, AVANCA[t.status], e)}
-                      />
-                    ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {doGrupo.length === 0 && (
+                  <div className="text-xs text-muted" style={{ padding: '18px 4px', textAlign: 'center' }}>
+                    {recebendo ? 'Solte aqui' : 'Vazio'}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </section>
-        );
-      })}
+                )}
+
+                {doGrupo.map(t => (
+                  <CartaoTask
+                    key={t.id}
+                    task={t}
+                    depto={departamentos.find(d => d.id === t.departamento_id)}
+                    responsavel={perfis.find(p => p.id === t.responsavel_id)}
+                    bloqueada={isTaskLocked(t)}
+                    motivoBloqueio={getDependenciesNames(t)}
+                    atrasada={!!t.data_conclusao && t.status !== 'done' && t.data_conclusao < hoje}
+                    aoAbrir={() => setEditandoId(t.id)}
+                    aoAvancar={e => mudarStatus(t.id, AVANCA[t.status], e)}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* ---------------- Modal ---------------- */}
       <AnimatePresence>
@@ -617,13 +649,15 @@ function BarraProgresso({ feito, total }: { feito: number; total: number }) {
 }
 
 /**
- * Uma tarefa na lista.
+ * Uma tarefa dentro da coluna.
  *
- * O círculo da esquerda é o controle de status — um toque avança. Ele fica fora
- * da área que abre o modal de propósito: marcar como feito é o gesto mais comum
- * da tela, e ter que abrir um modal para isso seria três toques onde cabe um.
+ * Arrasta para mudar de coluna, no computador. E o círculo da esquerda avança o
+ * estado num toque — que é o caminho do celular, onde arrastar entre colunas
+ * que nem cabem na mesma tela não funciona. Ele fica fora da área que abre a
+ * janela de propósito: marcar como feito é o gesto mais comum da tela, e abrir
+ * um modal para isso seriam três toques onde cabe um.
  */
-function LinhaTask({ task, depto, responsavel, bloqueada, motivoBloqueio, atrasada, aoAbrir, aoAvancar }: {
+function CartaoTask({ task, depto, responsavel, bloqueada, motivoBloqueio, atrasada, aoAbrir, aoAvancar }: {
   task: Task;
   depto?: { nome: string; cor?: string };
   responsavel?: { nome: string; sobrenome?: string };
@@ -646,12 +680,29 @@ function LinhaTask({ task, depto, responsavel, bloqueada, motivoBloqueio, atrasa
   return (
     <div
       className="card"
+      /*
+        Tarefa bloqueada não arrasta: ela não pode mudar de coluna enquanto o
+        que ela espera não estiver feito, e deixar arrastar para depois recusar
+        no solto seria prometer uma coisa e fazer outra.
+      */
+      draggable={!bloqueada}
+      onDragStart={e => {
+        e.dataTransfer.setData('taskId', task.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
       style={{
-        padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px',
         borderLeft: `3px solid ${depto?.cor || 'var(--border-color)'}`,
         opacity: bloqueada ? 0.65 : 1,
+        cursor: bloqueada ? 'default' : 'grab',
       }}
     >
+      {/* A alça existe para dizer que o cartão se pega. Sem um sinal visível, a
+          única forma de descobrir que dá para arrastar é tentar por acaso. */}
+      {!bloqueada && (
+        <GripVertical size={14} className="text-muted" style={{ flexShrink: 0, opacity: 0.45 }} />
+      )}
+
       <button
         onClick={aoAvancar}
         disabled={bloqueada && !feito}
