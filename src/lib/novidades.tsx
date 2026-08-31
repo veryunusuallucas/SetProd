@@ -3,6 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
+  Bell, LogIn, Bug,
 } from 'lucide-react';
 
 /**
@@ -209,6 +210,48 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.7.1',
+    resumo: <>Agora dá para saber que o app mudou sem precisar adivinhar.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <Bell size={20} />,
+        titulo: 'O sino avisa quando o app é atualizado',
+        texto: 'Quem entra direto numa diária pelo link, ou passa o dia no Financeiro, nunca via a tela de novidades — e continuava sem saber que a coisa de que reclamou tinha sido consertada. O aviso chega no sino de cada um, quando o aparelho da pessoa atualiza.',
+      },
+      {
+        tipo: 'novo',
+        icone: <RefreshCw size={20} />,
+        titulo: 'Atualizar deixou de parecer travamento',
+        texto: 'Clicar em Atualizar recarrega a tela, e sem nada no meio o que se via era o app sumir e voltar. Agora tem uma tela dizendo que a troca está acontecendo — com o lembrete de que os seus dados continuam salvos.',
+      },
+      {
+        tipo: 'novo',
+        icone: <LogIn size={20} />,
+        titulo: 'A versão aparece na tela de entrada',
+        texto: '"Qual versão você está?" é a primeira pergunta de todo suporte, e a resposta exigia entrar no app. Quem está travado no login não conseguia — e é justamente quem mais precisa responder.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Bug size={20} />,
+        titulo: 'Relatar problema ficou mais bonito e mais claro',
+        texto: 'O tipo vem primeiro e muda o rótulo do campo — quem marca "dúvida" pergunta, quem marca "bug" conta o que aconteceu. E o "vai junto" agora lista em etiquetas legíveis o que será enviado, em vez de uma frase corrida.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <MapPin size={20} />,
+        titulo: 'As diárias apareciam embaixo da aba de Eventos',
+        texto: 'A lista não sumia ao trocar de aba. E a tela virou "Diárias & Eventos", que é o que ela é.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Bug size={20} />,
+        titulo: 'O relato de problema agora diz quem relatou',
+        texto: 'Sem isso, "não consegui salvar" virava um beco: não havia como voltar e perguntar o que a pessoa estava fazendo.',
+      },
+    ],
+  },
   {
     versao: '4.7.0',
     resumo: <>A produção tem mais coisa marcada além das diárias — e agora o app sabe disso.</>,

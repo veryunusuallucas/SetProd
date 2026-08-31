@@ -153,3 +153,40 @@ create policy "bugs: so o admin le" on public.bug_reports
 --   select tablename, policyname, cmd from pg_policies
 --    where tablename in ('fichas_publicas','perfis','bug_reports')
 --    order by tablename, cmd;
+
+
+-- =============================================================================
+-- PARTE 5 — quem relatou (acrescentada na v4.7.1)
+-- =============================================================================
+--
+-- Um relato sem autor é um beco: "não consegui salvar" sem saber de quem, e sem
+-- como voltar e perguntar o que a pessoa estava fazendo.
+--
+-- A coluna se preenche SOZINHA, com `default auth.uid()`. É melhor que mandar do
+-- app por dois motivos:
+--
+--   · não dá para forjar. O app poderia mandar qualquer uuid no corpo; aqui quem
+--     escreve é o Postgres, a partir do token da sessão.
+--   · não quebra quem está numa versão antiga do app. Coluna nova que o cliente
+--     precisa preencher faria o insert falhar até todo mundo atualizar — e a
+--     tela de relatar bug é a última que pode parar de funcionar.
+--
+-- Fica NULL para quem relata sem estar logado, que é justamente quem mais
+-- precisa relatar quando o login está quebrado.
+
+alter table public.bug_reports
+  add column if not exists usuario_id uuid default auth.uid();
+
+comment on column public.bug_reports.usuario_id is
+  'Conta que relatou. Preenchida pelo Postgres (default auth.uid()), nao pelo app. NULL = relato sem login.';
+
+-- O e-mail continua vindo dentro de `stats.usuario`: juntar com `auth.users`
+-- numa coluna exigiria SECURITY DEFINER, e o e-mail já viaja no pacote.
+--
+-- Para ler os dois lado a lado no SQL Editor:
+--
+--   select created_at, tipo, descricao,
+--          stats->'usuario'->>'email' as email,
+--          usuario_id
+--     from public.bug_reports
+--    order by created_at desc;

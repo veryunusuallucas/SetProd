@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { MOLA } from './ui/ia';
+import { Atualizando } from './ui/Atualizando';
+import { avisarNovidadeSePreciso } from '../lib/avisoDeNovidade';
 
 /**
  * "Tem versão nova. Atualizar?"
@@ -21,6 +23,9 @@ import { MOLA } from './ui/ia';
  * mais abaixo), aí não há nada a preservar.
  */
 export function AvisoDeVersao() {
+  /** Cobre a tela do clique até a página ir embora. Ver ui/Atualizando.tsx. */
+  const [trocando, setTrocando] = useState(false);
+
   const {
     needRefresh: [temVersaoNova, setTemVersaoNova],
     updateServiceWorker,
@@ -53,6 +58,15 @@ export function AvisoDeVersao() {
     — mas uma vez só: se o arquivo sumiu de verdade, recarregar em laço deixaria
     o app piscando para sempre em vez de mostrar o erro.
   */
+  /*
+    Depois de atualizar, o sino conta o que mudou.
+
+    Aqui e não na tela inicial: quem entra direto numa diária pelo link, ou quem
+    passa o dia no Financeiro, nunca via o modal de novidades — e continuava sem
+    saber que a coisa de que ele reclamou tinha sido consertada.
+  */
+  useEffect(() => { void avisarNovidadeSePreciso(); }, []);
+
   useEffect(() => {
     const CHAVE = 'setprod:recarreguei-por-chunk';
 
@@ -71,6 +85,8 @@ export function AvisoDeVersao() {
     window.addEventListener('vite:preloadError', aoFalharPedaco);
     return () => window.removeEventListener('vite:preloadError', aoFalharPedaco);
   }, []);
+
+  if (trocando) return <Atualizando />;
 
   return createPortal(
     <AnimatePresence>
@@ -108,7 +124,13 @@ export function AvisoDeVersao() {
           </div>
 
           <button
-            onClick={() => updateServiceWorker(true)}
+            onClick={() => {
+              // A tela sobe ANTES de mandar trocar: o recarregamento pode
+              // começar no quadro seguinte, e um aviso que aparece depois dele
+              // não aparece nunca.
+              setTrocando(true);
+              updateServiceWorker(true);
+            }}
             className="btn btn-primary text-xs"
             style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
           >

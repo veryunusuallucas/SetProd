@@ -96,9 +96,9 @@ export function DiariasList() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={24} color="var(--accent)" /> Ordem do Dia (OD)
+            <Calendar size={24} color="var(--accent)" /> Diárias & Eventos
           </h1>
-          <p className="text-sm text-secondary">Planejamento e acompanhamento por diária</p>
+          <p className="text-sm text-secondary">A Ordem do Dia e o que mais a produção tem marcado</p>
         </div>
         {aba === 'diarias' && (
           <button onClick={() => setShowForm(!showForm)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -162,7 +162,10 @@ export function DiariasList() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
+      {/* `display: none` e não `&&`: desmontar a grade a cada troca de aba
+          descartaria o estado interno dos cards e faria a lista piscar na
+          volta. Escondida, ela continua montada e reaparece pronta. */}
+      <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {
           const despesasDaDiaria = despesas.filter(dx => dx.diaria === d.id);
           const totalDespesas = despesasDaDiaria.reduce((acc, curr) => acc + curr.valor_total, 0);
