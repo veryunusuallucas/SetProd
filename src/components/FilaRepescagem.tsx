@@ -125,7 +125,7 @@ export function FilaRepescagem({ projetoId }: { projetoId: string }) {
                 <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
                   {destinos.length === 0 ? (
                     <div className="text-xs text-muted">
-                      Não há diária aberta para receber esta cena. Crie uma nova em Diárias / OD.
+                      Não há diária aberta para receber esta cena. Crie uma nova em Diárias e Eventos.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>

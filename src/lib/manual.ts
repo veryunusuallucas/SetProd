@@ -158,7 +158,7 @@ export const MANUAL: SecaoManual[] = [
   },
   {
     id: 'diarias',
-    titulo: '📅 Diárias / Ordem do Dia',
+    titulo: '📅 Diárias e Eventos',
     rotas: ['diarias', 'diaria/'],
     texto:
       'Cada diária tem horários, equipe escalada, locações, comboios com veículo e motorista, checklist e anexos. ' +
