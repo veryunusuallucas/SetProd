@@ -211,6 +211,17 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.7.2',
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <RefreshCw size={20} />,
+        titulo: 'A tela de atualização podia travar para sempre',
+        texto: 'Ela esperava um sinal do navegador que às vezes não vem — e aí ficava parada, com o app inteiro atrás dela. Quem caísse nisso não tinha nem como relatar o problema. Agora aparece um "Recarregar agora" em 3 segundos, e se nada acontecer o app se recarrega sozinho em 8.',
+      },
+    ],
+  },
+  {
     versao: '4.7.1',
     resumo: <>Agora dá para saber que o app mudou sem precisar adivinhar.</>,
     itens: [

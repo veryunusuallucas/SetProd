@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
 
 /**
@@ -15,12 +16,50 @@ import { MOLA, useMovimentoReduzido } from './movimento';
  * O que ela faz é converter uma interrupção em um acontecimento: em vez de
  * "sumiu", "está trocando de versão, e vai voltar".
  *
- * ⚠️ ELA É O ÚLTIMO QUADRO ANTES DO RELOAD, e por isso não precisa de saída —
- * a página inteira vai embora. Também não tem botão: uma vez começada, a troca
- * não se cancela, e oferecer um cancelar que não cancela é pior que não ter.
+ * ⚠️ ELA TEM SAÍDA, E A PRIMEIRA VERSÃO NÃO TINHA — TRAVOU DE VERDADE.
+ *
+ * Eu escrevi aqui que ela era "o último quadro antes do reload, e por isso não
+ * precisa de saída". Estava errado: o reload é feito pelo `vite-plugin-pwa`
+ * quando o service worker novo assume, e ele só acontece se o evento
+ * `controlling` disparar com `isUpdate`. Quando isso não vem — o worker em
+ * espera já tinha ativado, outra aba já estava controlando, qualquer coisa —
+ * NADA recarrega, e a tela fica para sempre.
+ *
+ * Foi o que aconteceu na tela de login. Uma tela sem saída, esperando um evento
+ * que pode não vir, é uma armadilha: quem está nela não tem nem como relatar o
+ * problema, porque o app inteiro está atrás dela.
+ *
+ * Agora há duas redes: um botão de recarregar à mão depois de 3s, e o
+ * recarregamento automático aos 8s. Recarregar é seguro e repetível — no pior
+ * caso a pessoa volta na versão antiga e o aviso reaparece, que é infinitamente
+ * melhor que ficar presa olhando uma barra cheia.
+ *
+ * Não tem botão de CANCELAR, isso continua: a troca começada não se desfaz, e
+ * um cancelar que não cancela seria pior que nenhum.
  */
+
+/** Quando aparece a saída manual, e quando o app recarrega sozinho. */
+const ESCAPE_MS = 3000;
+const DESISTIR_MS = 8000;
+
 export function Atualizando({ versao }: { versao?: string }) {
   const reduzido = useMovimentoReduzido();
+  const [demorou, setDemorou] = useState(false);
+
+  useEffect(() => {
+    const mostrarSaida = setTimeout(() => setDemorou(true), ESCAPE_MS);
+
+    /*
+      A garantia final: se o service worker não recarregou até aqui, recarrego eu.
+
+      Vale mesmo que a troca ainda esteja em andamento — o pior caso é a pessoa
+      voltar na versão antiga e o aviso aparecer de novo. Trocar "às vezes
+      demora um pouco mais" por "às vezes trava para sempre" é um mau negócio.
+    */
+    const desistir = setTimeout(() => window.location.reload(), DESISTIR_MS);
+
+    return () => { clearTimeout(mostrarSaida); clearTimeout(desistir); };
+  }, []);
 
   return createPortal(
     <motion.div
@@ -75,19 +114,22 @@ export function Atualizando({ versao }: { versao?: string }) {
       </div>
 
       {/*
-        A barra vai até o fim em três segundos e PARA lá.
+        A barra acompanha o PRAZO, não o download.
 
-        Ela não mede o download de verdade: o service worker não informa
-        progresso, e inventar uma porcentagem falsa seria mentir com precisão.
-        O que ela mede é honesto no que promete — "está acontecendo, e não
-        travou". Se a troca demorar mais que isso, a barra fica cheia esperando,
-        em vez de reiniciar e sugerir que voltou ao começo.
+        O service worker não informa progresso, e inventar uma porcentagem seria
+        mentir com precisão. O que ela mede é o tempo até eu recarregar por
+        conta própria — ou seja, ela é honesta: cheia quer dizer "acabou o meu
+        prazo de espera", e é exatamente quando a página vai embora.
+
+        Na primeira versão ela enchia em 3s e ficava parada. Com o prazo em 8s
+        isso teria sido pior que não ter barra: cinco segundos de barra cheia e
+        nada acontecendo é a definição visual de travado.
       */}
       <div style={{ width: '100%', maxWidth: '220px', height: '4px', borderRadius: '3px', backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
         <motion.div
           initial={{ width: '8%' }}
           animate={{ width: '100%' }}
-          transition={{ duration: 3, ease: 'easeOut' }}
+          transition={{ duration: DESISTIR_MS / 1000, ease: 'linear' }}
           style={{ height: '100%', backgroundColor: 'var(--accent)' }}
         />
       </div>
@@ -102,6 +144,21 @@ export function Atualizando({ versao }: { versao?: string }) {
         O que você fez continua salvo — a atualização só troca o programa, não os
         dados.
       </motion.div>
+
+      {/* A saída. Aparece discreta, sem alarme: na maioria das vezes o app
+          recarrega antes dela e ninguém vê. */}
+      {demorou && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          onClick={() => window.location.reload()}
+          className="btn btn-secondary text-xs"
+          style={{ display: 'flex', alignItems: 'center', gap: '7px' }}
+        >
+          <RefreshCw size={13} /> Demorando? Recarregar agora
+        </motion.button>
+      )}
     </motion.div>,
     document.body
   );
