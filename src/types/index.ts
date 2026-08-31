@@ -189,7 +189,7 @@ export interface Configuracao {
 }
 
 export type AcaoLog = 'criar' | 'editar' | 'deletar';
-export type EntidadeLog = 'projeto' | 'perfil' | 'despesa' | 'acerto' | 'departamento' | 'configuracao' | 'diaria' | 'locacao' | 'equipamento' | 'task';
+export type EntidadeLog = 'projeto' | 'perfil' | 'despesa' | 'acerto' | 'departamento' | 'configuracao' | 'diaria' | 'locacao' | 'equipamento' | 'task' | 'evento';
 
 export interface AuditLog {
   id: string;
@@ -694,4 +694,35 @@ export interface Notificacao {
   task_id?: string; // task relacionada (para navegar)
   lida: boolean;
   data: number;
+}
+
+/**
+ * Um compromisso da produção que NÃO é uma diária.
+ *
+ * Visita de locação, teste de elenco, reunião com o cliente, leitura de mesa.
+ * Tudo isso já acontecia — em grupo de WhatsApp, e por isso ninguém sabia
+ * direito quem tinha sido chamado nem que horas era.
+ *
+ * ⚠️ EVENTO NÃO É DIÁRIA, e a separação é de propósito. Diária tem número,
+ * cenas, oitavos gravados e relatório no fim; ela é a unidade em que o filme
+ * anda. Um evento não move o filme, e misturar os dois estragaria as duas
+ * contas: a numeração das diárias e a medida de páginas gravadas.
+ */
+export type TipoEvento = 'visita_locacao' | 'reuniao' | 'teste_elenco' | 'leitura' | 'outro';
+
+export interface Evento {
+  id: string;
+  projeto_id: string;
+  tipo: TipoEvento;
+  titulo: string;
+  /** `YYYY-MM-DD`. Mesmo formato da diária, para o calendário casar os dois. */
+  data: string;
+  /** `HH:MM`. Opcional: nem todo compromisso tem hora marcada. */
+  hora_inicio?: string;
+  hora_fim?: string;
+  locacao_id?: string;
+  /** Ids de `perfis`. Quem foi chamado — a pergunta que o WhatsApp não responde. */
+  participantes?: string[];
+  observacao?: string;
+  data_criacao: number;
 }

@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano } from '../types';
+import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -15,7 +15,7 @@ export const TABELAS_SINCRONIZADAS = [
   'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos',
   'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos',
   'motoristas', 'elementos', 'stripboard_itens', 'logs',
-  'registros_cena', 'registros_plano',
+  'registros_cena', 'registros_plano', 'eventos',
 ] as const;
 
 /**
@@ -100,6 +100,9 @@ export class SetMoneyDB extends Dexie {
   // v4.4: o que de fato foi gravado, dia a dia
   registros_cena!: Table<RegistroCena, string>;
   registros_plano!: Table<RegistroPlano, string>;
+
+  /** v4.7: compromissos que não são diária — visita de locação, teste, reunião. */
+  eventos!: Table<Evento, string>;
 
   constructor() {
     super('SetMoneyDB');
@@ -205,6 +208,17 @@ export class SetMoneyDB extends Dexie {
     this.version(17).stores({
       registros_cena: 'id, projeto_id, diaria_id, cena_id, [diaria_id+cena_id]',
       registros_plano: 'id, projeto_id, diaria_id, plano_id, [diaria_id+plano_id]'
+    });
+
+    /*
+      Eventos: visita de locação, teste de elenco, reunião, leitura de mesa.
+
+      Índice composto [projeto_id+data] porque a pergunta do calendário é sempre
+      "o que tem NESTE dia, NESTA produção" — sem ele, cada célula do mês varre a
+      tabela inteira, e um mês tem trinta e cinco células.
+    */
+    this.version(18).stores({
+      eventos: 'id, projeto_id, data, locacao_id, [projeto_id+data]'
     });
 
     /**

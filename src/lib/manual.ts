@@ -224,6 +224,25 @@ export const MANUAL: SecaoManual[] = [
       'Se um anexo aparecer como "indisponível offline", é porque ele foi enviado por outra pessoa e este aparelho ainda não o baixou: abra uma vez com sinal e ele fica.',
   },
   {
+    id: 'eventos',
+    titulo: '📍 Eventos',
+    /*
+      SEM `rotas`, de propósito. Eventos é uma aba DENTRO da tela de diárias, e
+      as duas dividiriam a rota `diarias` — a ajuda contextual escolheria uma
+      das duas pelo desempate da ordenação, ou seja, por acaso. Quem abre a
+      ajuda ali está quase sempre na aba de diárias, que é a padrão; esta seção
+      continua no manual, logo abaixo, e a IA a lê para responder perguntas.
+    */
+    texto:
+      'Na tela de Ordem do Dia há duas abas: DIÁRIAS e EVENTOS. ' +
+      'Evento é o compromisso que não é diária — visita de locação, teste de elenco, reunião, leitura de mesa. ' +
+      'Cada um tem data, hora, locação e QUEM VAI: você marca as pessoas da equipe, e assim a pergunta "fui chamado?" deixa de depender de rolar o grupo do WhatsApp. ' +
+      'O evento aparece no calendário e na semana à frente do painel, junto das diárias, com a cor do tipo. ' +
+      'Escolhendo a locação, o endereço dela aparece dentro do evento — na véspera, o que se quer saber é para onde ir. ' +
+      'O que já passou fica guardado embaixo, em "Já aconteceram". ' +
+      'Evento NÃO é diária de propósito: diária tem número, cenas e relatório, e é o que mede o quanto do filme foi gravado. Uma visita de locação não move o filme, e se contasse como diária estragaria essa conta.',
+  },
+  {
     id: 'tasks',
     titulo: '✅ Tasks',
     rotas: ['tasks'],

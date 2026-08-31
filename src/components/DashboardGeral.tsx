@@ -8,6 +8,7 @@ import { FilaRepescagem } from './FilaRepescagem';
 import { calcularProgresso } from '../lib/registroSet';
 import { oitavosParaPaginas } from '../lib/decupagem';
 import { Numero } from './ui/Numero';
+import { tipoDoEvento } from './EventosPanel';
 
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
   */
   const cenasProjeto = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
   const registrosCena = useLiveQuery(() => db.registros_cena.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const eventos = useLiveQuery(() => db.eventos.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
 
   const progresso = calcularProgresso(cenasProjeto, registrosCena);
 
@@ -93,6 +95,7 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
       hoje: i === 0,
       diarias: diarias.filter(x => x.data === iso),
       prazos: (tasks || []).filter(t => t.data_conclusao === iso && t.status !== 'done'),
+      eventos: eventos.filter(e => e.data === iso),
     };
   });
 
@@ -200,6 +203,26 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                       <span className="text-xs text-muted" style={{ textTransform: 'capitalize' }}>{d.rotulo}</span>
                       <span className="text-sm font-bold" style={{ color: d.hoje ? 'var(--accent)' : 'inherit' }}>{d.dia}</span>
                     </div>
+                    {/* O evento entra na semana à frente porque é justamente
+                        aqui que ele importa: visita de locação marcada para
+                        quinta só serve se aparecer antes de quinta. */}
+                    {d.eventos.map(e => {
+                      const t = tipoDoEvento(e.tipo);
+                      return (
+                        <div
+                          key={e.id}
+                          title={`${t.nome}: ${e.titulo}${e.hora_inicio ? ` · ${e.hora_inicio}` : ''}`}
+                          style={{
+                            fontSize: '10px', backgroundColor: 'var(--bg-surface)',
+                            borderLeft: `3px solid ${t.cor}`, padding: '2px 5px',
+                            borderRadius: '4px', whiteSpace: 'nowrap',
+                            overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {t.emoji} {e.hora_inicio || e.titulo}
+                        </div>
+                      );
+                    })}
                     {d.diarias.map(x => (
                       <div key={x.id} style={{ fontSize: '10px', backgroundColor: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         D{String(x.numero).padStart(2, '0')}
