@@ -22,7 +22,7 @@ import type { Cena, Diaria, StripboardItem, ItemDoDia, TipoItemDia } from '../ty
  * decidir. Nunca aplicada sozinha.
  */
 
-export type EstadoDiaria = 'rascunho' | 'publicada' | 'fechada';
+export type EstadoDiaria = 'rascunho' | 'travada' | 'publicada' | 'fechada';
 
 /**
  * O estado, com as diárias antigas incluídas.
@@ -37,9 +37,27 @@ export function estadoDa(diaria: Diaria): EstadoDiaria {
 
 export const ROTULO_ESTADO: Record<EstadoDiaria, string> = {
   rascunho: 'Rascunho',
+  travada: 'Travada',
   publicada: 'Publicada',
   fechada: 'Fechada',
 };
+
+/** O plano só se edita em rascunho. Travada e publicada congelam. */
+export function planoEditavel(diaria: Diaria): boolean {
+  return estadoDa(diaria) === 'rascunho';
+}
+
+/**
+ * Trava a diária: congela sem distribuir.
+ *
+ * Não mexe em `versao_od` nem em `data_publicacao` de propósito — travar não é
+ * um evento para a equipe, é uma proteção interna. Quem trava não está dizendo
+ * "está pronta para o set", está dizendo "parem de mexer nesta enquanto eu acerto
+ * as outras".
+ */
+export async function travarDiaria(diariaId: string): Promise<void> {
+  await db.diarias.update(diariaId, { estado: 'travada' });
+}
 
 export interface Diferenca {
   entram: Cena[];
@@ -157,7 +175,14 @@ export async function publicarDiaria(diariaId: string): Promise<void> {
   await db.diarias.update(diariaId, { estado: 'publicada', data_publicacao: Date.now() });
 }
 
-/** Volta para rascunho — o dia mudou de plano antes de acontecer. */
+/**
+ * Volta para rascunho.
+ *
+ * `versao_od` NÃO é zerada. É de propósito: se a diária já saiu uma vez, a
+ * próxima exportação tem que ser v2, e não v1 de novo — senão existem dois
+ * papéis diferentes com o mesmo número na mão da equipe, que é o pior resultado
+ * possível deste botão.
+ */
 export async function despublicarDiaria(diariaId: string): Promise<void> {
   await db.diarias.update(diariaId, { estado: 'rascunho', data_publicacao: undefined });
 }

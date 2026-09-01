@@ -1,5 +1,6 @@
 import { useState, createContext, useContext, useEffect, Suspense } from 'react';
 import { useParams, useNavigate, Outlet, useLocation, Link, NavLink } from 'react-router-dom';
+import { voltarDe } from '../lib/navegacao';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { HelpButton } from '../components/HelpButton';
@@ -64,6 +65,21 @@ export function ProjectLayout() {
   }, [id]);
 
   const currentPath = location.pathname;
+
+  /*
+    O botão ao lado do nome do projeto SOBE UM NÍVEL, não sai direto.
+
+    Ele mandava para a tela inicial de qualquer lugar do app: quem estava numa
+    diária perdia o projeto inteiro com um clique, e voltar custava três. Agora
+    ele segue a hierarquia — diária → lista de diárias → painel → sair — e a
+    saída do projeto, que é a única irreversível na navegação, pergunta antes.
+  */
+  const destinoDoVoltar = voltarDe(currentPath, id || '');
+
+  const voltar = () => {
+    if (destinoDoVoltar.caminho) { navigate(destinoDoVoltar.caminho); return; }
+    if (confirm('Sair deste projeto e voltar para a tela inicial?')) navigate('/');
+  };
 
   // Clear right panel on navigation
   useEffect(() => {
@@ -148,7 +164,7 @@ export function ProjectLayout() {
   const renderSidebarContent = () => (
     <>
       <div className="sidebar-header">
-        <button onClick={() => navigate('/')} className="btn-icon">
+        <button onClick={voltar} className="btn-icon" title={destinoDoVoltar.rotulo} aria-label={destinoDoVoltar.rotulo}>
           <ChevronLeft size={24} />
         </button>
         <div className="sidebar-title">
@@ -262,7 +278,7 @@ export function ProjectLayout() {
           padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px',
           borderBottom: '1px solid var(--border-light)'
         }}>
-          <button onClick={() => navigate('/')} className="btn-icon" style={{ padding: 0 }}>
+          <button onClick={voltar} className="btn-icon" style={{ padding: 0 }} title={destinoDoVoltar.rotulo} aria-label={destinoDoVoltar.rotulo}>
             <ChevronLeft size={24} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>

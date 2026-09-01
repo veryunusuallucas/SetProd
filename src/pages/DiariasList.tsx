@@ -7,18 +7,65 @@ import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X } fr
 import type { Diaria } from '../types';
 import { logAction } from '../lib/audit';
 import { EventosPanel } from '../components/EventosPanel';
+import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
+
+/**
+ * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
+ *
+ * `toISOString().slice(0,10)` daria o dia em UTC — que no Brasil é o dia
+ * seguinte a partir das 21h. Uma diária de hoje apareceria como passada, no fim
+ * da lista, justamente na noite em que ela importa.
+ */
+function hojeISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+const corDoEstado = (e: EstadoDiaria) =>
+  e === 'fechada' ? 'var(--color-success)'
+    : e === 'publicada' ? 'var(--accent)'
+    : e === 'travada' ? 'var(--cor-logistica)'
+    : 'var(--text-muted)';
 
 export function DiariasList() {
   const { id: projetoId } = useParams();
   const navigate = useNavigate();
 
+  /**
+   * As diárias em ordem de DATA, não de número.
+   *
+   * O número é do plano; a data é do calendário, e é ela que responde a
+   * pergunta de quem abre a tela: "qual é o próximo dia?". Numa produção real
+   * os dois divergem o tempo todo — a Diária 07 é remarcada para antes da 05, e
+   * ordenar por número deixaria o próximo dia no meio da lista.
+   *
+   * As que já passaram vão para o FIM, da mais recente para a mais antiga.
+   * Elas não somem (o histórico importa), mas param de empurrar o que ainda vai
+   * acontecer para baixo.
+   */
   const diarias = useLiveQuery(
     async () => {
       const arr = await db.diarias.where('projeto_id').equals(projetoId!).toArray();
-      return arr.sort((a, b) => a.numero - b.numero);
+      const hoje = hojeISO();
+      const futuras = arr.filter(d => !d.data || d.data >= hoje).sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+      const passadas = arr.filter(d => d.data && d.data < hoje).sort((a, b) => b.data.localeCompare(a.data));
+      return [...futuras, ...passadas];
     },
     [projetoId]
   ) || [];
+
+  /** Quantas tarefas cada diária tem, e quantas já foram feitas. */
+  const tarefasPorDiaria = useLiveQuery(async () => {
+    const todas = await db.diaria_tasks.where('projeto_id').equals(projetoId!).toArray();
+    const mapa = new Map<string, { feitas: number; total: number }>();
+    for (const t of todas) {
+      const atual = mapa.get(t.diaria_id) || { feitas: 0, total: 0 };
+      atual.total += 1;
+      if (t.status === 'concluido') atual.feitas += 1;
+      mapa.set(t.diaria_id, atual);
+    }
+    return mapa;
+  }, [projetoId]) || new Map<string, { feitas: number; total: number }>();
 
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   
@@ -44,6 +91,30 @@ export function DiariasList() {
     return todos.filter(e => e.data >= hoje).length;
   }, [projetoId]) || 0;
 
+  /**
+   * O próximo número livre: o MAIOR que existe, mais um.
+   *
+   * Maior + 1, e não "quantidade + 1": com as diárias 1 e 3, a quantidade daria
+   * 3 — um número que já está em uso. A numeração de diária tem buracos por
+   * motivo (dia cancelado, remarcado), e reaproveitar um número usado faria
+   * duas ODs diferentes chegarem à equipe com o mesmo nome.
+   */
+  const proximoNumero = () =>
+    diarias.length === 0 ? 1 : Math.max(...diarias.map(d => d.numero)) + 1;
+
+  /** Abre o formulário já com o número sugerido preenchido. */
+  const abrirFormulario = () => {
+    setNumero(String(proximoNumero()));
+    setData('');
+    setShowForm(true);
+  };
+
+  const fecharFormulario = () => {
+    setShowForm(false);
+    setNumero('');
+    setData('');
+  };
+
   const criarDiaria = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!numero || !data) return;
@@ -60,9 +131,7 @@ export function DiariasList() {
 
     await db.diarias.add(nova);
     await logAction(projetoId!, 'criar', 'diaria', nova.id, `Criou Diária ${numero} para o dia ${data}`);
-    setShowForm(false);
-    setNumero('');
-    setData('');
+    fecharFormulario();
   };
 
   const salvarEdicao = async () => {
@@ -85,6 +154,10 @@ export function DiariasList() {
     }
   };
 
+  /** Aviso, não bloqueio: número repetido é quase sempre engano, mas é do Lucas
+      a decisão de ter dois dias com o mesmo número (uma unidade B antiga, por ex.). */
+  const jaExiste = numero !== '' && diarias.some(d => d.numero === Number(numero));
+
   const formataData = (d: string) => {
     const [a, m, dia] = d.split('-');
     return `${dia}/${m}/${a.slice(-2)}`;
@@ -101,7 +174,11 @@ export function DiariasList() {
           <p className="text-sm text-secondary">A Ordem do Dia e o que mais a produção tem marcado</p>
         </div>
         {aba === 'diarias' && (
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => (showForm ? fecharFormulario() : abrirFormulario())}
+            className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <Plus size={16} /> Criar Diária
           </button>
         )}
@@ -143,15 +220,23 @@ export function DiariasList() {
       {aba === 'eventos' && <EventosPanel projetoId={projetoId!} />}
 
       {aba === 'diarias' && showForm && (
-        <form onSubmit={criarDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)' }}>
-          <div style={{ flex: 1 }}>
-            <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Número da Diária (ex: 1)</label>
-            <input type="number" required value={numero} onChange={e => setNumero(e.target.value)} />
+        <form onSubmit={criarDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '120px' }}>
+            <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Número</label>
+            <input type="number" required min={1} value={numero} onChange={e => setNumero(e.target.value)} />
+            {jaExiste && (
+              <div className="text-xs" style={{ color: 'var(--color-warning)', marginTop: '6px', lineHeight: 1.4 }}>
+                Já existe uma Diária {numero}. Duas com o mesmo número confundem a equipe.
+              </div>
+            )}
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: '150px' }}>
             <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Data</label>
             <input type="date" required value={data} onChange={e => setData(e.target.value)} />
           </div>
+          {/* Cancelar antes de Adicionar: quem abriu sem querer procura a saída
+              primeiro, e ela não pode estar escondida atrás do botão que cria. */}
+          <button type="button" onClick={fecharFormulario} className="btn-secondary">Cancelar</button>
           <button type="submit" className="btn-primary">Adicionar</button>
         </form>
       )}
@@ -182,8 +267,19 @@ export function DiariasList() {
                   {String(d.numero).padStart(2, '0')}
                 </div>
                 <div>
-                  <div className="font-bold text-lg">Diária {String(d.numero).padStart(2, '0')}</div>
-                  <div className="text-xs text-muted">{formataData(d.data)}</div>
+                  <div className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    Diária {String(d.numero).padStart(2, '0')}
+                    <span
+                      className="text-xs font-bold uppercase tracking-widest"
+                      style={{ color: corDoEstado(estadoDa(d)) }}
+                    >
+                      {ROTULO_ESTADO[estadoDa(d)]}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted">
+                    {formataData(d.data)}
+                    {d.data === hojeISO() && <span className="text-accent font-bold"> · é hoje</span>}
+                  </div>
                 </div>
               </div>
 
@@ -192,8 +288,15 @@ export function DiariasList() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     <Users size={14} /> {d.equipe_escalada?.length || 0} na equipe
                   </div>
+                  {/* Era "Tasks (em breve)" desde que a tela nasceu — um lugar
+                      reservado para um número que já existia no banco. */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    <CheckSquare size={14} /> Tasks (em breve)
+                    <CheckSquare size={14} />
+                    {(() => {
+                      const t = tarefasPorDiaria.get(d.id);
+                      if (!t) return <span className="text-muted">sem checklist</span>;
+                      return <>{t.feitas}/{t.total} na checklist</>;
+                    })()}
                   </div>
                 </div>
 

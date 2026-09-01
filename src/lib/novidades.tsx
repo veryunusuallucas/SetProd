@@ -3,7 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug, Send, Mail, Film, Share2,
+  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare,
 } from 'lucide-react';
 
 /**
@@ -210,6 +210,98 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.10.0',
+    resumo: <>Cada coisa aparece na hora em que ela faz sentido — e a diária ganhou um estado no meio.</>,
+    grupos: [
+      {
+        id: 'estados',
+        titulo: 'Três estados, não dois',
+        resumo: 'Faltava o degrau entre "mexendo" e "a equipe já recebeu".',
+        cor: '#4cc9f0',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Lock size={20} />,
+            titulo: 'TRAVADA: congela sem publicar',
+            texto: 'Uma diária pronta esperando as outras ficarem. Ninguém mexe sem querer, outra pessoa pode conferir, e voltar para rascunho não custa nada — porque nada saiu. Antes, quem só queria proteger o dia de um clique errado tinha que publicar, e depois pagar o preço de despublicar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'Sair de PUBLICADA agora avisa, em vermelho',
+            texto: '"Esta OD já pode estar circulando pela equipe." Porque pode mesmo: existe um PDF impresso, no WhatsApp ou na caixa de entrada de todo mundo, e ele passa a mentir no instante do clique. O aviso lembra de exportar de novo depois e avisar a equipe.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <GitMerge size={20} />,
+            titulo: 'O controle de estado saiu de dentro da faixa do stripboard',
+            texto: 'Ele morava num lugar que só existe quando a diária veio de uma quebra — diária montada à mão nunca conseguia sair de rascunho. Agora fica no topo da tela, sempre. E aquele "Publicar OD" que publicava sem gerar o documento acabou: publicar é exportar.',
+          },
+        ],
+      },
+      {
+        id: 'hora-certa',
+        titulo: 'Cada coisa na hora dela',
+        resumo: 'Marcar cena numa OD que nem saiu não queria dizer nada — e sujava o painel.',
+        cor: 'var(--accent)',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <Clapperboard size={20} />,
+            titulo: 'O botão de marcar cena só aparece no dia',
+            texto: 'Ele estava lá até numa diária de daqui a três semanas. Um toque por engano entrava na conta do ritmo do projeto e na fila de repescagem — número errado num painel que decide se você marca mais um dia. A lista de cenas continua sempre, porque é onde você monta o dia.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Lock size={20} />,
+            titulo: 'Diária fechada não se marca mais',
+            texto: 'Nem cena, nem hora real, nem presença, nem checklist. O relatório já saiu com os números que tinha; mexer depois faria o DPR impresso divergir da tela sem ninguém perceber. Para alterar, é o botão Reabrir — explícito e registrado na ata.',
+          },
+        ],
+      },
+      {
+        id: 'lista',
+        titulo: 'A lista de diárias',
+        resumo: 'Ela respondia a pergunta errada.',
+        cor: '#2dd4bf',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Em ordem de data, e o próximo dia primeiro',
+            texto: 'Era ordenada por número. Numa produção real os dois divergem o tempo todo — a Diária 07 remarcada para antes da 05 ficava no meio da lista. Agora as que já passaram vão para o fim, sem sumir, e a de hoje aparece marcada.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ListChecks size={20} />,
+            titulo: 'O número da diária vem sozinho, e dá para cancelar',
+            texto: 'Ele sugere o próximo livre — com as diárias 1 e 3, sugere 4, e não 3 de novo. Você pode trocar, e se já existir outra com aquele número o app avisa. E o formulário ganhou Cancelar, para quem clicou em Criar sem querer.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <CheckSquare size={20} />,
+            titulo: '"Tasks (em breve)" virou o número de verdade',
+            texto: 'Era um lugar reservado desde que a tela nasceu, para um número que já estava no banco. Agora cada card mostra quantas tarefas da checklist já foram feitas.',
+          },
+        ],
+      },
+      {
+        id: 'voltar',
+        titulo: 'O botão voltar',
+        resumo: 'Ele saía do projeto de qualquer lugar.',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <Undo2 size={20} />,
+            titulo: 'Agora ele sobe um nível de cada vez',
+            texto: 'Diária → Diárias e Eventos → painel do projeto → sair. Quem estava dentro de uma diária perdia o projeto inteiro com um clique e gastava três para voltar. E sair do projeto, que é a única parada da navegação sem volta fácil, pergunta antes.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.9.0',
     resumo: <>A diária deixou de ser só um plano: agora ela registra o dia acontecendo.</>,
