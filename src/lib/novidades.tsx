@@ -211,6 +211,23 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.11.1',
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <HelpCircle size={20} />,
+        titulo: 'O "como funciona esta tela" parou de ser um paredão',
+        texto: 'A seção das diárias tinha quase cinco mil caracteres num parágrafo só — três vezes a segunda maior. Quem abria com uma dúvida específica desistia na terceira linha, e a resposta estava lá dentro. Agora ela abre numa lista de assuntos curtos ("O número vem da data", "Travar um horário", "Os quatro estados da OD") e você abre só o que interessa. O texto não encolheu: ficou achável.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Sparkles size={20} />,
+        titulo: 'E a IA da ajuda ficou melhor por tabela',
+        texto: 'Ela continua recebendo o manual inteiro — parágrafo comprido não incomoda ela, incomoda gente. Só que agora chega com os títulos dos assuntos, o que ajuda a achar a resposta certa e a dizer de onde ela veio.',
+      },
+    ],
+  },
+  {
     versao: '4.11.0',
     resumo: <>O número da diária deixou de ser um campo: ele é a ordem dos dias de filmagem.</>,
     itens: [
