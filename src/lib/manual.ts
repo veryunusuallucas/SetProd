@@ -165,7 +165,14 @@ export const MANUAL: SecaoManual[] = [
       'Defina a CHAMADA e o app encadeia o resto — cada item empurra o seguinte pelo tempo que consome, e a estimativa de cada cena vem do stripboard. ' +
       'Toque num horário para TRAVÁ-LO: dali em diante a conta recomeça daquele horário, e o resto do dia se ajusta sozinho. Horário calculado é sugestão; travado é decisão. ' +
       'Arraste os itens para reordenar. O botão "Acrescentar ao dia" põe almoço, deslocamento, marco ou nota. ' +
-      'A linha tem dois modos: MONTAR (planejar, na véspera) e NO SET (marcar o dia acontecendo — a hora real de cada item e o estado de cada cena). Marcar é coisa de AD e produção. ' +
+      'A diária tem DOIS MOMENTOS, e não se escolhe entre eles: enquanto é rascunho você monta o plano; quando você EXPORTA a OD, o plano congela e a tela vira registro do que está acontecendo. ' +
+      'A exportação é a linha divisória porque, a partir dela, a equipe está com aquele papel na mão — mudar o plano por baixo faria o set seguir um horário e o app mostrar outro. ' +
+      'Para mudar depois de exportada: volte a rascunho na faixa do stripboard, edite e reexporte. A nova sai marcada v2, v3, para ninguém seguir o papel velho. ' +
+      'No dia da filmagem, quando chega a hora da chamada, aparece sozinho um RELÓGIO GRANDE com "estamos X min atrasados" — verde até 15min, âmbar até 45, vermelho acima disso. Não existe botão de iniciar o dia. ' +
+      'Marcar é coisa de AD e produção, e cada anotação fica com o nome de quem fez e a hora. ' +
+      'No modo de registro você marca: a hora real de cada item, o estado de cada cena, e no ícone de prancheta os oitavos, os setups, o que exatamente saiu e se houve som wild. ' +
+      'Abaixo da linha ficam PRESENÇA E JORNADA (chegou / atrasou / faltou, com chegada, início, refeição e fim de cada pessoa), COBERTURA DO DIA (rolos de câmera e som, figuração e stand-ins) e OCORRÊNCIAS (atraso, equipamento, incidente, clima, com os minutos perdidos). ' +
+      'DISTRIBUIR A OD: baixe o arquivo de agenda (.ics, abre no Google, Apple e Outlook — com a diária e cada marco como compromisso), cole o link da reunião, ou mande a OD por email para a equipe escalada. ' +
       'Quando algo atrasa, aparece o wrap refeito: "o dia está 40min de atraso — wrap agora às 19:40, planejado 19:00". ' +
       'Ao lado ficam os cartões de apoio. O CARTÃO DE LOCAÇÃO junta tudo do lugar: endereço, previsão do tempo DAQUELE set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local. ' +
       'Mais abaixo, fechados por padrão: transporte e comboios, checklist, confirmação de presença e anexos. ' +
@@ -183,7 +190,8 @@ export const MANUAL: SecaoManual[] = [
       'CORTADA é diferente de NÃO GRAVADA: cena cortada sai da conta do que falta, e não fica cobrando para sempre. ' +
       'Ao fechar a diária, o app monta o DPR (Relatório Diário de Produção) e destaca as cenas que ninguém marcou — "ninguém marcou" não é "não gravou". ' +
       'O MOTIVO É OBRIGATÓRIO para fechar: cena que não saiu sem explicação vira uma dívida que ninguém entende duas semanas depois. É o único campo do app que tranca um botão. ' +
-      'O DPR sai em PDF com os horários planejados contra os reais, as cenas filmadas, as não filmadas com o motivo de cada uma, quem não confirmou presença e a prestação de contas. ' +
+      'O DPR sai em PDF com os horários planejados contra os reais linha por linha, as cenas filmadas com páginas e setups, as não filmadas com o motivo de cada uma, a jornada de cada pessoa, a figuração, os rolos, as ocorrências e a prestação de contas. ' +
+      'Cada anotação sai com o nome de quem a fez e a hora — é a assinatura, e ela vale mais que um campo de assinatura no rodapé. ' +
       'O que ficou para trás vai para a repescagem, no painel, e volta ao stripboard marcado PENDENTE, com contorno vermelho e o número da diária de onde caiu. ' +
       'E no painel aparece o ritmo do projeto: "no ritmo atual, faltam 2 diárias para o filme fechar". Some sozinho quando não há atraso.',
   },

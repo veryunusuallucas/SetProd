@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
-  Flag, StickyNote, CircleDot, Timer,
+  Flag, StickyNote, CircleDot, Timer, ClipboardList,
 } from 'lucide-react';
+import { db } from '../db/db';
 import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena } from '../types';
 import {
   montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso,
@@ -46,9 +47,18 @@ const NOVOS: { tipo: Exclude<TipoItemDia, 'cena'>; rotulo: string; titulo: strin
 
 export function LinhaDoDia({
   diaria, visao, cenas, registros, meuPerfilId, podeMarcar, planosPorCena,
-  chamada, aoGravar, aoMudarChamada,
+  chamada, aoGravar, aoMudarChamada, modo,
 }: {
   diaria: Diaria;
+  /**
+   * ⚠️ VEM DE FORA, E NÃO É UM SELETOR NA TELA.
+   *
+   * A primeira versão tinha um botão "Montar / No set" que cada pessoa
+   * escolhia. Funcionava e estava errado: dois AD podiam olhar a mesma diária
+   * em modos diferentes sem saber. O modo é do DIA, não de quem está olhando —
+   * ele vira interativo quando a OD é exportada. Ver `lib/faseDoDia.ts`.
+   */
+  modo: 'criacao' | 'interativo';
   /**
    * De onde sai a linha. Normalmente a própria diária; quando o dia está
    * dividido, a frente que está na aba aberta.
@@ -71,8 +81,9 @@ export function LinhaDoDia({
   aoMudarChamada: (hora: string) => void;
 }) {
   const reduzido = useMovimentoReduzido();
-  const [modo, setModo] = useState<'criacao' | 'interativo'>('criacao');
   const [arrastando, setArrastando] = useState<number | null>(null);
+  /** Qual cena está com o painel de cobertura aberto. */
+  const [cobertura, setCobertura] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
   const [adicionando, setAdicionando] = useState(false);
 
@@ -139,7 +150,14 @@ export function LinhaDoDia({
     });
   };
 
-  const emAtraso = atraso.marcados > 0 && Math.abs(atraso.minutos) >= 5;
+  /*
+    O aviso de atraso aqui só existe enquanto NÃO há o relógio do set em cima.
+
+    Os dois dizem a mesma coisa, e ver "45min de atraso" duas vezes na mesma
+    tela não informa o dobro — faz a pessoa procurar a diferença entre eles. No
+    modo de registro quem manda é o relógio, que é grande e fica no topo.
+  */
+  const emAtraso = modo === 'criacao' && atraso.marcados > 0 && Math.abs(atraso.minutos) >= 5;
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -153,30 +171,20 @@ export function LinhaDoDia({
           <Clock size={16} /> Linha do Dia
         </h2>
 
-        {/*
-          O seletor de modo não grava nada, e é de propósito.
-
-          O modo é sobre quem está olhando — a produção montando o dia na
-          véspera, ou o AD marcando o dia acontecendo. Guardá-lo na diária faria
-          uma pessoa mudar a tela da outra do outro lado do set.
-        */}
-        <div style={{ display: 'flex', gap: '2px', padding: '2px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)' }}>
-          {(['criacao', 'interativo'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setModo(m)}
-              className="text-xs font-bold"
-              style={{
-                padding: '5px 14px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                backgroundColor: modo === m ? 'var(--accent)' : 'transparent',
-                color: modo === m ? '#000' : 'var(--text-secondary)',
-              }}
-              title={m === 'criacao' ? 'Montar o dia' : 'Marcar o dia acontecendo'}
-            >
-              {m === 'criacao' ? 'Montar' : 'No set'}
-            </button>
-          ))}
-        </div>
+        {/* Um rótulo, não um botão: a fase é consequência da exportação. */}
+        <span
+          className="text-xs font-bold"
+          style={{
+            padding: '4px 12px', borderRadius: 'var(--radius-full)',
+            border: `1px solid ${modo === 'interativo' ? 'var(--accent)' : 'var(--border-light)'}`,
+            color: modo === 'interativo' ? 'var(--accent)' : 'var(--text-muted)',
+          }}
+          title={modo === 'criacao'
+            ? 'A OD ainda não saiu — o plano está livre'
+            : 'A OD foi exportada. Aqui se registra o que acontece, não se muda o plano'}
+        >
+          {modo === 'criacao' ? 'montando o dia' : 'registrando o dia'}
+        </span>
       </div>
 
       <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -372,6 +380,21 @@ export function LinhaDoDia({
                         {c.item.hora_real ? `real ${c.item.hora_real}` : 'começou'}
                       </button>
 
+                      {c.cena && registro && (
+                        <button
+                          onClick={() => setCobertura(a => (a === c.cena!.id ? null : c.cena!.id))}
+                          className="text-xs"
+                          style={{
+                            padding: '5px 9px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
+                            border: '1px solid var(--border-light)', background: 'transparent',
+                            color: coberturaPreenchida(registro) ? 'var(--accent)' : 'var(--text-muted)',
+                          }}
+                          title="Páginas, setups e o que exatamente saiu da cena"
+                        >
+                          <ClipboardList size={12} />
+                        </button>
+                      )}
+
                       {c.cena && (
                         <button
                           onClick={e => podeMarcar && alternarStatus(c.cena!.id, e)}
@@ -390,6 +413,69 @@ export function LinhaDoDia({
                           {registro ? ROTULO[registro.status] : 'marcar'}
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/*
+                    A COBERTURA: o que exatamente saiu da cena (spec §3.1).
+
+                    Fica escondida atrás de um toque porque é o campo mais
+                    detalhado do dia e o menos urgente: no meio da correria
+                    marca-se "gravada"; os oitavos e os setups entram na virada,
+                    ou no fim do dia. Deixá-la sempre aberta encheria a linha de
+                    caixinhas vazias e faria a marcação rápida ficar mais lenta.
+                  */}
+                  {modo === 'interativo' && c.cena && registro && cobertura === c.cena.id && (
+                    <div style={{ flexBasis: '100%', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', paddingTop: '10px', marginTop: '4px', borderTop: '1px dashed var(--border-light)' }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: '104px' }}>
+                        <span className="text-xs text-muted uppercase">Oitavos</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={registro.oitavos_gravados ?? ''}
+                          onChange={e => podeMarcar && db.registros_cena.update(registro.id, {
+                            oitavos_gravados: e.target.value === '' ? undefined : Number(e.target.value),
+                          })}
+                          disabled={!podeMarcar}
+                          placeholder="—"
+                          style={campoCobertura}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: '90px' }}>
+                        <span className="text-xs text-muted uppercase">Setups</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={registro.setups ?? ''}
+                          onChange={e => podeMarcar && db.registros_cena.update(registro.id, {
+                            setups: e.target.value === '' ? undefined : Number(e.target.value),
+                          })}
+                          disabled={!podeMarcar}
+                          placeholder="—"
+                          style={campoCobertura}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: '200px' }}>
+                        <span className="text-xs text-muted uppercase">O que saiu</span>
+                        <input
+                          defaultValue={registro.cobertura || ''}
+                          onBlur={e => podeMarcar && (registro.cobertura || '') !== e.target.value && db.registros_cena.update(registro.id, {
+                            cobertura: e.target.value || undefined,
+                          })}
+                          disabled={!podeMarcar}
+                          placeholder="Ex: só a primeira metade da cena, do plano 3 em diante"
+                          style={campoCobertura}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingBottom: '6px', cursor: podeMarcar ? 'pointer' : 'default' }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(registro.som_wild)}
+                          onChange={e => podeMarcar && db.registros_cena.update(registro.id, { som_wild: e.target.checked || undefined })}
+                          disabled={!podeMarcar}
+                        />
+                        <span className="text-xs text-secondary">som wild</span>
+                      </label>
                     </div>
                   )}
 
@@ -472,6 +558,16 @@ export function LinhaDoDia({
       </div>
     </div>
   );
+}
+
+const campoCobertura: React.CSSProperties = {
+  width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px',
+  border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
+};
+
+/** O ícone de cobertura acende quando há algo escrito ali dentro. */
+function coberturaPreenchida(r: RegistroCena): boolean {
+  return r.oitavos_gravados !== undefined || r.setups !== undefined || Boolean(r.cobertura) || Boolean(r.som_wild);
 }
 
 /** As mesmas cores de status do resto do app: cor diz *como as coisas estão*. */

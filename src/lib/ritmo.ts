@@ -1,5 +1,6 @@
 import type { Cena, Diaria, RegistroCena } from '../types';
 import { estadoAtualDasCenas, filaDeRepescagem } from './registroSet';
+import { paginasParaOitavos, oitavosParaPaginas } from './decupagem';
 
 /**
  * O recálculo no nível do PROJETO (spec §5.2).
@@ -8,10 +9,17 @@ import { estadoAtualDasCenas, filaDeRepescagem } from './registroSet';
  * pergunta cara: **no ritmo em que estamos indo, o filme cabe nas diárias que
  * ainda temos?** É a diferença entre um app que registra e um que avisa.
  *
- * Ele é deliberadamente simples — cenas por dia, não páginas por dia. Páginas
- * seriam mais precisas na teoria, e piores na prática: dependem de todo mundo
- * ter preenchido os oitavos de cada cena, e diária nenhuma se atrasa esperando
- * o dado ficar completo. Cena por dia é grosseiro e está sempre disponível.
+ * A CONTA É EM CENAS POR DIA, e as páginas entram só como leitura ao lado.
+ *
+ * Páginas por dia é a métrica da indústria e seria mais precisa — cena tem
+ * tamanho, e quatro cenas curtas não são quatro cenas longas. Só que ela
+ * depende de alguém ter preenchido os oitavos de cada cena, e produção nenhuma
+ * espera o dado ficar completo. Se a previsão dependesse das páginas, ela
+ * simplesmente não apareceria na maioria dos projetos.
+ *
+ * Então: cena por dia decide o alerta, porque está sempre disponível; páginas
+ * por dia aparecem na frase quando existirem, porque é o número que faz um AD
+ * reconhecer o ritmo do próprio filme.
  */
 
 export interface Ritmo {
@@ -33,6 +41,17 @@ export interface Ritmo {
   diariasNecessarias: number | null;
   /** Positivo = faltam diárias. Negativo = sobram. */
   diferenca: number | null;
+
+  /**
+   * Páginas por dia, quando o roteiro está decupado em oitavos.
+   *
+   * É a métrica que a indústria usa de verdade — cinco páginas por dia é a
+   * referência de um independente, e o número diz mais que "quatro cenas"
+   * porque cena tem tamanho. Fica ao lado, não no lugar: depende de alguém ter
+   * preenchido as páginas de cada cena, e diária nenhuma espera esse dado ficar
+   * completo.
+   */
+  paginasPorDia: string | null;
 }
 
 export function calcularRitmo(
@@ -63,6 +82,23 @@ export function calcularRitmo(
   const pendentesDeVerdade = fila.filter(r => !escaladasEmAberto.has(r.cena_id));
 
   const cenasRestantes = Math.max(0, cenas.length - gravadas.length - cortadas.length);
+
+  /*
+    Oitavos gravados por diária fechada.
+
+    Cena parcial conta o que o registro disser; sem esse número, metade — a
+    mesma regra do resto do app, para o total não pular quando alguém preenche
+    a cobertura de uma cena e não de outra.
+  */
+  const porId = new Map(cenas.map(c => [c.id, c]));
+  const oitavosGravados = [...atual.values()].reduce((soma, r) => {
+    const cena = porId.get(r.cena_id);
+    if (!cena) return soma;
+    const oitavos = paginasParaOitavos(cena.paginas);
+    if (r.status === 'gravada') return soma + oitavos;
+    if (r.status === 'parcial') return soma + (r.oitavos_gravados ?? Math.floor(oitavos / 2));
+    return soma;
+  }, 0);
   const diariasRestantes = diarias.filter(d => !d.fechada).length;
 
   const cenasPorDia = fechadas.length > 0 && gravadas.length > 0
@@ -84,6 +120,9 @@ export function calcularRitmo(
     cenasPorDia,
     diariasNecessarias,
     diferenca: diariasNecessarias === null ? null : diariasNecessarias - diariasRestantes,
+    paginasPorDia: fechadas.length > 0 && oitavosGravados > 0
+      ? oitavosParaPaginas(Math.round(oitavosGravados / fechadas.length))
+      : null,
   };
 }
 
@@ -109,7 +148,7 @@ export function avisoDoRitmo(r: Ritmo): AvisoDeRitmo | null {
       titulo: r.diferenca === 1
         ? 'No ritmo atual, falta 1 diária para o filme fechar'
         : `No ritmo atual, faltam ${r.diferenca} diárias para o filme fechar`,
-      detalhe: `Saíram ${arredondar(r.cenasPorDia!)} cenas por dia em ${r.diariasFechadas} ${r.diariasFechadas === 1 ? 'diária' : 'diárias'}. Sobram ${r.cenasRestantes} cenas e ${r.diariasRestantes} ${r.diariasRestantes === 1 ? 'dia marcado' : 'dias marcados'}.`,
+      detalhe: `Saíram ${arredondar(r.cenasPorDia!)} cenas por dia${r.paginasPorDia ? ` (${r.paginasPorDia} páginas)` : ''} em ${r.diariasFechadas} ${r.diariasFechadas === 1 ? 'diária' : 'diárias'}. Sobram ${r.cenasRestantes} cenas e ${r.diariasRestantes} ${r.diariasRestantes === 1 ? 'dia marcado' : 'dias marcados'}.`,
     };
   }
 
