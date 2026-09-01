@@ -25,6 +25,8 @@ import { avisarNovidadeSePreciso } from '../lib/avisoDeNovidade';
 export function AvisoDeVersao() {
   /** Cobre a tela do clique até a página ir embora. Ver ui/Atualizando.tsx. */
   const [trocando, setTrocando] = useState(false);
+  /** A versão nova assumiu: a tela pode fechar a barra e recarregar. */
+  const [pronto, setPronto] = useState(false);
 
   const {
     needRefresh: [temVersaoNova, setTemVersaoNova],
@@ -86,7 +88,31 @@ export function AvisoDeVersao() {
     return () => window.removeEventListener('vite:preloadError', aoFalharPedaco);
   }, []);
 
-  if (trocando) return <Atualizando />;
+  /*
+    A TROCA, E POR QUE O RELOAD NÃO É MAIS DO PLUGIN.
+
+    `updateServiceWorker(true)` recarregava a página no instante em que o worker
+    novo assumia — antes da tela de espera terminar de se explicar. Com `false`
+    o plugin só manda o worker assumir; quem recarrega é a tela, depois de a
+    barra chegar ao fim.
+
+    O evento é o `controllerchange`: ele é o momento em que a versão nova passa
+    a valer de verdade. Se ele não vier — worker já ativo, outra aba no
+    controle —, o prazo de 8s de `Atualizando` recarrega assim mesmo.
+  */
+  useEffect(() => {
+    if (!trocando) return;
+
+    if (!('serviceWorker' in navigator)) { setPronto(true); return; }
+
+    const assumiu = () => setPronto(true);
+    navigator.serviceWorker.addEventListener('controllerchange', assumiu);
+    void updateServiceWorker(false);
+
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', assumiu);
+  }, [trocando, updateServiceWorker]);
+
+  if (trocando) return <Atualizando pronto={pronto} />;
 
   return createPortal(
     <AnimatePresence>
@@ -129,7 +155,6 @@ export function AvisoDeVersao() {
               // começar no quadro seguinte, e um aviso que aparece depois dele
               // não aparece nunca.
               setTrocando(true);
-              updateServiceWorker(true);
             }}
             className="btn btn-primary text-xs"
             style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
