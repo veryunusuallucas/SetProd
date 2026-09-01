@@ -211,6 +211,23 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.10.1',
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <Trash2 size={20} />,
+        titulo: 'Diária apagada podia voltar sozinha',
+        texto: 'Apagar deixava um "túmulo" esperando para subir, e o aparelho não tinha como saber que aquele dia foi apagado enquanto ele não subisse. Se a sincronia trouxesse a versão antiga antes disso, a diária reaparecia na tela. Agora o que está esperando para subir conta como o mais recente, e o apagar vence. Valia para tudo — cena, despesa, ficha — não só para diária.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Trash2 size={20} />,
+        titulo: 'A confirmação de apagar saiu da caixa do navegador',
+        texto: 'Ela usava o "confirmar" do navegador, que depois de alguns avisos seguidos oferece bloquear novas caixas — e a partir dali o clique em apagar não fazia nada, sem erro nenhum na tela. Agora a confirmação é do app, e diz o que acontece: some o dia, a checklist e as marcações; os gastos ficam, só deixam de estar ligados àquela diária.',
+      },
+    ],
+  },
+  {
     versao: '4.10.0',
     resumo: <>Cada coisa aparece na hora em que ela faz sentido — e a diária ganhou um estado no meio.</>,
     grupos: [

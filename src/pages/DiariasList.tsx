@@ -74,6 +74,16 @@ export function DiariasList() {
   const [data, setData] = useState('');
   
   const [editModal, setEditModal] = useState<{ open: boolean, diaria: Diaria | null, num: string, date: string }>({ open: false, diaria: null, num: '', date: '' });
+  /** `true` enquanto a exclusão espera confirmação dentro do próprio modal. */
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [apagando, setApagando] = useState(false);
+  const [erroAoApagar, setErroAoApagar] = useState<string | null>(null);
+
+  const fecharEdicao = () => {
+    setEditModal({ open: false, diaria: null, num: '', date: '' });
+    setConfirmandoExclusao(false);
+    setErroAoApagar(null);
+  };
 
   /*
     Duas abas, e não duas telas no menu.
@@ -137,20 +147,54 @@ export function DiariasList() {
   const salvarEdicao = async () => {
     if (!editModal.diaria) return;
     await db.diarias.update(editModal.diaria.id, { numero: Number(editModal.num), data: editModal.date });
-    setEditModal({ open: false, diaria: null, num: '', date: '' });
+    fecharEdicao();
   };
 
+  /**
+   * Apaga a diária.
+   *
+   * ⚠️ A CONFIRMAÇÃO É DA TELA, NÃO O `confirm()` DO NAVEGADOR.
+   *
+   * O `confirm()` nativo tem um jeito de falhar que ninguém consegue
+   * diagnosticar: depois de alguns diálogos seguidos, o navegador oferece
+   * "impedir que esta página crie mais caixas de diálogo" — e a partir daí ele
+   * devolve `false` na hora, sem mostrar nada. O clique em apagar simplesmente
+   * não faz nada, e não há erro em lugar nenhum para explicar.
+   *
+   * A confirmação aqui dentro também dá espaço para dizer o que vai acontecer
+   * com os gastos, que é a pergunta real de quem hesita.
+   */
   const excluirDiaria = async () => {
     if (!editModal.diaria) return;
-    if (confirm(`Tem certeza que deseja excluir a Diária ${editModal.diaria.numero}? Os gastos vinculados a ela serão desvinculados, mas NÃO serão apagados.`)) {
-      const diariaId = editModal.diaria.id;
-      // Desvincular despesas
-      const despesasVinculadas = despesas.filter(d => d.diaria === diariaId || d.diaria_id === diariaId);
-      for (const d of despesasVinculadas) {
+    const diariaId = editModal.diaria.id;
+    setApagando(true);
+    setErroAoApagar(null);
+
+    try {
+      /*
+        Os gastos são DESVINCULADOS, não apagados: dinheiro que saiu do caixa
+        continua tendo saído, mesmo que o dia tenha sido cancelado. Some o
+        vínculo com a diária, fica o lançamento.
+      */
+      const vinculadas = despesas.filter(d => d.diaria === diariaId || d.diaria_id === diariaId);
+      for (const d of vinculadas) {
         await db.despesas.update(d.id, { diaria: undefined, diaria_id: undefined });
       }
+
+      // O que pertence à diária e não faz sentido sem ela. Sem esta limpeza as
+      // linhas ficam órfãs no banco, subindo para o servidor para sempre.
+      await db.diaria_tasks.where('diaria_id').equals(diariaId).delete();
+      await db.registros_cena.where('diaria_id').equals(diariaId).delete();
+
       await db.diarias.delete(diariaId);
-      setEditModal({ open: false, diaria: null, num: '', date: '' });
+      await logAction(projetoId!, 'deletar', 'diaria', diariaId, `Excluiu a Diária ${editModal.diaria.numero}`);
+      fecharEdicao();
+    } catch (e) {
+      // Falha ao apagar era invisível: o modal continuava aberto e a diária
+      // continuava na lista, sem nada dizendo por quê.
+      setErroAoApagar(e instanceof Error ? e.message : 'Não consegui apagar a diária.');
+    } finally {
+      setApagando(false);
     }
   };
 
@@ -311,6 +355,8 @@ export function DiariasList() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      setConfirmandoExclusao(false);
+                      setErroAoApagar(null);
                       setEditModal({ open: true, diaria: d, num: String(d.numero), date: d.data });
                     }} 
                     className="btn-icon"
@@ -331,7 +377,7 @@ export function DiariasList() {
           <div className="card" style={{ width: '100%', maxWidth: '400px', backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="font-bold">Editar Diária {editModal.diaria.numero}</h3>
-              <button onClick={() => setEditModal({ open: false, diaria: null, num: '', date: '' })} className="btn-icon"><X size={16} /></button>
+              <button onClick={fecharEdicao} className="btn-icon"><X size={16} /></button>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -345,13 +391,48 @@ export function DiariasList() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-              <button onClick={() => setEditModal({ open: false, diaria: null, num: '', date: '' })} className="btn-secondary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)' }}>Cancelar</button>
-              <button onClick={salvarEdicao} className="btn-primary" style={{ flex: 1 }}>Salvar</button>
-              <button onClick={excluirDiaria} className="btn-primary" style={{ backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }} title="Excluir Diária">
-                <Trash2 size={16} />
-              </button>
-            </div>
+            {erroAoApagar && (
+              <div className="text-xs" style={{ color: 'var(--color-danger)', lineHeight: 1.5 }}>{erroAoApagar}</div>
+            )}
+
+            {confirmandoExclusao ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', backgroundColor: 'var(--color-danger-bg)' }}>
+                <div className="text-sm font-bold" style={{ color: 'var(--color-danger)' }}>
+                  Apagar a Diária {String(editModal.diaria.numero).padStart(2, '0')}?
+                </div>
+                <div className="text-xs text-secondary" style={{ lineHeight: 1.6 }}>
+                  Some o dia, a checklist dele e as marcações de cena. Os <b>gastos não
+                  são apagados</b> — eles só deixam de estar ligados a esta diária e
+                  continuam no financeiro do projeto.
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setConfirmandoExclusao(false)} className="btn-secondary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)' }}>
+                    Não apagar
+                  </button>
+                  <button
+                    onClick={excluirDiaria}
+                    disabled={apagando}
+                    className="btn-primary"
+                    style={{ flex: 1, backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}
+                  >
+                    {apagando ? 'Apagando…' : 'Apagar mesmo'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button onClick={fecharEdicao} className="btn-secondary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)' }}>Cancelar</button>
+                <button onClick={salvarEdicao} className="btn-primary" style={{ flex: 1 }}>Salvar</button>
+                <button
+                  onClick={() => setConfirmandoExclusao(true)}
+                  className="btn-primary"
+                  style={{ backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}
+                  title="Apagar esta diária"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
