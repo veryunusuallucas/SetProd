@@ -354,11 +354,39 @@ export const MANUAL: SecaoManual[] = [
     rotas: ['tasks'],
     texto:
       'Um quadro com três colunas: A FAZER, FAZENDO e FEITO, com a contagem de cada uma no topo. ' +
-      'No computador, arraste o cartão de uma coluna para a outra. No celular, o círculo à esquerda do cartão avança o estado num toque — arrastar entre colunas que nem cabem na mesma tela não funciona. ' +
-      'O resto do cartão abre a tarefa. ' +
-      'Dentro dela você define responsável, departamento, prazo, checklist e DEPENDÊNCIAS: enquanto o que ela espera não estiver feito, ela fica bloqueada e não deixa ser concluída. ' +
-      'Tudo é gravado a cada toque — o botão do rodapé só fecha. ' +
-      'O filtro "Minhas" usa a pessoa que você escolheu em "Quem tem acesso"; se vier vazio, é porque esse vínculo ainda não foi feito.',
+      'Dentro de cada coluna, o que vence antes fica em cima, e as tarefas sem prazo vão para o fim.',
+    topicos: [
+      {
+        titulo: 'A etiqueta de prazo',
+        texto:
+          'ATRASADA 3 DIAS e É HOJE saem em vermelho; PRAZO CURTO cobre os dois dias seguintes, em âmbar; até uma semana aparece um EM N DIAS discreto. Prazo mais longe que isso não ganha etiqueta, de propósito: etiqueta em todo cartão é o mesmo que etiqueta em nenhum. Tarefa já concluída também não alarma, mesmo com o prazo estourado.',
+      },
+      {
+        titulo: 'Mover entre as colunas',
+        texto:
+          'No computador, arraste o cartão de uma coluna para a outra. No celular, o círculo à esquerda avança o estado num toque — arrastar entre colunas que nem cabem na mesma tela não funciona. O resto do cartão abre a tarefa.',
+      },
+      {
+        titulo: 'Subtarefas no próprio cartão',
+        texto:
+          'O contador "2/5" abre ali mesmo: um toque nele mostra a lista com as caixinhas, e você marca sem abrir a tarefa. Marcar item de checklist é o gesto mais repetido desta tela, e um modal por marcação transformava cinco toques em vinte.',
+      },
+      {
+        titulo: 'Concluir com subtarefa em aberto',
+        texto:
+          'O app pergunta, mostra quais faltaram e oferece duas saídas: "Fiz tudo — marcar e concluir", que marca os itens junto, ou "Concluir assim mesmo", que deixa a checklist como está. É pergunta e não bloqueio: pode ser que aqueles itens tenham deixado de fazer sentido. O que não pode é passar em silêncio.',
+      },
+      {
+        titulo: 'Dentro da tarefa',
+        texto:
+          'Responsável, departamento, prazo, checklist e DEPENDÊNCIAS: enquanto o que ela espera não estiver feito, ela fica bloqueada, não arrasta e não deixa ser concluída. Tudo é gravado a cada toque — o botão do rodapé só fecha.',
+      },
+      {
+        titulo: 'O filtro "Minhas"',
+        texto:
+          'Usa a pessoa que você escolheu em "Quem tem acesso". Se vier vazio, é porque esse vínculo ainda não foi feito.',
+      },
+    ],
   },
   {
     id: 'equipamento',

@@ -3,7 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, FileText,
+  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, FileText, CalendarClock, CheckCircle2,
 } from 'lucide-react';
 
 /**
@@ -210,6 +210,42 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.12.0',
+    resumo: <>As tarefas passaram a se organizar pelo prazo, e as subtarefas saíram de dentro do modal.</>,
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <CalendarClock size={20} />,
+        titulo: 'O que vence antes fica em cima',
+        texto: 'A coluna era ordenada pela ordem em que as tarefas foram criadas, e o prazo era uma data pequena no rodapé do cartão. Numa coluna com quinze, a que vence amanhã podia estar em décimo lugar. Agora a mais próxima do prazo sobe, e as sem prazo vão para o fim — elas não podem empurrar para baixo a que vence amanhã.',
+      },
+      {
+        tipo: 'novo',
+        icone: <AlertTriangle size={20} />,
+        titulo: 'Etiqueta de prazo no topo do cartão',
+        texto: 'ATRASADA 3 DIAS, É HOJE, PRAZO CURTO · AMANHÃ, EM 5 DIAS. Vermelho para o que já venceu ou vence hoje, âmbar para os dois dias seguintes. Acima de uma semana não ganha etiqueta: etiqueta em todo cartão é o mesmo que etiqueta em nenhum.',
+      },
+      {
+        tipo: 'novo',
+        icone: <ListChecks size={20} />,
+        titulo: 'As subtarefas abrem no próprio cartão',
+        texto: 'O "2/5" era só um número: para ver o que faltava era preciso abrir a tarefa, e para marcar um item também. Agora ele abre ali mesmo, com as caixinhas. Marcar item de checklist é o gesto mais repetido desta tela — um modal por marcação transformava cinco toques em vinte.',
+      },
+      {
+        tipo: 'novo',
+        icone: <CheckCircle2 size={20} />,
+        titulo: 'Concluir com subtarefa em aberto agora pergunta',
+        texto: 'Mostra quais faltaram e oferece "Fiz tudo — marcar e concluir" ou "Concluir assim mesmo". É pergunta, não bloqueio: pode ser que aqueles itens tenham deixado de fazer sentido. O que não pode é passar em silêncio, com a tarefa sumindo da coluna e a checklist mentindo.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <CalendarClock size={20} />,
+        titulo: 'Tarefa de amanhã aparecia como "hoje" à noite',
+        texto: 'A conta do dia usava o relógio de Londres. Das 21h à meia-noite, no Brasil, a data já era a de amanhã — e a tarefa de amanhã virava "é hoje", a de hoje virava atrasada, justo no fim do expediente.',
+      },
+    ],
+  },
   {
     versao: '4.11.2',
     itens: [

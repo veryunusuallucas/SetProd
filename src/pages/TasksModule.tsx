@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db/db';
 import {
   Plus, CheckCircle2, Trash2, ListChecks, Lock, AlertTriangle, CalendarClock,
-  Circle, CircleDashed, X, User, Building2, Link2, GripVertical,
+  Circle, CircleDashed, X, User, Building2, Link2, GripVertical, ChevronRight,
 } from 'lucide-react';
 import type { Task } from '../types';
+import type { Urgencia } from '../lib/urgencia';
 import { logAction } from '../lib/audit';
 import { notificar } from '../lib/notificacoes';
 import { useRole } from '../hooks/useRole';
 import { dataCurta } from '../lib/formato';
+import { urgenciaDe, ordenarPorPrazo, subtarefasPendentes, hojeISO } from '../lib/urgencia';
 import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
 import { useOrigemAncorada } from '../components/ui/origemAncorada';
 import { BotaoTatil } from '../components/ui/BotaoTatil';
@@ -91,6 +93,25 @@ export function TasksModule() {
   /** A subtarefa recém-criada, para o campo já nascer com o cursor dentro. */
   const [subEmFoco, setSubEmFoco] = useState<string | null>(null);
 
+  /** Quais cartões estão com as subtarefas abertas, direto na coluna. */
+  const [subsAbertas, setSubsAbertas] = useState<Set<string>>(new Set());
+  const alternarSubs = (id: string) => setSubsAbertas(atual => {
+    const n = new Set(atual);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+
+  /**
+   * A conclusão que está esperando resposta.
+   *
+   * Concluir uma tarefa com subtarefa em aberto quase sempre é uma de duas
+   * coisas: a pessoa fez tudo e não marcou os itens, ou esqueceu que havia
+   * itens. As duas se resolvem com uma pergunta, e nenhuma se resolve
+   * bloqueando — pode ser que aqueles três itens tenham deixado de fazer
+   * sentido, e trancar a tarefa por causa deles seria pior.
+   */
+  const [confirmandoConclusao, setConfirmandoConclusao] = useState<{ taskId: string; faltam: number } | null>(null);
+
   const ancora = useOrigemAncorada();
 
   // ---- regras ----
@@ -153,11 +174,22 @@ export function TasksModule() {
     try { await logAction(projetoId, 'criar', 'task', task.id, `Criou task: ${task.titulo}`); } catch { /* ignore */ }
   };
 
-  const mudarStatus = async (taskId: string, status: Status, evento?: { clientX: number; clientY: number }) => {
+  const mudarStatus = async (taskId: string, status: Status, evento?: { clientX: number; clientY: number }, jaConfirmado = false) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     if (status !== 'todo' && isTaskLocked(task)) {
       return avisar('Não dá para iniciar ou concluir uma task bloqueada.', 3000);
+    }
+
+    /*
+      A pergunta vale para o toque no círculo E para o arrasto até "Feito" —
+      por isso ela mora aqui, e não no cartão. Um aviso que só aparece num dos
+      dois caminhos é um aviso que a pessoa aprende a contornar sem querer.
+    */
+    const faltam = subtarefasPendentes(task);
+    if (status === 'done' && task.status !== 'done' && faltam > 0 && !jaConfirmado) {
+      setConfirmandoConclusao({ taskId, faltam });
+      return;
     }
 
     // Concluir é confirmação — faísca no ponto do dedo. Voltar para "a fazer"
@@ -215,7 +247,15 @@ export function TasksModule() {
   };
 
   const tarefasVisiveis = tasks.filter(t => filtro === 'todas' || t.responsavel_id === meuPerfilId);
-  const hoje = new Date().toISOString().slice(0, 10);
+  /*
+    ⚠️ `hojeISO()`, e NÃO `toISOString().slice(0,10)`.
+
+    `toISOString` devolve a data em UTC. No Brasil, das 21h à meia-noite ela já
+    é a de amanhã — e toda tarefa que vence amanhã aparecia como "É HOJE", e a
+    de hoje como atrasada, justo no fim do expediente. É o terceiro lugar do app
+    em que este mesmo erro apareceu.
+  */
+  const hoje = hojeISO();
 
   return (
     <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
@@ -281,7 +321,14 @@ export function TasksModule() {
         className="hide-scrollbar"
       >
         {GRUPOS.map(g => {
-          const doGrupo = tarefasVisiveis.filter(t => t.status === g.status);
+          /*
+            Dentro da coluna, quem vence antes fica em cima.
+
+            "Feito" também é ordenada, e por prazo: quem abre aquela coluna
+            costuma estar procurando o que foi entregue por último de um dia
+            específico, não a ordem em que alguém clicou.
+          */
+          const doGrupo = ordenarPorPrazo(tarefasVisiveis.filter(t => t.status === g.status));
           const recebendo = arrastandoSobre === g.status;
 
           return (
@@ -340,7 +387,10 @@ export function TasksModule() {
                     responsavel={perfis.find(p => p.id === t.responsavel_id)}
                     bloqueada={isTaskLocked(t)}
                     motivoBloqueio={getDependenciesNames(t)}
-                    atrasada={!!t.data_conclusao && t.status !== 'done' && t.data_conclusao < hoje}
+                    urgencia={urgenciaDe(t, hoje)}
+                    subsAbertas={subsAbertas.has(t.id)}
+                    aoAlternarSubs={() => alternarSubs(t.id)}
+                    aoMarcarSub={(subId, concluida) => gravarSubs(t, (t.subtarefas || []).map(x => x.id === subId ? { ...x, concluida } : x))}
                     aoAbrir={() => setEditandoId(t.id)}
                     aoAvancar={e => mudarStatus(t.id, AVANCA[t.status], e)}
                   />
@@ -607,6 +657,94 @@ export function TasksModule() {
           {toastMsg}
         </div>
       )}
+
+      {/*
+        ---- Concluir com subtarefa em aberto ----
+
+        ⚠️ É PERGUNTA, NÃO BLOQUEIO.
+
+        Pode ser que aqueles três itens tenham deixado de fazer sentido, e
+        trancar a tarefa por causa deles seria pior que deixar passar. O que não
+        pode é passar em SILÊNCIO — o caso comum é a pessoa ter feito tudo e não
+        ter marcado, e aí a tarefa some da coluna com a checklist mentindo.
+
+        As duas saídas resolvem os dois casos reais: "fiz tudo" marca os itens
+        junto; "concluir assim" deixa a checklist como está, com o registro de
+        que sobraram itens.
+      */}
+      <AnimatePresence>
+        {confirmandoConclusao && (() => {
+          const alvo = tasks.find(t => t.id === confirmandoConclusao.taskId);
+          if (!alvo) return null;
+          const n = confirmandoConclusao.faltam;
+
+          const concluirMarcandoTudo = async () => {
+            await gravarSubs(alvo, (alvo.subtarefas || []).map(x => ({ ...x, concluida: true })));
+            setConfirmandoConclusao(null);
+            await mudarStatus(alvo.id, 'done', undefined, true);
+          };
+
+          const concluirAssimMesmo = async () => {
+            setConfirmandoConclusao(null);
+            await mudarStatus(alvo.id, 'done', undefined, true);
+          };
+
+          return (
+            <div
+              style={{
+                position: 'fixed', inset: 0, zIndex: 1100, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', padding: '16px',
+                backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)',
+              }}
+              onClick={() => setConfirmandoConclusao(null)}
+            >
+              <motion.div
+                initial={reduzido ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={MOLA}
+                onClick={e => e.stopPropagation()}
+                className="card"
+                style={{ width: '100%', maxWidth: '420px', borderLeft: '3px solid var(--color-warning)', display: 'flex', flexDirection: 'column', gap: '14px' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <AlertTriangle size={20} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="text-sm font-bold">
+                      {n === 1 ? 'Falta 1 subtarefa' : `Faltam ${n} subtarefas`} em "{alvo.titulo || 'sem título'}"
+                    </div>
+                    <div className="text-xs text-secondary" style={{ lineHeight: 1.6, marginTop: '4px' }}>
+                      Você já fez tudo e só não marcou? Ou essas ainda estão em aberto?
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quais são: sem isto a pergunta é abstrata, e a pessoa clica
+                    em qualquer coisa para se livrar dela. */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '140px', overflowY: 'auto' }}>
+                  {(alvo.subtarefas || []).filter(x => !x.concluida && x.titulo.trim()).map(x => (
+                    <div key={x.id} className="text-xs text-muted" style={{ display: 'flex', gap: '7px' }}>
+                      <span style={{ opacity: 0.6 }}>☐</span> {x.titulo}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={concluirMarcandoTudo} className="btn-primary text-xs" style={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={14} /> Fiz tudo — marcar e concluir
+                  </button>
+                  <button onClick={concluirAssimMesmo} className="btn-secondary text-xs" style={{ flex: '1 1 auto' }}>
+                    Concluir assim mesmo
+                  </button>
+                </div>
+                <button onClick={() => setConfirmandoConclusao(null)} className="text-xs text-muted" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}>
+                  cancelar
+                </button>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
@@ -657,19 +795,29 @@ function BarraProgresso({ feito, total }: { feito: number; total: number }) {
  * janela de propósito: marcar como feito é o gesto mais comum da tela, e abrir
  * um modal para isso seriam três toques onde cabe um.
  */
-function CartaoTask({ task, depto, responsavel, bloqueada, motivoBloqueio, atrasada, aoAbrir, aoAvancar }: {
+function CartaoTask({
+  task, depto, responsavel, bloqueada, motivoBloqueio, urgencia,
+  subsAbertas, aoAlternarSubs, aoMarcarSub, aoAbrir, aoAvancar,
+}: {
   task: Task;
   depto?: { nome: string; cor?: string };
   responsavel?: { nome: string; sobrenome?: string };
   bloqueada: boolean;
   motivoBloqueio: string;
-  atrasada: boolean;
+  urgencia: Urgencia;
+  subsAbertas: boolean;
+  aoAlternarSubs: () => void;
+  aoMarcarSub: (subId: string, concluida: boolean) => void;
   aoAbrir: () => void;
   aoAvancar: (e: React.MouseEvent) => void;
 }) {
   const feito = task.status === 'done';
-  const subs = task.subtarefas || [];
+  // Subtarefa sem título é uma linha recém-criada que ninguém preencheu; ela
+  // não conta na fração nem aparece aqui — só existe dentro do modal, onde dá
+  // para escrever nela.
+  const subs = (task.subtarefas || []).filter(s => s.titulo.trim());
   const subsFeitas = subs.filter(s => s.concluida).length;
+  const alarme = urgencia.nivel === 'atrasada' || urgencia.nivel === 'hoje';
 
   const icone = feito
     ? <CheckCircle2 size={19} color="var(--color-success)" />
@@ -691,84 +839,152 @@ function CartaoTask({ task, depto, responsavel, bloqueada, motivoBloqueio, atras
         e.dataTransfer.effectAllowed = 'move';
       }}
       style={{
-        padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px',
         borderLeft: `3px solid ${depto?.cor || 'var(--border-color)'}`,
         opacity: bloqueada ? 0.65 : 1,
         cursor: bloqueada ? 'default' : 'grab',
       }}
     >
-      {/* A alça existe para dizer que o cartão se pega. Sem um sinal visível, a
-          única forma de descobrir que dá para arrastar é tentar por acaso. */}
-      {!bloqueada && (
-        <GripVertical size={14} className="text-muted" style={{ flexShrink: 0, opacity: 0.45 }} />
-      )}
+      {/*
+        A ETIQUETA DE PRAZO, no topo e sozinha na linha.
 
-      <button
-        onClick={aoAvancar}
-        disabled={bloqueada && !feito}
-        title={bloqueada ? `Aguardando: ${motivoBloqueio}` : 'Mudar o estado'}
-        style={{
-          background: 'none', border: 'none', padding: 0, flexShrink: 0,
-          cursor: bloqueada && !feito ? 'not-allowed' : 'pointer', display: 'inline-flex',
-        }}
-      >
-        {bloqueada && !feito ? <Lock size={17} className="text-warning" /> : icone}
-      </button>
+        Em cima, e não no meio dos outros chips do rodapé: ela é a única
+        informação do cartão que muda de valor com o tempo, e a que decide se
+        aquele cartão precisa de atenção HOJE. Junto dos outros, competia com o
+        nome do departamento e a data — e era exatamente ali que ela se perdia.
 
-      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={aoAbrir}>
+        Some quando o prazo está longe. Etiqueta em todo cartão é o mesmo que
+        etiqueta em nenhum.
+      */}
+      {urgencia.rotulo && (
         <div
-          className="font-bold"
+          className="text-xs font-bold"
           style={{
-            fontSize: '14px',
-            textDecoration: feito ? 'line-through' : 'none',
-            color: feito ? 'var(--text-muted)' : 'var(--text-primary)',
-            // Título longo não empurra os chips para fora nem estica a linha:
-            // corta com reticências, e o modal mostra ele inteiro.
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'inline-flex', alignItems: 'center', gap: '5px', alignSelf: 'flex-start',
+            padding: '2px 9px', borderRadius: 'var(--radius-full)',
+            letterSpacing: '0.06em', fontSize: '10px',
+            color: urgencia.cor,
+            backgroundColor: `color-mix(in srgb, ${urgencia.cor} 14%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${urgencia.cor} 40%, transparent)`,
           }}
         >
-          {task.titulo || 'Sem título'}
+          {alarme ? <AlertTriangle size={10} /> : <CalendarClock size={10} />}
+          {urgencia.rotulo}
         </div>
+      )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '3px' }}>
-          {depto && (
-            <span className="text-xs" style={{ color: depto.cor || 'var(--text-muted)', fontWeight: 700 }}>
-              {depto.nome}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* A alça existe para dizer que o cartão se pega. Sem um sinal visível, a
+            única forma de descobrir que dá para arrastar é tentar por acaso. */}
+        {!bloqueada && (
+          <GripVertical size={14} className="text-muted" style={{ flexShrink: 0, opacity: 0.45 }} />
+        )}
+
+        <button
+          onClick={aoAvancar}
+          disabled={bloqueada && !feito}
+          title={bloqueada ? `Aguardando: ${motivoBloqueio}` : 'Mudar o estado'}
+          style={{
+            background: 'none', border: 'none', padding: 0, flexShrink: 0,
+            cursor: bloqueada && !feito ? 'not-allowed' : 'pointer', display: 'inline-flex',
+          }}
+        >
+          {bloqueada && !feito ? <Lock size={17} className="text-warning" /> : icone}
+        </button>
+
+        <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={aoAbrir}>
+          <div
+            className="font-bold"
+            style={{
+              fontSize: '14px',
+              textDecoration: feito ? 'line-through' : 'none',
+              color: feito ? 'var(--text-muted)' : 'var(--text-primary)',
+              // Título longo não empurra os chips para fora nem estica a linha:
+              // corta com reticências, e o modal mostra ele inteiro.
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}
+          >
+            {task.titulo || 'Sem título'}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '3px' }}>
+            {depto && (
+              <span className="text-xs" style={{ color: depto.cor || 'var(--text-muted)', fontWeight: 700 }}>
+                {depto.nome}
+              </span>
+            )}
+            <span className="text-xs text-muted">
+              {responsavel ? `${responsavel.nome} ${responsavel.sobrenome || ''}`.trim() : 'Sem dono'}
             </span>
-          )}
-          <span className="text-xs text-muted">
-            {responsavel ? `${responsavel.nome} ${responsavel.sobrenome || ''}`.trim() : 'Sem dono'}
-          </span>
-          {task.data_conclusao && (
-            <span
-              className="text-xs"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                color: atrasada ? 'var(--color-danger)' : 'var(--text-muted)',
-                fontWeight: atrasada ? 700 : 400,
-              }}
-            >
-              <CalendarClock size={11} /> {dataCurta(task.data_conclusao)}{atrasada ? ' · atrasada' : ''}
-            </span>
-          )}
-          {subs.length > 0 && (
-            <span
-              className="text-xs"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                color: subsFeitas === subs.length ? 'var(--color-success)' : 'var(--text-muted)',
-              }}
-            >
-              <ListChecks size={11} /> {subsFeitas}/{subs.length}
-            </span>
-          )}
-          {bloqueada && !feito && (
-            <span className="text-xs text-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <AlertTriangle size={11} /> bloqueada
-            </span>
-          )}
+            {task.data_conclusao && (
+              <span className="text-xs text-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <CalendarClock size={11} /> {dataCurta(task.data_conclusao)}
+              </span>
+            )}
+            {bloqueada && !feito && (
+              <span className="text-xs text-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <AlertTriangle size={11} /> bloqueada
+              </span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/*
+        AS SUBTAREFAS, ABERTAS NO PRÓPRIO CARTÃO.
+
+        A fração "2/5" era só um número: para ver o que faltava era preciso abrir
+        o modal, e para marcar um item também. Só que marcar item de checklist é
+        o gesto mais repetido desta tela — e um modal por marcação transforma
+        cinco toques em vinte.
+
+        O botão fica FORA da área que abre o modal: quem quer editar a tarefa
+        clica no título; quem quer marcar o que já fez clica aqui.
+      */}
+      {subs.length > 0 && (
+        <div>
+          <button
+            onClick={aoAlternarSubs}
+            className="text-xs"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
+              color: subsFeitas === subs.length ? 'var(--color-success)' : 'var(--text-muted)',
+            }}
+            title={subsAbertas ? 'Fechar as subtarefas' : 'Ver e marcar as subtarefas'}
+          >
+            <ChevronRight
+              size={12}
+              style={{ transform: subsAbertas ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}
+            />
+            <ListChecks size={11} /> {subsFeitas}/{subs.length}
+          </button>
+
+          {subsAbertas && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '6px', paddingLeft: '4px' }}>
+              {subs.map(sub => (
+                <label
+                  key={sub.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                    padding: '3px 0', fontSize: '13px',
+                    color: sub.concluida ? 'var(--text-muted)' : 'var(--text-secondary)',
+                    textDecoration: sub.concluida ? 'line-through' : 'none',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={sub.concluida}
+                    onChange={e => aoMarcarSub(sub.id, e.target.checked)}
+                    style={{ width: '15px', height: '15px', accentColor: 'var(--color-success)', flexShrink: 0 }}
+                  />
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.titulo}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
