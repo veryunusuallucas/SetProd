@@ -414,14 +414,17 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
         title="Páginas em oitavos"
         style={{ ...campo, width: '58px', flexShrink: 0 }}
       />
-      <select
-        value={cena.unidade || 'A'}
-        onChange={e => db.cenas.update(cena.id, { unidade: e.target.value as 'A' | 'B' })}
-        style={{ ...campo, width: '44px', flexShrink: 0 }}
-      >
-        <option value="A">A</option>
-        <option value="B">B</option>
-      </select>
+      {/*
+        O SELETOR "UNIDADE A/B" SAIU DAQUI.
+
+        Ele era a última ponta do conceito que a diária deixou de usar: quem
+        divide o dia agora é a escalação — dois grupos escalados, duas frentes,
+        cada uma com a sua locação, o seu cronograma e a sua equipe. Um segundo
+        lugar para dizer a mesma coisa só produz as duas respostas diferentes.
+
+        O campo `Cena.unidade` continua no tipo e no banco: as cenas que já
+        foram marcadas não perdem a marcação, e nada precisa de migração.
+      */}
       <input
         value={cena.estimativa || ''}
         onChange={e => db.cenas.update(cena.id, { estimativa: e.target.value })}
