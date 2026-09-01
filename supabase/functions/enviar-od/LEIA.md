@@ -1,8 +1,24 @@
 # Enviar a Ordem do Dia por email
 
-O que falta fazer **uma vez**, fora do código, para o botão "Enviar por email"
-funcionar. Enquanto isso não for feito, o botão existe e responde com o motivo
-certo na tela — ele não quebra nada.
+## Isto é OPCIONAL
+
+O app já manda a OD para a equipe sem nada disto: **Compartilhar**, **Copiar** e
+**Abrir no meu email** funcionam hoje, de graça, usando o WhatsApp e o email que
+as pessoas já têm. É o caminho principal da tela, e para a maioria das produções
+ele basta.
+
+O que está aqui é o caminho **melhor**, não o necessário: com ele o email sai em
+nome da produção (`od@suaprodutora.com.br`) em vez da conta pessoal de quem
+clicou. Isso exige um domínio próprio, e domínio custa dinheiro.
+
+⚠️ **Não existe atalho.** Nem o Vercel nem o Supabase resolvem: o Vercel não
+deixa criar registros DNS no `.vercel.app` (o domínio é deles), e o email do
+Supabase serve só para autenticação, com limite de poucos por hora. Enviar em
+nome de um domínio que você não tem é impossível por desenho — quem recebe é
+que exige a prova, e a prova mora no DNS do domínio.
+
+Se um dia você registrar um domínio (por qualquer motivo — o app também deixaria
+de morar num endereço `.vercel.app`), o passo a passo é este:
 
 ## 1. Conta no Resend
 

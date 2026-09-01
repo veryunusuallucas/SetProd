@@ -172,7 +172,9 @@ export const MANUAL: SecaoManual[] = [
       'Marcar é coisa de AD e produção, e cada anotação fica com o nome de quem fez e a hora. ' +
       'No modo de registro você marca: a hora real de cada item, o estado de cada cena, e no ícone de prancheta os oitavos, os setups, o que exatamente saiu e se houve som wild. ' +
       'Abaixo da linha ficam PRESENÇA E JORNADA (chegou / atrasou / faltou, com chegada, início, refeição e fim de cada pessoa), COBERTURA DO DIA (rolos de câmera e som, figuração e stand-ins) e OCORRÊNCIAS (atraso, equipamento, incidente, clima, com os minutos perdidos). ' +
-      'DISTRIBUIR A OD: baixe o arquivo de agenda (.ics, abre no Google, Apple e Outlook — com a diária e cada marco como compromisso), cole o link da reunião, ou mande a OD por email para a equipe escalada. ' +
+      'MANDAR PARA A EQUIPE: o botão COMPARTILHAR abre o WhatsApp, o Telegram ou o email do seu aparelho já com a OD escrita e o arquivo de agenda junto; COPIAR deixa a OD pronta para colar em qualquer lugar; ABRIR NO MEU EMAIL abre a sua caixa com a equipe em cópia oculta e o assunto preenchido. Nada disso custa nada nem precisa de configuração. ' +
+      'Tem também o arquivo de agenda (.ics, abre no Google, Apple e Outlook — com a diária e cada marco como compromisso) e o campo para colar o link da reunião. ' +
+      'Enviar o email EM NOME DA PRODUÇÃO (od@suaprodutora.com.br) é outra coisa: exige um domínio próprio com registros de DNS, senão o Gmail joga em spam. Fica escondido num "ver mais", e o passo a passo está no arquivo LEIA da função enviar-od. ' +
       'Quando algo atrasa, aparece o wrap refeito: "o dia está 40min de atraso — wrap agora às 19:40, planejado 19:00". ' +
       'Ao lado ficam os cartões de apoio. O CARTÃO DE LOCAÇÃO junta tudo do lugar: endereço, previsão do tempo DAQUELE set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local. ' +
       'Mais abaixo, fechados por padrão: transporte e comboios, checklist, confirmação de presença e anexos. ' +

@@ -3,7 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug, Send, Mail, Film,
+  Bell, LogIn, Bug, Send, Mail, Film, Share2,
 } from 'lucide-react';
 
 /**
@@ -280,9 +280,15 @@ export const VERSOES: Versao[] = [
           },
           {
             tipo: 'novo',
+            icone: <Share2 size={20} />,
+            titulo: 'Mandar a OD para a equipe, de graça',
+            texto: 'COMPARTILHAR abre o WhatsApp, o Telegram ou o email do seu aparelho já com a OD escrita e o arquivo de agenda junto. COPIAR deixa a OD pronta para colar em qualquer lugar. ABRIR NO MEU EMAIL abre a sua caixa com a equipe já em cópia oculta e o assunto preenchido — ninguém recebe a lista de emails dos outros.',
+          },
+          {
+            tipo: 'novo',
             icone: <Mail size={20} />,
-            titulo: 'Enviar a OD por email',
-            texto: 'Para a equipe escalada, já pré-marcada; quem não tem email na ficha aparece num aviso em vez de sumir da lista. Todo mundo em cópia oculta — ninguém recebe a lista de emails dos outros. Precisa de uma configuração no Supabase antes de funcionar; o botão diz isso na tela.',
+            titulo: 'E, para quem tiver domínio, o envio em nome da produção',
+            texto: 'Aí o email sai de od@suaprodutora.com.br em vez da conta pessoal de quem clicou. Isso exige um domínio próprio com os registros de DNS certos — sem eles o Gmail joga em spam, e não há como contornar: é regra de quem recebe, não limitação do app. Fica escondido num "ver mais" até você querer.',
           },
           {
             tipo: 'novo',
