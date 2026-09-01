@@ -179,7 +179,10 @@ export const MANUAL: SecaoManual[] = [
       'Ao lado ficam os cartões de apoio. O CARTÃO DE LOCAÇÃO junta tudo do lugar: endereço, previsão do tempo DAQUELE set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local. ' +
       'Mais abaixo, fechados por padrão: transporte e comboios, checklist, confirmação de presença e anexos. ' +
       'DUAS FRENTES NO MESMO DIA: não existe botão de dividir. Escale DOIS GRUPOS e as abas aparecem sozinhas, cada uma com a sua locação, o seu cronograma e a sua equipe — tirou um grupo, volta a ser um dia só. O conceito antigo de "Unidade A/B" acabou. ' +
-      'A diária tem três estados: RASCUNHO acompanha o stripboard (arrastou uma cena lá, muda aqui); PUBLICADA congela, e mudança no stripboard vira aviso em vez de mudar sozinha — a equipe já está com o PDF na mão; FECHADA é depois do relatório do dia. ' +
+      'A diária tem QUATRO estados, e a régua deles fica no topo da tela. RASCUNHO acompanha o stripboard (arrastou uma cena lá, muda aqui). TRAVADA congela sem publicar: serve para a diária pronta esperar as outras ficarem, para outra pessoa conferir sem mexer sem querer — e voltar dali não custa nada, porque nada saiu. PUBLICADA é depois de exportar: a equipe está com o PDF na mão, e mudança no stripboard vira aviso em vez de mudar sozinha. FECHADA é depois do relatório. ' +
+      'Voltar de PUBLICADA para rascunho mostra um aviso vermelho, e ele é sério: existe um papel circulando que passa a mentir. Corrija e exporte de novo — a nova sai como v2 — e avise a equipe. ' +
+      'O botão de MARCAR cena só aparece na diária publicada e no dia da filmagem. Antes disso não quer dizer nada, e um toque por engano sujaria a conta do ritmo do projeto. A lista de cenas continua sempre, porque é ali que você monta o dia. ' +
+      'Diária FECHADA não se marca mais: nem cena, nem hora, nem presença, nem checklist. Para mexer, use Reabrir. ' +
       'No fim, exporte a Ordem do Dia em PDF escolhendo o que entra — a linha do dia inteira sai impressa, com horários — ou peça para a IA montar o texto.',
   },
   {

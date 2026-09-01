@@ -400,15 +400,28 @@ export interface Diaria {
    *
    * `rascunho`  — ainda se mexendo. ESPELHA O STRIPBOARD: reordenou a linha do
    *               tempo, as cenas do dia se atualizam sozinhas.
-   * `publicada` — a OD saiu, a equipe recebeu. CONGELA. Mudança no stripboard
-   *               vira aviso, nunca aplicação silenciosa.
+   * `travada`   — congelada, mas AINDA NÃO SAIU. Ninguém de fora viu.
+   * `publicada` — a OD saiu, a equipe recebeu. Mudança no stripboard vira
+   *               aviso, nunca aplicação silenciosa.
    * `fechada`   — o dia acabou e o relatório foi feito.
    *
-   * O congelamento na publicação é o ponto todo. Sem ele, alguém reordena o
-   * stripboard às 23h e a Ordem do Dia que a equipe imprimiu muda por baixo dos
-   * pés de quem vai para o set às 6h — sem ninguém ser avisado.
+   * O congelamento é o ponto todo. Sem ele, alguém reordena o stripboard às 23h
+   * e a Ordem do Dia que a equipe imprimiu muda por baixo dos pés de quem vai
+   * para o set às 6h — sem ninguém ser avisado.
+   *
+   * ⚠️ POR QUE `travada` EXISTE, SE `publicada` JÁ CONGELA
+   *
+   * Porque as duas congelam a mesma coisa e custam coisas MUITO diferentes para
+   * desfazer. Travada é uma diária pronta esperando as outras ficarem — dá para
+   * outra pessoa conferir sem medo de mexer sem querer, e voltar para rascunho
+   * não tem consequência nenhuma.
+   *
+   * Publicada saiu. Voltar dali para rascunho é sério: existe um PDF circulando
+   * que vai passar a mentir. Sem o estado do meio, quem só queria proteger o dia
+   * de um clique errado tinha que publicar — e depois pagar o preço de
+   * despublicar.
    */
-  estado?: 'rascunho' | 'publicada' | 'fechada';
+  estado?: 'rascunho' | 'travada' | 'publicada' | 'fechada';
   data_publicacao?: number;
 
   /**

@@ -1,15 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { GitCompare, Send, Undo2, AlertTriangle, Check } from 'lucide-react';
+import { GitCompare, AlertTriangle, Check } from 'lucide-react';
 import {
-  aplicarDoStripboard, diferencaDeCenas, estadoDa, publicarDiaria,
-  despublicarDiaria, semDiferenca, ROTULO_ESTADO,
+  aplicarDoStripboard, diferencaDeCenas, estadoDa, semDiferenca, ROTULO_ESTADO,
 } from '../lib/sincronizaOD';
 import type { Diaria } from '../types';
 
 /**
  * A faixa que liga a Ordem do Dia ao stripboard — a Opção C do plano.
+ *
+ * ⚠️ ELA NÃO MEXE MAIS NO ESTADO DA DIÁRIA.
+ *
+ * Tinha "Publicar OD" e "Voltar a rascunho" aqui dentro, e isso escondia o
+ * controle mais importante da tela num lugar que só existe quando a diária veio
+ * de uma quebra do stripboard — diária montada à mão nunca conseguia sair de
+ * rascunho. Pior: aquele "Publicar" publicava sem gerar o documento, criando
+ * uma OD publicada que ninguém recebeu.
+ *
+ * Agora o estado é do `EstadoDaDiaria`, no topo, e publicar é exportar. Aqui
+ * ficou só o que é de fato desta faixa: o que mudou no stripboard depois que a
+ * OD congelou.
  *
  * Enquanto a diária é RASCUNHO, ela espelha o bloco do stripboard de onde veio:
  * arrastar uma cena lá atualiza a lista aqui, sozinho. Ao PUBLICAR, congela — e
@@ -72,12 +83,9 @@ export function SincroniaStripboard({ diaria }: { diaria: Diaria }) {
         <div style={{ flex: 1, minWidth: '180px' }}>
           <div className="text-sm font-bold">Rascunho — seguindo o stripboard</div>
           <div className="text-xs text-muted" style={{ lineHeight: 1.45 }}>
-            Mexeu na linha do tempo, as cenas daqui se atualizam. Ao publicar, congela.
+            Mexeu na linha do tempo, as cenas daqui se atualizam. Ao travar ou publicar, congela.
           </div>
         </div>
-        <button className="btn btn-primary" onClick={() => publicarDiaria(diaria.id)} style={{ flexShrink: 0 }}>
-          <Send size={15} /> Publicar OD
-        </button>
       </Faixa>
     );
   }
@@ -110,9 +118,6 @@ export function SincroniaStripboard({ diaria }: { diaria: Diaria }) {
             Mudança no stripboard vira aviso aqui, nunca muda a OD sozinha.
           </div>
         </div>
-        <button className="btn" onClick={() => despublicarDiaria(diaria.id)} style={{ flexShrink: 0 }}>
-          <Undo2 size={15} /> Voltar a rascunho
-        </button>
       </Faixa>
     );
   }

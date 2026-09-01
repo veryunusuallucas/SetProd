@@ -21,11 +21,12 @@ import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
 import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, emMinutos } from '../lib/linhaDoDia';
-import { estadoDa } from '../lib/sincronizaOD';
+import { estadoDa, publicarDiaria } from '../lib/sincronizaOD';
 import { faseDoDia } from '../lib/faseDoDia';
 import { ResumoEquipamento } from '../components/ResumoEquipamento';
 import { CardDeLocacao } from '../components/CardDeLocacao';
 import { AvisoDeRitmo } from '../components/AvisoDeRitmo';
+import { EstadoDaDiaria } from '../components/EstadoDaDiaria';
 import { RelogioDoSet } from '../components/RelogioDoSet';
 import { RegistroDoSet } from '../components/RegistroDoSet';
 import { DistribuirOD } from '../components/DistribuirOD';
@@ -75,7 +76,7 @@ export function DiariaModule() {
   ) || [];
 
   const [fechamentoAberto, setFechamentoAberto] = useState(false);
-  const { perfilId: meuPerfilId, canEditProducao: podeMarcarODia } = useRole();
+  const { perfilId: meuPerfilId, canEditProducao: podeAdministrar } = useRole();
 
   const [newTask, setNewTask] = useState('');
   const [frenteAberta, setFrenteAberta] = useState<string | null>(null);
@@ -192,6 +193,16 @@ export function DiariaModule() {
     "Montar / No set" ter sido removido está escrita lá.
   */
   const fase = faseDoDia(diaria);
+
+  /*
+    Diária FECHADA não se marca mais — nem cena, nem hora real, nem presença.
+
+    O relatório já saiu com os números que tinha. Deixar alguém marcar uma cena
+    amanhã faria o DPR impresso divergir do que está na tela, e a divergência
+    não apareceria em lugar nenhum: os dois pareceriam certos. Para mexer, o
+    caminho é "Reabrir", que é explícito e fica registrado na ata.
+  */
+  const podeMarcarODia = podeAdministrar && !diaria.fechada;
   const dia = calcularDia(montarLinhaDoDia(dividido ? { linha_do_tempo: frente?.linha_do_tempo, cena_ids: frente?.cena_ids || [] } : diaria), dividido ? frente?.chamada : diaria.chamada, id => cenasGlobais.find(c => c.id === id));
   const atrasoDoDia = calcularAtraso(dia);
 
@@ -801,11 +812,17 @@ export function DiariaModule() {
    */
   const exportarPDF = async () => {
     const versaoNova = (diaria.versao_od || 0) + 1;
-    await db.diarias.update(diariaId!, {
-      versao_od: versaoNova,
-      data_export: Date.now(),
-      ...(estadoDa(diaria) === 'rascunho' ? { estado: 'publicada' as const, data_publicacao: Date.now() } : {}),
-    });
+    await db.diarias.update(diariaId!, { versao_od: versaoNova, data_export: Date.now() });
+
+    /*
+      Exportar de RASCUNHO ou de TRAVADA publica. Os dois são "ainda não saiu";
+      o que muda entre eles é só o quanto o plano está protegido de um clique.
+      Uma diária fechada que alguém reexporta continua fechada — reimprimir o
+      documento de um dia que já acabou não o reabre.
+    */
+    if (estadoDa(diaria) === 'rascunho' || estadoDa(diaria) === 'travada') {
+      await publicarDiaria(diariaId!);
+    }
 
     const html = montarHtmlOD(true, versaoNova);
 
@@ -864,6 +881,13 @@ export function DiariaModule() {
           dashboard: quem está montando o dia de amanhã é exatamente quem pode
           fazer alguma coisa a respeito. Some sozinho quando não há atraso. */}
       <AvisoDeRitmo projetoId={projetoId!} />
+
+      {/*
+        Onde a diária está no ciclo. Fica no topo porque é o que decide o que a
+        tela inteira deixa fazer — e antes disto o controle vivia dentro da
+        faixa do stripboard, que nem sempre existe.
+      */}
+      <EstadoDaDiaria diaria={diaria} podeMexer={podeAdministrar} />
 
       {/*
         O relógio só aparece no dia — não na véspera nem depois de fechada.
@@ -987,7 +1011,7 @@ export function DiariaModule() {
           )}
 
           {/* Shot List (cenas e planos decupados) */}
-          <ShotList diaria={diaria as any} locacoes={locacoes} />
+          <ShotList diaria={diaria as any} locacoes={locacoes} diaAtivo={fase.ativo && podeMarcarODia} />
         </div>
 
         {/* ---- NÍVEL 3: cartões de apoio ---- */}
@@ -1312,19 +1336,33 @@ export function DiariaModule() {
         cor="var(--cor-set)"
         resumo={tasks.length ? `${tasks.filter(t => t.status === 'concluido').length}/${tasks.length}` : 'vazio'}
       >
-        <form onSubmit={addTask} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <input placeholder="Nova tarefa... (ex: pegar rádios, comprar gelo)" value={newTask} onChange={e => setNewTask(e.target.value)} style={{ flex: 1 }} />
-          <button type="submit" className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }}><Plus size={20} /></button>
-        </form>
+        {/*
+          Depois de fechada, a checklist vira registro — não some, mas não se
+          mexe. Ela entrou no relatório do dia com o número que tinha; deixar
+          alguém marcar uma tarefa amanhã faria o DPR já emitido divergir do que
+          está na tela, e a divergência não apareceria em lugar nenhum.
+        */}
+        {diaria.fechada ? (
+          <div className="text-xs text-muted" style={{ marginBottom: '14px', lineHeight: 1.5 }}>
+            A diária está fechada — a checklist fica como registro do dia.
+          </div>
+        ) : (
+          <form onSubmit={addTask} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <input placeholder="Nova tarefa... (ex: pegar rádios, comprar gelo)" value={newTask} onChange={e => setNewTask(e.target.value)} style={{ flex: 1 }} />
+            <button type="submit" className="btn-icon" style={{ backgroundColor: 'var(--bg-surface)' }}><Plus size={20} /></button>
+          </form>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {tasks.length === 0 && <div className="text-muted text-sm" style={{ padding: '8px 0', textAlign: 'center' }}>Nenhuma tarefa para o dia.</div>}
           {tasks.map(task => (
             <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, cursor: 'pointer', textDecoration: task.status === 'concluido' ? 'line-through' : 'none', color: task.status === 'concluido' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                <input type="checkbox" checked={task.status === 'concluido'} onChange={() => toggleTask(task)} style={{ width: '20px', height: '20px', accentColor: 'var(--accent)' }} />
+                <input type="checkbox" checked={task.status === 'concluido'} onChange={() => !diaria.fechada && toggleTask(task)} disabled={diaria.fechada} style={{ width: '20px', height: '20px', accentColor: 'var(--accent)' }} />
                 {task.descricao}
               </label>
-              <button onClick={() => deleteTask(task.id)} className="btn-icon text-muted" style={{ padding: '8px', border: 'none', background: 'transparent' }}><Trash2 size={16} /></button>
+              {!diaria.fechada && (
+                <button onClick={() => deleteTask(task.id)} className="btn-icon text-muted" style={{ padding: '8px', border: 'none', background: 'transparent' }}><Trash2 size={16} /></button>
+              )}
             </div>
           ))}
         </div>
@@ -1338,6 +1376,11 @@ export function DiariaModule() {
           ? `${(diaria.confirmacoes || []).filter(id => (diaria.equipe_escalada || []).includes(id)).length}/${escalados.length}`
           : '—'}
       >
+        {diaria.fechada && (
+          <div className="text-xs text-muted" style={{ marginBottom: '12px', lineHeight: 1.5 }}>
+            A diária está fechada — quem confirmou fica registrado, e a lista não muda mais.
+          </div>
+        )}
         {escalados.length === 0 ? (
           <div className="text-muted text-sm">Escale a equipe primeiro para confirmar presença.</div>
         ) : (
@@ -1346,7 +1389,7 @@ export function DiariaModule() {
               const ok = (diaria.confirmacoes || []).includes(p.id);
               return (
                 <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={ok} onChange={() => toggleConfirmacao(p.id)} style={{ width: '18px', height: '18px', accentColor: 'var(--color-success)' }} />
+                  <input type="checkbox" checked={ok} onChange={() => !diaria.fechada && toggleConfirmacao(p.id)} disabled={diaria.fechada} style={{ width: '18px', height: '18px', accentColor: 'var(--color-success)' }} />
                   <span style={{ flex: 1 }}>{p.nome} {p.sobrenome} <span className="text-xs text-muted">· {p.funcao || 'Equipe'}</span></span>
                   {ok && <span className="text-xs text-success font-bold">confirmado</span>}
                 </label>

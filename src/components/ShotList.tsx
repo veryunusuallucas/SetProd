@@ -29,7 +29,24 @@ const ICONE: Record<StatusCena, React.ReactNode> = {
   cortada: <Scissors size={13} />,
 };
 
-export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[] }) {
+export function ShotList({ diaria, locacoes, diaAtivo }: {
+  diaria: Diaria;
+  locacoes: any[];
+  /**
+   * ⚠️ O BOTÃO DE MARCAR SÓ EXISTE NO DIA DA FILMAGEM.
+   *
+   * Antes ele aparecia sempre, inclusive numa diária em rascunho de daqui a
+   * três semanas — e marcar "gravada" numa OD que nem saiu não quer dizer nada.
+   * Pior: aquela marcação entra na conta do ritmo do projeto e na fila de
+   * repescagem, então um toque por engano vira número errado num painel que
+   * alguém vai usar para decidir se marca mais um dia.
+   *
+   * A LISTA continua aparecendo sempre, de propósito: é aqui que se escolhe à
+   * mão quais cenas entram no dia e se abre a decupagem de cada uma. Some o
+   * botão, não o planejamento.
+   */
+  diaAtivo: boolean;
+}) {
   const [showSelector, setShowSelector] = useState(false);
   const { perfilId: meuPerfilId } = useRole();
 
@@ -210,7 +227,7 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
                 desfaz com outro toque, e um modal a cada cena tornaria a tela
                 inútil justamente quando ela precisa ser rápida.
               */}
-              <button
+              {diaAtivo && <button
                 onClick={e => alternarStatus(cena.id, e)}
                 title={
                   !registro
@@ -236,7 +253,7 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
                     escuro, daltonismo. O ícone e o texto carregam o significado. */}
                 {registro ? ICONE[registro.status] : <Circle size={13} />}
                 {registro ? ROTULO[registro.status] : 'marcar'}
-              </button>
+              </button>}
 
               <button onClick={() => removeCena(cena.id)} className="btn-icon text-muted" style={{ padding: '6px' }} title="Remover da Diária"><Trash2 size={16} /></button>
             </div>
@@ -247,7 +264,7 @@ export function ShotList({ diaria, locacoes }: { diaria: Diaria, locacoes: any[]
               não gravada" — é o motivo que orienta a decisão seguinte, e é o
               que a produção vai querer ler quando o cronograma apertar.
             */}
-            {registro && (registro.status === 'nao_gravada' || registro.status === 'parcial') && (
+            {diaAtivo && registro && (registro.status === 'nao_gravada' || registro.status === 'parcial') && (
               <div style={{ padding: '10px 12px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-primary)', borderTop: '1px solid var(--border-light)' }}>
                 <span className="text-xs text-muted" style={{ marginRight: '2px' }}>por quê:</span>
                 {MOTIVOS.map(m => (

@@ -39,7 +39,14 @@ export interface Fase {
  */
 export function faseDoDia(diaria: Diaria, agora: Date = new Date()): Fase {
   const estado = estadoDa(diaria);
-  const modo: Modo = estado === 'rascunho' ? 'criacao' : 'interativo';
+  /*
+    `travada` fica do lado de CRIAÇÃO, e não do lado do registro.
+
+    Ela congela o plano, mas ninguém de fora viu — não há dia acontecendo para
+    registrar. Mostrar a tela de execução numa diária que a equipe nem recebeu
+    seria pedir marcação de um dia que não começou.
+  */
+  const modo: Modo = estado === 'rascunho' || estado === 'travada' ? 'criacao' : 'interativo';
 
   /*
     A data é comparada como TEXTO, não como Date.
