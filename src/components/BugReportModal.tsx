@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bug, Lightbulb, HelpCircle, X, Send, Copy, CheckCircle2, FileText } from 'lucide-react';
+import { Bug, Lightbulb, HelpCircle, X, Send, Copy, CheckCircle2, FileText, ChevronRight } from 'lucide-react';
 import { db } from '../db/db';
 import { supabase } from '../lib/supabase';
 import { obterEventos, coletarAmbiente } from '../lib/diagnostico';
@@ -45,6 +45,8 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
   const ancora = useOrigemAncorada();
 
   const [tipo, setTipo] = useState<Tipo>(tipoInicial);
+  /** O que vai junto fica recolhido: quem quer conferir abre. */
+  const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const [descricao, setDescricao] = useState(descricaoInicial);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
@@ -151,11 +153,35 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
     setTimeout(() => setCopiado(false), 3000);
   };
 
-  const TIPOS: { id: Tipo; icone: React.ReactNode; nome: string; ajuda: string }[] = [
-    { id: 'bug', icone: <Bug size={18} />, nome: 'Bug', ajuda: 'Quebrou' },
-    { id: 'sugestao', icone: <Lightbulb size={18} />, nome: 'Sugestão', ajuda: 'Uma ideia' },
-    { id: 'duvida', icone: <HelpCircle size={18} />, nome: 'Dúvida', ajuda: 'Não entendi' },
+  /*
+    Uma cor para cada tipo, e elas não são escolhidas por gosto.
+
+    Antes os três acendiam em amarelo, então a cor só dizia "este está
+    selecionado" — informação que a borda já dava. Com cores diferentes, o
+    estado escolhido é reconhecível de relance, inclusive de canto de olho
+    depois de a pessoa já ter começado a escrever.
+
+    Vermelho para bug, verde para ideia, azul para pergunta: é a convenção que
+    o resto do app já usa em status, e mantê-la evita que "vermelho" queira
+    dizer duas coisas diferentes em telas diferentes.
+  */
+  const TIPOS: { id: Tipo; icone: React.ReactNode; nome: string; ajuda: string; cor: string }[] = [
+    { id: 'bug', icone: <Bug size={18} />, nome: 'Bug', ajuda: 'Quebrou', cor: 'var(--color-danger)' },
+    { id: 'sugestao', icone: <Lightbulb size={18} />, nome: 'Sugestão', ajuda: 'Uma ideia', cor: 'var(--color-success)' },
+    { id: 'duvida', icone: <HelpCircle size={18} />, nome: 'Dúvida', ajuda: 'Não entendi', cor: 'var(--cor-logistica)' },
   ];
+
+  const corDoTipo = TIPOS.find(t => t.id === tipo)!.cor;
+
+  /*
+    Quantos itens seguem com a mensagem.
+
+    O número aparece com a caixa fechada porque é ele que responde a pergunta de
+    quem desconfia — "o que vocês estão pegando de mim?" — sem obrigar quem não
+    desconfia a ler nada. Conta o que de fato é enviado: tela, versão, ambiente,
+    o email quando há login, e o registro de eventos.
+  */
+  const quantasInformacoes = 4 + (user?.email ? 1 : 0);
 
   return createPortal(
     <div
@@ -178,7 +204,11 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
         }}
       >
         <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Bug size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+          {/* O ícone do topo acompanha o tipo escolhido — é o que faz a cor
+              continuar visível depois que a pessoa rolou a tela para escrever. */}
+          <span style={{ color: corDoTipo, display: 'flex', flexShrink: 0 }}>
+            {TIPOS.find(t => t.id === tipo)!.icone}
+          </span>
           <h2 className="text-lg font-bold" style={{ margin: 0, flex: 1 }}>Falar com o Viol</h2>
           <button onClick={onClose} className="btn-icon" aria-label="Fechar" style={{ flexShrink: 0 }}>
             <X size={18} />
@@ -205,11 +235,19 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
                     onClick={() => setTipo(t.id)}
                     style={{
                       flex: 1, padding: '12px 6px', borderRadius: '12px', cursor: 'pointer',
-                      border: `1px solid ${ativo ? 'var(--accent)' : 'var(--border-light)'}`,
-                      backgroundColor: ativo ? 'var(--bg-active)' : 'transparent',
-                      color: ativo ? 'var(--accent)' : 'var(--text-muted)',
+                      border: `1px solid ${ativo ? t.cor : 'var(--border-light)'}`,
+                      /*
+                        O fundo é a MESMA cor, quase transparente.
+
+                        `color-mix` em 12% dá um tom que existe sem competir com
+                        o texto — pintar o botão inteiro faria os três brigarem
+                        entre si, e três blocos saturados lado a lado num app
+                        escuro cansam antes de informar.
+                      */
+                      backgroundColor: ativo ? `color-mix(in srgb, ${t.cor} 12%, transparent)` : 'transparent',
+                      color: ativo ? t.cor : 'var(--text-muted)',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
-                      transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                      transition: 'border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease',
                     }}
                   >
                     {t.icone}
@@ -251,8 +289,49 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
             você está", a pessoa entende que não precisa descrever o caminho.
           */}
           <div style={{ borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', padding: '12px 14px' }}>
-            <div className="text-xs text-muted uppercase tracking-widest font-bold" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FileText size={12} /> Vai junto
+            {/*
+              ⚠️ RECOLHIDO, MAS NUNCA ESCONDIDO.
+
+              A lista ocupava um terço do modal para dizer coisas que quem só
+              quer relatar um problema não precisa ler. Mas ela também não pode
+              sumir: mandar diagnóstico sem dizer o que é seria coletar às
+              escondidas.
+
+              Então o cabeçalho continua sempre visível e diz QUANTAS
+              informações vão — o número é o que faz alguém desconfiado querer
+              abrir. Fechado, ele avisa; aberto, ele mostra tudo.
+            */}
+            <button
+              onClick={() => setDetalhesAbertos(a => !a)}
+              className="text-xs text-muted uppercase tracking-widest font-bold"
+              /*
+                `flexWrap` porque "Informações avançadas" em caixa-alta com
+                tracking largo não cabe ao lado do contador num celular estreito
+                — sem ele o contador era empurrado para fora da caixa, e era
+                justamente ele que precisava ser lido.
+              */
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '6px',
+                flexWrap: 'wrap', rowGap: '2px',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                color: 'var(--text-muted)', textAlign: 'left',
+              }}
+            >
+              <ChevronRight
+                size={13}
+                style={{ transform: detalhesAbertos ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease', flexShrink: 0 }}
+              />
+              <FileText size={12} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: '140px' }}>Informações avançadas</span>
+              <span style={{ textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap' }}>
+                {quantasInformacoes} itens vão junto
+              </span>
+            </button>
+
+            {detalhesAbertos && (
+            <>
+            <div className="text-xs text-muted" style={{ margin: '10px 0 8px', lineHeight: 1.5, textTransform: 'none', letterSpacing: 0 }}>
+              É isto que segue com a sua mensagem — nada além disto:
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -285,6 +364,8 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
                   ))}
                 </div>
               </details>
+            )}
+            </>
             )}
           </div>
 
