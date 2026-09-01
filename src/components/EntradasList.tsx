@@ -3,6 +3,7 @@ import { dinheiro } from '../lib/formato';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Plus, Trash2 } from 'lucide-react';
+import { confirmar } from './ui/Confirmacao';
 
 export function EntradasList({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -25,7 +26,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
   };
 
   const handleDeleteAporte = async (id: string) => {
-    if (confirm("Remover este aporte?")) {
+    if (await confirmar("Remover este aporte?")) {
       await db.aportes.delete(id);
     }
   };

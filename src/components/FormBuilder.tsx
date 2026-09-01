@@ -5,6 +5,7 @@ import { Plus, Trash2, GripVertical, Settings2, X, CloudUpload, CloudOff, Check,
 import type { CampoCustomizado, TipoCampo } from '../types';
 import { CAMPOS_PADRAO, CAMPOS_SEMPRE_OBRIGATORIOS, ROTULO_GRUPO } from '../lib/camposFicha';
 import { publicarFichaPublica } from '../lib/sync';
+import { confirmar } from './ui/Confirmacao';
 
 /**
  * Recebe o ID e lê o projeto ao vivo — antes recebia o objeto por prop, e como o
@@ -84,7 +85,7 @@ export function FormBuilder({ projetoId, onClose }: { projetoId: string, onClose
   };
 
   const removerCampo = async (id: string, nome: string) => {
-    if (confirm(`Tem certeza que deseja remover o campo "${nome}"? Os dados preenchidos pela equipe continuarão salvos, mas não serão mais exibidos.`)) {
+    if (await confirmar(`Tem certeza que deseja remover o campo "${nome}"? Os dados preenchidos pela equipe continuarão salvos, mas não serão mais exibidos.`)) {
       const novos = campos.filter(c => c.id !== id);
       await db.projetos.update(projetoId, { campos_customizados: novos });
     }

@@ -33,6 +33,7 @@ import { DistribuirOD } from '../components/DistribuirOD';
 import { Colapsavel } from '../components/ui/Colapsavel';
 import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
+import { confirmar } from '../components/ui/Confirmacao';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -425,7 +426,7 @@ export function DiariaModule() {
   const fecharDiaria = async () => {
     const jaFechada = !!diaria.fechada;
     if (jaFechada) {
-      if (!confirm('Reabrir esta diária para edição?')) return;
+      if (!(await confirmar('Reabrir esta diária para edição?'))) return;
       // Volta a `publicada`, não a `rascunho`: a OD já saiu para a equipe, e
       // devolver a diária ao espelho faria as cenas se mexerem sozinhas num dia
       // que já foi impresso e distribuído.

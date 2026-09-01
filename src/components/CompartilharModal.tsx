@@ -16,6 +16,7 @@ import {
 } from '../lib/acervoVinculado';
 import { listarMembros, mudarPapel, removerMembro, type MembroDetalhado } from '../lib/painelMembros';
 import { MOLA } from './ui/ia';
+import { confirmar } from './ui/Confirmacao';
 
 interface Props {
   projetoId: string;
@@ -100,12 +101,13 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
       clica precisa saber disso antes — descobrir depois é pior.
     */
     const quem = email || m.apelido || 'esta pessoa';
-    const seguir = confirm(
-      `Remover ${quem} desta produção?\n\n` +
-      'Ela perde o acesso agora. Mas o que já baixou continua no aparelho dela — ' +
-      'é assim que um app que funciona offline funciona.\n\n' +
-      'Para voltar, vai precisar de um convite novo.'
-    );
+    const seguir = await confirmar({
+      titulo: `Remover ${quem} desta produção?`,
+      detalhe: 'Ela perde o acesso agora. Mas o que já baixou continua no aparelho dela — '
+        + 'é assim que um app que funciona offline funciona. Para voltar, vai precisar de um convite novo.',
+      confirmar: 'Remover',
+      perigo: true,
+    });
     if (!seguir) return;
 
     setMexendo(m.usuario_id);
@@ -151,11 +153,13 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
     // O aviso não é formalidade: o SetGear tem cópia local e funciona offline.
     // Desvincular corta o acesso dali para frente, não apaga o que já desceu —
     // exatamente como remover um membro da produção.
-    const seguir = confirm(
-      `Desvincular "${a.nome}" desta produção?\n\n` +
-      'O SetGear para de receber as diárias a partir de agora. O que ele já baixou ' +
-      'continua no aparelho de quem o usa — é assim que um app offline funciona.'
-    );
+    const seguir = await confirmar({
+      titulo: `Desvincular "${a.nome}" desta produção?`,
+      detalhe: 'O SetGear para de receber as diárias a partir de agora. O que ele já baixou '
+        + 'continua no aparelho de quem o usa — é assim que um app offline funciona.',
+      confirmar: 'Desvincular',
+      perigo: true,
+    });
     if (!seguir) return;
 
     try {

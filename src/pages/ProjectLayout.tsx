@@ -18,6 +18,7 @@ import { AvisoSemFicha } from '../components/AvisoSemFicha';
 import { useAuth } from '../hooks/useAuth';
 import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
+import { confirmar } from '../components/ui/Confirmacao';
 
 export const LayoutContext = createContext<{
   openPanel: (content: React.ReactNode) => void;
@@ -76,9 +77,20 @@ export function ProjectLayout() {
   */
   const destinoDoVoltar = voltarDe(currentPath, id || '');
 
-  const voltar = () => {
+  const voltar = async () => {
     if (destinoDoVoltar.caminho) { navigate(destinoDoVoltar.caminho); return; }
-    if (confirm('Sair deste projeto e voltar para a tela inicial?')) navigate('/');
+    /*
+      No painel do projeto, o voltar SAI — e sair é a única parada da navegação
+      que custa caro para desfazer: quem estava no meio de uma diária perde o
+      caminho inteiro e refaz três cliques para voltar.
+    */
+    const ok = await confirmar({
+      titulo: 'Sair do projeto?',
+      detalhe: `Você volta para a lista de produções. ${projeto?.nome || 'O projeto'} continua exatamente como está.`,
+      confirmar: 'Sair do projeto',
+      cancelar: 'Ficar aqui',
+    });
+    if (ok) navigate('/');
   };
 
   // Clear right panel on navigation

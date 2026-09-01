@@ -17,6 +17,7 @@ import { registrarDocumento } from '../lib/documentos';
 import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
 import { ULTIMO_BLOCO } from '../lib/stripboard';
 import { jaAconteceu } from '../lib/sincronizaOD';
+import { confirmar } from '../components/ui/Confirmacao';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
@@ -126,7 +127,7 @@ export function DecupagemModule() {
       num dia morto e some do radar, e ninguém percebe até faltar.
     */
     if (jaAconteceu(diaria)) {
-      const seguir = confirm(
+      const seguir = await confirmar(
         `A Diária ${String(diaria.numero).padStart(2, '0')} é de ${new Date(diaria.data + 'T12:00').toLocaleDateString('pt-BR')} — esse dia já passou.\n\n` +
         'Cena mandada para um dia que já aconteceu não aparece no que falta gravar.\n\n' +
         'Quer mandar mesmo assim? (Cancele para criar uma diária nova em Diárias e Eventos.)'
@@ -195,7 +196,11 @@ export function DecupagemModule() {
   };
 
   const removeCena = async (id: string) => {
-    if (!window.confirm("Deseja realmente apagar esta cena e todos os seus planos?")) return;
+    if (!(await confirmar({
+      titulo: 'Apagar esta cena e todos os planos dela?',
+      confirmar: 'Apagar',
+      perigo: true,
+    }))) return;
     await db.cenas.delete(id);
     const planosDaCena = planos.filter(p => p.cena_id === id);
     for (const p of planosDaCena) {
@@ -218,7 +223,7 @@ export function DecupagemModule() {
   };
 
   const removerAnexo = async (cena: Cena, index: number) => {
-    if (!confirm('Remover esta referência?')) return;
+    if (!(await confirmar('Remover esta referência?'))) return;
     const novosAnexos = (cena.anexos || []).filter((_, i) => i !== index);
     await updateCena(cena.id, { anexos: novosAnexos });
   };

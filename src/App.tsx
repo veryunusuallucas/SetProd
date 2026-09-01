@@ -13,6 +13,7 @@ import { useAlturaOcupada } from './components/ui/slotFlutuante';
 import { HelpButton } from './components/HelpButton';
 import { AvisoDeVersao } from './components/AvisoDeVersao';
 import { Faiscas } from './components/ui/Faisca';
+import { Confirmacoes } from './components/ui/Confirmacao';
 
 /**
  * As telas de dentro do app carregam sob demanda.
@@ -130,6 +131,10 @@ function App() {
           {/* Anfitrião das faíscas de confirmação. Monta uma vez; quem dispara
               é o manipulador da ação, que sabe se aquilo foi uma confirmação. */}
           <Faiscas />
+          {/* A caixa de "tem certeza?" do app, que substituiu o `confirm` do
+              navegador em todo lugar. Uma só, aqui, porque `confirmar()` é
+              chamada de qualquer canto — inclusive de dentro de outros modais. */}
+          <Confirmacoes />
         </div>
       </BrowserRouter>
     </AuthProvider>

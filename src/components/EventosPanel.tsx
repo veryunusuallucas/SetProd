@@ -10,6 +10,7 @@ import { data as fmtData, dataCurta } from '../lib/formato';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { BotaoTatil } from './ui/BotaoTatil';
 import { logAction } from '../lib/audit';
+import { confirmar } from './ui/Confirmacao';
 
 /**
  * Os compromissos da produção que não são diária.
@@ -93,7 +94,7 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
   };
 
   const excluir = async (id: string) => {
-    if (!confirm('Apagar este evento?')) return;
+    if (!(await confirmar('Apagar este evento?'))) return;
     await db.eventos.delete(id);
     setEditandoId(null);
   };
