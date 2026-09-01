@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X } from 'lucide-react';
+import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle } from 'lucide-react';
 import type { Diaria } from '../types';
 import { logAction } from '../lib/audit';
 import { EventosPanel } from '../components/EventosPanel';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
+import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -70,17 +71,18 @@ export function DiariasList() {
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   
   const [showForm, setShowForm] = useState(false);
-  const [numero, setNumero] = useState('');
   const [data, setData] = useState('');
   
-  const [editModal, setEditModal] = useState<{ open: boolean, diaria: Diaria | null, num: string, date: string }>({ open: false, diaria: null, num: '', date: '' });
+  const [editModal, setEditModal] = useState<{ open: boolean, diaria: Diaria | null, date: string }>({ open: false, diaria: null, date: '' });
   /** `true` enquanto a exclusão espera confirmação dentro do próprio modal. */
+  /** Diárias já publicadas que mudaram de número na última renumeração. */
+  const [renumeradas, setRenumeradas] = useState<{ de: number; para: number }[]>([]);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [apagando, setApagando] = useState(false);
   const [erroAoApagar, setErroAoApagar] = useState<string | null>(null);
 
   const fecharEdicao = () => {
-    setEditModal({ open: false, diaria: null, num: '', date: '' });
+    setEditModal({ open: false, diaria: null, date: '' });
     setConfirmandoExclusao(false);
     setErroAoApagar(null);
   };
@@ -101,38 +103,42 @@ export function DiariasList() {
     return todos.filter(e => e.data >= hoje).length;
   }, [projetoId]) || 0;
 
-  /**
-   * O próximo número livre: o MAIOR que existe, mais um.
-   *
-   * Maior + 1, e não "quantidade + 1": com as diárias 1 e 3, a quantidade daria
-   * 3 — um número que já está em uso. A numeração de diária tem buracos por
-   * motivo (dia cancelado, remarcado), e reaproveitar um número usado faria
-   * duas ODs diferentes chegarem à equipe com o mesmo nome.
-   */
-  const proximoNumero = () =>
-    diarias.length === 0 ? 1 : Math.max(...diarias.map(d => d.numero)) + 1;
-
-  /** Abre o formulário já com o número sugerido preenchido. */
   const abrirFormulario = () => {
-    setNumero(String(proximoNumero()));
     setData('');
     setShowForm(true);
   };
 
   const fecharFormulario = () => {
     setShowForm(false);
-    setNumero('');
     setData('');
+  };
+
+  /**
+   * Renumera e guarda o que precisa de aviso.
+   *
+   * Chamado depois de tudo que mexe na ordem: criar, mudar a data, apagar.
+   */
+  const renumerar = async () => {
+    const r = await renumerarPorData(projetoId!);
+    if (r.jaCirculavam.length) {
+      setRenumeradas(r.jaCirculavam.map(x => ({ de: x.de, para: x.para })));
+    }
   };
 
   const criarDiaria = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!numero || !data) return;
+    if (!data) return;
 
+    /*
+      Nasce com o número previsto e é renumerada logo em seguida.
+
+      O previsto já é o certo em quase todo caso; a renumeração existe para o
+      resto do projeto acompanhar quando o dia novo entra no meio da sequência.
+    */
     const nova: Diaria = {
       id: crypto.randomUUID(),
       projeto_id: projetoId!,
-      numero: Number(numero),
+      numero: numeroPrevisto(diarias, data),
       data,
       tem_unidade_b: false,
       equipe_escalada: [],
@@ -140,13 +146,17 @@ export function DiariasList() {
     };
 
     await db.diarias.add(nova);
-    await logAction(projetoId!, 'criar', 'diaria', nova.id, `Criou Diária ${numero} para o dia ${data}`);
+    await renumerar();
+    await logAction(projetoId!, 'criar', 'diaria', nova.id, `Criou uma diária para o dia ${data}`);
     fecharFormulario();
   };
 
   const salvarEdicao = async () => {
     if (!editModal.diaria) return;
-    await db.diarias.update(editModal.diaria.id, { numero: Number(editModal.num), data: editModal.date });
+    // Só a data: o número é consequência dela, e mexer nos dois deixaria o app
+    // com duas verdades sobre a mesma coisa.
+    await db.diarias.update(editModal.diaria.id, { data: editModal.date });
+    await renumerar();
     fecharEdicao();
   };
 
@@ -187,6 +197,8 @@ export function DiariasList() {
       await db.registros_cena.where('diaria_id').equals(diariaId).delete();
 
       await db.diarias.delete(diariaId);
+      // Sem isto sobraria um buraco na sequência: apagar a 02 deixaria 01, 03, 04.
+      await renumerar();
       await logAction(projetoId!, 'deletar', 'diaria', diariaId, `Excluiu a Diária ${editModal.diaria.numero}`);
       fecharEdicao();
     } catch (e) {
@@ -197,10 +209,6 @@ export function DiariasList() {
       setApagando(false);
     }
   };
-
-  /** Aviso, não bloqueio: número repetido é quase sempre engano, mas é do Lucas
-      a decisão de ter dois dias com o mesmo número (uma unidade B antiga, por ex.). */
-  const jaExiste = numero !== '' && diarias.some(d => d.numero === Number(numero));
 
   const formataData = (d: string) => {
     const [a, m, dia] = d.split('-');
@@ -261,28 +269,73 @@ export function DiariasList() {
         ))}
       </div>
 
+      {/*
+        As diárias que JÁ TINHAM SAÍDO e mudaram de número.
+
+        A renumeração é silenciosa para rascunho — ninguém viu aqueles números.
+        Para uma OD publicada não pode ser: existe um papel na mão da equipe
+        dizendo o número antigo, e ele passou a apontar para outro dia.
+      */}
+      {renumeradas.length > 0 && (
+        <div className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', borderLeft: '3px solid var(--color-warning)', backgroundColor: 'var(--color-warning-bg)' }}>
+          <AlertTriangle size={18} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="text-sm font-bold" style={{ color: 'var(--color-warning)' }}>
+              {renumeradas.length === 1
+                ? 'Uma diária que já tinha saído mudou de número'
+                : `${renumeradas.length} diárias que já tinham saído mudaram de número`}
+            </div>
+            <div className="text-xs text-secondary" style={{ lineHeight: 1.6, marginTop: '4px' }}>
+              {renumeradas.map(r => `Diária ${String(r.de).padStart(2, '0')} → ${String(r.para).padStart(2, '0')}`).join(' · ')}.
+              <br />
+              A equipe está com a OD antiga, que diz o número velho. Reexporte e avise
+              — a nova sai com o número certo.
+            </div>
+          </div>
+          <button onClick={() => setRenumeradas([])} className="btn-icon text-muted" style={{ padding: '4px', border: 'none', background: 'transparent' }}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {aba === 'eventos' && <EventosPanel projetoId={projetoId!} />}
 
       {aba === 'diarias' && showForm && (
+        <>
         <form onSubmit={criarDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '120px' }}>
-            <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Número</label>
-            <input type="number" required min={1} value={numero} onChange={e => setNumero(e.target.value)} />
-            {jaExiste && (
-              <div className="text-xs" style={{ color: 'var(--color-warning)', marginTop: '6px', lineHeight: 1.4 }}>
-                Já existe uma Diária {numero}. Duas com o mesmo número confundem a equipe.
-              </div>
-            )}
+          <div style={{ flex: 1, minWidth: '170px' }}>
+            <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">
+              Data da filmagem
+            </label>
+            <input type="date" required autoFocus value={data} onChange={e => setData(e.target.value)} />
           </div>
-          <div style={{ flex: 1, minWidth: '150px' }}>
-            <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Data</label>
-            <input type="date" required value={data} onChange={e => setData(e.target.value)} />
+
+          {/*
+            O NÚMERO NÃO É MAIS UM CAMPO — é o que a data faz com ele.
+
+            Ele aparece aqui só para a pessoa ver a consequência antes de
+            confirmar: escolher uma data no meio do calendário mostra na hora
+            que aquele dia vai ser o 05, e que os seguintes andam.
+          */}
+          <div style={{ minWidth: '150px' }}>
+            <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2">Vai ser a</div>
+            <div className="font-bold" style={{ fontSize: '22px', color: data ? 'var(--accent)' : 'var(--text-muted)' }}>
+              {data ? `Diária ${String(numeroPrevisto(diarias, data)).padStart(2, '0')}` : '—'}
+            </div>
           </div>
+
           {/* Cancelar antes de Adicionar: quem abriu sem querer procura a saída
               primeiro, e ela não pode estar escondida atrás do botão que cria. */}
           <button type="button" onClick={fecharFormulario} className="btn-secondary">Cancelar</button>
-          <button type="submit" className="btn-primary">Adicionar</button>
+          <button type="submit" className="btn-primary" disabled={!data}>Adicionar</button>
         </form>
+
+        {data && diarias.some(d => d.data > data) && (
+          <div className="text-xs text-muted" style={{ marginTop: '-16px', lineHeight: 1.5 }}>
+            Este dia entra no meio do calendário — as diárias seguintes andam um número.
+          </div>
+        )}
+        </>
       )}
 
       {aba === 'diarias' && diarias.length === 0 && !showForm && (
@@ -357,7 +410,7 @@ export function DiariasList() {
                       e.stopPropagation();
                       setConfirmandoExclusao(false);
                       setErroAoApagar(null);
-                      setEditModal({ open: true, diaria: d, num: String(d.numero), date: d.data });
+                      setEditModal({ open: true, diaria: d, date: d.data });
                     }} 
                     className="btn-icon"
                   >
@@ -382,12 +435,16 @@ export function DiariasList() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Número</label>
-                <input type="number" value={editModal.num} onChange={e => setEditModal({ ...editModal, num: e.target.value })} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
-              </div>
-              <div>
                 <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Data</label>
                 <input type="date" value={editModal.date} onChange={e => setEditModal({ ...editModal, date: e.target.value })} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
+              </div>
+              {/* O número não se edita: mude a data e ele segue. Dizer isso aqui
+                  evita a busca pelo campo que sumiu. */}
+              <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                O número vem da ordem das datas — mudando o dia, ele se ajusta sozinho
+                {editModal.date && editModal.date !== editModal.diaria.data
+                  ? `. Nesta data, ela passa a ser a Diária ${String(numeroPrevisto(diarias.filter(x => x.id !== editModal.diaria!.id), editModal.date)).padStart(2, '0')}.`
+                  : '.'}
               </div>
             </div>
 

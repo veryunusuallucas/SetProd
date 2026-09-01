@@ -211,6 +211,30 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.11.0',
+    resumo: <>O número da diária deixou de ser um campo: ele é a ordem dos dias de filmagem.</>,
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <CalendarDays size={20} />,
+        titulo: 'O número vem da data, e você não digita mais',
+        texto: '"Diária 01" nunca quis dizer "a primeira que eu cadastrei" — quer dizer o primeiro dia de filmagem. Agora criar um dia para amanhã faz dele a 01; criar um para daqui a um ano, com quatro dias antes, faz dele a 05. Ao escolher a data o app já mostra "vai ser a Diária 03" antes de você confirmar.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <ListChecks size={20} />,
+        titulo: 'Mudou a data, o número acompanha',
+        texto: 'Remarcou um dia para antes do começo? Ele vira a 01 e os outros andam. Apagou a 02? Some o buraco na sequência. E na janela de editar, o número saiu: mudar a data é o que move a diária de lugar.',
+      },
+      {
+        tipo: 'novo',
+        icone: <AlertTriangle size={20} />,
+        titulo: 'E avisa quando isso mexe numa OD que já saiu',
+        texto: 'Renumerar é invisível enquanto tudo é rascunho — ninguém viu aqueles números. Mas se uma diária publicada mudar de número, aparece o aviso: "Diária 03 → 04. A equipe está com a OD antiga, que diz o número velho." Aí é reexportar e avisar.',
+      },
+    ],
+  },
+  {
     versao: '4.10.1',
     itens: [
       {
