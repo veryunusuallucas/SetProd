@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+import { motion, useAnimationControls } from 'framer-motion';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
 
@@ -36,15 +36,56 @@ import { MOLA, useMovimentoReduzido } from './movimento';
  *
  * Não tem botão de CANCELAR, isso continua: a troca começada não se desfaz, e
  * um cancelar que não cancela seria pior que nenhum.
+ *
+ * QUEM RECARREGA A PÁGINA É ESTA TELA
+ * Antes era o `vite-plugin-pwa`, no instante em que o worker novo assumia —
+ * quase sempre menos de um segundo. A barra, cronometrada nos 8s do prazo,
+ * estava em 10% quando a página sumia: uma barra que nunca chega ao fim parece
+ * uma barra interrompida, e "interrompido" é justamente o que a tela existe
+ * para desmentir.
+ *
+ * Agora quem manda trocar avisa por `pronto`, e o recarregamento espera a barra
+ * correr até o fim — 380ms, o tempo de ver que fechou. Não é enfeite: o fim da
+ * barra passou a ser verdade, porque é ele que dispara o reload.
  */
 
 /** Quando aparece a saída manual, e quando o app recarrega sozinho. */
 const ESCAPE_MS = 3000;
 const DESISTIR_MS = 8000;
+/** O sprint final, depois que a versão nova já assumiu. */
+const FECHAR_MS = 380;
 
-export function Atualizando({ versao }: { versao?: string }) {
+export function Atualizando({ versao, pronto = false }: { versao?: string; pronto?: boolean }) {
   const reduzido = useMovimentoReduzido();
   const [demorou, setDemorou] = useState(false);
+  const barra = useAnimationControls();
+
+  /*
+    A corrida normal: a barra atravessa o prazo inteiro, em ritmo constante.
+    Ela só chega ao fim sozinha se nada mais acontecer — e aí o `desistir`
+    recarrega no mesmo instante.
+  */
+  useEffect(() => {
+    void barra.start({ width: '100%', transition: { duration: DESISTIR_MS / 1000, ease: 'linear' } });
+  }, [barra]);
+
+  /*
+    O sprint. A versão nova assumiu: a barra abandona o ritmo do prazo, corre
+    até 100% e é o fim dela que recarrega.
+
+    Com movimento reduzido não há sprint para ver — recarrega direto, porque
+    esperar por uma animação que a pessoa pediu para não existir é só atraso.
+  */
+  useEffect(() => {
+    if (!pronto) return;
+    if (reduzido) { window.location.reload(); return; }
+
+    let vivo = true;
+    void barra
+      .start({ width: '100%', transition: { duration: FECHAR_MS / 1000, ease: 'easeOut' } })
+      .then(() => { if (vivo) window.location.reload(); });
+    return () => { vivo = false; };
+  }, [pronto, reduzido, barra]);
 
   useEffect(() => {
     const mostrarSaida = setTimeout(() => setDemorou(true), ESCAPE_MS);
@@ -124,12 +165,14 @@ export function Atualizando({ versao }: { versao?: string }) {
         Na primeira versão ela enchia em 3s e ficava parada. Com o prazo em 8s
         isso teria sido pior que não ter barra: cinco segundos de barra cheia e
         nada acontecendo é a definição visual de travado.
+
+        E quando a versão nova assume antes do prazo — que é o caso comum — ela
+        acelera até o fim em vez de ser cortada no meio. Ver `pronto` lá em cima.
       */}
       <div style={{ width: '100%', maxWidth: '220px', height: '4px', borderRadius: '3px', backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
         <motion.div
           initial={{ width: '8%' }}
-          animate={{ width: '100%' }}
-          transition={{ duration: DESISTIR_MS / 1000, ease: 'linear' }}
+          animate={barra}
           style={{ height: '100%', backgroundColor: 'var(--accent)' }}
         />
       </div>
