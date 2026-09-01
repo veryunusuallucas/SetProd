@@ -235,11 +235,25 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
     for (const linha of usaveis) {
       const tabela = db.table(linha.tabela);
       const local = await tabela.get(linha.id) as Linha | undefined;
+      const naFila = await db.sync_queue.get(`${linha.tabela}:${linha.id}`);
 
-      // LWW, agora do lado de cá: o que é mais velho que o daqui não entra.
-      // Sem esta comparação, uma linha antiga vinda de um aparelho que dormiu
-      // apagaria a edição que a pessoa acabou de fazer, na frente dela.
-      if (local && (local.atualizado_em ?? 0) >= linha.atualizado_em) continue;
+      /*
+        ⚠️ O QUE ESTÁ NA FILA CONTA COMO "O DAQUI", MESMO SEM LINHA NO BANCO.
+
+        Este é o buraco que fazia diária apagada VOLTAR sozinha.
+
+        Apagar deixa o Dexie sem linha nenhuma — só o túmulo na fila de saída.
+        A comparação abaixo olhava apenas `local`, que nesse caso é
+        `undefined`: sem nada para comparar, a linha viva que ainda estava no
+        servidor era gravada de volta e a diária reaparecia na tela. Se a
+        subida do túmulo demorasse (sem internet, aba fechada antes de subir),
+        ela ficava.
+
+        O carimbo da pendência é o carimbo do que a pessoa acabou de fazer.
+        Ele é quem deve enfrentar o LWW quando a linha local não existe mais.
+      */
+      const carimboDaqui = Math.max(local?.atualizado_em ?? 0, naFila?.atualizado_em ?? 0);
+      if (carimboDaqui >= linha.atualizado_em) continue;
 
       if (linha.deletado) await tabela.delete(linha.id);
       else if (linha.dados) await tabela.put({ ...linha.dados, atualizado_em: linha.atualizado_em });
@@ -250,10 +264,9 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
       // existe mais aqui. Tirar da fila poupa uma subida que o servidor
       // recusaria de qualquer jeito.
       //
-      // A comparação importa: uma pendência com carimbo MAIS NOVO é edição que
-      // a pessoa fez agora, enquanto a linha chegava. Essa fica e sobe.
-      const naFila = await db.sync_queue.get(`${linha.tabela}:${linha.id}`);
-      if (naFila && naFila.atualizado_em <= linha.atualizado_em) {
+      // Chegar aqui já garante que a pendência é mais velha (o `continue`
+      // acima barrou o contrário), então ela sai da fila sem nova comparação.
+      if (naFila) {
         await db.sync_queue.delete(naFila.id);
         // Aqui alguém perdeu trabalho. O LWW já decidiu e não há o que desfazer,
         // mas perder em silêncio é o pior aspecto disto: a pessoa vê o próprio
