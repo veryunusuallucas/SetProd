@@ -15,6 +15,7 @@ import { FichaCompleta } from './FichaCompleta';
 import { RelatorioTransversal } from './RelatorioTransversal';
 import { useLayoutContext } from '../pages/ProjectLayout';
 import { montarSchemaFicha, validarObrigatorios, valoresParaPerfil } from '../lib/camposFicha';
+import { confirmar } from './ui/Confirmacao';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -266,14 +267,14 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   };
 
   const handleDelete = async (id: string, nomeCompleto: string) => {
-    if (confirm(`Tem certeza que deseja excluir ${nomeCompleto}?`)) {
+    if (await confirmar(`Tem certeza que deseja excluir ${nomeCompleto}?`)) {
       await db.perfis.delete(id);
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (confirm(`Tem certeza que deseja excluir as ${selectedIds.size} pessoas selecionadas?`)) {
+    if (await confirmar(`Tem certeza que deseja excluir as ${selectedIds.size} pessoas selecionadas?`)) {
       for (const id of selectedIds) {
         await db.perfis.delete(id);
       }

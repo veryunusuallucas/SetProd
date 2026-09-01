@@ -6,6 +6,7 @@ import { ProfileCard } from './ui/ProfileCard';
 import { useRole } from '../hooks/useRole';
 import { dinheiro } from '../lib/formato';
 import { contrasteSobre } from '../lib/contraste';
+import { confirmar } from './ui/Confirmacao';
 
 export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDepartamento?: (id: string) => void }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -73,13 +74,13 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
   };
 
   const handleDelete = async (id: string, nome: string) => {
-    if (confirm(`Excluir o departamento ${nome}? Os membros não serão apagados, mas ficarão sem departamento.`)) {
+    if (await confirmar(`Excluir o departamento ${nome}? Os membros não serão apagados, mas ficarão sem departamento.`)) {
       await db.departamentos.delete(id);
     }
   };
 
   const exportarDepartamento = async (deptoId: string, nome: string) => {
-    if (!confirm('Deseja baixar o relatório financeiro deste departamento?')) return;
+    if (!(await confirmar('Deseja baixar o relatório financeiro deste departamento?'))) return;
     try {
       const depto = await db.departamentos.get(deptoId);
       const membros = await db.perfis.where('departamento_id').equals(deptoId).toArray();
@@ -153,7 +154,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
 
   const handleDeleteGrupo = async (id: string, nome: string) => {
     if (!projeto) return;
-    if (confirm(`Excluir o grupo/time ${nome}?`)) {
+    if (await confirmar(`Excluir o grupo/time ${nome}?`)) {
       const grupos = (projeto.grupos || []).filter(g => g.id !== id);
       await db.projetos.update(projetoId, { grupos });
     }

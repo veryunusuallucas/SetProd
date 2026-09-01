@@ -16,6 +16,7 @@ import { pegarVez, liberarVez, marcarProgresso, manterVivo, execucaoAtiva, type 
 import { ScriptDropzone } from '../components/ScriptDropzone';
 import { AiSetupPanel, type ModoProcessamento } from '../components/AiSetupPanel';
 import { guardarArquivo, resolverArquivo } from '../lib/arquivos';
+import { confirmar } from '../components/ui/Confirmacao';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -459,7 +460,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
     const aviso = quantas > 0
       ? `Apagar o roteiro e as ${quantas} marcação(ões)? As cenas já criadas continuam.`
       : 'Apagar o roteiro? As cenas já criadas continuam.';
-    if (!window.confirm(aviso)) return;
+    if (!(await confirmar(aviso))) return;
 
     if (roteiro) {
       await db.roteiro_pdfs.delete(roteiro.id);

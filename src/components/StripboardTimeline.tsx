@@ -10,6 +10,7 @@ import {
   montarLinha, resumirDias, agruparPorLocacao, cenasDoDia, diaNaPosicao,
   ROTULOS, CORES_MARCADOR, formatarDuracao, ULTIMO_BLOCO, type ItemLinha,
 } from '../lib/stripboard';
+import { confirmar } from './ui/Confirmacao';
 
 interface Props {
   projetoId: string;
@@ -107,7 +108,7 @@ export function StripboardTimeline({
   };
 
   const agrupar = async () => {
-    if (!confirm('Reorganizar as cenas juntando as da mesma locação? As quebras de diária ficam onde estão.')) return;
+    if (!(await confirmar('Reorganizar as cenas juntando as da mesma locação? As quebras de diária ficam onde estão.'))) return;
     await persistirOrdem(agruparPorLocacao(linha, nomeLocacao));
   };
 

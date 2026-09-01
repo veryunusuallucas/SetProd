@@ -15,6 +15,7 @@ import { recomendarPesquisa } from '../lib/gemini';
 import { linkDoApp } from '../lib/urlPublica';
 import { AIButton } from './ui/AIButton';
 import { AIRecommendation, MOLA, useMovimentoReduzido } from './ui/ia';
+import { confirmar } from './ui/Confirmacao';
 
 const TIPOS: { id: TipoPergunta; rotulo: string; temOpcoes: boolean }[] = [
   { id: 'escolha_unica', rotulo: 'Escolha uma', temOpcoes: true },
@@ -89,7 +90,7 @@ export function PesquisasPanel({ projetoId }: { projetoId: string }) {
     const aviso = `Apagar "${p.titulo}"?\n\n`
       + `O link para de funcionar para todo mundo`
       + (quantas ? ` e ${quantas} resposta(s) serão perdidas.` : '.');
-    if (!confirm(aviso)) return;
+    if (!(await confirmar(aviso))) return;
 
     setAviso('');
     try {

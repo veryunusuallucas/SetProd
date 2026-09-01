@@ -6,6 +6,7 @@ import { db } from '../db/db';
 import { categoriasDisponiveis, temaDe } from '../lib/decupagem';
 import { AIRecommendation, AISuggestion, AISuggestionList } from './ui/ia';
 import { mesclarElementos, separarAlias, sugerirMerges, chaveNome } from '../lib/elementos';
+import { confirmar } from './ui/Confirmacao';
 
 /**
  * Inventário do breakdown: tudo que foi marcado no roteiro, agrupado por
@@ -56,7 +57,7 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
     if (selecionados.length < 2) return;
     const [principal, ...resto] = selecionados;
     const nome = elementos.find(e => e.id === principal)?.nome;
-    if (!confirm(`Juntar ${selecionados.length} itens em "${nome}"? Os outros nomes viram apelidos dele.`)) return;
+    if (!(await confirmar(`Juntar ${selecionados.length} itens em "${nome}"? Os outros nomes viram apelidos dele.`))) return;
     await mesclarElementos(principal, resto);
     setSelecionados([]);
   };

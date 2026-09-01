@@ -18,6 +18,7 @@ import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
 import { useOrigemAncorada } from '../components/ui/origemAncorada';
 import { BotaoTatil } from '../components/ui/BotaoTatil';
 import { faiscar } from '../components/ui/Faisca';
+import { confirmar } from '../components/ui/Confirmacao';
 
 /**
  * As tarefas da produção — três colunas, arrastáveis.
@@ -224,7 +225,7 @@ export function TasksModule() {
     const aviso = dependentes.length
       ? 'Outras tasks dependem desta. Se excluir, a dependência sai delas. Continuar?'
       : 'Deletar esta task?';
-    if (!confirm(aviso)) return;
+    if (!(await confirmar(aviso))) return;
 
     for (const d of dependentes) {
       await db.tasks.update(d.id, { depends_on: d.depends_on!.filter(id => id !== taskId) });

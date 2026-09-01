@@ -17,6 +17,7 @@ import {
 import { useRole } from '../hooks/useRole';
 import { diagramarRelatorio } from '../lib/gemini';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
+import { confirmar } from '../components/ui/Confirmacao';
 
 type Grupo = (typeof CONJUNTOS)[number]['grupo'];
 const ORDEM_GRUPOS: Grupo[] = ['Produção', 'Financeiro', 'Set', 'Criativo', 'Logística'];
@@ -219,10 +220,13 @@ export function GestaoDados() {
   };
 
   const arquivarFinanceiro = async () => {
-    if (!confirm(
-      'Arquivar o financeiro apaga TODAS as despesas e acertos deste projeto. ' +
-      'O projeto e a equipe são mantidos.\n\nExporte os dados antes. Deseja continuar?'
-    )) return;
+    const ok = await confirmar({
+      titulo: 'Arquivar apaga TODAS as despesas e acertos deste projeto.',
+      detalhe: 'O projeto e a equipe são mantidos. Exporte os dados antes — isto não tem volta.',
+      confirmar: 'Arquivar mesmo assim',
+      perigo: true,
+    });
+    if (!ok) return;
 
     await db.despesas.where('projeto_id').equals(projetoId!).delete();
     await db.acertos.where('projeto_id').equals(projetoId!).delete();

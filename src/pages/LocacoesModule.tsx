@@ -6,6 +6,7 @@ import { MapPin, Plus, Edit2, Trash2, Cross, Shield, Phone, X, Save } from 'luci
 import { logAction } from '../lib/audit';
 import { parseCoords } from '../lib/clima';
 import { buscarHospitaisProximos, formatarDistancia, linkRota, type HospitalOSM } from '../lib/osm';
+import { confirmar } from '../components/ui/Confirmacao';
 
 export interface LocacaoContato {
   id: string;
@@ -203,7 +204,7 @@ export function LocacoesModule() {
   };
 
   const excluir = async (id: string, nomeLoc: string) => {
-    if (confirm(`Excluir a locação ${nomeLoc}?`)) {
+    if (await confirmar(`Excluir a locação ${nomeLoc}?`)) {
       await db.table('locacoes').delete(id);
       await logAction(projetoId!, 'deletar', 'locacao', id, `Deletou locação: ${nomeLoc}`);
     }

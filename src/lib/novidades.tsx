@@ -211,6 +211,30 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.13.0',
+    resumo: <>As perguntas de confirmação agora são do app. A caixinha do navegador estava sendo engolida em silêncio.</>,
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <Trash2 size={20} />,
+        titulo: '"Não consigo apagar diárias"',
+        texto: 'Não era a diária: era a pergunta. Quando o navegador vê várias caixas de confirmação seguidas, ele oferece "impedir que esta página crie mais diálogos" — e a partir daí toda pergunta seguinte responde "cancelar" sozinha, sem aparecer nada na tela. O apagar era cancelado por uma pergunta que ninguém viu.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <MessageCircleQuestion size={20} />,
+        titulo: 'Toda confirmação agora é uma janela do próprio app',
+        texto: 'As 31 perguntas espalhadas pelo app — apagar, sair, desvincular, sobrescrever — saíram da caixa cinza do navegador. Agora têm título, explicação do que acontece depois, e botões com o nome da ação ("Apagar", "Sair do projeto") em vez de OK e Cancelar. As destrutivas vêm em vermelho.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Undo2 size={20} />,
+        titulo: 'O voltar avisa antes de sair do projeto',
+        texto: 'A seta ao lado do nome do projeto sobe um nível por vez — da diária para a lista de diárias, da lista para o dashboard. No dashboard ela sai da produção, e agora pergunta antes, porque esse é o único passo que não é só navegar.',
+      },
+    ],
+  },
+  {
     versao: '4.12.0',
     resumo: <>As tarefas passaram a se organizar pelo prazo, e as subtarefas saíram de dentro do modal.</>,
     itens: [

@@ -7,6 +7,7 @@ import type { Pasta, Documento } from '../types';
 import { inspecionarLink, formatarTamanho, descreverOrigem, apagarOrigemDoDocumento } from '../lib/documentos';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { useArquivo } from '../hooks/useArquivo';
+import { confirmar } from '../components/ui/Confirmacao';
 
 const ROTULO_ORIGEM: Record<string, string> = {
   roteiro: 'Roteiro',
@@ -158,7 +159,7 @@ export function DocumentosModule() {
       ? `Excluir "${doc.nome}"?\n\nIsto também remove ${origem}.`
       : `Excluir "${doc.nome}"?`;
 
-    if (!confirm(aviso)) return;
+    if (!(await confirmar(aviso))) return;
 
     if (origem) await apagarOrigemDoDocumento(doc);
     await db.documentos.delete(doc.id);
@@ -231,8 +232,13 @@ export function DocumentosModule() {
             <button onClick={handleModalSubmit} className="btn-primary" style={{ flex: 1 }}>Salvar</button>
             {modalMode === 'edit_folder' && targetPasta && (
               <button
-                onClick={() => {
-                  if (confirm(`Tem certeza que deseja excluir a pasta "${targetPasta.nome}" e todo o seu conteúdo?`)) {
+                onClick={async () => {
+                  if (await confirmar({
+                    titulo: `Excluir a pasta "${targetPasta.nome}"?`,
+                    detalhe: 'Todo o conteúdo dela vai junto.',
+                    confirmar: 'Excluir',
+                    perigo: true,
+                  })) {
                     db.documentos.where('pasta_id').equals(targetPasta.id).delete().then(() => {
                       db.pastas.delete(targetPasta.id).then(() => setModalMode('none'));
                     });

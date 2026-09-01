@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Truck, UserRound, Plus, Trash2, Edit2, X, Phone } from 'lucide-react';
 import type { Veiculo, Motorista } from '../types';
+import { confirmar } from '../components/ui/Confirmacao';
 
 type Aba = 'veiculos' | 'motoristas';
 
@@ -54,7 +55,7 @@ export function TransporteModule() {
     const aviso = uso > 0
       ? `"${v.nome}" está em ${uso} diária(s). Os comboios existentes mantêm o texto, mas perdem o vínculo. Excluir mesmo assim?`
       : `Excluir o veículo "${v.nome}"?`;
-    if (confirm(aviso)) await db.veiculos.delete(v.id);
+    if (await confirmar(aviso)) await db.veiculos.delete(v.id);
   };
 
   const excluirMotorista = async (m: Motorista) => {
@@ -62,7 +63,7 @@ export function TransporteModule() {
     const aviso = uso > 0
       ? `"${m.nome}" está em ${uso} diária(s). Os comboios existentes mantêm o texto, mas perdem o vínculo. Excluir mesmo assim?`
       : `Excluir o motorista "${m.nome}"?`;
-    if (confirm(aviso)) await db.motoristas.delete(m.id);
+    if (await confirmar(aviso)) await db.motoristas.delete(m.id);
   };
 
   const inputStyle: React.CSSProperties = {
