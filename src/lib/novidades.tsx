@@ -287,8 +287,8 @@ export const VERSOES: Versao[] = [
           {
             tipo: 'melhor',
             icone: <Trash2 size={20} />,
-            titulo: 'Some a caixa "Unidade Única (A)"',
-            texto: 'Ela ocupava lugar em quase toda diária para avisar que nada de especial estava acontecendo. Eram dois conceitos fazendo a mesma coisa — grupos e unidades — e a produção tinha que escalar a equipe duas vezes.',
+            titulo: 'A Unidade A/B saiu do app',
+            texto: 'A caixa "Unidade Única (A)" ocupava lugar em quase toda diária para avisar que nada de especial estava acontecendo, e o seletor A/B de cada tira do stripboard dizia a mesma coisa num segundo lugar. Eram dois conceitos fazendo o trabalho de um, e a produção escalava a equipe duas vezes. O que você já tinha marcado continua guardado.',
           },
         ],
       },

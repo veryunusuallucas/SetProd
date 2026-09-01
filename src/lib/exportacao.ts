@@ -340,7 +340,7 @@ export const CONJUNTOS: ConjuntoDados[] = [
       const locacoes = await db.locacoes.where('projeto_id').equals(projetoId).toArray();
 
       return {
-        colunas: ['Cena', 'Descrição', 'Ambiente', 'Período', 'Locação', 'Páginas', 'Unidade', 'Estimativa', 'Planos'],
+        colunas: ['Cena', 'Descrição', 'Ambiente', 'Período', 'Locação', 'Páginas', 'Estimativa', 'Planos'],
         linhas: cenas
           .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
           .map(c => [
@@ -350,7 +350,6 @@ export const CONJUNTOS: ConjuntoDados[] = [
             c.periodo || '',
             locacoes.find(l => l.id === c.locacao_id)?.nome || '',
             c.paginas || '',
-            c.unidade || '',
             c.estimativa || '',
             String(planos.filter(p => p.cena_id === c.id).length),
           ]),

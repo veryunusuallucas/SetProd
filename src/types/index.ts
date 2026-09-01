@@ -281,6 +281,14 @@ export interface Diaria {
   numero: number; // Ex: 1 para "Diária 01"
   data: string; // YYYY-MM-DD
   observacoes?: string;
+  /**
+   * ⚠️ DEPRECATED — o conceito de Unidade A/B acabou.
+   *
+   * Quem divide o dia agora é a escalação: dois grupos escalados viram duas
+   * frentes (ver `frentes`). O campo continua aqui porque as diárias antigas o
+   * têm gravado e porque `DiariasList` ainda o escreve como `false` ao criar —
+   * nada o lê mais.
+   */
   tem_unidade_b: boolean;
   
   // Relações que poderiam estar em outras tabelas, mas podemos agrupar para simplificar
@@ -504,6 +512,13 @@ export interface Cena {
   corpo?: string;
   ordem?: number; // posição na ordem de filmagem
   paginas?: string; // "1 2/8"
+  /**
+   * ⚠️ DEPRECATED — junto com `Diaria.tem_unidade_b`.
+   *
+   * Ficou sem tela: o seletor A/B saiu da tira do stripboard e a coluna saiu da
+   * exportação da decupagem. O campo permanece para não perder o que já foi
+   * marcado, e para nenhuma diária antiga precisar de migração.
+   */
   unidade?: 'A' | 'B';
   estimativa?: string; // "45min", "2h"
   elenco_ids?: string[]; // perfis presentes na cena
