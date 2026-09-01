@@ -69,6 +69,23 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
     return p;
   });
 
+  /*
+    Os tópicos abertos, num conjunto separado.
+
+    Chave `secao::titulo`, e não só o título: "O motivo" pode existir em duas
+    seções, e um conjunto por título abriria as duas ao mesmo tempo.
+
+    Ele NÃO é limpo quando a seção fecha: quem abriu "Travar um horário",
+    fechou a seção sem querer e reabriu espera achar aberto o que estava
+    lendo — não voltar ao começo.
+  */
+  const [topicosAbertos, setTopicosAbertos] = useState<Set<string>>(new Set());
+  const alternarTopico = (chave: string) => setTopicosAbertos(atual => {
+    const p = new Set(atual);
+    if (p.has(chave)) p.delete(chave); else p.add(chave);
+    return p;
+  });
+
   // ---- a pergunta ----
   const [pergunta, setPergunta] = useState('');
   const [resposta, setResposta] = useState<string | null>(null);
@@ -94,7 +111,19 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
     try {
       const texto = await responderDuvida({
         pergunta: p,
-        manual: MANUAL.map(s => `## ${s.titulo}\n${s.texto}`).join('\n\n'),
+        /*
+          A IA recebe TUDO — tópicos concatenados, sem dobrar nada.
+
+          Quebrar o manual em tópicos foi para a pessoa poder achar o assunto
+          numa lista curta. A IA não navega: para ela, texto comprido é melhor
+          que texto curto, e o título do tópico ainda ajuda a citar de onde a
+          resposta veio.
+        */
+        manual: MANUAL.map(s => [
+          `## ${s.titulo}`,
+          s.texto,
+          ...(s.topicos || []).map(t => `### ${t.titulo}\n${t.texto}`),
+        ].join('\n')).join('\n\n'),
         tela: daTela?.titulo,
       });
       setResposta(texto);
@@ -265,11 +294,52 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
                     >
                       {expandida ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                       <span className="font-bold text-sm">{s.titulo}</span>
+                      {/* A contagem de assuntos aparece FECHADA: é o que faz a
+                          pessoa saber que ali dentro tem uma lista, e não mais
+                          um parágrafo. */}
+                      {!expandida && s.topicos && (
+                        <span className="text-xs text-muted">· {s.topicos.length} assuntos</span>
+                      )}
                     </button>
+
                     {expandida && (
-                      <p className="text-sm text-secondary" style={{ lineHeight: 1.65, margin: '8px 0 0 23px' }}>
-                        {s.texto}
-                      </p>
+                      <div style={{ margin: '8px 0 0 23px' }}>
+                        <p className="text-sm text-secondary" style={{ lineHeight: 1.65 }}>{s.texto}</p>
+
+                        {/*
+                          Os tópicos entram FECHADOS, mostrando só o título.
+
+                          Era este o problema: a seção das diárias tinha quase
+                          cinco mil caracteres num parágrafo, e quem abria com
+                          uma dúvida específica desistia na terceira linha. Uma
+                          lista de títulos curtos responde primeiro "onde está o
+                          meu assunto"; o texto vem depois, e aí pode ser longo.
+                        */}
+                        {s.topicos && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '10px' }}>
+                            {s.topicos.map(t => {
+                              const chave = `${s.id}::${t.titulo}`;
+                              const aberto = topicosAbertos.has(chave);
+                              return (
+                                <div key={chave}>
+                                  <button
+                                    onClick={() => alternarTopico(chave)}
+                                    style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', padding: '5px 0', color: aberto ? 'var(--accent)' : 'var(--text-primary)' }}
+                                  >
+                                    {aberto ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                    <span className="text-sm">{t.titulo}</span>
+                                  </button>
+                                  {aberto && (
+                                    <p className="text-sm text-secondary" style={{ lineHeight: 1.65, margin: '2px 0 8px 20px' }}>
+                                      {t.texto}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 );

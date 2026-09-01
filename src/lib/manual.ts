@@ -14,11 +14,34 @@
  * comportamento no app, mude aqui na mesma leva.
  */
 
+/**
+ * Um assunto dentro de uma seção.
+ *
+ * ⚠️ TÓPICO NÃO É ENFEITE DE DIAGRAMAÇÃO — é o que permite a explicação ser
+ * LONGA sem virar parede.
+ *
+ * A seção das diárias tinha 4.768 caracteres num parágrafo só, três vezes a
+ * segunda maior. Ninguém lê isso: quem abriu com uma dúvida específica desiste
+ * na terceira linha, e a informação certa estava lá dentro. Quebrada em
+ * assuntos, a mesma quantidade de texto vira uma lista de títulos curtos onde
+ * dá para achar o que interessa — e aí cada um pode ser detalhado à vontade.
+ *
+ * A IA continua recebendo tudo junto (ver `textoCompleto`): parágrafo comprido
+ * não incomoda ela, incomoda gente.
+ */
+export interface TopicoManual {
+  titulo: string;
+  texto: string;
+}
+
 export interface SecaoManual {
   /** Chave estável, para a ajuda contextual apontar sem depender do título. */
   id: string;
   titulo: string;
+  /** Uma ou duas frases. Aparecem sempre que a seção é aberta. */
   texto: string;
+  /** O detalhe, quando ele não cabe em um parágrafo. */
+  topicos?: TopicoManual[];
   /**
    * Em que telas esta seção é a resposta.
    *
@@ -54,6 +77,17 @@ export function secaoDaRota(caminho: string): SecaoManual | undefined {
     .sort((a, b) => b.rota.length - a.rota.length);
 
   return candidatas.find(c => limpo.includes(`/${c.rota}`))?.secao;
+}
+
+/**
+ * A seção inteira em texto corrido, para quem não navega: a IA.
+ *
+ * Ela recebe o manual num prompt e não se beneficia de dobrar nada — pelo
+ * contrário, o título do tópico ajuda a citar de onde a resposta veio.
+ */
+export function textoCompleto(secao: SecaoManual): string {
+  const partes = [secao.texto, ...(secao.topicos || []).map(t => `${t.titulo}: ${t.texto}`)];
+  return partes.filter(Boolean).join(' ');
 }
 
 export const MANUAL: SecaoManual[] = [
@@ -161,45 +195,94 @@ export const MANUAL: SecaoManual[] = [
     titulo: '📅 Diárias e Eventos',
     rotas: ['diarias', 'diaria/'],
     texto:
-      'A LINHA DO DIA é o centro da tela: cenas, refeições, deslocamentos e marcos numa lista só, cada um com o seu horário. ' +
-      'Defina a CHAMADA e o app encadeia o resto — cada item empurra o seguinte pelo tempo que consome, e a estimativa de cada cena vem do stripboard. ' +
-      'Toque num horário para TRAVÁ-LO: dali em diante a conta recomeça daquele horário, e o resto do dia se ajusta sozinho. Horário calculado é sugestão; travado é decisão. ' +
-      'Arraste os itens para reordenar. O botão "Acrescentar ao dia" põe almoço, deslocamento, marco ou nota. ' +
-      'A diária tem DOIS MOMENTOS, e não se escolhe entre eles: enquanto é rascunho você monta o plano; quando você EXPORTA a OD, o plano congela e a tela vira registro do que está acontecendo. ' +
-      'A exportação é a linha divisória porque, a partir dela, a equipe está com aquele papel na mão — mudar o plano por baixo faria o set seguir um horário e o app mostrar outro. ' +
-      'Para mudar depois de exportada: volte a rascunho na faixa do stripboard, edite e reexporte. A nova sai marcada v2, v3, para ninguém seguir o papel velho. ' +
-      'No dia da filmagem, quando chega a hora da chamada, aparece sozinho um RELÓGIO GRANDE com "estamos X min atrasados" — verde até 15min, âmbar até 45, vermelho acima disso. Não existe botão de iniciar o dia. ' +
-      'Marcar é coisa de AD e produção, e cada anotação fica com o nome de quem fez e a hora. ' +
-      'No modo de registro você marca: a hora real de cada item, o estado de cada cena, e no ícone de prancheta os oitavos, os setups, o que exatamente saiu e se houve som wild. ' +
-      'Abaixo da linha ficam PRESENÇA E JORNADA (chegou / atrasou / faltou, com chegada, início, refeição e fim de cada pessoa), COBERTURA DO DIA (rolos de câmera e som, figuração e stand-ins) e OCORRÊNCIAS (atraso, equipamento, incidente, clima, com os minutos perdidos). ' +
-      'MANDAR PARA A EQUIPE: o botão COMPARTILHAR abre o WhatsApp, o Telegram ou o email do seu aparelho já com a OD escrita e o arquivo de agenda junto; COPIAR deixa a OD pronta para colar em qualquer lugar; ABRIR NO MEU EMAIL abre a sua caixa com a equipe em cópia oculta e o assunto preenchido. Nada disso custa nada nem precisa de configuração. ' +
-      'Tem também o arquivo de agenda (.ics, abre no Google, Apple e Outlook — com a diária e cada marco como compromisso) e o campo para colar o link da reunião. ' +
-      'Enviar o email EM NOME DA PRODUÇÃO (od@suaprodutora.com.br) é outra coisa: exige um domínio próprio com registros de DNS, senão o Gmail joga em spam. Fica escondido num "ver mais", e o passo a passo está no arquivo LEIA da função enviar-od. ' +
-      'Quando algo atrasa, aparece o wrap refeito: "o dia está 40min de atraso — wrap agora às 19:40, planejado 19:00". ' +
-      'Ao lado ficam os cartões de apoio. O CARTÃO DE LOCAÇÃO junta tudo do lugar: endereço, previsão do tempo DAQUELE set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local. ' +
-      'Mais abaixo, fechados por padrão: transporte e comboios, checklist, confirmação de presença e anexos. ' +
-      'DUAS FRENTES NO MESMO DIA: não existe botão de dividir. Escale DOIS GRUPOS e as abas aparecem sozinhas, cada uma com a sua locação, o seu cronograma e a sua equipe — tirou um grupo, volta a ser um dia só. O conceito antigo de "Unidade A/B" acabou. ' +
-      'O NÚMERO DA DIÁRIA NÃO SE DIGITA: ele vem da ordem das datas. Criou um dia para amanhã, é a Diária 01; criou um para daqui a um ano com quatro dias antes, é a 05. Ao escolher a data, o app mostra qual vai ser antes de você confirmar. Mudar a data de uma diária, ou apagar uma, renumera o resto sozinho — e se isso mexer no número de uma OD já publicada, aparece um aviso, porque a equipe está com o papel dizendo o número velho. ' +
-      'A diária tem QUATRO estados, e a régua deles fica no topo da tela. RASCUNHO acompanha o stripboard (arrastou uma cena lá, muda aqui). TRAVADA congela sem publicar: serve para a diária pronta esperar as outras ficarem, para outra pessoa conferir sem mexer sem querer — e voltar dali não custa nada, porque nada saiu. PUBLICADA é depois de exportar: a equipe está com o PDF na mão, e mudança no stripboard vira aviso em vez de mudar sozinha. FECHADA é depois do relatório. ' +
-      'Voltar de PUBLICADA para rascunho mostra um aviso vermelho, e ele é sério: existe um papel circulando que passa a mentir. Corrija e exporte de novo — a nova sai como v2 — e avise a equipe. ' +
-      'O botão de MARCAR cena só aparece na diária publicada e no dia da filmagem. Antes disso não quer dizer nada, e um toque por engano sujaria a conta do ritmo do projeto. A lista de cenas continua sempre, porque é ali que você monta o dia. ' +
-      'Diária FECHADA não se marca mais: nem cena, nem hora, nem presença, nem checklist. Para mexer, use Reabrir. ' +
-      'No fim, exporte a Ordem do Dia em PDF escolhendo o que entra — a linha do dia inteira sai impressa, com horários — ou peça para a IA montar o texto.',
+      'Cada diária é um dia de filmagem: a linha do tempo do dia, a equipe escalada, as locações, o transporte, a checklist e os anexos. ' +
+      'A aba Eventos, ao lado, guarda o que não é filmagem — visita de locação, teste de elenco, reunião.',
+    topicos: [
+      {
+        titulo: 'O número vem da data',
+        texto:
+          'Você não digita o número da diária. "Diária 01" quer dizer o primeiro dia de filmagem, não a primeira que você cadastrou — então basta escolher a data e o app conta. Criou um dia para amanhã, é a 01; criou um para daqui a um ano com quatro dias antes, é a 05. Ao escolher a data, ele mostra qual vai ser antes de você confirmar. Remarcar ou apagar uma diária renumera o resto sozinho. Se isso mexer no número de uma OD já publicada, aparece um aviso — a equipe está com o papel dizendo o número velho.',
+      },
+      {
+        titulo: 'A linha do dia',
+        texto:
+          'É o centro da tela: cenas, refeições, deslocamentos e marcos numa lista só, cada um com o seu horário. Defina a CHAMADA e o app encadeia o resto — cada item empurra o seguinte pelo tempo que consome, e a estimativa de cada cena vem do stripboard. Arraste para reordenar. O botão "Acrescentar ao dia" põe almoço, deslocamento, marco ou nota.',
+      },
+      {
+        titulo: 'Travar um horário',
+        texto:
+          'Toque num horário para travá-lo: dali em diante a conta recomeça daquele horário, e o resto do dia se ajusta sozinho. Horário calculado é sugestão; travado é decisão. É como corrigir o almoço para as 12h sem ter que arrumar a tarde inteira à mão.',
+      },
+      {
+        titulo: 'Os quatro estados da OD',
+        texto:
+          'RASCUNHO acompanha o stripboard — arrastou uma cena lá, muda aqui. TRAVADA congela sem publicar: serve para a diária pronta esperar as outras ficarem, ou para outra pessoa conferir sem mexer sem querer, e voltar dali não custa nada porque nada saiu. PUBLICADA é depois de exportar: a equipe está com o PDF na mão, e mudança no stripboard vira aviso em vez de mudar sozinha. FECHADA é depois do relatório. A régua fica no topo da tela.',
+      },
+      {
+        titulo: 'Exportar congela o plano',
+        texto:
+          'Exportar a OD é a linha divisória, porque a partir dela a equipe está com aquele papel na mão — mudar o plano por baixo faria o set seguir um horário e o app mostrar outro. Para mudar depois: volte a rascunho, edite e reexporte. A nova sai marcada v2, v3, para ninguém seguir o papel velho. Voltar de publicada mostra um aviso vermelho, e ele é sério.',
+      },
+      {
+        titulo: 'No dia: o relógio e o atraso',
+        texto:
+          'Quando chega a hora da chamada, a tela vira registro sozinha — não existe botão de iniciar o dia. Aparece um relógio grande com "estamos X min atrasados": verde até 15min, âmbar até 45, vermelho acima disso. Junto vem o wrap refeito — "wrap agora às 19:40, planejado 19:00".',
+      },
+      {
+        titulo: 'No dia: o que se marca',
+        texto:
+          'A hora real de cada item, o estado de cada cena, e no ícone de prancheta os oitavos, os setups, o que exatamente saiu e se houve som wild. Abaixo da linha ficam PRESENÇA E JORNADA (chegou, atrasou ou faltou, com chegada, início, refeição e fim de cada pessoa), COBERTURA DO DIA (rolos de câmera e som, figuração e stand-ins) e OCORRÊNCIAS (atraso, equipamento, incidente, clima, com os minutos perdidos). Marcar é do AD e da produção, e cada anotação fica com o nome de quem fez e a hora. O botão de marcar cena só aparece na diária publicada e no dia da filmagem; diária fechada não se marca mais.',
+      },
+      {
+        titulo: 'Mandar a OD para a equipe',
+        texto:
+          'COMPARTILHAR abre o WhatsApp, o Telegram ou o email do seu aparelho já com a OD escrita e o arquivo de agenda junto. COPIAR deixa a OD pronta para colar em qualquer lugar. ABRIR NO MEU EMAIL abre a sua caixa com a equipe em cópia oculta e o assunto preenchido. Nada disso custa nada nem precisa de configuração. Tem também o arquivo de agenda (.ics, abre no Google, Apple e Outlook, com a diária e cada marco como compromisso) e o campo para colar o link da reunião.',
+      },
+      {
+        titulo: 'Enviar em nome da produção',
+        texto:
+          'Mandar o email de od@suaprodutora.com.br, em vez da sua conta pessoal, é outra coisa: exige um domínio próprio com registros de DNS, senão o Gmail joga em spam. Não é limitação do app — é regra de quem recebe. Fica escondido num "ver mais", e o passo a passo está no arquivo LEIA da função enviar-od.',
+      },
+      {
+        titulo: 'Os cartões de apoio',
+        texto:
+          'Ao lado da linha do dia. O CARTÃO DE LOCAÇÃO junta tudo do lugar: endereço, previsão do tempo daquele set com nascer e pôr do sol, hospital mais próximo com telefone e rota, e os contatos do local. Ao lado ficam o financeiro do dia e a equipe escalada. Mais abaixo, fechados por padrão: transporte e comboios, checklist, confirmação de presença e anexos.',
+      },
+      {
+        titulo: 'Escalar a equipe, e as duas frentes',
+        texto:
+          'Escale uma pessoa, um departamento inteiro ou um grupo salvo. DUAS FRENTES NO MESMO DIA não têm botão: escale DOIS GRUPOS e as abas aparecem sozinhas, cada uma com a sua locação, o seu cronograma e a sua equipe. Tirou um grupo, volta a ser um dia só. O conceito antigo de "Unidade A/B" acabou.',
+      },
+    ],
   },
   {
     id: 'gravacao',
     titulo: '🎥 Marcar o que foi gravado',
     texto:
-      'Na diária, cada cena tem um botão de estado. Um toque alterna: Gravada → Parcial → Não gravada → Cortada. ' +
-      'Sem confirmação, de propósito — no set você está de pé, com pressa, e marcação errada se desfaz com outro toque. ' +
-      'Quando não gravou, escolha o motivo nos atalhos (chuva, luz, elenco, equipamento) ou escreva. É o motivo que decide onde a cena cabe depois. ' +
-      'CORTADA é diferente de NÃO GRAVADA: cena cortada sai da conta do que falta, e não fica cobrando para sempre. ' +
-      'Ao fechar a diária, o app monta o DPR (Relatório Diário de Produção) e destaca as cenas que ninguém marcou — "ninguém marcou" não é "não gravou". ' +
-      'O MOTIVO É OBRIGATÓRIO para fechar: cena que não saiu sem explicação vira uma dívida que ninguém entende duas semanas depois. É o único campo do app que tranca um botão. ' +
-      'O DPR sai em PDF com os horários planejados contra os reais linha por linha, as cenas filmadas com páginas e setups, as não filmadas com o motivo de cada uma, a jornada de cada pessoa, a figuração, os rolos, as ocorrências e a prestação de contas. ' +
-      'Cada anotação sai com o nome de quem a fez e a hora — é a assinatura, e ela vale mais que um campo de assinatura no rodapé. ' +
-      'O que ficou para trás vai para a repescagem, no painel, e volta ao stripboard marcado PENDENTE, com contorno vermelho e o número da diária de onde caiu. ' +
-      'E no painel aparece o ritmo do projeto: "no ritmo atual, faltam 2 diárias para o filme fechar". Some sozinho quando não há atraso.',
+      'Na diária do dia, cada cena tem um botão de estado. Um toque alterna: Gravada → Parcial → Não gravada → Cortada. ' +
+      'Sem confirmação, de propósito — no set você está de pé, com pressa, e marcação errada se desfaz com outro toque.',
+    topicos: [
+      {
+        titulo: 'Cortada não é o mesmo que não gravada',
+        texto:
+          'Cena CORTADA sai da conta do que falta e não fica cobrando para sempre — ela saiu do filme. NÃO GRAVADA continua devendo: vai para a repescagem e precisa de um novo dia. Confundir as duas é o que faz o app achar que o projeto está atrasado quando não está.',
+      },
+      {
+        titulo: 'O motivo, e por que ele tranca o botão',
+        texto:
+          'Quando a cena não saiu, escolha o motivo nos atalhos (chuva, luz, elenco, equipamento) e escreva a frase. Os dois são obrigatórios para fechar a diária, e é o único lugar do app que tranca um botão. A etiqueta é o que o app soma depois ("três dias perdidos por chuva"); a frase é o que decide o dia seguinte — "adiada por problema de iluminação, será filmada amanhã de manhã". Escrever agora, no wrap, é a única hora em que alguém ainda lembra.',
+      },
+      {
+        titulo: 'Fechar a diária: o DPR',
+        texto:
+          'Ao fechar, o app monta o Relatório Diário de Produção e destaca as cenas que ninguém marcou — "ninguém marcou" não é "não gravou". O PDF sai com os horários planejados contra os reais linha por linha, as cenas filmadas com páginas e setups, as não filmadas com o motivo de cada uma, a jornada de cada pessoa, a figuração, os rolos, as ocorrências e a prestação de contas. Cada anotação sai com o nome de quem a fez e a hora — é a assinatura, e vale mais que um campo no rodapé.',
+      },
+      {
+        titulo: 'O que ficou para trás',
+        texto:
+          'Vai para a repescagem, no painel, e volta ao stripboard marcado PENDENTE: mantém a cor de sempre e ganha contorno vermelho com o número da diária de onde caiu. No painel aparece também o ritmo do projeto — "no ritmo atual, faltam 2 diárias para o filme fechar" —, que some sozinho quando não há atraso.',
+      },
+    ],
   },
   {
     id: 'decupagem',
