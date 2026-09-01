@@ -45,20 +45,40 @@ import { MOLA, useMovimentoReduzido } from './movimento';
  * para desmentir.
  *
  * Agora quem manda trocar avisa por `pronto`, e o recarregamento espera a barra
- * correr até o fim — 380ms, o tempo de ver que fechou. Não é enfeite: o fim da
- * barra passou a ser verdade, porque é ele que dispara o reload.
+ * correr até o fim. Não é enfeite: o fim da barra passou a ser verdade, porque é
+ * ele que dispara o reload.
+ *
+ * E EXISTE UM TEMPO MÍNIMO DE TELA — 1,2s
+ * A primeira versão disto só encadeava sprint + reload, e o service worker às
+ * vezes assume em 80ms: a tela aparecia e sumia em meio segundo. Continuava
+ * sendo um piscar, só que com a barra cheia. O que se vê num piscar é "alguma
+ * coisa deu errado", não "está trocando de versão".
+ *
+ * Então o sprint espera a sua vez. O reload nunca acontece antes de 1,2s desde
+ * que a tela subiu, e a barra ainda fica `PAUSA_MS` cheia antes de a página ir
+ * embora — sem essa pausa, chegar a 100% e sumir no mesmo quadro é
+ * indistinguível de ser cortada.
+ *
+ * O piso vale para o caminho rápido. Se a troca demorar mais que isso, nada
+ * espera nada: o sprint começa na hora em que `pronto` chega.
  */
 
 /** Quando aparece a saída manual, e quando o app recarrega sozinho. */
 const ESCAPE_MS = 3000;
 const DESISTIR_MS = 8000;
 /** O sprint final, depois que a versão nova já assumiu. */
-const FECHAR_MS = 380;
+const FECHAR_MS = 420;
+/** A barra cheia, parada, antes de a página ir embora. */
+const PAUSA_MS = 240;
+/** Do instante em que a tela sobe até o reload, no caminho rápido. */
+const MINIMO_MS = 1200;
 
 export function Atualizando({ versao, pronto = false }: { versao?: string; pronto?: boolean }) {
   const reduzido = useMovimentoReduzido();
   const [demorou, setDemorou] = useState(false);
   const barra = useAnimationControls();
+  /** Quando esta tela apareceu. É daqui que o tempo mínimo conta. */
+  const [subiuEm] = useState(() => Date.now());
 
   /*
     A corrida normal: a barra atravessa o prazo inteiro, em ritmo constante.
@@ -70,22 +90,39 @@ export function Atualizando({ versao, pronto = false }: { versao?: string; pront
   }, [barra]);
 
   /*
-    O sprint. A versão nova assumiu: a barra abandona o ritmo do prazo, corre
-    até 100% e é o fim dela que recarrega.
+    O sprint, o piso e a saída.
 
-    Com movimento reduzido não há sprint para ver — recarrega direto, porque
-    esperar por uma animação que a pessoa pediu para não existir é só atraso.
+    A conta do `atraso` é o piso: se a versão nova assumiu cedo demais, a barra
+    segue no ritmo normal mais um tempo, e só então acelera — de modo que o
+    conjunto (esperar + correr + pausar) feche os 1,2s. Se ela demorou, o
+    `Math.max` zera e o sprint começa imediatamente.
+
+    ⚠️ QUEM MARCA A HORA DO RELOAD É O RELÓGIO, E NÃO O FIM DA ANIMAÇÃO.
+    A versão anterior recarregava no `.then()` do framer-motion, o que parecia
+    mais honesto. Só que animação anda por `requestAnimationFrame`, e o
+    navegador congela isso em aba escondida — quem clicasse em Atualizar e
+    trocasse de app no mesmo segundo ficaria com a troca pendurada até o prazo
+    de 8s. Os dois começam juntos e duram o mesmo tempo; o relógio é que decide.
+
+    Com movimento reduzido a barra vai a 100% de uma vez, mas o tempo mínimo
+    continua valendo: ele é sobre poder ler a tela, não sobre animação.
   */
   useEffect(() => {
     if (!pronto) return;
-    if (reduzido) { window.location.reload(); return; }
 
-    let vivo = true;
-    void barra
-      .start({ width: '100%', transition: { duration: FECHAR_MS / 1000, ease: 'easeOut' } })
-      .then(() => { if (vivo) window.location.reload(); });
-    return () => { vivo = false; };
-  }, [pronto, reduzido, barra]);
+    const atraso = Math.max(0, MINIMO_MS - PAUSA_MS - FECHAR_MS - (Date.now() - subiuEm));
+
+    const correr = setTimeout(() => {
+      void barra.start({
+        width: '100%',
+        transition: reduzido ? { duration: 0 } : { duration: FECHAR_MS / 1000, ease: 'easeOut' },
+      });
+    }, atraso);
+
+    const sair = setTimeout(() => window.location.reload(), atraso + FECHAR_MS + PAUSA_MS);
+
+    return () => { clearTimeout(correr); clearTimeout(sair); };
+  }, [pronto, reduzido, barra, subiuEm]);
 
   useEffect(() => {
     const mostrarSaida = setTimeout(() => setDemorou(true), ESCAPE_MS);
