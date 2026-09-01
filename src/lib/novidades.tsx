@@ -3,7 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, FileText, CalendarClock, CheckCircle2,
+  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock,
 } from 'lucide-react';
 
 /**
@@ -17,10 +17,21 @@ import {
  *
  * Aqui é uma lista. Versão nova é um objeto novo no topo, e mais nada.
  *
- * A REGRA COMBINADA COM O LUCAS
- * Todo push que muda o app entra aqui. Mesmo os pequenos — 4.4.1, 4.4.2 — e é
- * justamente por causa deles que a lista existe: quem está usando percebe a
- * mudança pequena e não sabe se foi ele que fez algo diferente.
+ * A REGRA COMBINADA COM O LUCAS (mudou na v4.8)
+ * Uma entrada por PUBLICAÇÃO, e não por mudança. Enquanto o trabalho está aqui
+ * no computador, cada coisa pronta vai sendo anotada em `.md/novidades-pendentes.md`.
+ * Na hora do push, aquilo tudo vira UMA versão aqui, e o arquivo de pendências
+ * é esvaziado.
+ *
+ * POR QUE ASSIM
+ * Antes era uma versão por mudança, e o app publicado ficou na v4.7 enquanto
+ * aqui já corria a 4.13. Quem usa ia abrir as Novidades e ver seis versões de
+ * uma vez, várias delas correções de coisas que nunca chegaram a sair — a lista
+ * fica comprida e confusa justamente por ser detalhada demais. Versão é o que a
+ * pessoa recebe, não o que a gente fez.
+ *
+ * Uma consequência prática: correção de bug introduzido e resolvido antes de
+ * publicar NÃO entra. Para quem está lendo, aquele bug nunca existiu.
  *
  * O `verifica-novidades.mjs` impede o push que esquece isto. Ver `.githooks/`.
  *
@@ -211,253 +222,38 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
-    versao: '4.13.0',
-    resumo: <>As perguntas de confirmação agora são do app. A caixinha do navegador estava sendo engolida em silêncio.</>,
-    itens: [
-      {
-        tipo: 'corrigido',
-        icone: <Trash2 size={20} />,
-        titulo: '"Não consigo apagar diárias"',
-        texto: 'Não era a diária: era a pergunta. Quando o navegador vê várias caixas de confirmação seguidas, ele oferece "impedir que esta página crie mais diálogos" — e a partir daí toda pergunta seguinte responde "cancelar" sozinha, sem aparecer nada na tela. O apagar era cancelado por uma pergunta que ninguém viu.',
-      },
-      {
-        tipo: 'melhor',
-        icone: <MessageCircleQuestion size={20} />,
-        titulo: 'Toda confirmação agora é uma janela do próprio app',
-        texto: 'As 31 perguntas espalhadas pelo app — apagar, sair, desvincular, sobrescrever — saíram da caixa cinza do navegador. Agora têm título, explicação do que acontece depois, e botões com o nome da ação ("Apagar", "Sair do projeto") em vez de OK e Cancelar. As destrutivas vêm em vermelho.',
-      },
-      {
-        tipo: 'corrigido',
-        icone: <Undo2 size={20} />,
-        titulo: 'O voltar avisa antes de sair do projeto',
-        texto: 'A seta ao lado do nome do projeto sobe um nível por vez — da diária para a lista de diárias, da lista para o dashboard. No dashboard ela sai da produção, e agora pergunta antes, porque esse é o único passo que não é só navegar.',
-      },
-    ],
-  },
-  {
-    versao: '4.12.0',
-    resumo: <>As tarefas passaram a se organizar pelo prazo, e as subtarefas saíram de dentro do modal.</>,
-    itens: [
-      {
-        tipo: 'melhor',
-        icone: <CalendarClock size={20} />,
-        titulo: 'O que vence antes fica em cima',
-        texto: 'A coluna era ordenada pela ordem em que as tarefas foram criadas, e o prazo era uma data pequena no rodapé do cartão. Numa coluna com quinze, a que vence amanhã podia estar em décimo lugar. Agora a mais próxima do prazo sobe, e as sem prazo vão para o fim — elas não podem empurrar para baixo a que vence amanhã.',
-      },
-      {
-        tipo: 'novo',
-        icone: <AlertTriangle size={20} />,
-        titulo: 'Etiqueta de prazo no topo do cartão',
-        texto: 'ATRASADA 3 DIAS, É HOJE, PRAZO CURTO · AMANHÃ, EM 5 DIAS. Vermelho para o que já venceu ou vence hoje, âmbar para os dois dias seguintes. Acima de uma semana não ganha etiqueta: etiqueta em todo cartão é o mesmo que etiqueta em nenhum.',
-      },
-      {
-        tipo: 'novo',
-        icone: <ListChecks size={20} />,
-        titulo: 'As subtarefas abrem no próprio cartão',
-        texto: 'O "2/5" era só um número: para ver o que faltava era preciso abrir a tarefa, e para marcar um item também. Agora ele abre ali mesmo, com as caixinhas. Marcar item de checklist é o gesto mais repetido desta tela — um modal por marcação transformava cinco toques em vinte.',
-      },
-      {
-        tipo: 'novo',
-        icone: <CheckCircle2 size={20} />,
-        titulo: 'Concluir com subtarefa em aberto agora pergunta',
-        texto: 'Mostra quais faltaram e oferece "Fiz tudo — marcar e concluir" ou "Concluir assim mesmo". É pergunta, não bloqueio: pode ser que aqueles itens tenham deixado de fazer sentido. O que não pode é passar em silêncio, com a tarefa sumindo da coluna e a checklist mentindo.',
-      },
-      {
-        tipo: 'corrigido',
-        icone: <CalendarClock size={20} />,
-        titulo: 'Tarefa de amanhã aparecia como "hoje" à noite',
-        texto: 'A conta do dia usava o relógio de Londres. Das 21h à meia-noite, no Brasil, a data já era a de amanhã — e a tarefa de amanhã virava "é hoje", a de hoje virava atrasada, justo no fim do expediente.',
-      },
-    ],
-  },
-  {
-    versao: '4.11.2',
-    itens: [
-      {
-        tipo: 'melhor',
-        icone: <Bug size={20} />,
-        titulo: 'Bug, sugestão e dúvida agora têm cor',
-        texto: 'Vermelho, verde e azul — as mesmas do resto do app. Antes os três acendiam em amarelo, então a cor só dizia "este está selecionado", que a borda já dizia. O ícone lá em cima acompanha, para a escolha continuar visível depois que você rolou a tela para escrever.',
-      },
-      {
-        tipo: 'melhor',
-        icone: <FileText size={20} />,
-        titulo: 'O "vai junto" virou Informações avançadas, recolhido',
-        texto: 'A lista do que segue com a mensagem ocupava um terço da janela. Agora fica fechada, com o número do lado — "4 itens vão junto" —, e abre com um toque. Ela não some nunca: mandar diagnóstico sem dizer o que é seria coletar às escondidas.',
-      },
-    ],
-  },
-  {
-    versao: '4.11.1',
-    itens: [
-      {
-        tipo: 'melhor',
-        icone: <HelpCircle size={20} />,
-        titulo: 'O "como funciona esta tela" parou de ser um paredão',
-        texto: 'A seção das diárias tinha quase cinco mil caracteres num parágrafo só — três vezes a segunda maior. Quem abria com uma dúvida específica desistia na terceira linha, e a resposta estava lá dentro. Agora ela abre numa lista de assuntos curtos ("O número vem da data", "Travar um horário", "Os quatro estados da OD") e você abre só o que interessa. O texto não encolheu: ficou achável.',
-      },
-      {
-        tipo: 'melhor',
-        icone: <Sparkles size={20} />,
-        titulo: 'E a IA da ajuda ficou melhor por tabela',
-        texto: 'Ela continua recebendo o manual inteiro — parágrafo comprido não incomoda ela, incomoda gente. Só que agora chega com os títulos dos assuntos, o que ajuda a achar a resposta certa e a dizer de onde ela veio.',
-      },
-    ],
-  },
-  {
-    versao: '4.11.0',
-    resumo: <>O número da diária deixou de ser um campo: ele é a ordem dos dias de filmagem.</>,
-    itens: [
-      {
-        tipo: 'melhor',
-        icone: <CalendarDays size={20} />,
-        titulo: 'O número vem da data, e você não digita mais',
-        texto: '"Diária 01" nunca quis dizer "a primeira que eu cadastrei" — quer dizer o primeiro dia de filmagem. Agora criar um dia para amanhã faz dele a 01; criar um para daqui a um ano, com quatro dias antes, faz dele a 05. Ao escolher a data o app já mostra "vai ser a Diária 03" antes de você confirmar.',
-      },
-      {
-        tipo: 'melhor',
-        icone: <ListChecks size={20} />,
-        titulo: 'Mudou a data, o número acompanha',
-        texto: 'Remarcou um dia para antes do começo? Ele vira a 01 e os outros andam. Apagou a 02? Some o buraco na sequência. E na janela de editar, o número saiu: mudar a data é o que move a diária de lugar.',
-      },
-      {
-        tipo: 'novo',
-        icone: <AlertTriangle size={20} />,
-        titulo: 'E avisa quando isso mexe numa OD que já saiu',
-        texto: 'Renumerar é invisível enquanto tudo é rascunho — ninguém viu aqueles números. Mas se uma diária publicada mudar de número, aparece o aviso: "Diária 03 → 04. A equipe está com a OD antiga, que diz o número velho." Aí é reexportar e avisar.',
-      },
-    ],
-  },
-  {
-    versao: '4.10.1',
-    itens: [
-      {
-        tipo: 'corrigido',
-        icone: <Trash2 size={20} />,
-        titulo: 'Diária apagada podia voltar sozinha',
-        texto: 'Apagar deixava um "túmulo" esperando para subir, e o aparelho não tinha como saber que aquele dia foi apagado enquanto ele não subisse. Se a sincronia trouxesse a versão antiga antes disso, a diária reaparecia na tela. Agora o que está esperando para subir conta como o mais recente, e o apagar vence. Valia para tudo — cena, despesa, ficha — não só para diária.',
-      },
-      {
-        tipo: 'corrigido',
-        icone: <Trash2 size={20} />,
-        titulo: 'A confirmação de apagar saiu da caixa do navegador',
-        texto: 'Ela usava o "confirmar" do navegador, que depois de alguns avisos seguidos oferece bloquear novas caixas — e a partir dali o clique em apagar não fazia nada, sem erro nenhum na tela. Agora a confirmação é do app, e diz o que acontece: some o dia, a checklist e as marcações; os gastos ficam, só deixam de estar ligados àquela diária.',
-      },
-    ],
-  },
-  {
-    versao: '4.10.0',
-    resumo: <>Cada coisa aparece na hora em que ela faz sentido — e a diária ganhou um estado no meio.</>,
+    versao: '4.8.0',
+    resumo: <>A tela da diária foi refeita em volta de uma coisa só: a linha do dia. E o dia deixou de ser um plano — agora ele se registra acontecendo.</>,
     grupos: [
       {
-        id: 'estados',
-        titulo: 'Três estados, não dois',
-        resumo: 'Faltava o degrau entre "mexendo" e "a equipe já recebeu".',
+        id: 'linha',
+        titulo: 'O dia inteiro numa lista só',
+        resumo: 'Cronograma e cenas eram duas caixas que não se falavam. No set elas sempre foram a mesma coisa.',
         cor: '#4cc9f0',
         itens: [
           {
             tipo: 'novo',
-            icone: <Lock size={20} />,
-            titulo: 'TRAVADA: congela sem publicar',
-            texto: 'Uma diária pronta esperando as outras ficarem. Ninguém mexe sem querer, outra pessoa pode conferir, e voltar para rascunho não custa nada — porque nada saiu. Antes, quem só queria proteger o dia de um clique errado tinha que publicar, e depois pagar o preço de despublicar.',
-          },
-          {
-            tipo: 'novo',
-            icone: <AlertTriangle size={20} />,
-            titulo: 'Sair de PUBLICADA agora avisa, em vermelho',
-            texto: '"Esta OD já pode estar circulando pela equipe." Porque pode mesmo: existe um PDF impresso, no WhatsApp ou na caixa de entrada de todo mundo, e ele passa a mentir no instante do clique. O aviso lembra de exportar de novo depois e avisar a equipe.',
-          },
-          {
-            tipo: 'melhor',
-            icone: <GitMerge size={20} />,
-            titulo: 'O controle de estado saiu de dentro da faixa do stripboard',
-            texto: 'Ele morava num lugar que só existe quando a diária veio de uma quebra — diária montada à mão nunca conseguia sair de rascunho. Agora fica no topo da tela, sempre. E aquele "Publicar OD" que publicava sem gerar o documento acabou: publicar é exportar.',
-          },
-        ],
-      },
-      {
-        id: 'hora-certa',
-        titulo: 'Cada coisa na hora dela',
-        resumo: 'Marcar cena numa OD que nem saiu não queria dizer nada — e sujava o painel.',
-        cor: 'var(--accent)',
-        itens: [
-          {
-            tipo: 'melhor',
-            icone: <Clapperboard size={20} />,
-            titulo: 'O botão de marcar cena só aparece no dia',
-            texto: 'Ele estava lá até numa diária de daqui a três semanas. Um toque por engano entrava na conta do ritmo do projeto e na fila de repescagem — número errado num painel que decide se você marca mais um dia. A lista de cenas continua sempre, porque é onde você monta o dia.',
-          },
-          {
-            tipo: 'melhor',
-            icone: <Lock size={20} />,
-            titulo: 'Diária fechada não se marca mais',
-            texto: 'Nem cena, nem hora real, nem presença, nem checklist. O relatório já saiu com os números que tinha; mexer depois faria o DPR impresso divergir da tela sem ninguém perceber. Para alterar, é o botão Reabrir — explícito e registrado na ata.',
-          },
-        ],
-      },
-      {
-        id: 'lista',
-        titulo: 'A lista de diárias',
-        resumo: 'Ela respondia a pergunta errada.',
-        cor: '#2dd4bf',
-        itens: [
-          {
-            tipo: 'melhor',
-            icone: <CalendarDays size={20} />,
-            titulo: 'Em ordem de data, e o próximo dia primeiro',
-            texto: 'Era ordenada por número. Numa produção real os dois divergem o tempo todo — a Diária 07 remarcada para antes da 05 ficava no meio da lista. Agora as que já passaram vão para o fim, sem sumir, e a de hoje aparece marcada.',
-          },
-          {
-            tipo: 'melhor',
-            icone: <ListChecks size={20} />,
-            titulo: 'O número da diária vem sozinho, e dá para cancelar',
-            texto: 'Ele sugere o próximo livre — com as diárias 1 e 3, sugere 4, e não 3 de novo. Você pode trocar, e se já existir outra com aquele número o app avisa. E o formulário ganhou Cancelar, para quem clicou em Criar sem querer.',
-          },
-          {
-            tipo: 'corrigido',
-            icone: <CheckSquare size={20} />,
-            titulo: '"Tasks (em breve)" virou o número de verdade',
-            texto: 'Era um lugar reservado desde que a tela nasceu, para um número que já estava no banco. Agora cada card mostra quantas tarefas da checklist já foram feitas.',
-          },
-        ],
-      },
-      {
-        id: 'voltar',
-        titulo: 'O botão voltar',
-        resumo: 'Ele saía do projeto de qualquer lugar.',
-        cor: '#a78bfa',
-        itens: [
-          {
-            tipo: 'melhor',
-            icone: <Undo2 size={20} />,
-            titulo: 'Agora ele sobe um nível de cada vez',
-            texto: 'Diária → Diárias e Eventos → painel do projeto → sair. Quem estava dentro de uma diária perdia o projeto inteiro com um clique e gastava três para voltar. E sair do projeto, que é a única parada da navegação sem volta fácil, pergunta antes.',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    versao: '4.9.0',
-    resumo: <>A diária deixou de ser só um plano: agora ela registra o dia acontecendo.</>,
-    grupos: [
-      {
-        id: 'ciclo',
-        titulo: 'Exportar virou a linha divisória',
-        resumo: 'Antes o plano continuava editável depois de a equipe receber o PDF. Agora não.',
-        cor: '#4cc9f0',
-        itens: [
-          {
-            tipo: 'novo',
-            icone: <Send size={20} />,
-            titulo: 'Exportar a OD congela o plano',
-            texto: 'No momento em que você exporta, todo mundo está com aquele documento na mão — e o app para de deixar mudar o plano por baixo. Precisou mudar? Volte a rascunho, edite e reexporte: a nova sai marcada v2, v3, para ninguém seguir o papel velho.',
+            icone: <Clock size={20} />,
+            titulo: 'A Linha do Dia',
+            texto: 'Cenas, refeições, deslocamentos e marcos numa lista só, cada um com o seu horário. Antes as cenas não tinham horário nenhum, e o cronograma era uma lista de texto à parte que ninguém conseguia manter em pé quando o dia mudava.',
           },
           {
             tipo: 'novo',
             icone: <Clock size={20} />,
-            titulo: 'O dia começa sozinho na hora da chamada',
-            texto: 'Sem botão de "iniciar o dia" — quem está no set às 6h com café na mão não vai lembrar de apertar nada. Chegou a hora da chamada, a tela vira registro. Saiu também o seletor "Montar / No set": o modo é do dia, não de quem está olhando.',
+            titulo: 'Os horários se calculam sozinhos',
+            texto: 'Você define a chamada e o app encadeia o resto: cada item empurra o seguinte pelo tempo que consome, usando a estimativa que a cena já tem no stripboard. Toque num horário para travá-lo — dali em diante a conta recomeça dele, e o resto do dia se ajusta. Horário calculado é sugestão; travado é decisão.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <GitMerge size={20} />,
+            titulo: 'O dia chega pronto do Stripboard',
+            texto: 'Mandar um dia do stripboard para a diária agora traz o bloco inteiro — cenas na ordem, almoço e company move com a duração de cada um. O cronograma se monta praticamente sozinho. Se você já tinha montado a linha à mão, ela não é tocada.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'A tela vira registro sozinha na hora da chamada',
+            texto: 'Até a véspera ela é de montar; chegada a hora da chamada, ela passa a marcar o dia acontecendo — a hora real de cada item e o estado de cada cena, com um toque. Sem botão de "iniciar o dia", porque quem está no set às 6h com café na mão não vai lembrar de apertar nada. E sem seletor: o modo é do dia, não de quem está olhando, senão dois assistentes de direção veem a mesma diária de jeitos diferentes sem saber.',
           },
         ],
       },
@@ -491,6 +287,44 @@ export const VERSOES: Versao[] = [
             titulo: 'Cada anotação fica com o nome de quem fez',
             texto: 'A indústria assina o relatório no rodapé. Como cada pessoa entra com a conta dela, dá para fazer melhor: "Cena 4 — filmada · Carla, 09h53". A autoria é por anotação, não por documento.',
           },
+          {
+            tipo: 'melhor',
+            icone: <Clapperboard size={20} />,
+            titulo: 'Marcar cena só aparece no dia, e diária fechada não se marca',
+            texto: 'O botão estava lá até numa diária de daqui a três semanas — e um toque por engano entrava na conta do ritmo do projeto, número errado num painel que decide se você marca mais um dia. Depois de fechada também não se mexe em nada: nem cena, nem hora real, nem presença, nem checklist, senão o relatório impresso diverge da tela sem ninguém perceber. Para alterar, o botão Reabrir — explícito e registrado na ata.',
+          },
+        ],
+      },
+      {
+        id: 'estados',
+        titulo: 'Rascunho, travada, publicada',
+        resumo: 'Faltava o degrau entre "mexendo" e "a equipe já recebeu".',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Lock size={20} />,
+            titulo: 'TRAVADA: congela sem publicar',
+            texto: 'Uma diária pronta esperando as outras ficarem. Ninguém mexe sem querer, outra pessoa pode conferir, e voltar para rascunho não custa nada — porque nada saiu. Antes, quem só queria proteger o dia de um clique errado tinha que publicar, e depois pagar o preço de despublicar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Send size={20} />,
+            titulo: 'Publicar é exportar, e exportar congela o plano',
+            texto: 'Acabou o "Publicar OD" que publicava sem gerar documento nenhum. No momento em que você exporta, todo mundo está com aquele papel na mão — e o app para de deixar mudar o plano por baixo. Precisou mudar? Volte a rascunho, edite e reexporte: a nova sai marcada v2, v3, para ninguém seguir a versão velha.',
+          },
+          {
+            tipo: 'novo',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'Sair de PUBLICADA agora avisa, em vermelho',
+            texto: '"Esta OD já pode estar circulando pela equipe." Porque pode mesmo: existe um PDF impresso, no WhatsApp ou na caixa de entrada de todo mundo, e ele passa a mentir no instante do clique. O aviso lembra de exportar de novo depois e avisar a equipe.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <GitMerge size={20} />,
+            titulo: 'O controle de estado saiu de dentro da faixa do stripboard',
+            texto: 'Ele morava num lugar que só existe quando a diária veio de uma quebra — diária montada à mão nunca conseguia sair de rascunho. Agora fica no topo da tela, sempre.',
+          },
         ],
       },
       {
@@ -501,21 +335,15 @@ export const VERSOES: Versao[] = [
         itens: [
           {
             tipo: 'novo',
-            icone: <CalendarDays size={20} />,
-            titulo: 'Adicionar à agenda',
-            texto: 'Baixa um arquivo que Google, Apple e Outlook abrem — com a diária inteira e cada marco (chamada, refeição, wrap) como compromisso separado. Cena não vira evento, senão a agenda de todo mundo vira uma parede. Tem também o link direto para o Google Agenda.',
-          },
-          {
-            tipo: 'novo',
             icone: <Share2 size={20} />,
             titulo: 'Mandar a OD para a equipe, de graça',
             texto: 'COMPARTILHAR abre o WhatsApp, o Telegram ou o email do seu aparelho já com a OD escrita e o arquivo de agenda junto. COPIAR deixa a OD pronta para colar em qualquer lugar. ABRIR NO MEU EMAIL abre a sua caixa com a equipe já em cópia oculta e o assunto preenchido — ninguém recebe a lista de emails dos outros.',
           },
           {
             tipo: 'novo',
-            icone: <Mail size={20} />,
-            titulo: 'E, para quem tiver domínio, o envio em nome da produção',
-            texto: 'Aí o email sai de od@suaprodutora.com.br em vez da conta pessoal de quem clicou. Isso exige um domínio próprio com os registros de DNS certos — sem eles o Gmail joga em spam, e não há como contornar: é regra de quem recebe, não limitação do app. Fica escondido num "ver mais" até você querer.',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Adicionar à agenda',
+            texto: 'Baixa um arquivo que Google, Apple e Outlook abrem — com a diária inteira e cada marco (chamada, refeição, wrap) como compromisso separado. Cena não vira evento, senão a agenda de todo mundo vira uma parede. Tem também o link direto para o Google Agenda.',
           },
           {
             tipo: 'novo',
@@ -523,69 +351,43 @@ export const VERSOES: Versao[] = [
             titulo: 'Link da reunião',
             texto: 'Cole o link do Meet, Zoom ou Teams e ele entra no evento da agenda e no email. Colado à mão de propósito: criar a sala sozinho exigiria autorização de cada pessoa da equipe no Google.',
           },
+          {
+            tipo: 'novo',
+            icone: <Mail size={20} />,
+            titulo: 'E, para quem tiver domínio, o envio em nome da produção',
+            texto: 'Aí o email sai de od@suaprodutora.com.br em vez da conta pessoal de quem clicou. Isso exige um domínio próprio com os registros de DNS certos — sem eles o Gmail joga em spam, e não há como contornar: é regra de quem recebe, não limitação do app. Fica escondido num "ver mais" até você querer.',
+          },
         ],
       },
       {
-        id: 'dpr2',
-        titulo: 'O DPR ficou completo',
-        resumo: 'Plano contra realidade, campo por campo.',
-        cor: '#f87171',
+        id: 'numero',
+        titulo: 'O número da diária, e a lista',
+        resumo: '"Diária 01" nunca quis dizer "a primeira que eu cadastrei".',
+        cor: '#2dd4bf',
         itens: [
           {
             tipo: 'melhor',
-            icone: <ClipboardCheck size={20} />,
-            titulo: 'O relatório do dia agora traz tudo',
-            texto: 'Horário previsto contra real linha por linha, cenas filmadas com páginas e setups, as não filmadas com o motivo, a jornada de cada pessoa, figuração, rolos, ocorrências com os minutos perdidos, e quem preencheu cada coisa.',
-          },
-          {
-            tipo: 'melhor',
-            icone: <Lock size={20} />,
-            titulo: 'Cena que não saiu agora pede a etiqueta E a frase',
-            texto: 'Só a etiqueta ("chuva") diz a categoria e perde o caso. Agora o app pede também a explicação em uma linha — "adiada por problema de iluminação, será filmada amanhã de manhã" — e é ela que vai decidir o dia seguinte. Escrever agora, no wrap, é a única hora em que alguém ainda lembra.',
-          },
-          {
-            tipo: 'melhor',
-            icone: <PieChart size={20} />,
-            titulo: 'O ritmo agora fala em páginas também',
-            texto: 'O aviso de "faltam N diárias" passou a dizer quantas páginas saíram por dia, quando o roteiro está decupado. Cinco páginas por dia é a referência da indústria, e o número faz o AD reconhecer o ritmo do próprio filme.',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    versao: '4.8.0',
-    resumo: <>A tela da diária foi refeita em volta de uma coisa só: a linha do dia.</>,
-    grupos: [
-      {
-        id: 'linha',
-        titulo: 'O dia inteiro numa lista só',
-        resumo: 'Cronograma e cenas eram duas caixas que não se falavam. No set elas sempre foram a mesma coisa.',
-        cor: '#4cc9f0',
-        itens: [
-          {
-            tipo: 'novo',
-            icone: <Clock size={20} />,
-            titulo: 'A Linha do Dia',
-            texto: 'Cenas, refeições, deslocamentos e marcos numa lista só, cada um com o seu horário. Antes as cenas não tinham horário nenhum, e o cronograma era uma lista de texto à parte que ninguém conseguia manter em pé quando o dia mudava.',
+            icone: <CalendarDays size={20} />,
+            titulo: 'O número vem da data, e você não digita mais',
+            texto: 'Ele quer dizer o primeiro dia de filmagem. Agora criar um dia para amanhã faz dele a 01; criar um para daqui a um ano, com quatro dias antes, faz dele a 05. Ao escolher a data o app já mostra "vai ser a Diária 03" antes de você confirmar. Remarcou um dia para antes do começo? Ele vira a 01 e os outros andam. Apagou a 02? Some o buraco na sequência.',
           },
           {
             tipo: 'novo',
-            icone: <Clock size={20} />,
-            titulo: 'Os horários se calculam sozinhos',
-            texto: 'Você define a chamada e o app encadeia o resto: cada item empurra o seguinte pelo tempo que consome, usando a estimativa que a cena já tem no stripboard. Toque num horário para travá-lo — dali em diante a conta recomeça dele, e o resto do dia se ajusta. Horário calculado é sugestão; travado é decisão.',
-          },
-          {
-            tipo: 'novo',
-            icone: <ClipboardCheck size={20} />,
-            titulo: 'Dois modos: Montar e No set',
-            texto: 'Montar é planejar na véspera. No set é marcar o dia acontecendo — a hora real de cada item e o estado de cada cena, com um toque. Quando algo atrasa, o app refaz a conta na hora: "o dia está 40min de atraso, wrap agora às 19:40, planejado 19:00".',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'E avisa quando isso mexe numa OD que já saiu',
+            texto: 'Renumerar é invisível enquanto tudo é rascunho — ninguém viu aqueles números. Mas se uma diária publicada mudar de número, aparece o aviso: "Diária 03 → 04. A equipe está com a OD antiga, que diz o número velho." Aí é reexportar e avisar.',
           },
           {
             tipo: 'melhor',
-            icone: <GitMerge size={20} />,
-            titulo: 'O dia chega pronto do Stripboard',
-            texto: 'Mandar um dia do stripboard para a diária agora traz o bloco inteiro — cenas na ordem, almoço e company move com a duração de cada um. O cronograma se monta praticamente sozinho. Se você já tinha montado a linha à mão, ela não é tocada.',
+            icone: <ListChecks size={20} />,
+            titulo: 'A lista em ordem de data, e o próximo dia primeiro',
+            texto: 'Era ordenada por número. Numa produção real os dois divergem o tempo todo — a Diária 07 remarcada para antes da 05 ficava no meio da lista. Agora as que já passaram vão para o fim, sem sumir, e a de hoje aparece marcada. O formulário de criar também ganhou Cancelar, para quem clicou sem querer.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <CheckSquare size={20} />,
+            titulo: '"Tasks (em breve)" virou o número de verdade',
+            texto: 'Era um lugar reservado desde que a tela nasceu, para um número que já estava no banco. Agora cada card mostra quantas tarefas da checklist já foram feitas.',
           },
         ],
       },
@@ -593,7 +395,7 @@ export const VERSOES: Versao[] = [
         id: 'tela',
         titulo: 'A tela parou de ser doze caixas iguais',
         resumo: 'Tudo tinha o mesmo tamanho e a mesma cor, e o olho não sabia onde pousar.',
-        cor: 'var(--accent)',
+        cor: '#f0abfc',
         itens: [
           {
             tipo: 'melhor',
@@ -619,7 +421,7 @@ export const VERSOES: Versao[] = [
         id: 'frentes',
         titulo: 'Duas equipes no mesmo dia',
         resumo: 'O conceito de "Unidade A/B" acabou. Quem divide o dia é a escalação.',
-        cor: '#2dd4bf',
+        cor: '#4cc9f0',
         itens: [
           {
             tipo: 'novo',
@@ -644,14 +446,14 @@ export const VERSOES: Versao[] = [
           {
             tipo: 'novo',
             icone: <ClipboardCheck size={20} />,
-            titulo: 'O DPR sai em PDF de verdade',
-            texto: 'Horário planejado contra horário real linha por linha, cenas filmadas, cenas agendadas e não filmadas com o motivo de cada uma, quem não confirmou presença e a prestação de contas do dia. É o Relatório Diário de Produção que a indústria pede.',
+            titulo: 'O DPR sai em PDF de verdade, e traz tudo',
+            texto: 'Horário previsto contra real linha por linha, cenas filmadas com páginas e setups, as não filmadas com o motivo de cada uma, a jornada de cada pessoa, figuração, rolos, ocorrências com os minutos perdidos, quem não confirmou presença, a prestação de contas do dia e quem preencheu cada coisa. É o Relatório Diário de Produção que a indústria pede.',
           },
           {
             tipo: 'novo',
             icone: <Lock size={20} />,
-            titulo: 'O motivo virou obrigatório',
-            texto: 'Não dá mais para fechar a diária deixando uma cena sem explicação. "Cena 12 não gravada" não serve para decidir nada — chuva reagenda para o mesmo set, elenco reagenda para a agenda da pessoa. É o único campo do app que tranca um botão, e é de propósito.',
+            titulo: 'Cena que não saiu pede a etiqueta E a frase',
+            texto: 'Não dá mais para fechar a diária deixando uma cena sem explicação. "Cena 12 não gravada" não serve para decidir nada — chuva reagenda para o mesmo set, elenco reagenda para a agenda da pessoa. E só a etiqueta perde o caso, então o app pede a linha inteira: "adiada por problema de iluminação, será filmada amanhã de manhã". É o único campo do app que tranca um botão, e é de propósito: escrever agora, no wrap, é a única hora em que alguém ainda lembra.',
           },
           {
             tipo: 'novo',
@@ -663,7 +465,65 @@ export const VERSOES: Versao[] = [
             tipo: 'novo',
             icone: <CalendarDays size={20} />,
             titulo: 'O app avisa quando o filme não cabe mais',
-            texto: '"No ritmo atual, faltam 2 diárias para o filme fechar." Ele compara as cenas que saíram por dia com o que ainda falta e com os dias que sobraram. Aparece no painel e na tela da diária, e some sozinho quando não há atraso — um aviso que aparece sempre é um aviso que ninguém lê.',
+            texto: '"No ritmo atual, faltam 2 diárias para o filme fechar." Ele compara as cenas que saíram por dia com o que ainda falta e com os dias que sobraram, e fala em páginas por dia quando o roteiro está decupado — cinco páginas é a referência da indústria, e o número faz o assistente de direção reconhecer o ritmo do próprio filme. Some sozinho quando não há atraso: um aviso que aparece sempre é um aviso que ninguém lê.',
+          },
+        ],
+      },
+      {
+        id: 'tasks',
+        titulo: 'As tarefas, o manual e o relato de bug',
+        resumo: 'Fora da diária, três telas que estavam pedindo.',
+        cor: '#fbbf24',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <CalendarClock size={20} />,
+            titulo: 'As tarefas se organizam pelo prazo',
+            texto: 'A coluna era ordenada pela ordem em que as tarefas foram criadas, e o prazo era uma data pequena no rodapé do cartão. Numa coluna com quinze, a que vence amanhã podia estar em décimo lugar. Agora a mais próxima do prazo sobe, e as sem prazo vão para o fim. No topo do cartão entra a etiqueta — ATRASADA 3 DIAS, É HOJE, PRAZO CURTO · AMANHÃ —, vermelha para o que já venceu e âmbar para os dois dias seguintes. Acima de uma semana não ganha etiqueta: etiqueta em todo cartão é o mesmo que etiqueta em nenhum.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ListChecks size={20} />,
+            titulo: 'As subtarefas abrem no próprio cartão',
+            texto: 'O "2/5" era só um número: para ver o que faltava era preciso abrir a tarefa, e para marcar um item também. Agora ele abre ali mesmo, com as caixinhas — marcar item de checklist é o gesto mais repetido desta tela, e um modal por marcação transformava cinco toques em vinte. E concluir com item em aberto pergunta: mostra quais faltaram e oferece "Fiz tudo — marcar e concluir" ou "Concluir assim mesmo". É pergunta, não bloqueio.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <HelpCircle size={20} />,
+            titulo: 'O "como funciona esta tela" parou de ser um paredão',
+            texto: 'A seção das diárias tinha quase cinco mil caracteres num parágrafo só — três vezes a segunda maior. Quem abria com uma dúvida específica desistia na terceira linha, e a resposta estava lá dentro. Agora ela abre numa lista de assuntos curtos ("O número vem da data", "Travar um horário", "Os quatro estados da OD") e você abre só o que interessa. O texto não encolheu: ficou achável. A IA da ajuda ganhou os títulos junto, e por isso acha melhor a resposta certa.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Bug size={20} />,
+            titulo: 'Relatar um problema ficou mais claro',
+            texto: 'Bug, sugestão e dúvida agora têm cor — vermelho, verde e azul, as mesmas do resto do app; antes os três acendiam em amarelo, então a cor só dizia "este está selecionado", que a borda já dizia. E a lista do que segue junto com a mensagem, que ocupava um terço da janela, virou Informações avançadas recolhida, com o número do lado. Ela não some nunca: mandar diagnóstico sem dizer o que é seria coletar às escondidas.',
+          },
+        ],
+      },
+      {
+        id: 'corrigidos',
+        titulo: 'Corrigidos',
+        resumo: 'Dois problemas antigos, e nenhum dos dois era onde parecia.',
+        cor: '#94a3b8',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <Trash2 size={20} />,
+            titulo: 'Diária apagada podia voltar sozinha',
+            texto: 'Apagar deixava um "túmulo" esperando para subir, e o aparelho não tinha como saber que aquele dia foi apagado enquanto ele não subisse. Se a sincronia trouxesse a versão antiga antes disso, a diária reaparecia na tela. Agora o que está esperando para subir conta como o mais recente, e o apagar vence. Valia para tudo — cena, despesa, ficha — não só para diária.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <MessageCircleQuestion size={20} />,
+            titulo: 'As perguntas de confirmação eram engolidas pelo navegador',
+            texto: 'Este era o "não consigo apagar diárias". Quando o navegador vê várias caixas de confirmação seguidas, ele oferece "impedir que esta página crie mais diálogos" — e a partir daí toda pergunta seguinte responde "cancelar" sozinha, sem aparecer nada na tela. O clique em apagar simplesmente não fazia nada, sem erro nenhum. As 31 perguntas do app saíram da caixa cinza do navegador: agora têm título, dizem o que acontece depois, e o botão tem o nome da ação ("Apagar", "Sair do projeto") em vez de OK e Cancelar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Undo2 size={20} />,
+            titulo: 'O voltar sobe um nível de cada vez',
+            texto: 'Diária → Diárias e Eventos → painel do projeto → sair. Quem estava dentro de uma diária perdia o projeto inteiro com um clique e gastava três para voltar. E sair do projeto, que é a única parada da navegação sem volta fácil, pergunta antes.',
           },
         ],
       },
