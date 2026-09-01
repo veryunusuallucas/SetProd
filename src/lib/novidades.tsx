@@ -3,7 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug,
+  Bell, LogIn, Bug, Send, Mail, Film,
 } from 'lucide-react';
 
 /**
@@ -210,6 +210,116 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.9.0',
+    resumo: <>A diária deixou de ser só um plano: agora ela registra o dia acontecendo.</>,
+    grupos: [
+      {
+        id: 'ciclo',
+        titulo: 'Exportar virou a linha divisória',
+        resumo: 'Antes o plano continuava editável depois de a equipe receber o PDF. Agora não.',
+        cor: '#4cc9f0',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Send size={20} />,
+            titulo: 'Exportar a OD congela o plano',
+            texto: 'No momento em que você exporta, todo mundo está com aquele documento na mão — e o app para de deixar mudar o plano por baixo. Precisou mudar? Volte a rascunho, edite e reexporte: a nova sai marcada v2, v3, para ninguém seguir o papel velho.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Clock size={20} />,
+            titulo: 'O dia começa sozinho na hora da chamada',
+            texto: 'Sem botão de "iniciar o dia" — quem está no set às 6h com café na mão não vai lembrar de apertar nada. Chegou a hora da chamada, a tela vira registro. Saiu também o seletor "Montar / No set": o modo é do dia, não de quem está olhando.',
+          },
+        ],
+      },
+      {
+        id: 'set',
+        titulo: 'O relógio do set',
+        resumo: 'A informação mais valiosa do dia, numa linha só.',
+        cor: 'var(--accent)',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Clock size={20} />,
+            titulo: 'Relógio grande com o atraso do dia',
+            texto: '"09:53 · estamos 45min de atraso · wrap agora às 16:15, planejado 15:30". Verde até 15min, âmbar até 45, vermelho acima — porque meia hora ainda se recupera e uma hora significa que alguma cena vai cair.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'Presença, jornada e ocorrências',
+            texto: 'Chegou, atrasou ou faltou — e os horários de cada um: chegada, início, saída e volta da refeição, fim. Importa para pagamento e jornada. Ao lado entram figuração e stand-ins, rolos de câmera e som, e as ocorrências do dia com os minutos que cada uma custou.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Film size={20} />,
+            titulo: 'O que exatamente saiu de cada cena',
+            texto: 'No ícone de prancheta da cena: oitavos filmados, setups e uma linha para o detalhe — "só a primeira metade da cena, do plano 3 em diante". É o que impede a cena parcial de virar um mistério na hora de reagendar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <IdCard size={20} />,
+            titulo: 'Cada anotação fica com o nome de quem fez',
+            texto: 'A indústria assina o relatório no rodapé. Como cada pessoa entra com a conta dela, dá para fazer melhor: "Cena 4 — filmada · Carla, 09h53". A autoria é por anotação, não por documento.',
+          },
+        ],
+      },
+      {
+        id: 'distribuir',
+        titulo: 'A OD sai do app',
+        resumo: 'Agenda e email, sem ninguém precisar autorizar nada.',
+        cor: '#38bdf8',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Adicionar à agenda',
+            texto: 'Baixa um arquivo que Google, Apple e Outlook abrem — com a diária inteira e cada marco (chamada, refeição, wrap) como compromisso separado. Cena não vira evento, senão a agenda de todo mundo vira uma parede. Tem também o link direto para o Google Agenda.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Mail size={20} />,
+            titulo: 'Enviar a OD por email',
+            texto: 'Para a equipe escalada, já pré-marcada; quem não tem email na ficha aparece num aviso em vez de sumir da lista. Todo mundo em cópia oculta — ninguém recebe a lista de emails dos outros. Precisa de uma configuração no Supabase antes de funcionar; o botão diz isso na tela.',
+          },
+          {
+            tipo: 'novo',
+            icone: <MessageCircleQuestion size={20} />,
+            titulo: 'Link da reunião',
+            texto: 'Cole o link do Meet, Zoom ou Teams e ele entra no evento da agenda e no email. Colado à mão de propósito: criar a sala sozinho exigiria autorização de cada pessoa da equipe no Google.',
+          },
+        ],
+      },
+      {
+        id: 'dpr2',
+        titulo: 'O DPR ficou completo',
+        resumo: 'Plano contra realidade, campo por campo.',
+        cor: '#f87171',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'O relatório do dia agora traz tudo',
+            texto: 'Horário previsto contra real linha por linha, cenas filmadas com páginas e setups, as não filmadas com o motivo, a jornada de cada pessoa, figuração, rolos, ocorrências com os minutos perdidos, e quem preencheu cada coisa.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Lock size={20} />,
+            titulo: 'Cena que não saiu agora pede a etiqueta E a frase',
+            texto: 'Só a etiqueta ("chuva") diz a categoria e perde o caso. Agora o app pede também a explicação em uma linha — "adiada por problema de iluminação, será filmada amanhã de manhã" — e é ela que vai decidir o dia seguinte. Escrever agora, no wrap, é a única hora em que alguém ainda lembra.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <PieChart size={20} />,
+            titulo: 'O ritmo agora fala em páginas também',
+            texto: 'O aviso de "faltam N diárias" passou a dizer quantas páginas saíram por dia, quando o roteiro está decupado. Cinco páginas por dia é a referência da indústria, e o número faz o AD reconhecer o ritmo do próprio filme.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.8.0',
     resumo: <>A tela da diária foi refeita em volta de uma coisa só: a linha do dia.</>,

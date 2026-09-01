@@ -15,14 +15,20 @@ import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
+import { oitavosParaPaginas } from '../lib/decupagem';
 import { marcarCena, relatorioDoDia } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
 import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, emMinutos } from '../lib/linhaDoDia';
+import { estadoDa } from '../lib/sincronizaOD';
+import { faseDoDia } from '../lib/faseDoDia';
 import { ResumoEquipamento } from '../components/ResumoEquipamento';
 import { CardDeLocacao } from '../components/CardDeLocacao';
 import { AvisoDeRitmo } from '../components/AvisoDeRitmo';
+import { RelogioDoSet } from '../components/RelogioDoSet';
+import { RegistroDoSet } from '../components/RegistroDoSet';
+import { DistribuirOD } from '../components/DistribuirOD';
 import { Colapsavel } from '../components/ui/Colapsavel';
 import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
@@ -177,6 +183,17 @@ export function DiariaModule() {
   if (!diaria) return <div className="screen-padding">Carregando Diária...</div>;
 
   const escalados = perfis.filter(p => (diaria.equipe_escalada || []).includes(p.id));
+
+  /*
+    A FASE DO DIA (Parte 2, §1).
+
+    Não é escolha de ninguém: exportar a OD é a linha divisória, e a chamada é o
+    que liga o registro. Ver `lib/faseDoDia.ts` — a razão de o seletor
+    "Montar / No set" ter sido removido está escrita lá.
+  */
+  const fase = faseDoDia(diaria);
+  const dia = calcularDia(montarLinhaDoDia(dividido ? { linha_do_tempo: frente?.linha_do_tempo, cena_ids: frente?.cena_ids || [] } : diaria), dividido ? frente?.chamada : diaria.chamada, id => cenasGlobais.find(c => c.id === id));
+  const atrasoDoDia = calcularAtraso(dia);
 
   /** Quem aparece na aba aberta. Sem divisão, é o dia inteiro. */
   const escaladosDaVisao = dividido
@@ -498,9 +515,40 @@ export function DiariaModule() {
 
     const linhaCena = (c: typeof cenasDaDiaria[number]) => {
       const reg = registrosDoDia.find(x => x.cena_id === c.id);
+      const detalhes = [
+        reg?.oitavos_gravados !== undefined ? `${oitavosParaPaginas(reg.oitavos_gravados)} pág.` : '',
+        reg?.setups ? `${reg.setups} setup${reg.setups > 1 ? 's' : ''}` : '',
+        reg?.som_wild ? 'som wild' : '',
+      ].filter(Boolean).join(' · ');
+
       return `<li><b>Cena ${c.numero}</b> — ${c.descricao} <span class="muted">(${(c.ambiente || 'ext').toUpperCase()} / ${c.periodo || 'dia'})</span>${
-        reg?.motivo ? ` — <b class="alerta">${reg.motivo}</b>` : ''
-      }${reg?.observacao ? ` <span class="muted">${reg.observacao}</span>` : ''}</li>`;
+        detalhes ? ` <span class="muted">[${detalhes}]</span>` : ''
+      }${reg?.motivo ? ` — <b class="alerta">${reg.motivo}</b>` : ''
+      }${reg?.cobertura ? `<br><span class="muted">${reg.cobertura}</span>` : ''
+      }${reg?.observacao ? `<br><span class="muted">${reg.observacao}</span>` : ''}${
+        assinatura(reg?.registrado_por, reg?.atualizado_em || reg?.registrado_em)
+      }</li>`;
+    };
+
+    /*
+      A ASSINATURA AUTOMÁTICA (spec §3.4).
+
+      A indústria resolve isso com um campo de assinatura no rodapé do relatório.
+      Como cada pessoa entra com a conta dela, dá para fazer melhor: a autoria é
+      por anotação, e não por documento. "Cena 4 — filmada · Mari, 14h32"
+      responde uma pergunta que uma assinatura no pé da página nunca responde.
+    */
+    const nomeDoPerfil = (id?: string) => {
+      if (!id) return null;
+      const pf = perfis.find(x => x.id === id);
+      return pf ? `${pf.nome} ${pf.sobrenome || ''}`.trim() : null;
+    };
+
+    const assinatura = (perfilId?: string, quando?: number) => {
+      const nome = nomeDoPerfil(perfilId);
+      if (!nome) return '';
+      const hora = quando ? new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      return ` <span class="muted" style="font-size:11px">— ${nome}${hora ? `, ${hora}` : ''}</span>`;
     };
 
     /*
@@ -512,6 +560,48 @@ export function DiariaModule() {
       app de fato sabe — dizer "faltou" seria afirmar mais do que se pode.
     */
     const semConfirmar = escalados.filter(p => !(diaria.confirmacoes || []).includes(p.id));
+
+    /*
+      A JORNADA DE CADA UM (spec §3.2).
+
+      Sai como tabela porque é o pedaço do relatório que alguém vai conferir
+      linha a linha na hora de pagar. Quem não teve nada marcado não some: sai
+      com traços, e a lacuna fica visível — um nome ausente da tabela pareceria
+      alguém que não estava escalado.
+    */
+    const presencas = diaria.presencas || {};
+    const ROTULO_PRESENCA: Record<string, string> = { chegou: 'Chegou', atrasado: 'Atrasou', faltou: 'Faltou' };
+    const linhasJornada = escalados.map(pf => {
+      const r = presencas[pf.id];
+      const cel = (v?: string) => v || '<span class="muted">—</span>';
+      return `<tr>
+        <td>${pf.nome} ${pf.sobrenome || ''}<br><span class="muted" style="font-size:11px">${pf.funcao || 'Equipe'}</span></td>
+        <td class="${r?.status === 'faltou' ? 'alerta' : ''}">${r ? ROTULO_PRESENCA[r.status] : '<span class="muted">sem marcação</span>'}</td>
+        <td>${cel(r?.chegada)}</td>
+        <td>${cel(r?.inicio)}</td>
+        <td>${cel(r?.refeicao_saida)} – ${cel(r?.refeicao_volta)}</td>
+        <td>${cel(r?.fim)}</td>
+        <td>${r?.nota || ''}${assinatura(r?.registrado_por, r?.registrado_em)}</td>
+      </tr>`;
+    }).join('');
+
+    const faltaram = escalados.filter(pf => presencas[pf.id]?.status === 'faltou');
+
+    const ocorrencias = diaria.ocorrencias || [];
+    const ROTULO_OCORRENCIA: Record<string, string> = {
+      atraso: 'Atraso', equipamento: 'Equipamento', incidente: 'Incidente',
+      clima: 'Clima', locacao: 'Locação', transporte: 'Transporte',
+    };
+    const minutosPerdidos = ocorrencias.reduce((a, o) => a + (o.minutos_perdidos || 0), 0);
+    const linhasOcorrencias = ocorrencias.map(o => `<tr>
+      <td style="white-space:nowrap">${o.hora || '—'}</td>
+      <td><b>${ROTULO_OCORRENCIA[o.tipo] || o.tipo}</b></td>
+      <td>${o.minutos_perdidos ? `${o.minutos_perdidos}min` : '<span class="muted">—</span>'}</td>
+      <td>${o.descricao}${assinatura(o.registrado_por, o.registrado_em)}</td>
+    </tr>`).join('');
+
+    const fig = diaria.figuracao;
+    const temFiguracao = Boolean(fig && (fig.quantidade || fig.chamada || fig.wrap || fig.notas));
 
     const estouro = limiteGasto > 0 && totalGasto > limiteGasto;
 
@@ -554,9 +644,22 @@ export function DiariaModule() {
       ${relatorio.naoGravadas.length ? `<h2>Cenas agendadas e NÃO filmadas</h2><ul>${relatorio.naoGravadas.map(linhaCena).join('')}</ul>
         <p class="muted" style="font-size:12px">Voltam ao stripboard como pendentes, prontas para reagendar.</p>` : ''}
 
-      <h2>Equipe do dia</h2>
-      <ul>${escalados.map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔' : ''}</li>`).join('')}</ul>
-      ${semConfirmar.length ? `<p class="alerta"><b>Sem confirmação de presença:</b> ${semConfirmar.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}.</p>` : ''}
+      ${(diaria.rolos?.camera || diaria.rolos?.som) ? `<h2>Rolos</h2>
+        <p>${diaria.rolos?.camera ? `<b>Câmera:</b> ${diaria.rolos.camera}` : ''}${diaria.rolos?.camera && diaria.rolos?.som ? ' &nbsp;·&nbsp; ' : ''}${diaria.rolos?.som ? `<b>Som:</b> ${diaria.rolos.som}` : ''}</p>` : ''}
+
+      <h2>Equipe — presença e jornada</h2>
+      <table>
+        <tr><th>Pessoa</th><th>Presença</th><th>Chegada</th><th>Início</th><th>Refeição</th><th>Fim</th><th>Nota</th></tr>
+        ${linhasJornada}
+      </table>
+      ${faltaram.length ? `<p class="alerta"><b>Faltaram:</b> ${faltaram.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}.</p>` : ''}
+      ${semConfirmar.length ? `<p class="muted" style="font-size:12px">Sem confirmação de presença no app: ${semConfirmar.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}.</p>` : ''}
+
+      ${temFiguracao ? `<h2>Figuração e stand-ins</h2>
+        <p>${fig!.quantidade !== undefined ? `<b>${fig!.quantidade}</b> pessoa(s)` : ''}${fig!.chamada ? ` · chamada ${fig!.chamada}` : ''}${fig!.wrap ? ` · liberação ${fig!.wrap}` : ''}${fig!.notas ? `<br>${fig!.notas}` : ''}</p>` : ''}
+
+      ${linhasOcorrencias ? `<h2>Ocorrências${minutosPerdidos ? ` — ${minutosPerdidos}min perdidos` : ''}</h2>
+        <table><tr><th>Hora</th><th>Tipo</th><th>Perdido</th><th>O que aconteceu</th></tr>${linhasOcorrencias}</table>` : ''}
 
       <h2>Prestação de contas</h2>
       ${linhasDespesas
@@ -566,14 +669,33 @@ export function DiariaModule() {
 
       ${diaria.observacoes ? `<h2>Ocorrências e observações</h2><p>${diaria.observacoes.replace(/\n/g, '<br>')}</p>` : ''}
 
-      <p class="muted" style="margin-top:40px;font-size:11px">Gerado pelo SetProd em ${new Date().toLocaleString('pt-BR')}. Os dados permanecem salvos no projeto.</p>
+      <h2>Assinaturas</h2>
+      <p class="muted" style="font-size:12px">
+        Cada anotação deste relatório traz quem a fez, ao lado dela. Este documento
+        foi gerado por <b>${nomeDoPerfil(meuPerfilId || undefined) || 'um administrador do projeto'}</b>
+        em ${new Date().toLocaleString('pt-BR')}, a partir do que a produção registrou durante o dia.
+        A OD que a equipe recebeu foi a versão ${diaria.versao_od || 1}.
+      </p>
+
+      <p class="muted" style="margin-top:40px;font-size:11px">Gerado pelo SetProd. Os dados permanecem salvos no projeto.</p>
       </body></html>`;
 
     if (!imprimirHtml(html)) baixarHtml(html, `dpr-diaria-${diaria.numero}`);
   };
 
   // ---- Exportar OD em PDF (via impressão do navegador) ----
-  const exportarPDF = async () => {
+  /**
+   * Monta o documento da Ordem do Dia.
+   *
+   * Separado da impressão porque agora ele tem dois destinos: a caixa de
+   * impressão do navegador e o corpo do email. Um só gerador é o que garante
+   * que o papel e o email digam a mesma coisa — duas montagens divergem no
+   * primeiro campo novo que alguém acrescenta em um lado só.
+   *
+   * `completo` decide se sai com `<html>` em volta. Cliente de email arranca a
+   * casca e a folha de estilo, então para lá vai só o miolo.
+   */
+  const montarHtmlOD = (completo = true, versaoForcada?: number) => {
     const nomeLoc = idsDasLocacoesDoDia.map(id => locacoes.find(l => l.id === id)).filter(Boolean);
     const linhaEquipe = escalados.map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔ confirmado' : ''}</li>`).join('');
     /*
@@ -601,12 +723,18 @@ export function DiariaModule() {
       return `<tr><td style="padding:4px 12px;font-weight:bold">${c.veiculo || 'Veículo'}</td><td style="padding:4px 12px">${c.motorista || '-'}</td><td style="padding:4px 12px">${c.ponto_encontro || '-'}</td><td style="padding:4px 12px;font-weight:bold">${c.saida || '-'}</td><td style="padding:4px 12px;font-size:12px">${pNomes}</td></tr>`;
     }).join('');
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>OD - Diária ${diaria.numero}</title>
-      <style>body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:800px;margin:0 auto}
-      h1{margin:0}h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:24px;font-size:15px;text-transform:uppercase}
-      table{border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px}li{margin:2px 0}.muted{color:#666}</style></head><body>
-      <h1>${projeto?.nome || 'Produção'}</h1>
-      <div class="muted">Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
+    /*
+      A versão pode vir de fora porque o `useLiveQuery` ainda não devolveu a
+      diária nova quando o documento é montado logo depois do `update`. Ler
+      `diaria.versao_od` ali imprimiria "v1" no papel que acabou de virar v2 —
+      e o número no cabeçalho é justamente o que impede alguém de seguir o PDF
+      velho.
+    */
+    const versao = versaoForcada ?? diaria.versao_od ?? 1;
+    const corpo = `
+      ${completo ? `<h1>${projeto?.nome || 'Produção'}</h1>
+      <div class="muted">Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')}${versao > 1 ? ` (v${versao})` : ''} · ${formataData(diaria.data)}</div>` : ''}
+      ${diaria.link_reuniao && completo ? `<p><b>Reunião:</b> <a href="${diaria.link_reuniao}">${diaria.link_reuniao}</a></p>` : ''}
       ${/*
           A previsão impressa traz TODOS os sets do dia, com o nome de cada um.
           Sem o nome, a equipe lia uma previsão sem saber de onde ela era — e
@@ -646,12 +774,44 @@ export function DiariaModule() {
             </div>
           `;
         }).join('')}
-      ` : ''}
-      </body></html>`;
+      ` : ''}`;
 
-    if (!imprimirHtml(html)) baixarHtml(html, `ordem-do-dia-${diaria.numero}`);
+    if (!completo) return corpo;
+
+    return `<!doctype html><html><head><meta charset="utf-8"><title>OD - Diária ${diaria.numero}${versao > 1 ? ` v${versao}` : ''}</title>
+      <style>body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:800px;margin:0 auto}
+      h1{margin:0}h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:24px;font-size:15px;text-transform:uppercase}
+      table{border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px}li{margin:2px 0}.muted{color:#666}</style></head><body>${corpo}</body></html>`;
+  };
+
+  /**
+   * Exportar É a linha divisória (spec §1.1).
+   *
+   * ⚠️ ESTE BOTÃO NÃO SÓ IMPRIME — ELE PUBLICA.
+   *
+   * Antes ele era inofensivo: gerava um papel e ia embora. Só que gerar o papel
+   * é exatamente o momento em que o plano deixa de ser rascunho: a partir dali
+   * a equipe está com aquele documento na mão, e mudar o plano por baixo produz
+   * a pior situação possível — o set seguindo um horário e o app mostrando
+   * outro, sem ninguém saber qual vale.
+   *
+   * Reexportar sobe a versão em vez de repetir. Voltar a rascunho continua
+   * possível (é a faixa do stripboard que faz isso); o que não é possível é
+   * mudar o plano fingindo que ele nunca saiu.
+   */
+  const exportarPDF = async () => {
+    const versaoNova = (diaria.versao_od || 0) + 1;
+    await db.diarias.update(diariaId!, {
+      versao_od: versaoNova,
+      data_export: Date.now(),
+      ...(estadoDa(diaria) === 'rascunho' ? { estado: 'publicada' as const, data_publicacao: Date.now() } : {}),
+    });
+
+    const html = montarHtmlOD(true, versaoNova);
+
+    if (!imprimirHtml(html)) baixarHtml(html, `ordem-do-dia-${diaria.numero}-v${versaoNova}`);
     setExportModalAberto(false);
-    if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Exportou OD da Diária ${diaria.numero}`);
+    if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Exportou a OD da Diária ${diaria.numero} (v${versaoNova})`);
   };
 
   return (
@@ -687,7 +847,7 @@ export function DiariaModule() {
         <AIButton onClick={() => setGeradorAberto(true)}>Gerar OD com IA</AIButton>
 
         <button onClick={() => setExportModalAberto(true)} className="btn-icon" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', width: 'auto', padding: '0 14px', }}>
-          <FileDown size={16} /> Exportar OD
+          <FileDown size={16} /> {estadoDa(diaria) === 'rascunho' ? 'Exportar e publicar' : `Reexportar (v${(diaria.versao_od || 1) + 1})`}
         </button>
 
         <button
@@ -704,6 +864,18 @@ export function DiariaModule() {
           dashboard: quem está montando o dia de amanhã é exatamente quem pode
           fazer alguma coisa a respeito. Some sozinho quando não há atraso. */}
       <AvisoDeRitmo projetoId={projetoId!} />
+
+      {/*
+        O relógio só aparece no dia — não na véspera nem depois de fechada.
+
+        Um relógio grande numa diária de daqui a três semanas não informa nada e
+        rouba o lugar do cronograma, que é o que se está montando naquele
+        momento. Ele entra quando a OD já saiu e a data é hoje (ou já passou e a
+        diária continua aberta).
+      */}
+      {fase.ativo && (
+        <RelogioDoSet fase={fase} atraso={atrasoDoDia} wrap={atrasoDoDia.wrapPrevisto} />
+      )}
 
       {diaria.fechada && (
         <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '3px solid var(--color-success)' }}>
@@ -788,6 +960,7 @@ export function DiariaModule() {
 
           <LinhaDoDia
             diaria={diaria}
+            modo={fase.modo}
             visao={visaoDoDia}
             chamada={chamadaDaVisao}
             aoGravar={gravarLinha}
@@ -799,12 +972,41 @@ export function DiariaModule() {
             planosPorCena={planosDaCena}
           />
 
+          {/*
+            O registro do dia (presença, jornada, figuração, rolos, ocorrências)
+            vem logo depois da linha, e só quando há dia para registrar. Antes da
+            exportação ele mostraria campos que ninguém tem como preencher.
+          */}
+          {fase.modo === 'interativo' && (
+            <RegistroDoSet
+              diaria={diaria}
+              escalados={escaladosDaVisao}
+              meuPerfilId={meuPerfilId || undefined}
+              podeMarcar={podeMarcarODia}
+            />
+          )}
+
           {/* Shot List (cenas e planos decupados) */}
           <ShotList diaria={diaria as any} locacoes={locacoes} />
         </div>
 
         {/* ---- NÍVEL 3: cartões de apoio ---- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0 }}>
+
+          {/* Só existe depois de exportada: antes disso não há o que distribuir,
+              e mandar rascunho para a equipe é o problema que o congelamento na
+              exportação existe para evitar. */}
+          {fase.modo === 'interativo' && (
+            <DistribuirOD
+              diaria={diaria}
+              cenas={cenasGlobais}
+              escalados={escaladosDaVisao}
+              nomeDoProjeto={projeto?.nome || 'Produção'}
+              locais={locsDaDiaria.map(l => l.nome)}
+              montarHtmlOD={montarHtmlOD}
+              podeEnviar={podeMarcarODia}
+            />
+          )}
 
           {/* Locação: o exemplo-mestre do agrupamento por afinidade (§9.1).
               Lugar, tempo daquele lugar e hospital daquele lugar, juntos. */}
@@ -1181,7 +1383,34 @@ export function DiariaModule() {
       {exportModalAberto && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="card" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--bg-surface)' }}>
-            <h2 className="text-lg font-bold mb-4">Exportar Ordem do Dia</h2>
+            <h2 className="text-lg font-bold" style={{ marginBottom: '8px' }}>
+              {estadoDa(diaria) === 'rascunho' ? 'Exportar e publicar' : `Reexportar como v${(diaria.versao_od || 1) + 1}`}
+            </h2>
+
+            {/*
+              O aviso não é formalidade: este botão MUDA O ESTADO da diária.
+
+              Quem clica achando que só vai imprimir precisa saber que, a partir
+              dali, o plano congela e a tela vira registro. Descobrir isso depois
+              — com o cronograma que não deixa mais editar — seria a pior forma
+              de aprender.
+            */}
+            <p className="text-sm text-secondary" style={{ marginBottom: '18px', lineHeight: 1.6 }}>
+              {estadoDa(diaria) === 'rascunho' ? (
+                <>
+                  Ao exportar, o plano <b>congela</b> e a diária passa a registrar o
+                  que acontecer. Para mudar o plano depois, volte a rascunho na faixa
+                  do stripboard e reexporte — a nova versão sai numerada.
+                </>
+              ) : (
+                <>
+                  A equipe já recebeu a versão {diaria.versao_od || 1}. A nova sai
+                  marcada como <b>v{(diaria.versao_od || 1) + 1}</b> no cabeçalho,
+                  para ninguém seguir o papel antigo.
+                </>
+              )}
+            </p>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               {Object.keys(exportConfig).map(key => (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
@@ -1198,7 +1427,7 @@ export function DiariaModule() {
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => setExportModalAberto(false)} className="text-sm font-bold" style={{ padding: '8px 16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}>Cancelar</button>
               <button onClick={exportarPDF} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileDown size={16} /> Gerar PDF
+                <FileDown size={16} /> {estadoDa(diaria) === 'rascunho' ? 'Exportar e publicar' : 'Gerar nova versão'}
               </button>
             </div>
           </div>

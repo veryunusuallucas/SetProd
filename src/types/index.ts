@@ -321,6 +321,43 @@ export interface Diaria {
   chamada?: string;
 
   /**
+   * Qual versão da OD está na mão da equipe.
+   *
+   * Sobe a cada exportação. Existe porque voltar ao rascunho e reexportar é
+   * legítimo — o plano muda —, mas aí passam a existir dois PDFs iguais na
+   * caixa de entrada de todo mundo. O número no cabeçalho do documento é o que
+   * permite alguém perceber que está lendo o antigo.
+   */
+  versao_od?: number;
+  data_export?: number;
+
+  /**
+   * Link da reunião (Meet, Zoom), colado à mão.
+   *
+   * Colado, e não gerado: criar um Meet exige a API do Google Calendar, com
+   * OAuth e autorização de cada pessoa. Gerar o link à mão leva dez segundos e
+   * não pede permissão de ninguém.
+   */
+  link_reuniao?: string;
+
+  /** Presença e jornada de cada pessoa escalada, por `perfil_id`. */
+  presencas?: Record<string, PresencaMembro>;
+
+  /** O que deu errado no dia. */
+  ocorrencias?: Ocorrencia[];
+
+  /** Figuração e stand-ins — contagem e horários, não uma lista de nomes. */
+  figuracao?: { quantidade?: number; chamada?: string; wrap?: string; notas?: string };
+
+  /**
+   * Rolos de câmera e som do dia, como texto livre ("A001–A004").
+   *
+   * Do dia, e não da cena: é assim que a assistência de câmera anota e é assim
+   * que o relatório é lido. Por cena daria uma precisão que ninguém preenche.
+   */
+  rolos?: { camera?: string; som?: string };
+
+  /**
    * O dia dividido em frentes, por grupo/equipe (spec §3).
    *
    * ⚠️ NÃO EXISTE UM BOTÃO "DIVIDIR DIÁRIA", E ISSO É O DESENHO, NÃO UM ATRASO.
@@ -421,6 +458,53 @@ export interface Motorista {
   cnh?: string;
   perfil_id?: string; // quando o motorista também é membro da equipe
   obs?: string;
+}
+
+/**
+ * Como cada pessoa escalada apareceu no dia.
+ *
+ * O app tinha só `confirmacoes`, uma lista de quem clicou "vou". Isso é
+ * intenção, não presença — e o relatório de produção precisa da segunda: quem
+ * chegou, quem chegou tarde e quem não veio muda pagamento, escala do dia
+ * seguinte e responsabilidade.
+ *
+ * Os horários individuais existem pela mesma razão prática: jornada e refeição
+ * são o que a produção usa para calcular hora extra e estouro de intervalo.
+ */
+export type StatusPresenca = 'chegou' | 'atrasado' | 'faltou';
+
+export interface PresencaMembro {
+  status: StatusPresenca;
+  /** Hora em que a pessoa chegou ao set. */
+  chegada?: string;
+  inicio?: string;
+  fim?: string;
+  refeicao_saida?: string;
+  refeicao_volta?: string;
+  nota?: string;
+  /** `perfil_id` de quem marcou — a assinatura automática da §3.4. */
+  registrado_por?: string;
+  registrado_em?: number;
+}
+
+export type TipoOcorrencia = 'atraso' | 'equipamento' | 'incidente' | 'clima' | 'locacao' | 'transporte';
+
+/**
+ * O que deu errado, e quanto custou.
+ *
+ * `minutos_perdidos` é opcional de propósito: nem toda ocorrência custa tempo
+ * medível, e obrigar um número faria as pessoas inventarem um. Quando ele
+ * existe, o DPR consegue somar — "o dia perdeu 95min em três ocorrências" — e
+ * essa soma é a explicação do atraso que ninguém consegue reconstruir depois.
+ */
+export interface Ocorrencia {
+  id: string;
+  tipo: TipoOcorrencia;
+  hora?: string;
+  descricao: string;
+  minutos_perdidos?: number;
+  registrado_por?: string;
+  registrado_em: number;
 }
 
 export interface HorarioOD {
@@ -601,6 +685,15 @@ export interface RegistroCena {
   /** Quanto da cena saiu, em oitavos de página. */
   oitavos_gravados?: number;
   setups?: number;
+  /**
+   * Notas de cobertura: o que exatamente saiu da cena.
+   *
+   * "Só filmamos a primeira metade da 20b", "som wild do ambiente". É o que
+   * impede a cena parcial de virar um mistério na hora de reagendar.
+   */
+  cobertura?: string;
+  /** Houve som wild (gravado fora da imagem) nesta cena. */
+  som_wild?: boolean;
   registrado_em: number;
   /** `perfil_id` de quem marcou — é o que faz o relatório valer como documento. */
   registrado_por?: string;

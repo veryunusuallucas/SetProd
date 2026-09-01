@@ -50,21 +50,26 @@ export function FechamentoDiaria({
   const r = relatorioDoDia(cenas, registros);
 
   /**
-   * O que ficou para trás e ainda não tem motivo.
+   * O que ficou para trás e ainda não está explicado.
    *
-   * ⚠️ O MOTIVO É OBRIGATÓRIO, E ESTE É O ÚNICO CAMPO DO APP QUE TRANCA UM BOTÃO.
+   * ⚠️ SÃO DOIS CAMPOS OBRIGATÓRIOS, E ESTE É O ÚNICO LUGAR DO APP QUE TRANCA
+   * UM BOTÃO.
    *
-   * "Cena 12 não gravada" não serve para decidir nada — a decisão seguinte
-   * depende do porquê: chuva reagenda para o mesmo set, elenco reagenda para a
-   * agenda da pessoa, tempo significa que o dia foi mal dimensionado. Sem o
-   * motivo, a repescagem vira uma lista de dívidas sem explicação, e daqui a
-   * duas semanas ninguém lembra.
+   * A ETIQUETA (chuva, luz, elenco…) é o que o app consegue somar depois:
+   * "três dias perdidos por chuva" só existe porque alguém clicou na etiqueta.
    *
-   * É também o campo em que a indústria insiste no DPR, e pela mesma razão.
+   * A FRASE é o que a pessoa vai ler daqui a um mês. "Cena 42 não filmada" não
+   * serve para decidir nada; "Cena 42 adiada por problema de iluminação, será
+   * filmada amanhã de manhã" decide o dia seguinte inteiro. A etiqueta sozinha
+   * diz a categoria e perde o caso.
+   *
+   * Exigir as duas parece pesado, e é — de propósito. O momento de escrever é
+   * agora, no wrap, com o dia fresco. Amanhã ninguém lembra, e a repescagem
+   * vira uma lista de dívidas sem explicação.
    */
-  const semMotivo = [...r.naoGravadas, ...r.parciais].filter(cena => {
+  const naoExplicadas = [...r.naoGravadas, ...r.parciais].filter(cena => {
     const reg = registros.find(x => x.cena_id === cena.id);
-    return !reg?.motivo;
+    return !reg?.motivo || !reg?.observacao?.trim();
   });
   const cumprimento = r.oitavosPrevistos > 0
     ? Math.round((r.oitavosGravados / r.oitavosPrevistos) * 100)
@@ -82,7 +87,7 @@ export function FechamentoDiaria({
   };
 
   const confirmar = async () => {
-    if (semMotivo.length > 0) return;
+    if (naoExplicadas.length > 0) return;
     setFechando(true);
     aoFechar(notas.trim());
   };
@@ -157,7 +162,7 @@ export function FechamentoDiaria({
             </div>
             <p className="text-xs text-muted" style={{ marginBottom: '12px', lineHeight: 1.5 }}>
               Marque agora — depois ninguém lembra. Se deixar em branco, elas ficam
-              como não gravadas.
+              como não gravadas, e aí vão pedir a explicação abaixo.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -203,7 +208,7 @@ export function FechamentoDiaria({
                     style={{
                       padding: '10px 12px', borderRadius: '10px',
                       background: 'var(--bg-primary)',
-                      border: `1px solid ${reg?.motivo ? 'var(--border-light)' : 'var(--color-danger)'}`,
+                      border: `1px solid ${reg?.motivo && reg?.observacao?.trim() ? 'var(--border-light)' : 'var(--color-danger)'}`,
                     }}
                   >
                     <div className="text-sm" style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
@@ -237,25 +242,32 @@ export function FechamentoDiaria({
                     </div>
 
                     {/*
-                      O texto livre fica ao lado da etiqueta, não no lugar dela.
+                      O texto livre fica ao lado da etiqueta, não no lugar dela —
+                      e é obrigatório junto com ela. O placeholder faz metade do
+                      trabalho: mostrar uma frase boa é o jeito barato de
+                      conseguir outra frase boa, em vez de "atrasou".
+                    */}
+                    {/*
+                      Controlado, e gravando a cada tecla — NÃO no `onBlur`.
 
-                      A etiqueta é o que o app consegue somar depois ("três dias
-                      perdidos por chuva"); a frase é o que a pessoa vai ler
-                      daqui a um mês. "Company move levou 90min a mais por
-                      estacionamento e carga" vale muito mais que "atrasou".
+                      Este campo destrava o botão de fechar. Com `onBlur`, o
+                      botão desabilitado não é focável: clicar nele não tira o
+                      foco do input, o texto nunca é gravado, e a pessoa fica
+                      batendo num botão morto sem entender por quê. Um campo que
+                      controla um botão precisa valer no instante em que é
+                      digitado.
                     */}
                     <input
-                      defaultValue={reg?.observacao || ''}
-                      onBlur={async e => {
-                        if (reg && (reg.observacao || '') !== e.target.value) {
-                          await db.registros_cena.update(reg.id, { observacao: e.target.value || undefined });
-                        }
+                      value={reg?.observacao || ''}
+                      onChange={e => {
+                        if (reg) void db.registros_cena.update(reg.id, { observacao: e.target.value || undefined });
                       }}
-                      placeholder="O que aconteceu, com detalhe (opcional)"
+                      placeholder="Ex: adiada por problema de iluminação, será filmada amanhã de manhã"
                       className="text-xs"
                       style={{
                         width: '100%', marginTop: '8px', padding: '6px 8px', borderRadius: '8px',
-                        border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
+                        border: `1px solid ${reg?.observacao?.trim() ? 'var(--border-light)' : 'var(--color-danger)'}`,
+                        background: 'var(--bg-surface)',
                         color: 'var(--text-primary)',
                       }}
                     />
@@ -290,17 +302,17 @@ export function FechamentoDiaria({
           <button
             className="btn btn-primary"
             onClick={confirmar}
-            disabled={fechando || semMotivo.length > 0}
-            style={{ flex: 2, justifyContent: 'center', opacity: semMotivo.length > 0 ? 0.5 : 1 }}
-            title={semMotivo.length > 0 ? 'Falta dizer por que cada cena não saiu' : undefined}
+            disabled={fechando || naoExplicadas.length > 0}
+            style={{ flex: 2, justifyContent: 'center', opacity: naoExplicadas.length > 0 ? 0.5 : 1 }}
+            title={naoExplicadas.length > 0 ? 'Falta explicar por que cada cena não saiu' : undefined}
           >
             <Archive size={16} /> {fechando ? 'Fechando…' : 'Fechar e gerar o DPR'}
           </button>
         </div>
 
-        <p className="text-xs" style={{ marginTop: '10px', textAlign: 'center', color: semMotivo.length > 0 ? 'var(--color-danger)' : 'var(--text-muted)' }}>
-          {semMotivo.length > 0
-            ? `Falta o motivo de ${semMotivo.map(c => `Cena ${c.numero}`).join(', ')}.`
+        <p className="text-xs" style={{ marginTop: '10px', textAlign: 'center', lineHeight: 1.5, color: naoExplicadas.length > 0 ? 'var(--color-danger)' : 'var(--text-muted)' }}>
+          {naoExplicadas.length > 0
+            ? `Falta a etiqueta e a explicação de ${naoExplicadas.map(c => `Cena ${c.numero}`).join(', ')}.`
             : 'A diária pode ser reaberta depois. Nada é apagado.'}
         </p>
       </motion.div>
