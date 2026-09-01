@@ -3,7 +3,7 @@ import {
   UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare,
+  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, FileText,
 } from 'lucide-react';
 
 /**
@@ -210,6 +210,23 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.11.2',
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <Bug size={20} />,
+        titulo: 'Bug, sugestão e dúvida agora têm cor',
+        texto: 'Vermelho, verde e azul — as mesmas do resto do app. Antes os três acendiam em amarelo, então a cor só dizia "este está selecionado", que a borda já dizia. O ícone lá em cima acompanha, para a escolha continuar visível depois que você rolou a tela para escrever.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <FileText size={20} />,
+        titulo: 'O "vai junto" virou Informações avançadas, recolhido',
+        texto: 'A lista do que segue com a mensagem ocupava um terço da janela. Agora fica fechada, com o número do lado — "4 itens vão junto" —, e abre com um toque. Ela não some nunca: mandar diagnóstico sem dizer o que é seria coletar às escondidas.',
+      },
+    ],
+  },
   {
     versao: '4.11.1',
     itens: [
