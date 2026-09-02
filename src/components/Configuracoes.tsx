@@ -6,6 +6,7 @@ import { Save, Trash2, Bug, Info, X, ShieldCheck } from 'lucide-react';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
 import type { Projeto } from '../types';
+import { CampoData } from './ui/CampoData';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
@@ -132,10 +133,10 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
             </CampoProjeto>
             <div style={{ display: 'flex', gap: '12px' }}>
               <CampoProjeto label="Início">
-                <input type="date" value={form.data_inicio || ''} onChange={e => setForm({ ...form, data_inicio: e.target.value })} />
+                <CampoData value={form.data_inicio || ''} onChange={d => setForm({ ...form, data_inicio: d })} />
               </CampoProjeto>
               <CampoProjeto label="Fim">
-                <input type="date" value={form.data_fim || ''} onChange={e => setForm({ ...form, data_fim: e.target.value })} />
+                <CampoData value={form.data_fim || ''} onChange={d => setForm({ ...form, data_fim: d })} />
               </CampoProjeto>
             </div>
             <CampoProjeto label="Observações">

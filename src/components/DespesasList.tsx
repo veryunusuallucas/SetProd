@@ -8,6 +8,7 @@ import { useRole } from '../hooks/useRole';
 import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '../lib/documentos';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { useArquivo } from '../hooks/useArquivo';
+import { CampoData } from './ui/CampoData';
 
 /**
  * As categorias de gasto de uma produção.
@@ -367,7 +368,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <input placeholder="Descrição (ex: Almoço da Equipe)" value={descricao} onChange={e => setDescricao(e.target.value)} required />
             <input type="text" placeholder="Valor (R$)" value={valor} onChange={e => setValor(formatCurrency(e.target.value))} required />
-            <input type="date" value={dataOcorrencia} onChange={e => setDataOcorrencia(e.target.value)} />
+            <CampoData value={dataOcorrencia} onChange={setDataOcorrencia} />
 
             {/* Categoria em chips */}
             <div>

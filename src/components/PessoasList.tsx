@@ -16,6 +16,7 @@ import { RelatorioTransversal } from './RelatorioTransversal';
 import { useLayoutContext } from '../pages/ProjectLayout';
 import { montarSchemaFicha, validarObrigatorios, valoresParaPerfil } from '../lib/camposFicha';
 import { confirmar } from './ui/Confirmacao';
+import { CampoData } from './ui/CampoData';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -662,7 +663,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <input placeholder={ph('telefone', 'Telefone')} value={telefone} onChange={e => setTelefone(e.target.value)} style={{ flex: 1 }} />
-                      <input placeholder={ph('data_nascimento', 'Data de Nascimento')} type="date" value={nascimento} onChange={e => setNascimento(e.target.value)} style={{ flex: 1 }} />
+                      <CampoData value={nascimento} onChange={setNascimento} style={{ flex: 1 }} />
                     </div>
                     <input placeholder={ph('email', 'E-mail')} type="email" value={email} onChange={e => setEmail(e.target.value)} />
                     <input placeholder={ph('endereco', 'Endereço Completo')} value={endereco} onChange={e => setEndereco(e.target.value)} />

@@ -19,6 +19,7 @@ import { useOrigemAncorada } from '../components/ui/origemAncorada';
 import { BotaoTatil } from '../components/ui/BotaoTatil';
 import { faiscar } from '../components/ui/Faisca';
 import { confirmar } from '../components/ui/Confirmacao';
+import { CampoData } from '../components/ui/CampoData';
 
 /**
  * As tarefas da produção — três colunas, arrastáveis.
@@ -509,10 +510,9 @@ export function TasksModule() {
                 </div>
 
                 <Campo rotulo="Prazo" icone={<CalendarClock size={12} />} ajuda="Aparece no calendário do painel.">
-                  <input
-                    type="date"
+                  <CampoData
                     value={editando.data_conclusao || ''}
-                    onChange={e => db.tasks.update(editando.id, { data_conclusao: e.target.value || undefined })}
+                    onChange={d => db.tasks.update(editando.id, { data_conclusao: d || undefined })}
                     style={{ width: '100%' }}
                   />
                 </Campo>

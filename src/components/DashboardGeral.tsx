@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useNavigate } from 'react-router-dom';
-import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText } from 'lucide-react';
+import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText, AlertTriangle } from 'lucide-react';
+import { ordenarPorPrazo, urgenciaDe } from '../lib/urgencia';
 import { CalendarioDashboard } from './CalendarioDashboard';
 import { FilaRepescagem } from './FilaRepescagem';
 import { AvisoDeRitmo } from './AvisoDeRitmo';
@@ -63,11 +64,31 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
 
 
 
-  // Últimas Tasks (Pendentes)
-  const recentes = (tasks || [])
-    .filter(t => t.status !== 'done')
-    .sort((a, b) => b.data_criacao - a.data_criacao)
-    .slice(0, 3);
+  /*
+    As tarefas do painel: as mais URGENTES, e não as mais recentes.
+
+    Era `sort(data_criacao)` — o painel mostrava as três últimas que alguém
+    escreveu. A tarefa criada há um mês, que venceu ontem, nunca aparecia; a
+    anotada hoje de manhã para daqui a três semanas aparecia sempre. O painel
+    respondia "o que eu escrevi por último", que é uma pergunta que ninguém faz.
+
+    Agora ele responde "o que está pegando fogo": atrasadas primeiro, depois as
+    de hoje, depois prazo curto — a mesma ordem da coluna de Tasks, que é a
+    mesma ordem em que o dia cobra. Ver `lib/urgencia.ts`.
+  */
+  const pendentes = ordenarPorPrazo((tasks || []).filter(t => t.status !== 'done'));
+  const comUrgencia = pendentes.map(t => ({ task: t, urgencia: urgenciaDe(t) }));
+  const atrasadas = comUrgencia.filter(x => x.urgencia.nivel === 'atrasada');
+  const paraHoje = comUrgencia.filter(x => x.urgencia.nivel === 'hoje');
+
+  /*
+    Cinco quando há atraso, três quando não há.
+
+    A lista cresce só quando existe motivo: um painel que mostra sempre cinco
+    tarefas fica pesado nos dias em que não há nada urgente, e um que mostra
+    sempre três esconde justamente o acúmulo que é o problema.
+  */
+  const urgentes = comUrgencia.slice(0, atrasadas.length > 0 ? 5 : 3);
 
   const totalDiarias = diarias.length;
   const diariasFechadas = diarias.filter(d => d.fechada).length;
@@ -332,32 +353,90 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
 
           </div>
 
-          {/* TAREFAS RECENTES */}
-          <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* O QUE ESTÁ PEGANDO FOGO */}
+          <div
+            className="card"
+            style={{
+              padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px',
+              // A borda vermelha é o alarme do painel inteiro: dá para ver que
+              // há atraso sem ler uma linha, de longe, com o celular na mão.
+              borderLeft: atrasadas.length > 0 ? '3px solid var(--color-danger)' : undefined,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckSquare size={14} /> Tarefas Pendentes
+                {atrasadas.length > 0
+                  ? <><AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} /> O que está atrasado</>
+                  : <><CheckSquare size={14} /> Tarefas pendentes</>}
               </span>
               <button onClick={() => navigate('tasks')} className="text-xs text-accent font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                Ver Todas
+                Ver todas
               </button>
             </div>
 
-            {recentes.length === 0 ? (
+            {/* O resumo em uma linha, para quem só passa o olho. Cada número só
+                existe quando é maior que zero: "0 atrasadas" ocupa espaço para
+                dizer que não há nada a dizer. */}
+            {(atrasadas.length > 0 || paraHoje.length > 0) && (
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                {atrasadas.length > 0 && (
+                  <span className="text-sm font-bold" style={{ color: 'var(--color-danger)' }}>
+                    {atrasadas.length} {atrasadas.length === 1 ? 'atrasada' : 'atrasadas'}
+                  </span>
+                )}
+                {paraHoje.length > 0 && (
+                  <span className="text-sm font-bold" style={{ color: 'var(--color-warning)' }}>
+                    {paraHoje.length} {paraHoje.length === 1 ? 'vence hoje' : 'vencem hoje'}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {urgentes.length === 0 ? (
               <div className="text-sm text-secondary" style={{ textAlign: 'center', padding: '16px' }}>
                 Nenhuma tarefa pendente no momento.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {recentes.map(task => (
-                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: task.status === 'doing' ? 'var(--accent)' : 'var(--text-muted)' }}></div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <span className="text-sm font-bold">{task.titulo}</span>
-                      {task.descricao && <span className="text-xs text-secondary">{task.descricao.substring(0, 50)}{task.descricao.length > 50 ? '...' : ''}</span>}
-                    </div>
+                {urgentes.map(({ task, urgencia }) => {
+                  const grave = urgencia.nivel === 'atrasada' || urgencia.nivel === 'hoje';
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => navigate('tasks')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
+                        backgroundColor: grave ? `color-mix(in srgb, ${urgencia.cor} 10%, var(--bg-primary))` : 'var(--bg-primary)',
+                        borderRadius: '12px', textAlign: 'left', cursor: 'pointer', width: '100%',
+                        border: `1px solid ${grave ? urgencia.cor : 'var(--border-light)'}`,
+                      }}
+                    >
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, backgroundColor: urgencia.rotulo ? urgencia.cor : task.status === 'doing' ? 'var(--accent)' : 'var(--text-muted)' }} />
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                        {/* A etiqueta vem ANTES do título, e não depois: quando
+                            a lista tem cinco linhas, é ela que decide qual das
+                            cinco a pessoa lê primeiro. */}
+                        {urgencia.rotulo && (
+                          <span className="text-xs font-bold" style={{ color: urgencia.cor, letterSpacing: '0.04em' }}>
+                            {urgencia.rotulo}
+                          </span>
+                        )}
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{task.titulo}</span>
+                        {task.descricao && (
+                          <span className="text-xs text-secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {task.descricao}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {pendentes.length > urgentes.length && (
+                  <div className="text-xs text-muted" style={{ textAlign: 'center', paddingTop: '2px' }}>
+                    e mais {pendentes.length - urgentes.length} pendente{pendentes.length - urgentes.length > 1 ? 's' : ''}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
