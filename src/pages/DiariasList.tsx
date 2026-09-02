@@ -10,6 +10,7 @@ import { EventosPanel } from '../components/EventosPanel';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
 import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
 import { CampoData } from '../components/ui/CampoData';
+import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -187,7 +188,7 @@ export function DiariasList() {
         continua tendo saído, mesmo que o dia tenha sido cancelado. Some o
         vínculo com a diária, fica o lançamento.
       */
-      const vinculadas = despesas.filter(d => d.diaria === diariaId || d.diaria_id === diariaId);
+      const vinculadas = despesasDaDiaria(despesas, diariaId);
       for (const d of vinculadas) {
         await db.despesas.update(d.id, { diaria: undefined, diaria_id: undefined });
       }
@@ -350,8 +351,7 @@ export function DiariasList() {
           volta. Escondida, ela continua montada e reaparece pronta. */}
       <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {
-          const despesasDaDiaria = despesas.filter(dx => dx.diaria === d.id);
-          const totalDespesas = despesasDaDiaria.reduce((acc, curr) => acc + curr.valor_total, 0);
+          const totalDespesas = totalDaDiaria(despesas, d.id);
 
           return (
             <div 

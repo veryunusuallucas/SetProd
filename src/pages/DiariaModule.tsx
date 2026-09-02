@@ -33,6 +33,7 @@ import { Colapsavel } from '../components/ui/Colapsavel';
 import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
 import { confirmar } from '../components/ui/Confirmacao';
+import { despesasDaDiaria } from '../lib/despesasDaDiaria';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -46,7 +47,7 @@ export function DiariaModule() {
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const despesasDiaria = useLiveQuery(async () => {
     const todas = await db.despesas.where('projeto_id').equals(projetoId!).toArray();
-    return todas.filter(d => d.diaria_id === diariaId);
+    return despesasDaDiaria(todas, diariaId!);
   }, [projetoId, diariaId]) || [];
   const cenasGlobais = useLiveQuery(() => db.cenas.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const veiculos = useLiveQuery(() => db.veiculos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];

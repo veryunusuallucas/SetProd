@@ -1,6 +1,7 @@
 import { db } from '../db/db';
 import { dinheiro } from './formato';
 import type { Perfil } from '../types';
+import { totalDaDiaria } from './despesasDaDiaria';
 
 /**
  * Coleta e formatação dos dados do projeto para exportação (Gestão de Dados).
@@ -255,7 +256,7 @@ export const CONJUNTOS: ConjuntoDados[] = [
             dataIso(d.data),
             (d.locacoes_ids || []).map(id => locacoes.find(l => l.id === id)?.nome).filter(Boolean).join(', '),
             String((d.equipe_escalada || []).length),
-            brl(despesas.filter(x => x.diaria_id === d.id).reduce((s, x) => s + x.valor_total, 0)),
+            brl(totalDaDiaria(despesas, d.id)),
             brl(d.limite_gasto),
             d.fechada ? 'Fechada' : 'Aberta',
           ]),
