@@ -11,6 +11,7 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { BotaoTatil } from './ui/BotaoTatil';
 import { logAction } from '../lib/audit';
 import { confirmar } from './ui/Confirmacao';
+import { CampoData } from './ui/CampoData';
 
 /**
  * Os compromissos da produção que não são diária.
@@ -150,7 +151,7 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
                 <div>
                   <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Data</label>
-                  <input type="date" name="data" required defaultValue={hoje} />
+                  <CampoData name="data" required defaultValue={hoje} />
                 </div>
                 <div>
                   <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Hora</label>
@@ -259,10 +260,9 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                   <div>
                     <div className="text-xs text-muted uppercase tracking-widest font-bold mb-2">Data</div>
-                    <input
-                      type="date"
+                    <CampoData
                       value={editando.data}
-                      onChange={e => e.target.value && db.eventos.update(editando.id, { data: e.target.value })}
+                      onChange={d => d && db.eventos.update(editando.id, { data: d })}
                       style={{ width: '100%' }}
                     />
                   </div>

@@ -9,6 +9,7 @@ import { logAction } from '../lib/audit';
 import { EventosPanel } from '../components/EventosPanel';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
 import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
+import { CampoData } from '../components/ui/CampoData';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -307,7 +308,7 @@ export function DiariasList() {
             <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">
               Data da filmagem
             </label>
-            <input type="date" required autoFocus value={data} onChange={e => setData(e.target.value)} />
+            <CampoData required autoFocus value={data} onChange={setData} />
           </div>
 
           {/*
@@ -436,7 +437,7 @@ export function DiariasList() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Data</label>
-                <input type="date" value={editModal.date} onChange={e => setEditModal({ ...editModal, date: e.target.value })} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
+                <CampoData value={editModal.date} onChange={d => setEditModal({ ...editModal, date: d })} style={{ width: '100%' }} />
               </div>
               {/* O número não se edita: mude a data e ele segue. Dizer isso aqui
                   evita a busca pelo campo que sumiu. */}
