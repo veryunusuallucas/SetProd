@@ -16,19 +16,40 @@ import { minutosDe } from './stripboard';
  * consome.
  */
 
+/*
+  Duração típica de cada tipo, em minutos.
+
+  São chutes de ofício, e é isso que se quer: o item entra na linha com um
+  tempo plausível e o dia inteiro se recalcula na hora, em vez de aparecer com
+  zero e mentir sobre o wrap até alguém digitar. Quem sabe melhor corrige — o
+  campo continua lá.
+
+  Marco e nota valem zero de propósito: eles marcam um instante, não ocupam o
+  dia. Um marco com duração empurraria tudo o que vem depois.
+*/
 export const DURACAO_PADRAO: Record<TipoItemDia, number> = {
   cena: 60,
   marco: 0,
+  prelight: 60,
+  ensaio: 30,
+  preparacao: 60,
   almoco: 60,
+  coffee: 20,
   move: 30,
+  wrap: 45,
   nota: 0,
 };
 
 export const ROTULO_TIPO: Record<TipoItemDia, string> = {
   cena: 'Cena',
   marco: 'Marco do dia',
+  prelight: 'Pré-light',
+  ensaio: 'Ensaio',
+  preparacao: 'Maquiagem e figurino',
   almoco: 'Refeição',
+  coffee: 'Coffee break',
   move: 'Deslocamento',
+  wrap: 'Desprodução',
   nota: 'Nota',
 };
 
@@ -38,8 +59,13 @@ export const ROTULO_TIPO: Record<TipoItemDia, string> = {
  */
 export const COR_TIPO: Record<Exclude<TipoItemDia, 'cena'>, string> = {
   marco: 'var(--text-secondary)',
+  prelight: '#f39c12',
+  ensaio: '#3498db',
+  preparacao: '#e84393',
   almoco: '#27ae60',
+  coffee: '#16a085',
   move: '#8e44ad',
+  wrap: '#c0392b',
   nota: '#636e72',
 };
 

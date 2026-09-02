@@ -89,11 +89,25 @@ export function RelogioDoSet({ fase, atraso, wrap }: {
       </div>
 
       <div style={{ flex: 1, minWidth: '180px' }}>
-        {fase.faltamMinutos !== null ? (
+        {fase.faltamMinutos !== null || (fase.diasAte !== null && fase.diasAte > 0) ? (
+          /*
+            A espera, em duas escalas.
+
+            Dentro do dia ela conta em horas e minutos; de véspera, em dias —
+            porque "em 26h" não é como ninguém pensa a diária de depois de
+            amanhã. As duas frases respondem à mesma pergunta de quem abriu a OD
+            antes da hora: falta muito?
+          */
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <CalendarClock size={20} className="text-muted" />
             <div>
-              <div className="text-sm font-bold">A chamada é {descreverEspera(fase.faltamMinutos)}</div>
+              <div className="text-sm font-bold">
+                {fase.faltamMinutos !== null
+                  ? `A chamada é ${descreverEspera(fase.faltamMinutos)}`
+                  : fase.diasAte === 1
+                    ? 'A chamada é amanhã'
+                    : `A chamada é daqui a ${fase.diasAte} dias`}
+              </div>
               <div className="text-xs text-muted">O dia entra em modo de registro sozinho na hora.</div>
             </div>
           </div>

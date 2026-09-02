@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
-  Flag, StickyNote, CircleDot, Timer, ClipboardList,
+  Flag, StickyNote, CircleDot, Timer, ClipboardList, Lightbulb, Drama, Brush,
+  Coffee, PackageOpen,
 } from 'lucide-react';
 import { db } from '../db/db';
 import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena } from '../types';
@@ -33,22 +34,64 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
 const ICONE: Record<TipoItemDia, typeof Flag> = {
   cena: CircleDot,
   marco: Flag,
+  prelight: Lightbulb,
+  ensaio: Drama,
+  preparacao: Brush,
   almoco: Utensils,
+  coffee: Coffee,
   move: Truck,
+  wrap: PackageOpen,
   nota: StickyNote,
 };
 
-const NOVOS: { tipo: Exclude<TipoItemDia, 'cena'>; rotulo: string; titulo: string }[] = [
-  { tipo: 'marco', rotulo: 'Marco', titulo: 'Chamada geral' },
-  { tipo: 'almoco', rotulo: 'Refeição', titulo: 'Almoço' },
-  { tipo: 'move', rotulo: 'Deslocamento', titulo: 'Company move' },
-  { tipo: 'nota', rotulo: 'Nota', titulo: '' },
+/**
+ * O menu do "+", agrupado.
+ *
+ * Nove opções numa fileira só viram uma parede de botões, e a pessoa lê todos
+ * para achar um. Em três grupos — o que prepara, o que pausa, o que registra —
+ * ela vai direto ao terço certo. O `titulo` é o texto que já entra escrito:
+ * item novo em branco obriga a digitar o óbvio toda vez.
+ */
+const GRUPOS_NOVOS: { grupo: string; itens: { tipo: Exclude<TipoItemDia, 'cena'>; rotulo: string; titulo: string }[] }[] = [
+  {
+    grupo: 'Preparação',
+    itens: [
+      { tipo: 'prelight', rotulo: 'Pré-light', titulo: 'Pré-light' },
+      { tipo: 'preparacao', rotulo: 'Maquiagem e figurino', titulo: 'Maquiagem e figurino' },
+      { tipo: 'ensaio', rotulo: 'Ensaio', titulo: 'Ensaio com elenco' },
+    ],
+  },
+  {
+    grupo: 'Pausas e trajetos',
+    itens: [
+      { tipo: 'almoco', rotulo: 'Refeição', titulo: 'Almoço' },
+      { tipo: 'coffee', rotulo: 'Coffee break', titulo: 'Coffee break' },
+      { tipo: 'move', rotulo: 'Deslocamento', titulo: 'Company move' },
+    ],
+  },
+  {
+    grupo: 'Marcos do dia',
+    itens: [
+      { tipo: 'marco', rotulo: 'Marco', titulo: 'Chamada geral' },
+      { tipo: 'wrap', rotulo: 'Desprodução', titulo: 'Wrap / desprodução' },
+      { tipo: 'nota', rotulo: 'Nota', titulo: '' },
+    ],
+  },
 ];
 
 export function LinhaDoDia({
   diaria, visao, cenas, registros, meuPerfilId, podeMarcar, planosPorCena,
-  chamada, aoGravar, aoMudarChamada, modo,
+  chamada, aoGravar, aoMudarChamada, modo, travada = false,
 }: {
+  /**
+   * Diária TRAVADA: o plano está congelado esperando publicação.
+   *
+   * Os campos e botões daqui já são desligados de fora, por um `fieldset
+   * disabled` (ver `DiariaModule`). O que o fieldset não alcança é o arrastar,
+   * que não é controle de formulário — e reordenar o dia numa diária travada é
+   * justamente o tipo de mudança acidental que travar existe para impedir.
+   */
+  travada?: boolean;
   diaria: Diaria;
   /**
    * ⚠️ VEM DE FORA, E NÃO É UM SELETOR NA TELA.
@@ -257,7 +300,7 @@ export function LinhaDoDia({
             return (
               <div
                 key={c.item.id}
-                draggable={modo === 'criacao'}
+                draggable={modo === 'criacao' && !travada}
                 onDragStart={() => setArrastando(i)}
                 onDragOver={e => { e.preventDefault(); setAlvo(i); }}
                 onDragLeave={() => setAlvo(a => (a === i ? null : a))}
@@ -510,22 +553,29 @@ export function LinhaDoDia({
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduzido ? undefined : { opacity: 0 }}
                 transition={MOLA}
-                style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
               >
-                {NOVOS.map(n => {
-                  const I = ICONE[n.tipo];
-                  return (
-                    <button
-                      key={n.tipo}
-                      onClick={() => adicionar(n.tipo, n.titulo)}
-                      className="text-xs font-bold"
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 13px', borderRadius: 'var(--radius-full)', cursor: 'pointer', border: `1px solid ${COR_TIPO[n.tipo]}`, backgroundColor: 'transparent', color: COR_TIPO[n.tipo] }}
-                    >
-                      <I size={13} /> {n.rotulo}
-                    </button>
-                  );
-                })}
-                <button onClick={() => setAdicionando(false)} className="text-xs text-muted" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 8px' }}>
+                {GRUPOS_NOVOS.map(g => (
+                  <div key={g.grupo} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className="text-xs text-muted uppercase tracking-widest" style={{ width: '110px', flexShrink: 0 }}>
+                      {g.grupo}
+                    </span>
+                    {g.itens.map(n => {
+                      const I = ICONE[n.tipo];
+                      return (
+                        <button
+                          key={n.tipo}
+                          onClick={() => adicionar(n.tipo, n.titulo)}
+                          className="text-xs font-bold"
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 13px', borderRadius: 'var(--radius-full)', cursor: 'pointer', border: `1px solid ${COR_TIPO[n.tipo]}`, backgroundColor: `color-mix(in srgb, ${COR_TIPO[n.tipo]} 10%, transparent)`, color: COR_TIPO[n.tipo] }}
+                        >
+                          <I size={13} /> {n.rotulo}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+                <button onClick={() => setAdicionando(false)} className="text-xs text-muted" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', alignSelf: 'flex-start' }}>
                   cancelar
                 </button>
               </motion.div>

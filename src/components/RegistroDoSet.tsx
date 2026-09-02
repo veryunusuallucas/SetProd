@@ -7,6 +7,7 @@ import { db } from '../db/db';
 import type {
   Diaria, Perfil, Ocorrencia, TipoOcorrencia, PresencaMembro, StatusPresenca,
 } from '../types';
+import { emMinutos, emHora, type DiaCalculado } from '../lib/linhaDoDia';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 
 /**
@@ -24,11 +25,26 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
  * pergunta que uma assinatura no pé da página nunca responde.
  */
 
+/*
+  ⚠️ "ATRASOU" NÃO É MAIS UM BOTÃO — É UMA CONTA.
+
+  Eram três botões: chegou, atrasou, faltou. E "atrasou" só podia ser apertado
+  por quem soubesse a hora da chamada de cabeça e tivesse olhado o relógio no
+  momento certo — às 7h da manhã, no set, com trinta pessoas chegando juntas. O
+  resultado previsível era todo mundo marcado como "chegou".
+
+  Agora o app compara a hora em que a pessoa chegou com a chamada dela, que já
+  está na linha do dia. Quem toca em "chegou" às 7h12 numa chamada de 7h aparece
+  atrasado sozinho, sem ninguém decidir nada. Faltou continua sendo botão: isso
+  o relógio não tem como saber.
+*/
 const STATUS: { valor: StatusPresenca; rotulo: string; cor: string }[] = [
   { valor: 'chegou', rotulo: 'chegou', cor: 'var(--color-success)' },
-  { valor: 'atrasado', rotulo: 'atrasou', cor: 'var(--color-warning)' },
   { valor: 'faltou', rotulo: 'faltou', cor: 'var(--color-danger)' },
 ];
+
+/** Folga antes de alguém contar como atrasado. */
+const TOLERANCIA_MIN = 5;
 
 const TIPOS_OCORRENCIA: { valor: TipoOcorrencia; rotulo: string }[] = [
   { valor: 'atraso', rotulo: 'Atraso' },
@@ -48,11 +64,21 @@ const TIPOS_OCORRENCIA: { valor: TipoOcorrencia; rotulo: string }[] = [
  */
 const EXEMPLO = 'Ex: company move levou 90min a mais por estacionamento e carga na garagem';
 
-export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
+export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, chamada, linha }: {
   diaria: Diaria;
   escalados: Perfil[];
   meuPerfilId?: string;
   podeMarcar: boolean;
+  /** A chamada da frente aberta: a hora prevista de chegada de todo mundo. */
+  chamada?: string;
+  /**
+   * O dia já calculado, para a jornada não ser digitada duas vezes.
+   *
+   * A refeição e o wrap estão na linha do dia com hora. Pedir que alguém copie
+   * os dois para dentro de cada ficha é pedir para os números divergirem: quem
+   * remarcar o almoço na linha não vai lembrar de corrigir trinta fichas.
+   */
+  linha: DiaCalculado;
 }) {
   const reduzido = useMovimentoReduzido();
   const [aberto, setAberto] = useState<string | null>(null);
@@ -62,6 +88,42 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
   const ocorrencias = diaria.ocorrencias || [];
 
   const carimbo = () => ({ registrado_por: meuPerfilId, registrado_em: Date.now() });
+
+  /*
+    O que a linha do dia já sabe, e a jornada não precisa perguntar de novo.
+
+    Estes são os valores PREVISTOS. Eles aparecem no campo em cinza enquanto
+    ninguém escreveu nada, e no instante em que alguém digita, vale o digitado.
+    Previsto disfarçado de realizado é o jeito mais rápido de um relatório de
+    produção virar ficção.
+  */
+  const refeicaoPrevista = linha.itens.find(i => i.item.tipo === 'almoco' || i.item.tipo === 'coffee')?.hora;
+  const previsto: Record<string, string | undefined> = {
+    chegada: chamada,
+    inicio: undefined,
+    refeicao_saida: refeicaoPrevista,
+    refeicao_volta: undefined,
+    fim: linha.wrap || undefined,
+  };
+
+  /** O que o campo mostra: o escrito, e o previsto enquanto não houver escrito. */
+  const valorDe = (reg: PresencaMembro | undefined, campo: string) =>
+    (reg?.[campo as keyof PresencaMembro] as string | undefined) || previsto[campo] || '';
+
+  /**
+   * Minutos de atraso de uma pessoa, ou null quando não dá para saber.
+   *
+   * Compara a chegada real com a chamada dela. Sem um dos dois não há conta a
+   * fazer — e "não sei" é diferente de "chegou na hora".
+   */
+  const atrasoDe = (reg?: PresencaMembro): number | null => {
+    if (!reg || reg.status === 'faltou') return null;
+    const chegou = emMinutos(reg.inicio);
+    const previa = emMinutos(reg.chegada || chamada);
+    if (chegou === null || previa === null) return null;
+    const diferenca = chegou - previa;
+    return diferenca > TOLERANCIA_MIN ? diferenca : null;
+  };
 
   const marcarPresenca = async (perfilId: string, status: StatusPresenca) => {
     const atual = presencas[perfilId];
@@ -74,7 +136,21 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
     */
     const nova = { ...presencas };
     if (atual?.status === status) delete nova[perfilId];
-    else nova[perfilId] = { ...(atual || {}), status, ...carimbo() };
+    else {
+      /*
+        "Chegou" carimba a hora, e é isso que faz o atraso se calcular sozinho.
+
+        Quem toca no botão está dizendo "esta pessoa acabou de chegar" — a hora
+        é agora, e ninguém no set vai parar para digitar 07:12. Só carimba com o
+        campo vazio: correção feita à mão tem que ganhar do automático, senão
+        ela some no toque seguinte.
+      */
+      const agora = new Date();
+      const inicio = status === 'chegou' && !atual?.inicio
+        ? emHora(agora.getHours() * 60 + agora.getMinutes())
+        : atual?.inicio;
+      nova[perfilId] = { ...(atual || {}), status, inicio, ...carimbo() };
+    }
     await db.diarias.update(diaria.id, { presencas: nova });
   };
 
@@ -119,10 +195,19 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
     return p ? p.nome : null;
   };
 
-  const contagem = STATUS.map(s => ({
-    ...s,
-    n: Object.values(presencas).filter(p => p.status === s.valor).length,
-  }));
+  const contagem = [
+    ...STATUS.map(s => ({
+      ...s,
+      n: Object.values(presencas).filter(p => p.status === s.valor).length,
+    })),
+    // O atraso é contado, não marcado — por isso ele entra aqui e não em STATUS.
+    {
+      valor: 'atrasado' as StatusPresenca,
+      rotulo: 'atrasaram',
+      cor: 'var(--color-warning)',
+      n: Object.values(presencas).filter(r => atrasoDe(r) !== null).length,
+    },
+  ];
   const minutosPerdidos = ocorrencias.reduce((a, o) => a + (o.minutos_perdidos || 0), 0);
 
   return (
@@ -150,7 +235,10 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
             {escalados.map(p => {
               const reg = presencas[p.id];
               const expandido = aberto === p.id;
-              const corDoStatus = STATUS.find(s => s.valor === reg?.status)?.cor;
+              const atrasou = atrasoDe(reg);
+              const corDoStatus = atrasou !== null
+                ? 'var(--color-warning)'
+                : STATUS.find(s => s.valor === reg?.status)?.cor;
 
               return (
                 <div
@@ -173,6 +261,21 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
                         <span className="text-xs text-muted"> · {p.funcao || 'Equipe'}</span>
                       </span>
                     </button>
+
+                    {/* A etiqueta de atraso é lida, não apertada: ela é a
+                        conclusão do app sobre os horários, e não mais uma
+                        escolha de quem está com o celular na mão. */}
+                    {atrasou !== null && (
+                      <span
+                        className="text-xs font-bold"
+                        style={{ padding: '2px 8px', borderRadius: 'var(--radius-full)', color: 'var(--color-warning)', border: '1px solid var(--color-warning)', whiteSpace: 'nowrap' }}
+                        title={`Chegou ${reg?.inicio} para uma chamada de ${valorDe(reg, 'chegada')}`}
+                      >
+                        {atrasou >= 60
+                          ? `+${Math.floor(atrasou / 60)}h${String(atrasou % 60).padStart(2, '0')}`
+                          : `+${atrasou}min`}
+                      </span>
+                    )}
 
                     <div style={{ display: 'flex', gap: '5px' }}>
                       {STATUS.map(s => {
@@ -209,24 +312,44 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar }: {
                         style={{ overflow: 'hidden' }}
                       >
                         <div style={{ padding: '0 12px 12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          {/*
+                            Os rótulos dizem o que cada hora é, e não são
+                            sinônimos: "Chamada" é a hora combinada, que vem da
+                            linha do dia; "Chegou" é a hora em que a pessoa
+                            apareceu. A distância entre as duas é o atraso — e
+                            era isso que os antigos "Chegada" e "Início" não
+                            deixavam ver.
+                          */}
                           {([
-                            ['chegada', 'Chegada'],
-                            ['inicio', 'Início'],
+                            ['chegada', 'Chamada'],
+                            ['inicio', 'Chegou'],
                             ['refeicao_saida', 'Saiu p/ refeição'],
                             ['refeicao_volta', 'Voltou'],
                             ['fim', 'Fim'],
-                          ] as const).map(([campo, rotulo]) => (
-                            <label key={campo} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                              <span className="text-xs text-muted uppercase">{rotulo}</span>
-                              <input
-                                type="time"
-                                value={(reg?.[campo] as string) || ''}
-                                onChange={e => podeMarcar && mudarHorario(p.id, campo, e.target.value)}
-                                disabled={!podeMarcar}
-                                style={{ padding: '5px 7px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
-                              />
-                            </label>
-                          ))}
+                          ] as const).map(([campo, rotulo]) => {
+                            const escrito = (reg?.[campo] as string | undefined) || '';
+                            const mostrado = valorDe(reg, campo);
+                            const herdado = !escrito && !!mostrado;
+                            return (
+                              <label key={campo} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                <span className="text-xs text-muted uppercase">{rotulo}</span>
+                                <input
+                                  type="time"
+                                  value={mostrado}
+                                  onChange={e => podeMarcar && mudarHorario(p.id, campo, e.target.value)}
+                                  disabled={!podeMarcar}
+                                  title={herdado ? 'Vem da linha do dia. Digite para mudar só desta pessoa.' : undefined}
+                                  style={{
+                                    padding: '5px 7px', fontSize: '13px', borderRadius: '6px',
+                                    border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
+                                    // Herdado em cinza: o campo mostra o previsto, e ninguém
+                                    // digitou aquilo. A cor é a diferença entre plano e registro.
+                                    color: herdado ? 'var(--text-muted)' : 'var(--text-primary)',
+                                  }}
+                                />
+                              </label>
+                            );
+                          })}
                           <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: '180px' }}>
                             <span className="text-xs text-muted uppercase">Nota</span>
                             <input
