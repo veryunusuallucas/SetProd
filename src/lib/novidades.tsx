@@ -251,6 +251,12 @@ export const VERSOES: Versao[] = [
           },
           {
             tipo: 'novo',
+            icone: <Film size={20} />,
+            titulo: 'As categorias são de cinema, não genéricas',
+            texto: 'Pré-light, maquiagem e figurino, ensaio, coffee break e desprodução, junto com marco, refeição, deslocamento e nota — cada uma com a sua cor, o seu ícone e a duração típica já preenchida. Com quatro categorias genéricas, metade do dia virava "marco" escrito à mão, e a linha passava a ser lida palavra por palavra em vez de de relance.',
+          },
+          {
+            tipo: 'novo',
             icone: <ClipboardCheck size={20} />,
             titulo: 'A tela vira registro sozinha na hora da chamada',
             texto: 'Até a véspera ela é de montar; chegada a hora da chamada, ela passa a marcar o dia acontecendo — a hora real de cada item e o estado de cada cena, com um toque. Sem botão de "iniciar o dia", porque quem está no set às 6h com café na mão não vai lembrar de apertar nada. E sem seletor: o modo é do dia, não de quem está olhando, senão dois assistentes de direção veem a mesma diária de jeitos diferentes sem saber.',
@@ -267,13 +273,13 @@ export const VERSOES: Versao[] = [
             tipo: 'novo',
             icone: <Clock size={20} />,
             titulo: 'Relógio grande com o atraso do dia',
-            texto: '"09:53 · estamos 45min de atraso · wrap agora às 16:15, planejado 15:30". Verde até 15min, âmbar até 45, vermelho acima — porque meia hora ainda se recupera e uma hora significa que alguma cena vai cair.',
+            texto: '"09:53 · estamos 45min de atraso · wrap agora às 16:15, planejado 15:30". Verde até 15min, âmbar até 45, vermelho acima — porque meia hora ainda se recupera e uma hora significa que alguma cena vai cair. Ele aparece junto com a OD publicada e muda de conteúdo sozinho: contagem regressiva antes da chamada, atraso do dia depois dela.',
           },
           {
             tipo: 'novo',
             icone: <ClipboardCheck size={20} />,
-            titulo: 'Presença, jornada e ocorrências',
-            texto: 'Chegou, atrasou ou faltou — e os horários de cada um: chegada, início, saída e volta da refeição, fim. Importa para pagamento e jornada. Ao lado entram figuração e stand-ins, rolos de câmera e som, e as ocorrências do dia com os minutos que cada uma custou.',
+            titulo: 'Presença e jornada, com o atraso se calculando sozinho',
+            texto: 'Chegou ou faltou — "atrasou" deixou de ser botão. Tocar em "chegou" carimba a hora, o app compara com a chamada da pessoa e a etiqueta de atraso aparece sozinha; apertar "atrasou" exigia saber a chamada de cabeça às 7h da manhã com trinta pessoas chegando juntas, e na prática todo mundo ficava marcado como "chegou". A jornada também parou de pedir o que já está na linha do dia: chamada, saída para a refeição e fim vêm de lá em cinza, e só ficam brancos quando alguém digita por cima. Ao lado entram figuração e stand-ins, rolos de câmera e som, e as ocorrências do dia com os minutos que cada uma custou.',
           },
           {
             tipo: 'novo',
@@ -305,7 +311,19 @@ export const VERSOES: Versao[] = [
             tipo: 'novo',
             icone: <Lock size={20} />,
             titulo: 'TRAVADA: congela sem publicar',
-            texto: 'Uma diária pronta esperando as outras ficarem. Ninguém mexe sem querer, outra pessoa pode conferir, e voltar para rascunho não custa nada — porque nada saiu. Antes, quem só queria proteger o dia de um clique errado tinha que publicar, e depois pagar o preço de despublicar.',
+            texto: 'Uma diária pronta esperando as outras ficarem. Travada, ela não deixa mexer em nada: todo campo e todo botão ficam desligados, e a linha do dia não se reordena mais. Voltar para rascunho não custa nada — porque nada saiu. Antes, quem só queria proteger o dia de um clique errado tinha que publicar, e depois pagar o preço de despublicar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'Cada estado mostra o que aquele momento pede',
+            texto: 'No rascunho ficam linha do dia, locações, transporte, financeiro, equipe e anexos — o que se decide na véspera. Na diária publicada ficam linha do dia, presença e jornada, transporte, checklist e anexos — o que se preenche no set. Antes tudo aparecia sempre, e o resultado era pedir confirmação de presença numa OD que ninguém tinha recebido. "Cenas programadas" saiu de vez, porque quem marca cena é a linha do dia; "confirmação de presença" também, porque presença e jornada pergunta a mesma coisa, com hora.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Send size={20} />,
+            titulo: 'Um botão só para exportar, e ele é o da IA',
+            texto: 'Eram dois — "Gerar OD com IA" e "Exportar e publicar", que montava o documento por modelo fixo. O segundo ficava sofrível ao lado do primeiro, e dois caminhos para a mesma coisa obrigam a escolher sem ter como saber qual escolher. E publicar passou a acontecer quando o papel sai, não quando a janela abre: dá para abrir, olhar e fechar sem congelar o plano de ninguém.',
           },
           {
             tipo: 'novo',
@@ -412,6 +430,18 @@ export const VERSOES: Versao[] = [
           {
             tipo: 'melhor',
             icone: <PieChart size={20} />,
+            titulo: 'Escalar a equipe ganhou "selecionar todo mundo"',
+            texto: 'Em curta e em publicidade quase todo mundo vai em quase todo dia, e eram vinte toques para dizer isso — depois três para tirar quem não vai. O mesmo botão limpa a seleção quando já está todo mundo marcado.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <DollarSign size={20} />,
+            titulo: 'O financeiro do dia parou de parecer o caixa do filme',
+            texto: '"Máximo" e "Saldo" se liam como o dinheiro da produção inteira. Agora são "Limite do dia" e "Resta do limite", com uma linha lembrando que aqueles números são só daquela diária — o orçamento do filme continua no módulo Financeiro.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <PieChart size={20} />,
             titulo: 'Cor com significado',
             texto: 'Cada área do app tem a sua cor: amarelo é set, verde é dinheiro, azul é logística, ciano é equipe, roxo é criativo. Cor de área diz onde você está; cor de status (vermelho, verde, âmbar) diz como as coisas estão. Nunca as duas no mesmo lugar.',
           },
@@ -489,6 +519,12 @@ export const VERSOES: Versao[] = [
           },
           {
             tipo: 'melhor',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'O painel mostra o que está atrasado',
+            texto: 'Ele mostrava as três tarefas escritas por último — a criada há um mês que venceu ontem nunca aparecia, e a anotada hoje de manhã para daqui a três semanas aparecia sempre. Agora mostra as mais urgentes, na mesma ordem da tela de Tasks: atrasadas primeiro, depois as de hoje, com a etiqueta acima do título e a contagem no alto (2 atrasadas · 1 vence hoje). Havendo atraso, o cartão ganha borda vermelha e cresce para cinco linhas.',
+          },
+          {
+            tipo: 'melhor',
             icone: <HelpCircle size={20} />,
             titulo: 'O "como funciona esta tela" parou de ser um paredão',
             texto: 'A seção das diárias tinha quase cinco mil caracteres num parágrafo só — três vezes a segunda maior. Quem abria com uma dúvida específica desistia na terceira linha, e a resposta estava lá dentro. Agora ela abre numa lista de assuntos curtos ("O número vem da data", "Travar um horário", "Os quatro estados da OD") e você abre só o que interessa. O texto não encolheu: ficou achável. A IA da ajuda ganhou os títulos junto, e por isso acha melhor a resposta certa.',
@@ -518,6 +554,24 @@ export const VERSOES: Versao[] = [
             icone: <MessageCircleQuestion size={20} />,
             titulo: 'As perguntas de confirmação eram engolidas pelo navegador',
             texto: 'Este era o "não consigo apagar diárias". Quando o navegador vê várias caixas de confirmação seguidas, ele oferece "impedir que esta página crie mais diálogos" — e a partir daí toda pergunta seguinte responde "cancelar" sozinha, sem aparecer nada na tela. O clique em apagar simplesmente não fazia nada, sem erro nenhum. As 31 perguntas do app saíram da caixa cinza do navegador: agora têm título, dizem o que acontece depois, e o botão tem o nome da ação ("Apagar", "Sair do projeto") em vez de OK e Cancelar.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Os campos de data apareciam em inglês',
+            texto: 'Vinha "mm/dd/yyyy" no meio de um app inteiro em português, porque aquele campo se escreve no idioma do navegador e não no do site. E não é só feio: 03/09 e 09/03 são dois dias diferentes, então quem digitasse 09/03 esperando setembro marcava a diária em março. Agora é sempre dd/mm/aaaa, nos nove campos do app, com o calendário do sistema ainda ali no ícone ao lado.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <DollarSign size={20} />,
+            titulo: 'O cartão da diária dizia R$ 0,00 mesmo com gastos',
+            texto: 'A lista mostrava zero enquanto a tela de dentro da mesma diária mostrava o valor certo. A despesa guarda o vínculo com a diária e também o nome dela ("Diária 3"), escrito só para aparecer na lista — e o cartão comparava um com o outro. Nunca bateu, em diária nenhuma. Agora a lista, a tela da diária e a exportação perguntam isso no mesmo lugar.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <RefreshCw size={20} />,
+            titulo: 'A tela de atualização sumia com a barra pela metade',
+            texto: 'Ela era cronometrada nos 8 segundos do prazo de desistência, mas a versão nova costuma assumir em menos de um segundo — e a página ia embora com a barra em 10%. Agora a barra acelera até o fim, é o fim dela que recarrega a página, e a tela fica no ar pelo menos 1,2 segundo: meio segundo seria um piscar, que se lê como "deu errado" e não como "está trocando de versão".',
           },
           {
             tipo: 'melhor',
