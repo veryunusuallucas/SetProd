@@ -8,6 +8,16 @@ import type { Diaria, Projeto, Perfil, Locacao, Departamento, Cena } from '../ty
 
 interface GeradorODModalProps {
   onClose: () => void;
+  /**
+   * Chamado quando a OD sai de verdade — a impressão, e não a abertura.
+   *
+   * É ele que publica a diária e sobe a versão. Fica aqui dentro, e não no
+   * botão que abre esta janela, porque abrir para olhar não pode congelar o
+   * plano de ninguém.
+   */
+  aoExportar?: () => void | Promise<void>;
+  /** Que número esta exportação vai ter. Só para dizer isso na tela. */
+  versao?: number;
   projeto: Projeto;
   diaria: Diaria;
   equipe: Perfil[];
@@ -16,7 +26,7 @@ interface GeradorODModalProps {
   cenasGlobais: Cena[];
 }
 
-export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, departamentos, cenasGlobais }: GeradorODModalProps) {
+export function GeradorODModal({ onClose, aoExportar, versao, projeto, diaria, equipe, locacoes, departamentos, cenasGlobais }: GeradorODModalProps) {
   const [htmlGerado, setHtmlGerado] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
@@ -36,14 +46,15 @@ export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, dep
     }
   };
 
-  const handleImprimir = () => {
+  const handleImprimir = async () => {
     const html = montarPaginaRelatorio(
       `Ordem do Dia - Diária ${diaria.numero}`,
       htmlGerado,
       // Se a pessoa editou algo no preview, os campos precisam sair limpos no papel.
       'textarea, input { border: none; background: transparent; font-family: inherit; font-size: inherit; resize: none; overflow: hidden; }'
     );
-    if (!imprimirHtml(html)) baixarHtml(html, `ordem-do-dia-${diaria.numero}`);
+    if (!imprimirHtml(html)) baixarHtml(html, `ordem-do-dia-${diaria.numero}${versao ? `-v${versao}` : ''}`);
+    await aoExportar?.();
   };
 
   return (
@@ -63,6 +74,17 @@ export function GeradorODModal({ onClose, projeto, diaria, equipe, locacoes, dep
             <div style={{ maxWidth: '400px', margin: '40px auto', textAlign: 'center' }}>
               <p className="text-secondary" style={{ marginBottom: '24px' }}>
                 A Inteligência Artificial vai pegar todos os dados da <b>Diária {diaria.numero}</b> (Cenas, Equipe, Locações, Clima) e diagramar em um formato profissional para impressão.
+              </p>
+
+              {/* O aviso não é formalidade: imprimir daqui MUDA O ESTADO da
+                  diária. Quem clica achando que só vai tirar um papel precisa
+                  saber que, a partir dali, o plano congela e a tela vira
+                  registro — descobrir isso depois, com o cronograma que não
+                  deixa mais editar, é a pior forma de aprender. */}
+              <p className="text-xs text-muted" style={{ marginBottom: '24px', lineHeight: 1.6 }}>
+                Ao imprimir, a OD é publicada{versao && versao > 1 ? ` como v${versao}` : ''}: o plano <b>congela</b> e a
+                diária passa a registrar o que acontecer. Para mudar o plano depois, volte a
+                rascunho e exporte de novo — a versão nova sai numerada.
               </p>
               
               {erro && <div className="text-danger font-bold text-sm" style={{ marginBottom: '16px' }}>{erro}</div>}

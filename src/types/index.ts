@@ -533,7 +533,30 @@ export interface HorarioOD {
  * quebra do stripboard chega aqui sem tradução, com as pausas e os
  * deslocamentos que já estavam planejados lá.
  */
-export type TipoItemDia = 'cena' | 'marco' | 'almoco' | 'move' | 'nota';
+/*
+  Os tipos são de cinema, e não genéricos, porque a linha do dia é lida no set.
+
+  A primeira versão tinha quatro — marco, refeição, deslocamento e nota — e o
+  resultado prático era que meia diária virava "marco": pré-light, ensaio,
+  maquiagem e wrap todos escritos à mão dentro do mesmo item cinza. Um tipo
+  próprio dá a cor, o ícone e a duração típica de graça, e é o que faz a linha
+  ser lida de relance em vez de lida palavra por palavra.
+
+  ⚠️ ACRESCENTAR É SEGURO; RENOMEAR E APAGAR NÃO.
+  O tipo fica gravado em cada item de cada diária já criada. Um valor que sai
+  daqui vira item órfão nas diárias antigas, sem cor e sem duração.
+*/
+export type TipoItemDia =
+  | 'cena'
+  | 'marco'
+  | 'prelight'
+  | 'ensaio'
+  | 'preparacao'
+  | 'almoco'
+  | 'coffee'
+  | 'move'
+  | 'wrap'
+  | 'nota';
 
 export interface ItemDoDia {
   id: string;

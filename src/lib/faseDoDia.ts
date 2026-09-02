@@ -30,6 +30,14 @@ export interface Fase {
   ativo: boolean;
   /** Minutos até a chamada. `null` quando já passou, ou não dá para saber. */
   faltamMinutos: number | null;
+  /**
+   * Dias até a diária: 0 é hoje, 1 é amanhã, negativo já passou.
+   *
+   * Existe porque o relógio passou a aparecer assim que a OD é publicada, e não
+   * só no dia. Sem isto ele não teria o que dizer numa diária de quinta-feira:
+   * `faltamMinutos` só sabe contar dentro do mesmo dia.
+   */
+  diasAte: number | null;
   /** A diária é de hoje. */
   hoje: boolean;
 }
@@ -82,7 +90,28 @@ export function faseDoDia(diaria: Diaria, agora: Date = new Date()): Fase {
     ? chamada - agoraMin
     : null;
 
-  return { modo, ativo, faltamMinutos, hoje };
+  /*
+    A distância em dias, contada ao MEIO-DIA das duas pontas.
+
+    Meia-noite mais horário de verão dá 23h ou 25h de diferença, e a divisão por
+    24h derruba ou inventa um dia. Ao meio-dia sobra folga de doze horas para
+    qualquer mudança de fuso — o mesmo cuidado de `lib/urgencia.ts`.
+  */
+  const diasAte = diaria.data ? contarDias(hojeISO, diaria.data) : null;
+
+  return { modo, ativo, faltamMinutos, diasAte, hoje };
+}
+
+/** Dias inteiros de `deISO` até `ateISO`, ambos em `YYYY-MM-DD`. */
+function contarDias(deISO: string, ateISO: string): number | null {
+  const meioDia = (iso: string) => {
+    const [a, m, d] = iso.split('-').map(Number);
+    if (!a || !m || !d) return null;
+    return new Date(a, m - 1, d, 12, 0, 0).getTime();
+  };
+  const de = meioDia(deISO), ate = meioDia(ateISO);
+  if (de === null || ate === null) return null;
+  return Math.round((ate - de) / 86_400_000);
 }
 
 /** "em 40min" / "em 2h10". Para a contagem regressiva até a chamada. */
