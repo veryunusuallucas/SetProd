@@ -12,6 +12,7 @@ import { BotaoTatil } from './ui/BotaoTatil';
 import { logAction } from '../lib/audit';
 import { confirmar } from './ui/Confirmacao';
 import { CampoData } from './ui/CampoData';
+import { CampoTexto } from './ui/CampoTexto';
 
 /**
  * Os compromissos da produção que não são diária.
@@ -244,9 +245,9 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
             >
               <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <span style={{ fontSize: '22px', flexShrink: 0 }}>{tipoDoEvento(editando.tipo).emoji}</span>
-                <input
+                <CampoTexto
                   value={editando.titulo}
-                  onChange={e => db.eventos.update(editando.id, { titulo: e.target.value })}
+                  aoGravar={v => db.eventos.update(editando.id, { titulo: v })}
                   className="font-bold text-lg"
                   style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', padding: 0, color: 'var(--text-primary)' }}
                 />
@@ -341,10 +342,10 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
 
                 <div>
                   <div className="text-xs text-muted uppercase tracking-widest font-bold mb-2">Observação</div>
-                  <textarea
+                  <CampoTexto
                     value={editando.observacao || ''}
-                    onChange={e => db.eventos.update(editando.id, { observacao: e.target.value || undefined })}
-                    rows={3}
+                    aoGravar={v => db.eventos.update(editando.id, { observacao: v || undefined })}
+                    linhas={3}
                     placeholder="Levar trena, falar com o zelador…"
                     style={{ width: '100%', resize: 'vertical' }}
                   />

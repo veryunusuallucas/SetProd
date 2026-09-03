@@ -8,9 +8,10 @@ import { estadoAtualDasCenas } from '../lib/registroSet';
 import { getStripboardColor } from '../lib/decupagem';
 import {
   montarLinha, resumirDias, agruparPorLocacao, cenasDoDia, diaNaPosicao,
-  ROTULOS, CORES_MARCADOR, formatarDuracao, ULTIMO_BLOCO, type ItemLinha,
+  ROTULOS, CORES_MARCADOR, REFEICOES, formatarDuracao, ULTIMO_BLOCO, type ItemLinha,
 } from '../lib/stripboard';
 import { confirmar } from './ui/Confirmacao';
+import { CampoTexto } from './ui/CampoTexto';
 
 interface Props {
   projetoId: string;
@@ -34,6 +35,7 @@ export function StripboardTimeline({
   projetoId, cenas, itens, locacoes, onVerNoRoteiro, onExportarDia, paginaDaCena,
 }: Props) {
   const [salvando, setSalvando] = useState(false);
+  const [menuRefeicao, setMenuRefeicao] = useState(false);
 
   const nomeLocacao = (c: Cena) => locacoes.find(l => l.id === c.locacao_id)?.nome || '';
 
@@ -91,9 +93,12 @@ export function StripboardTimeline({
   };
 
   /** Insere um marcador no fim da linha; a pessoa arrasta para o lugar certo. */
-  const inserir = async (tipo: TipoStripboardItem) => {
+  const inserir = async (tipo: TipoStripboardItem, preset?: { titulo: string; duracao_min: number }) => {
+    setMenuRefeicao(false);
     const padrao: Partial<StripboardItem> =
-      tipo === 'BANNER_LUNCH' ? { titulo: 'Almoço', duracao_min: 60 }
+      preset ? preset
+      : tipo === 'BANNER_LUNCH' ? { titulo: 'Almoço', duracao_min: 60 }
+      : tipo === 'BANNER_SNACK' ? { titulo: 'Lanche', duracao_min: 20 }
       : tipo === 'BANNER_MOVE' ? { titulo: 'Mudança de locação', duracao_min: 45 }
       : tipo === 'BANNER_NOTE' ? { titulo: 'Nota' }
       : {};
@@ -121,9 +126,45 @@ export function StripboardTimeline({
         <button onClick={() => inserir('DAY_BREAK')} className="btn-chip">
           <Scissors size={14} /> Quebra de diária
         </button>
-        <button onClick={() => inserir('BANNER_LUNCH')} className="btn-chip">
-          <Utensils size={14} /> Almoço
-        </button>
+        {/*
+          Um chip de "Refeição" com as quatro, em vez de quatro chips.
+
+          Café da manhã, almoço, jantar e lanche são a mesma ideia com nome e
+          duração diferentes — quatro botões na barra seriam quatro caminhos
+          para a mesma coisa, e a barra já tem seis. O nome e a duração
+          continuam editáveis depois de inserido, como em qualquer marcador.
+        */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setMenuRefeicao(v => !v)} className="btn-chip">
+            <Utensils size={14} /> Refeição
+          </button>
+          {menuRefeicao && (
+            <div
+              className="card"
+              style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
+                padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px',
+                minWidth: '170px', backgroundColor: 'var(--bg-surface)',
+              }}
+            >
+              {REFEICOES.map(r => (
+                <button
+                  key={r.rotulo}
+                  onClick={() => inserir(r.tipo, { titulo: r.rotulo, duracao_min: r.duracao_min })}
+                  className="text-sm"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+                    padding: '7px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    background: 'transparent', color: 'var(--text-primary)', textAlign: 'left',
+                  }}
+                >
+                  {r.rotulo}
+                  <span className="text-xs text-muted">{r.duracao_min}min</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button onClick={() => inserir('BANNER_MOVE')} className="btn-chip">
           <Truck size={14} /> Mudança de locação
         </button>
@@ -408,9 +449,9 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
         {locacao || '—'}
       </span>
 
-      <input
+      <CampoTexto
         value={cena.paginas || ''}
-        onChange={e => db.cenas.update(cena.id, { paginas: e.target.value })}
+        aoGravar={v => db.cenas.update(cena.id, { paginas: v })}
         placeholder="1 2/8"
         title="Páginas em oitavos"
         style={{ ...campo, width: '58px', flexShrink: 0 }}
@@ -426,9 +467,9 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
         O campo `Cena.unidade` continua no tipo e no banco: as cenas que já
         foram marcadas não perdem a marcação, e nada precisa de migração.
       */}
-      <input
+      <CampoTexto
         value={cena.estimativa || ''}
-        onChange={e => db.cenas.update(cena.id, { estimativa: e.target.value })}
+        aoGravar={v => db.cenas.update(cena.id, { estimativa: v })}
         placeholder="45min"
         title="Tempo estimado (45min, 2h, 1h30)"
         style={{ ...campo, width: '66px', flexShrink: 0 }}
@@ -473,9 +514,9 @@ function Marcador({ item, alca, resumo, onExportar }: {
 
       {!ehQuebra && (
         <>
-          <input
+          <CampoTexto
             value={item.titulo || ''}
-            onChange={e => db.stripboard_itens.update(item.id, { titulo: e.target.value })}
+            aoGravar={v => db.stripboard_itens.update(item.id, { titulo: v })}
             placeholder={ROTULOS[item.tipo]}
             style={{
               flex: 1, minWidth: '120px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px',

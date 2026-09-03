@@ -20,6 +20,7 @@ import { BotaoTatil } from '../components/ui/BotaoTatil';
 import { faiscar } from '../components/ui/Faisca';
 import { confirmar } from '../components/ui/Confirmacao';
 import { CampoData } from '../components/ui/CampoData';
+import { CampoTexto } from '../components/ui/CampoTexto';
 
 /**
  * As tarefas da produção — três colunas, arrastáveis.
@@ -430,10 +431,10 @@ export function TasksModule() {
             >
               {/* Cabeçalho fixo: o título é o campo, sem rótulo em cima dele. */}
               <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <textarea
+                <CampoTexto
                   value={editando.titulo}
-                  onChange={e => db.tasks.update(editando.id, { titulo: e.target.value })}
-                  rows={1}
+                  aoGravar={v => db.tasks.update(editando.id, { titulo: v })}
+                  linhas={1}
                   className="font-bold text-lg"
                   style={{
                     flex: 1, minWidth: 0, resize: 'none', border: 'none', background: 'transparent',

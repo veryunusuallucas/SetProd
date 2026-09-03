@@ -18,6 +18,7 @@ import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategori
 import { ULTIMO_BLOCO } from '../lib/stripboard';
 import { jaAconteceu } from '../lib/sincronizaOD';
 import { confirmar } from '../components/ui/Confirmacao';
+import { CampoTexto } from '../components/ui/CampoTexto';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
@@ -419,17 +420,17 @@ export function DecupagemModule() {
               {/* Header da Cena */}
               <div style={{ backgroundColor: 'var(--bg-primary)', padding: '16px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <input 
-                    value={cena.numero} 
-                    onChange={e => updateCena(cena.id, { numero: e.target.value })} 
+                  <CampoTexto
+                    value={cena.numero}
+                    aoGravar={v => updateCena(cena.id, { numero: v })}
                     style={{ width: '48px', fontWeight: 'bold', textAlign: 'center', padding: '6px', fontSize: '16px' }}
                     placeholder="Nº"
                   />
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input 
-                    value={cena.descricao} 
-                    onChange={e => updateCena(cena.id, { descricao: e.target.value })} 
+                  <CampoTexto
+                    value={cena.descricao}
+                    aoGravar={v => updateCena(cena.id, { descricao: v })}
                     style={{ fontWeight: 'bold', fontSize: '18px', border: 'none', background: 'transparent', padding: 0 }}
                     placeholder="Descrição da cena (ex: Assalto no banco)..."
                   />
@@ -497,9 +498,9 @@ export function DecupagemModule() {
                         <GripVertical size={16} className="text-muted" style={{ cursor: 'grab' }} />
                         <span className="text-secondary font-bold text-xs" style={{ width: '20px' }}>{(index+1).toString().padStart(2, '0')}</span>
                         
-                        <input 
-                          value={plano.descricao} 
-                          onChange={e => updatePlano(plano.id, { descricao: e.target.value })} 
+                        <CampoTexto
+                          value={plano.descricao}
+                          aoGravar={v => updatePlano(plano.id, { descricao: v })}
                           style={{ flex: 1, padding: '8px', fontSize: '14px', backgroundColor: 'transparent', border: '1px solid var(--border-light)' }}
                           placeholder="Ação neste plano..."
                         />
@@ -543,10 +544,10 @@ export function DecupagemModule() {
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <span className="text-xs text-muted uppercase font-bold">Lente / Info</span>
-                            <input 
-                              value={plano.lente || ''} 
-                              onChange={e => updatePlano(plano.id, { lente: e.target.value })} 
-                              style={selectStyle} 
+                            <CampoTexto
+                              value={plano.lente || ''}
+                              aoGravar={v => updatePlano(plano.id, { lente: v })}
+                              style={selectStyle}
                               placeholder="ex: 35mm"
                             />
                           </div>

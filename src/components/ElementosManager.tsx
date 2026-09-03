@@ -7,6 +7,7 @@ import { categoriasDisponiveis, temaDe } from '../lib/decupagem';
 import { AIRecommendation, AISuggestion, AISuggestionList } from './ui/ia';
 import { mesclarElementos, separarAlias, sugerirMerges, chaveNome } from '../lib/elementos';
 import { confirmar } from './ui/Confirmacao';
+import { CampoTexto } from './ui/CampoTexto';
 
 /**
  * Inventário do breakdown: tudo que foi marcado no roteiro, agrupado por
@@ -213,11 +214,11 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
                       </span>
                     </div>
 
-                    <textarea
+                    <CampoTexto
                       value={el.notas || ''}
-                      onChange={e => db.elementos.update(el.id, { notas: e.target.value })}
+                      aoGravar={v => db.elementos.update(el.id, { notas: v })}
                       placeholder="Notas (onde conseguir, tamanho, contato...)"
-                      rows={2}
+                      linhas={2}
                       style={{ width: '100%', fontSize: '13px', resize: 'vertical' }}
                     />
                   </motion.div>

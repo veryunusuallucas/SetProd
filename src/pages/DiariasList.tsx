@@ -11,6 +11,7 @@ import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD'
 import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
 import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
+import { paraData, dataCurta } from '../lib/formato';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -212,9 +213,19 @@ export function DiariasList() {
     }
   };
 
+  /*
+    A data do cartão tem o dia da semana, e não é mais miudinha.
+
+    Ela era `text-xs text-muted` — cinza claro, doze pixels — e num celular de
+    432px era a menor coisa da tela, competindo com o número da diária que já
+    está gigante ao lado. Só que numa lista de diárias a data é o que se procura,
+    e o dia da semana é metade da pergunta: "a 03 é na quinta ou no sábado?".
+  */
   const formataData = (d: string) => {
-    const [a, m, dia] = d.split('-');
-    return `${dia}/${m}/${a.slice(-2)}`;
+    const dt = paraData(d);
+    if (!dt) return '—';
+    const semana = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    return `${semana}, ${dataCurta(d)}`;
   };
 
   return (
@@ -374,9 +385,9 @@ export function DiariasList() {
                       {ROTULO_ESTADO[estadoDa(d)]}
                     </span>
                   </div>
-                  <div className="text-xs text-muted">
+                  <div className="text-base text-secondary font-bold" style={{ marginTop: '3px' }}>
                     {formataData(d.data)}
-                    {d.data === hojeISO() && <span className="text-accent font-bold"> · é hoje</span>}
+                    {d.data === hojeISO() && <span className="text-accent"> · é hoje</span>}
                   </div>
                 </div>
               </div>

@@ -31,6 +31,7 @@ export interface ResumoDia {
 export const ROTULOS: Record<TipoStripboardItem, string> = {
   DAY_BREAK: 'Quebra de diária',
   BANNER_LUNCH: 'Almoço',
+  BANNER_SNACK: 'Lanche',
   BANNER_MOVE: 'Mudança de locação',
   BANNER_NOTE: 'Nota',
 };
@@ -39,9 +40,25 @@ export const ROTULOS: Record<TipoStripboardItem, string> = {
 export const CORES_MARCADOR: Record<TipoStripboardItem, { bg: string; text: string }> = {
   DAY_BREAK: { bg: '#2d3436', text: '#ffffff' },
   BANNER_LUNCH: { bg: '#27ae60', text: '#ffffff' },
+  // Verde mais claro que o do almoço: é parente dele, e não outra coisa.
+  BANNER_SNACK: { bg: '#16a085', text: '#ffffff' },
   BANNER_MOVE: { bg: '#8e44ad', text: '#ffffff' },
   BANNER_NOTE: { bg: '#636e72', text: '#ffffff' },
 };
+
+/**
+ * As refeições que o menu do stripboard oferece.
+ *
+ * Quatro botões de refeição na barra seriam quatro botões para a mesma ideia.
+ * Aqui elas são presets de um botão só — o que muda entre elas é o nome e a
+ * duração, e as duas coisas continuam editáveis depois de inseridas.
+ */
+export const REFEICOES: { rotulo: string; tipo: TipoStripboardItem; duracao_min: number }[] = [
+  { rotulo: 'Café da manhã', tipo: 'BANNER_SNACK', duracao_min: 30 },
+  { rotulo: 'Almoço', tipo: 'BANNER_LUNCH', duracao_min: 60 },
+  { rotulo: 'Jantar', tipo: 'BANNER_LUNCH', duracao_min: 60 },
+  { rotulo: 'Lanche', tipo: 'BANNER_SNACK', duracao_min: 20 },
+];
 
 /** Junta cenas e marcadores numa lista só, na ordem de filmagem. */
 export function montarLinha(cenas: Cena[], itens: StripboardItem[]): ItemLinha[] {
