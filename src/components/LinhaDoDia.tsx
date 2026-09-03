@@ -145,8 +145,25 @@ export function LinhaDoDia({
    */
   const gravar = (nova: ItemDoDia[]) => aoGravar(nova);
 
-  const mudarItem = (id: string, campos: Partial<ItemDoDia>) =>
-    gravar(linha.map(i => (i.id === id ? { ...i, ...campos } : i)));
+  /*
+    Mexer aqui num item que veio do stripboard faz o stripboard soltar ele.
+
+    O rascunho espelha o stripboard, e sem esta marca o nome que a pessoa
+    escreveu na diária voltaria ao original na próxima vez que a tela abrisse —
+    silenciosamente, que é a pior forma de perder trabalho. A marca só vale para
+    o que a diária de fato decide (nome e duração); mudar o horário não briga
+    com o stripboard, porque horário não existe lá.
+  */
+  const MUDA_O_QUE_VEM_DE_LA: (keyof ItemDoDia)[] = ['titulo', 'duracao_min'];
+
+  const mudarItem = (id: string, campos: Partial<ItemDoDia>) => {
+    const desgruda = MUDA_O_QUE_VEM_DE_LA.some(c => c in campos);
+    gravar(linha.map(i => (
+      i.id === id
+        ? { ...i, ...campos, ...(desgruda && i.origem_stripboard ? { editado_na_diaria: true } : {}) }
+        : i
+    )));
+  };
 
   const remover = (id: string) => gravar(linha.filter(i => i.id !== id));
 
