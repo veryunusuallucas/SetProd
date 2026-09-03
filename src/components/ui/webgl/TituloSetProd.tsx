@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { decidirEfeitos, movimentoReduzido } from './suporte';
 
 // Carregado só quando a tela de entrada monta: o `ogl` e os shaders não têm
@@ -70,6 +70,38 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
   const [tensao, setTensao] = useState(0);
   const compensacao = compensacaoDe(tamanho);
 
+  /*
+    ⚠️ TER WEBGL NÃO É O MESMO QUE CONTINUAR TENDO.
+
+    `decidirEfeitos()` pergunta uma vez, na montagem, e o Firefox às vezes tira
+    o contexto DEPOIS — foi o relato de 12/08: "no mozila o título não aparece"
+    e, junto, "WebGL context was lost" no console. Sem contexto, o canvas fica
+    em branco e a tela de entrada perde o nome do app; a pessoa não tem nem como
+    saber onde está.
+
+    O `webglcontextlost` não sobe pela árvore, mas passa por ela na descida —
+    por isso o ouvinte é registrado na fase de captura, no elemento que embrulha
+    o canvas. Perdeu o contexto, cai no título de texto, que é o mesmo caminho
+    de quem nunca teve WebGL.
+  */
+  const [contextoPerdido, setContextoPerdido] = useState(false);
+
+  /*
+    O ouvinte entra por ref, e não por `useEffect`.
+
+    A caixa mora dentro de um `Suspense`, e o WarpText é carregado sob demanda:
+    quando um efeito com `[]` roda, o que está na tela ainda é o vazio do
+    Suspense e a caixa é `null`. O efeito não pegava nada e nunca mais rodava —
+    a queda do contexto passava batida, que foi como este conserto falhou na
+    primeira tentativa. A ref é chamada quando o elemento aparece de verdade.
+  */
+  const aoMontarCaixa = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const perdeu = () => setContextoPerdido(true);
+    el.addEventListener('webglcontextlost', perdeu, true);
+    return () => el.removeEventListener('webglcontextlost', perdeu, true);
+  }, []);
+
   const cliques = useRef(0);
   const relogio = useRef<number | undefined>(undefined);
 
@@ -101,7 +133,7 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
 
   // Sem WebGL, sem cursor ou com movimento reduzido: título comum, e o easter
   // egg continua existindo — só sem o acúmulo visual.
-  if (!efeitos.titulo) {
+  if (!efeitos.titulo || contextoPerdido) {
     return (
       <button
         onPointerDown={interativo ? cutucar : undefined}
@@ -127,6 +159,7 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
       {/* O onClick fica no wrapper porque o componente oficial não expõe um —
           e assim o easter egg não exige tocar no código dele. */}
       <div
+        ref={aoMontarCaixa}
         onClick={interativo ? cutucar : undefined}
         style={{ cursor: interativo ? 'pointer' : 'default' }}
       >

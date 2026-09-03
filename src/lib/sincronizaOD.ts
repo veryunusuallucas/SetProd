@@ -146,6 +146,7 @@ export async function aplicarDoStripboard(
 function linhaDoTempoDoBloco(bloco: ItemLinha[]): ItemDoDia[] {
   const TIPO: Partial<Record<string, TipoItemDia>> = {
     BANNER_LUNCH: 'almoco',
+    BANNER_SNACK: 'coffee',
     BANNER_MOVE: 'move',
     BANNER_NOTE: 'nota',
   };

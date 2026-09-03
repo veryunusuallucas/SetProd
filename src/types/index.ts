@@ -652,7 +652,21 @@ export interface Cena {
  * o campo `ordem`, porque a posição relativa entre eles é justamente a
  * informação: um almoço só significa algo entre duas cenas.
  */
-export type TipoStripboardItem = 'DAY_BREAK' | 'BANNER_LUNCH' | 'BANNER_MOVE' | 'BANNER_NOTE';
+/*
+  Os marcadores do stripboard.
+
+  `BANNER_SNACK` entrou porque uma diária tem mais de uma refeição, e elas não
+  são a mesma coisa: o almoço para o dia e cabe no cálculo como uma hora; o café
+  da manhã e o lanche são paradas curtas. Jantar continua sendo `BANNER_LUNCH`
+  com outro título — o que importa para a conta do dia é a duração, não o nome
+  da comida. Os dois viram `almoco` e `coffee` na linha do dia.
+*/
+export type TipoStripboardItem =
+  | 'DAY_BREAK'
+  | 'BANNER_LUNCH'
+  | 'BANNER_SNACK'
+  | 'BANNER_MOVE'
+  | 'BANNER_NOTE';
 
 export interface StripboardItem {
   id: string;
