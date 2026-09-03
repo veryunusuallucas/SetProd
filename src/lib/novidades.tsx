@@ -4,6 +4,7 @@ import {
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
   Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock,
+  FileText,
 } from 'lucide-react';
 
 /**
@@ -221,6 +222,48 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.8.1',
+    resumo: <>Os campos de texto pararam de brigar com quem digita, e o stripboard passou a alimentar a linha do dia.</>,
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <FileText size={20} />,
+        titulo: 'Escrever no meio de uma palavra jogava o cursor para o fim',
+        texto: 'E o acento não saía. Eram o mesmo defeito, e não dois: cada tecla gravava no banco, a tela voltava com o texto de um instante atrás, e o navegador — vendo na tela um valor diferente do que ele tinha — mandava o cursor para o fim e cancelava a composição do acento no meio. Agora o campo segura o texto enquanto se digita e grava depois da pausa. Vale para o Master Shot List, o stripboard, os elementos, as tarefas e os eventos.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <GitMerge size={20} />,
+        titulo: 'O que entra no stripboard entra na linha do dia',
+        texto: 'Antes só as cenas chegavam: refeição ou deslocamento acrescentado depois tinha que ser posto de novo, à mão, em cada diária. Agora ele aparece sozinho e na posição certa — logo depois da cena que vem antes dele —, e some quando é apagado lá. Dá para mexer nos dois lugares: enquanto ninguém tocou no item dentro da diária, o stripboard manda; a partir do momento em que alguém muda o nome ou a duração ali, quem manda é a diária. O que você criou à mão na diária nunca é mexido, e nada disso acontece com a diária travada ou publicada.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <ClipboardCheck size={20} />,
+        titulo: 'No stripboard, o nome do marcador aparecia duas vezes',
+        texto: 'A tarja dizia "CAFÉ DA MANHÃ" e, logo ao lado, uma caixa de texto repetia "Café da manhã" — a segunda parecendo um campo vazio esperando outra informação. Agora o título é o próprio campo, como na linha do dia: o que está escrito é o que se edita. Vale só para o que foi acrescentado; o nome da cena continua vindo da decupagem, e não se muda ali.',
+      },
+      {
+        tipo: 'novo',
+        icone: <CalendarDays size={20} />,
+        titulo: 'As outras refeições do dia',
+        texto: 'O chip "Almoço" do stripboard virou "Refeição", com café da manhã, almoço, jantar e lanche — cada um com a sua duração típica. Café e lanche entram na linha do dia como pausa curta; almoço e jantar, como a parada que para o dia.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <CalendarDays size={20} />,
+        titulo: 'A data do cartão da diária ficou legível',
+        texto: 'Ela era a menor coisa da tela num celular — dez pixels, em cinza claro — competindo com o número da diária logo ao lado. Agora vem maior, em negrito, e com o dia da semana junto: "qui, 03/09/26". Numa lista de diárias, a data é justamente o que se procura, e o dia da semana é metade da pergunta.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Sparkles size={20} />,
+        titulo: 'No Firefox, o título SETPROD sumia da tela de entrada',
+        texto: 'O app já sabia desenhar o título sem os efeitos, para quem não tem placa de vídeo compatível. O que ele não sabia era o que fazer quando o navegador tira esse suporte DEPOIS de a tela já estar montada — que é o que o Firefox faz. Agora ele percebe e cai no título comum, em vez de deixar um espaço em branco onde deveria estar o nome do app.',
+      },
+    ],
+  },
   {
     versao: '4.8.0',
     resumo: <>A tela da diária foi refeita em volta de uma coisa só: a linha do dia. E o dia deixou de ser um plano — agora ele se registra acontecendo.</>,
