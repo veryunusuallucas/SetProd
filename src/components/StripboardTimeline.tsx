@@ -500,9 +500,27 @@ function Marcador({ item, alca, resumo, onExportar }: {
         <GripVertical size={16} />
       </span>
 
-      <span style={{ fontWeight: 700, fontSize: ehQuebra ? '13px' : '12px', letterSpacing: '0.04em' }}>
-        {ehQuebra ? `FIM DA DIÁRIA ${resumo?.numero ?? ''}` : (item.titulo || ROTULOS[item.tipo]).toUpperCase()}
-      </span>
+      {/*
+        ⚠️ O RÓTULO E O CAMPO DIZIAM A MESMA COISA, LADO A LADO.
+
+        A tarja mostrava "CAFÉ DA MANHÃ" em maiúsculas e, logo em seguida, uma
+        caixa de texto com "Café da manhã" dentro. Duas vezes a mesma palavra,
+        e a segunda parecendo um campo vazio esperando outra informação.
+
+        Agora o título É o campo, como na linha do dia da diária: o que está
+        escrito é o que se edita, e não há um segundo lugar para procurar.
+
+        Isto vale só para os marcadores que a pessoa acrescentou. A quebra de
+        diária não tem título para editar — o texto dela é o resumo do dia — e
+        a CENA, logo acima, continua com o nome em texto puro: o nome dela é da
+        decupagem, e deixá-lo editável aqui daria dois lugares para mudar a
+        mesma coisa.
+      */}
+      {ehQuebra && (
+        <span style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '0.04em' }}>
+          FIM DA DIÁRIA {resumo?.numero ?? ''}
+        </span>
+      )}
 
       {/* Síntese do dia que acabou de fechar. */}
       {ehQuebra && resumo && (
@@ -518,9 +536,19 @@ function Marcador({ item, alca, resumo, onExportar }: {
             value={item.titulo || ''}
             aoGravar={v => db.stripboard_itens.update(item.id, { titulo: v })}
             placeholder={ROTULOS[item.tipo]}
+            title="O nome deste marcador. Toque para mudar."
             style={{
-              flex: 1, minWidth: '120px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px',
-              border: '1px solid rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.15)', color: cor.text,
+              flex: 1, minWidth: '120px', padding: '2px 0', borderRadius: 0,
+              fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em',
+              // Maiúsculas só na tela: o que fica guardado é o que a pessoa
+              // escreveu. A tarja do stripboard é lida de longe e em papel, e
+              // aí a caixa alta é o que a distingue da cena.
+              textTransform: 'uppercase',
+              background: 'transparent', border: 'none',
+              // O tracejado é o convite: sem ele, texto em cima de uma tarja
+              // colorida não parece campo nenhum, e ninguém tenta editar.
+              borderBottom: '1px dashed rgba(255,255,255,0.35)',
+              color: cor.text,
             }}
           />
           <input

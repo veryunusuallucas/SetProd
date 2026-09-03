@@ -16,6 +16,7 @@ import { formatarDuracao } from '../lib/stripboard';
 import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO } from '../lib/registroSet';
 import { faiscar } from './ui/Faisca';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
+import { CampoTexto } from './ui/CampoTexto';
 
 /**
  * A Timeline Única — o protagonista da tela da diária.
@@ -368,11 +369,16 @@ export function LinhaDoDia({
                         </div>
                       </>
                     ) : modo === 'criacao' ? (
-                      <input
-                        defaultValue={c.item.titulo || ''}
-                        onBlur={e => {
-                          if ((c.item.titulo || '') !== e.target.value) mudarItem(c.item.id, { titulo: e.target.value });
-                        }}
+                      /*
+                        Era `defaultValue` + `onBlur`, que só gravava ao sair do
+                        campo — quem escrevia o título e clicava direto na
+                        lixeira de outro item perdia o que digitou. O
+                        `CampoTexto` grava sozinho depois da pausa, e continua
+                        gravando ao sair.
+                      */
+                      <CampoTexto
+                        value={c.item.titulo || ''}
+                        aoGravar={v => mudarItem(c.item.id, { titulo: v })}
                         placeholder="Ex: Chamada geral, Almoço, Wrap"
                         style={{ width: '100%', padding: '4px 0', background: 'transparent', border: 'none', borderBottom: '1px dashed var(--border-light)', borderRadius: 0, fontWeight: 'bold' }}
                       />
