@@ -121,25 +121,111 @@ export async function aplicarDoStripboard(
   const mesmasCenas = novos.length === atuais.length && novos.every((id, i) => id === atuais[i]);
 
   /*
-    A LINHA DO TEMPO SÓ NASCE UMA VEZ (spec §2.3).
+    A LINHA DO TEMPO NASCE DO BLOCO, E DEPOIS CONTINUA ACOMPANHANDO — SÓ OS
+    MARCADORES.
 
-    Quando a diária ainda não tem uma, ela é semeada com o bloco inteiro do
-    stripboard — cenas, almoço e deslocamentos, na ordem, com a estimativa de
-    cada cena. É o que faz o cronograma se montar praticamente sozinho.
+    Quando a diária ainda não tem linha, ela é semeada com o bloco inteiro:
+    cenas, refeições e deslocamentos, na ordem, com a estimativa de cada cena.
 
-    ⚠️ Se ela JÁ existe, não se toca nela, nem quando as cenas mudam. Alguém
-    passou a noite ajustando horários e travando a chamada; refazer a linha a
-    cada sincronia apagaria esse trabalho em silêncio. As cenas novas entram
-    pelo fim, pela reconciliação em `montarLinhaDoDia`, onde dá para ver.
+    Se ela já existe, a linha NÃO é refeita — alguém passou a noite ajustando
+    horários e travando a chamada, e refazer tudo a cada sincronia apagaria esse
+    trabalho em silêncio. O que entra é só a diferença de marcadores: o que foi
+    acrescentado no stripboard aparece aqui, o que foi apagado lá some daqui, e
+    tudo o mais fica exatamente onde está.
+
+    ⚠️ ISTO SÓ RODA EM RASCUNHO. Quem chama (`SincroniaStripboard`) verifica o
+    estado antes. Diária travada ou publicada não se mexe sozinha — é a razão de
+    esses dois estados existirem.
   */
   const semLinha = !diaria.linha_do_tempo || diaria.linha_do_tempo.length === 0;
-  if (mesmasCenas && !semLinha) return false;
+
+  if (semLinha) {
+    await db.diarias.update(diaria.id, {
+      cena_ids: novos,
+      linha_do_tempo: linhaDoTempoDoBloco(bloco),
+    });
+    return true;
+  }
+
+  const linhaNova = reconciliarMarcadores(diaria.linha_do_tempo!, bloco);
+  const linhaMudou = mudouAlgo(diaria.linha_do_tempo!, linhaNova);
+
+  if (mesmasCenas && !linhaMudou) return false;
 
   await db.diarias.update(diaria.id, {
     cena_ids: novos,
-    ...(semLinha ? { linha_do_tempo: linhaDoTempoDoBloco(bloco) } : {}),
+    ...(linhaMudou ? { linha_do_tempo: linhaNova } : {}),
   });
   return true;
+}
+
+/**
+ * Traz do bloco para a linha existente o que mudou nos MARCADORES.
+ *
+ * Três coisas, e só elas:
+ *
+ *   entra   marcador novo no stripboard, na mesma posição relativa — logo
+ *           depois da cena que vem antes dele no bloco, e não no fim do dia.
+ *           Um coffee break jogado no fim da lista é pior que nenhum.
+ *   sai     marcador que foi apagado do stripboard. Só os que têm
+ *           `origem_stripboard`: item feito à mão aqui dentro nunca some.
+ *   muda    nome e duração, enquanto ninguém tiver editado o item AQUI. Depois
+ *           de editado, a diária ganha e o stripboard para de sobrescrever.
+ *
+ * O que ela nunca toca: ordem dos itens que já estavam, horário travado, hora
+ * real, e qualquer item que a pessoa acrescentou na própria diária.
+ */
+export function reconciliarMarcadores(linha: ItemDoDia[], bloco: ItemLinha[]): ItemDoDia[] {
+  const doBloco = new Map<string, ItemDoDia>();
+  for (const item of linhaDoTempoDoBloco(bloco)) {
+    if (item.origem_stripboard) doBloco.set(item.id, item);
+  }
+
+  // Fora os apagados, e atualiza os que o stripboard ainda manda.
+  const mantidos = linha.flatMap(item => {
+    if (!item.origem_stripboard) return [item];
+
+    const noBloco = doBloco.get(item.id);
+    if (!noBloco) return [];              // apagado no stripboard
+    if (item.editado_na_diaria) return [item];
+
+    return [{ ...item, titulo: noBloco.titulo, duracao_min: noBloco.duracao_min }];
+  });
+
+  /*
+    Os novos, cada um logo depois da sua âncora.
+
+    A âncora é a última CENA antes dele no bloco — a cena é a referência que
+    existe dos dois lados. Marcador antes de qualquer cena entra no começo do
+    dia; âncora que não está na linha (não deveria acontecer) manda o item para
+    o fim, que é melhor que sumir.
+  */
+  const jaTem = new Set(mantidos.map(i => i.id));
+  const resultado = [...mantidos];
+
+  let ancora: string | null = null;
+  for (const i of bloco) {
+    if (i.tipo === 'SCENE') { ancora = `cena-${i.cena.id}`; continue; }
+
+    const novo = doBloco.get(i.item.id);
+    if (!novo || jaTem.has(novo.id)) continue;
+
+    const onde = ancora === null ? 0 : resultado.findIndex(x => x.id === ancora) + 1;
+    if (onde === 0 && ancora !== null) resultado.push(novo);
+    else resultado.splice(onde, 0, novo);
+    jaTem.add(novo.id);
+  }
+
+  return resultado;
+}
+
+/** Compara duas linhas pelo que importa: quem está, em que ordem, e com quê. */
+function mudouAlgo(antes: ItemDoDia[], depois: ItemDoDia[]): boolean {
+  if (antes.length !== depois.length) return true;
+  return antes.some((a, i) => {
+    const b = depois[i];
+    return a.id !== b.id || a.titulo !== b.titulo || a.duracao_min !== b.duracao_min;
+  });
 }
 
 /** Traduz o bloco do stripboard para os itens da linha do dia. */
@@ -159,6 +245,7 @@ function linhaDoTempoDoBloco(bloco: ItemLinha[]): ItemDoDia[] {
       id: i.item.id,
       tipo: TIPO[i.tipo] || 'marco',
       titulo: i.item.titulo || ROTULOS[i.tipo],
+      origem_stripboard: true,
       // A duração vem do banner quando ela foi definida lá. `undefined` cai no
       // padrão do tipo — 60min de almoço, 30 de deslocamento.
       ...(i.item.duracao_min !== undefined ? { duracao_min: i.item.duracao_min } : {}),

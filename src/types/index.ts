@@ -563,6 +563,25 @@ export interface ItemDoDia {
   tipo: TipoItemDia;
   /** Só quando `tipo === 'cena'`. Aponta para uma cena global do projeto. */
   cena_id?: string;
+  /**
+   * Este item nasceu de um marcador do stripboard, e o `id` é o daquele
+   * marcador.
+   *
+   * É o que permite ao rascunho continuar espelhando o stripboard depois da
+   * primeira vez: marcador novo lá entra aqui, marcador apagado lá sai daqui.
+   * Sem a marca não dá para distinguir um almoço que veio do stripboard de um
+   * que a pessoa acrescentou à mão — e apagar o segundo por engano seria pior
+   * que não sincronizar nada.
+   */
+  origem_stripboard?: boolean;
+  /**
+   * Alguém mexeu neste item aqui dentro da diária.
+   *
+   * A partir daí o stripboard para de sobrescrever o texto e a duração dele. É
+   * o que faz "dá para mexer nos dois lugares" ser verdade: enquanto ninguém
+   * tocou, o stripboard manda; depois de alguém tocar, quem manda é a diária.
+   */
+  editado_na_diaria?: boolean;
   /** Texto do marco/banner. Cena não usa: o rótulo dela é o próprio heading. */
   titulo?: string;
   /**
