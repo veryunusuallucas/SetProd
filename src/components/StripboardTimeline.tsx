@@ -7,8 +7,9 @@ import type { Cena, Locacao, StripboardItem, TipoStripboardItem, RegistroCena } 
 import { estadoAtualDasCenas } from '../lib/registroSet';
 import { getStripboardColor } from '../lib/decupagem';
 import {
-  montarLinha, resumirDias, agruparPorLocacao, cenasDoDia, diaNaPosicao,
-  ROTULOS, CORES_MARCADOR, REFEICOES, formatarDuracao, ULTIMO_BLOCO, type ItemLinha,
+  montarLinha, resumirDias, reordenar, MODOS_DE_ORDENAR, cenasDoDia, diaNaPosicao,
+  ROTULOS, CORES_MARCADOR, REFEICOES, formatarDuracao, ULTIMO_BLOCO,
+  type ItemLinha, type ModoDeOrdenar,
 } from '../lib/stripboard';
 import { confirmar } from './ui/Confirmacao';
 import { CampoTexto } from './ui/CampoTexto';
@@ -36,6 +37,7 @@ export function StripboardTimeline({
 }: Props) {
   const [salvando, setSalvando] = useState(false);
   const [menuRefeicao, setMenuRefeicao] = useState(false);
+  const [menuOrdenar, setMenuOrdenar] = useState(false);
 
   const nomeLocacao = (c: Cena) => locacoes.find(l => l.id === c.locacao_id)?.nome || '';
 
@@ -112,9 +114,47 @@ export function StripboardTimeline({
     } as StripboardItem);
   };
 
-  const agrupar = async () => {
-    if (!(await confirmar('Reorganizar as cenas juntando as da mesma locação? As quebras de diária ficam onde estão.'))) return;
-    await persistirOrdem(agruparPorLocacao(linha, nomeLocacao));
+  /**
+   * Reorganiza a ordem de filmagem por um critério.
+   *
+   * Pede confirmação porque isto move TODAS as cenas de uma vez, e a ordem
+   * anterior pode ser trabalho de uma tarde inteira. O detalhe diz o que a
+   * quebra de diária garante: nenhuma cena troca de dia.
+   */
+  const organizar = async (modo: ModoDeOrdenar) => {
+    setMenuOrdenar(false);
+    const escolhido = MODOS_DE_ORDENAR.find(m => m.modo === modo)!;
+    const ok = await confirmar({
+      titulo: `${escolhido.rotulo}?`,
+      detalhe: `${escolhido.ajuda} As quebras de diária ficam onde estão — nenhuma cena muda de dia.`,
+      confirmar: 'Reorganizar',
+    });
+    if (!ok) return;
+    await persistirOrdem(reordenar(linha, modo, nomeLocacao));
+  };
+
+  /**
+   * Tira uma cena da ordem de filmagem.
+   *
+   * ⚠️ APAGA A CENA DO PROJETO, e não só desta lista — é a mesma cena da
+   * decupagem e do Master Shot List. Por isso a confirmação diz o que vai junto:
+   * a estimativa, o elenco marcado e a locação escolhida.
+   *
+   * Cena que veio do roteiro volta na próxima análise, porque quem manda nela é
+   * o PDF. A confirmação avisa disso em vez de deixar a pessoa descobrir sozinha
+   * que "apagou e voltou".
+   */
+  const apagarCena = async (cena: Cena) => {
+    const ok = await confirmar({
+      titulo: `Apagar a cena ${cena.numero}?`,
+      detalhe: cena.origem_roteiro
+        ? 'Ela sai da ordem de filmagem e da decupagem, com a estimativa e o elenco marcado. Como veio do roteiro, ela volta na próxima vez que o roteiro for analisado.'
+        : 'Ela sai da ordem de filmagem e da decupagem, com a estimativa, o elenco marcado e os planos do Master Shot List.',
+      confirmar: 'Apagar cena',
+      perigo: true,
+    });
+    if (!ok) return;
+    await db.cenas.delete(cena.id);
   };
 
   const totalDias = 1 + linha.filter(i => i.tipo === 'DAY_BREAK').length;
@@ -171,9 +211,44 @@ export function StripboardTimeline({
         <button onClick={() => inserir('BANNER_NOTE')} className="btn-chip">
           <StickyNote size={14} /> Nota
         </button>
-        <button onClick={agrupar} className="btn-chip" disabled={cenas.length < 2}>
-          <Shuffle size={14} /> Agrupar por locação
-        </button>
+        {/*
+          Um menu de "Organizar", e não um chip por critério.
+
+          Eram quatro formas de reordenar a mesma lista; quatro botões seguidos
+          na barra fariam parecer que são quatro coisas diferentes. E a ordem do
+          roteiro entra aqui como uma delas: ela é o desfazer de quem
+          experimentou um agrupamento e não gostou.
+        */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setMenuOrdenar(v => !v)} className="btn-chip" disabled={cenas.length < 2}>
+            <Shuffle size={14} /> Organizar
+          </button>
+          {menuOrdenar && (
+            <div
+              className="card"
+              style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
+                padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px',
+                minWidth: '260px', backgroundColor: 'var(--bg-surface)',
+              }}
+            >
+              {MODOS_DE_ORDENAR.map(m => (
+                <button
+                  key={m.modo}
+                  onClick={() => organizar(m.modo)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px',
+                    padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    background: 'transparent', textAlign: 'left', color: 'var(--text-primary)',
+                  }}
+                >
+                  <span className="text-sm font-bold">{m.rotulo}</span>
+                  <span className="text-xs text-muted" style={{ lineHeight: 1.4 }}>{m.ajuda}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
           {totalDias} diária(s) · {cenas.length} cena(s){salvando ? ' · salvando...' : ''}
         </span>
@@ -230,6 +305,7 @@ export function StripboardTimeline({
                           locacao={nomeLocacao(it.cena)}
                           alca={arraste.dragHandleProps}
                           gravacao={gravacoes.get(it.cena.id)}
+                          onApagar={() => apagarCena(it.cena)}
                           onVerNoRoteiro={() => {
                             const p = paginaDaCena(it.cena);
                             if (p) onVerNoRoteiro(p);
@@ -333,11 +409,12 @@ export function estadosDaTira(
 
 // ---- Tira de cena ----
 
-function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
+function TiraCena({ cena, locacao, alca, onVerNoRoteiro, onApagar, gravacao }: {
   cena: Cena;
   locacao: string;
   alca: any;
   onVerNoRoteiro: () => void;
+  onApagar: () => void;
   /** O que aconteceu com esta cena no set. `undefined` = ninguém marcou ainda. */
   gravacao?: EstadoDaCena;
 }) {
@@ -443,7 +520,9 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
         {cena.descricao}
       </span>
       <span className="desktop-only" style={{ width: '76px', flexShrink: 0, fontSize: '10px', fontWeight: 'bold', opacity: 0.85 }}>
-        {strip.label}
+        {/* Cena achada pelo número, sem INT./EXT. no roteiro: o rótulo da tira
+            é chute, e dizer isso vale mais que fingir que não é. */}
+        {cena.sem_cabecalho ? 'CONFIRA' : strip.label}
       </span>
       <span className="desktop-only" style={{ width: '120px', flexShrink: 0, fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {locacao || '—'}
@@ -474,6 +553,21 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, gravacao }: {
         title="Tempo estimado (45min, 2h, 1h30)"
         style={{ ...campo, width: '66px', flexShrink: 0 }}
       />
+
+      {/* Apagar a cena. Discreto de propósito — ele fica ao lado de campos que
+          se usa o tempo todo, e um vermelho aceso ali viraria um convite. */}
+      <button
+        onClick={onApagar}
+        title="Apagar esta cena do projeto"
+        aria-label={`Apagar a cena ${cena.numero}`}
+        style={{
+          flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '4px', border: 'none', background: 'transparent',
+          color: strip.text, opacity: 0.55, cursor: 'pointer',
+        }}
+      >
+        <Trash2 size={14} />
+      </button>
     </div>
   );
 }

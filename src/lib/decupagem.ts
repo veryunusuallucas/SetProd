@@ -180,6 +180,14 @@ export interface CabecalhoCena {
   pagina: number;
   /** Texto da cena (do cabeçalho até o próximo), usado na análise por IA. */
   corpo: string;
+  /**
+   * Reconhecida pelo BURACO na numeração, e não pelo padrão INT./EXT.
+   *
+   * Vale saber porque desta o app sabe menos: sem INT./EXT. e sem período, o
+   * ambiente e o dia/noite são chute. A tela mostra isso para a pessoa
+   * conferir, em vez de fingir que a cena veio completa.
+   */
+  pelo_numero?: boolean;
 }
 
 /**
@@ -205,9 +213,32 @@ const PERIODOS = [
   'AMANHECER', 'ENTARDECER', 'ANOITECER', 'ALVORECER',
   'P[ÔO]R DO SOL', 'NASCER DO SOL', 'CREP[ÚU]SCULO', 'MEIO[- ]DIA',
   'MAIS TARDE', 'CONT[ÍI]NUO', 'CONTINUO',
+  /*
+    Nem tudo depois do traço é hora do dia — e o roteirista não vai mudar isso.
+
+    "EXT. FAZENDA - MONTAGEM" e "INT. QUARTO - FLASHBACK" dizem o TIPO da cena
+    no lugar do período, e é uso corrente. Sem estes, o cabeçalho inteiro deixa
+    de ser cabeçalho e a cena some da decupagem sem deixar rastro — foi assim
+    que a cena 75 de "Terra Manchada de Sangue" sumiu.
+
+    Elas caem em "dia" na classificação, que é o padrão: montagem e flashback
+    não dizem se a diária é diurna ou noturna, e chutar noite seria pior.
+  */
+  'MONTAGEM', 'FLASHBACK', 'FLASH[- ]?BACK', 'SONHO', 'INSERT', 'INSERÇÃO',
+  'PRESENTE', 'PASSADO', 'INTERCALADO',
   // Roteiros em inglês circulam bastante em coprodução.
   'DAY', 'NIGHT', 'CONTINUOUS', 'DAWN', 'DUSK', 'MORNING', 'EVENING',
 ].join('|');
+
+/**
+ * O que pode vir ANTES do período, qualificando-o.
+ *
+ * "INÍCIO DA MANHÃ", "FIM DE TARDE", "MEIO DA NOITE". A lista de períodos
+ * conhece MANHÃ, mas o cabeçalho não começava nela — e a expressão exigia que o
+ * período viesse colado ao traço. Resultado: a cena 27 de "Terra Manchada de
+ * Sangue" não existia para o app.
+ */
+const QUALIFICADOR = String.raw`(?:(?:IN[ÍI]CIO|COME[ÇC]O|FIM|FINAL|MEIO)\s+D[AEO]\s+)?`;
 
 /**
  * Cabeçalho de cena no padrão do mercado: 7A. INT./EXT. LOCAL - PERÍODO.
@@ -227,7 +258,7 @@ const RE_CABECALHO = new RegExp(
   String.raw`(?:(\d{1,4}\s?[A-Za-z]?)\s*[.):\-–—]\s*)?` +
   String.raw`\b(INT\.?\/EXT\.?|EXT\.?\/INT\.?|INT\.|EXT\.|I\/E\.)\s+` +
   String.raw`([^\n]{2,80}?)\s*[-–—]\s*` +
-  `(${PERIODOS})(?![A-Za-zÀ-ÿ])`,
+  `(${QUALIFICADOR}(?:${PERIODOS}))(?![A-Za-zÀ-ÿ])`,
   'gi'
 );
 
@@ -310,7 +341,7 @@ export function extrairCenas(paginas: { numero: number; texto: string }[]): Cabe
   const temNumeracao = achados.some(a => a.impresso);
 
   let proximoAutomatico = 1;
-  return achados.map((a, i) => {
+  const cenas: CabecalhoCena[] = achados.map((a, i) => {
     let numero: string;
     if (a.impresso) {
       numero = a.impresso;
@@ -328,6 +359,98 @@ export function extrairCenas(paginas: { numero: number; texto: string }[]): Cabe
       numero,
       corpo: completo.slice(a.fim, achados[i + 1]?.indice ?? completo.length).trim(),
     };
+  });
+
+  return ordenar([...cenas, ...preencherBuracos(completo, cenas, paginaDe)]);
+}
+
+/**
+ * A segunda passada: cenas numeradas que NÃO têm INT./EXT.
+ *
+ * ⚠️ ELA SÓ OLHA OS BURACOS DA NUMERAÇÃO, e é isso que a torna segura.
+ *
+ * "123. MONTAGEM DE JORNAIS" é um cabeçalho de verdade e não casa com padrão
+ * nenhum: não tem ambiente nem período. Sair caçando "número seguido de
+ * maiúsculas" no roteiro inteiro encontraria marcação de página, número de
+ * telefone e réplica de diálogo. Mas se a primeira passada achou a 122 e a 124
+ * e não achou a 123, então existe uma cena 123 em algum lugar — a numeração do
+ * roteiro é a prova, e aí procurar por ela é procurar algo que se sabe existir.
+ *
+ * O que ela captura depois do número é a sequência de palavras em CAIXA ALTA,
+ * que para em "Imagens de jornais…" — a ação já vem em caixa mista.
+ */
+function preencherBuracos(
+  completo: string,
+  achadas: CabecalhoCena[],
+  paginaDe: (i: number) => number
+): CabecalhoCena[] {
+  const numeros = achadas
+    .map(c => parseInt(c.numero, 10))
+    .filter(n => !isNaN(n));
+  if (numeros.length < 3) return []; // roteiro sem numeração confiável
+
+  const tem = new Set(numeros);
+  const menor = Math.min(...numeros);
+  const maior = Math.max(...numeros);
+
+  const novas: CabecalhoCena[] = [];
+
+  for (let n = menor + 1; n < maior; n++) {
+    if (tem.has(n)) continue;
+
+    const re = new RegExp(
+      // O `(?![a-zà-ÿ])` fecha cada palavra: sem ele, o "I" de "Imagens" — que
+      // já é a ação da cena — entrava no título como se fosse mais uma palavra
+      // em caixa alta.
+      String.raw`\b` + n + String.raw`\s*[.):\-–—]\s+((?:[A-ZÀ-Ý0-9][A-ZÀ-Ý0-9'’\-]*(?![a-zà-ÿ])\s+){0,7}[A-ZÀ-Ý0-9][A-ZÀ-Ý0-9'’\-]*(?![a-zà-ÿ]))`,
+      'g'
+    );
+
+    /*
+      TODAS as ocorrências do número, não a primeira.
+
+      "123" aparece no roteiro antes do cabeçalho — numeração de página, um
+      valor no diálogo, o que for. A primeira ocorrência quase nunca é a cena,
+      e parar nela era o mesmo que não procurar: no roteiro de teste ela casava
+      com uma letra solta e a cena continuava perdida.
+
+      O filtro é o título: duas palavras em caixa alta seguidas. Nome de
+      personagem antes da fala tem uma só, e o roteiro está cheio deles.
+    */
+    let m: RegExpExecArray | null = null;
+    for (const tentativa of completo.matchAll(re)) {
+      const t = (tentativa[1] || '').trim();
+      if (t.split(/\s+/).length >= 2) { m = tentativa as RegExpExecArray; break; }
+    }
+    if (!m) continue;
+
+    const titulo = m[1].trim().replace(/\s{2,}/g, ' ');
+    const indice = m.index ?? 0;
+    novas.push({
+      numero: String(n),
+      cabecalho: `${n}. ${titulo}`,
+      local: titulo,
+      // Sem INT./EXT. não há o que ler: fica no padrão, e a marca `pelo_numero`
+      // diz à tela que estes dois campos são chute e pedem conferência.
+      ambiente: 'int',
+      periodo: 'dia',
+      pagina: paginaDe(indice),
+      corpo: completo.slice(indice, indice + 2000).trim(),
+      pelo_numero: true,
+    });
+  }
+
+  return novas;
+}
+
+/** Devolve as cenas na ordem em que aparecem no roteiro. */
+function ordenar(cenas: CabecalhoCena[]): CabecalhoCena[] {
+  return [...cenas].sort((a, b) => {
+    const na = parseInt(a.numero, 10);
+    const nb = parseInt(b.numero, 10);
+    if (isNaN(na) || isNaN(nb)) return 0;
+    if (na !== nb) return na - nb;
+    return a.numero.localeCompare(b.numero);
   });
 }
 
