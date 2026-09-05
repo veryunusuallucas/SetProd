@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db/db';
@@ -10,6 +10,8 @@ import { adicionarSubtarefasDecupagem } from '../lib/tasks';
 import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
 import { extrairElementosDeCenas } from '../lib/gemini';
 import { DEPARTAMENTOS, temaDe, normalizarCategoria, extrairCenas, encontrarTrechoLiteral, escopoPadrao, type CabecalhoCena } from '../lib/decupagem';
+import { reconciliarCenas, semelhanca, LIMITE_MESMA_HISTORIA } from '../lib/reconciliarCenas';
+import { EscolhaDeRoteiro } from '../components/EscolhaDeRoteiro';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import { sincronizarElementos } from '../lib/elementos';
 import { pegarVez, liberarVez, marcarProgresso, manterVivo, execucaoAtiva, type Vaga, type ExecucaoAtiva } from '../lib/filaIA';
@@ -152,6 +154,24 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   const [paginasTexto, setPaginasTexto] = useState<{ numero: number; texto: string }[] | null>(null);
   const [metaArquivo, setMetaArquivo] = useState<{ nome: string; paginas: number; tamanho: number } | null>(null);
   const [roteiroIdAtual, setRoteiroIdAtual] = useState<string | null>(null);
+
+  /*
+    A pergunta "versão nova ou outro roteiro?", esperando resposta.
+
+    Ela guarda a configuração da análise porque a análise PAUSA aqui: o que ela
+    vai fazer com as cenas depende da resposta, e fazer primeiro para perguntar
+    depois seria perguntar sobre algo que já aconteceu.
+  */
+  /** A resposta da pergunta acima, para `processar` ler depois do await. */
+  const versaoNovaRef = useRef(true);
+
+  const [perguntaRoteiro, setPerguntaRoteiro] = useState<{
+    batem: number;
+    total: number;
+    mesmaHistoria: boolean;
+    /** `null` = cancelou. A análise precisa saber disso, ou fica esperando para sempre. */
+    seguir: (versaoNova: boolean | null) => void;
+  } | null>(null);
   const [processando, setProcessando] = useState(false);
   const [progresso, setProgresso] = useState<{ feito: number; total: number } | null>(null);
   const [aviso, setAviso] = useState('');
@@ -159,10 +179,35 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   const [naFila, setNaFila] = useState<ExecucaoAtiva | null>(null);
   const [versoesAberto, setVersoesAberto] = useState(false);
 
-  /** Volta a usar uma revisão antiga, com as marcações que ela tinha. */
+  /**
+   * Volta a usar uma revisão antiga — com as marcações E o stripboard dela.
+   *
+   * O PDF antigo voltar sozinho não bastava: a ordem de filmagem continuava a
+   * do roteiro novo, e a tela ficava dizendo duas coisas ao mesmo tempo. Como
+   * cada cena guarda de qual roteiro veio, dá para trocar as duas juntas — as
+   * daquela versão voltam para a ordem, as das outras saem.
+   *
+   * ⚠️ SÓ QUANDO DÁ PARA SABER. Cena de antes desta mudança, e cena criada à
+   * mão, não têm roteiro de origem: elas ficam onde estão. Marcar tudo como
+   * "fora" por não saber esvaziaria o stripboard de quem só quis reler uma
+   * versão antiga.
+   */
   const restaurarVersao = async (id: string) => {
     const todas = await db.roteiro_pdfs.where('projeto_id').equals(projetoId!).toArray();
     for (const v of todas) await db.roteiro_pdfs.update(v.id, { arquivado: v.id !== id });
+
+    const cenas = await db.cenas.where('projeto_id').equals(projetoId!).toArray();
+    const daVersao = cenas.filter(c => c.roteiro_id === id);
+
+    if (daVersao.length > 0) {
+      for (const c of cenas) {
+        if (!c.origem_roteiro || !c.roteiro_id) continue; // não dá para saber: não se mexe
+        const dela = c.roteiro_id === id;
+        if (Boolean(c.fora_do_roteiro) === !dela) continue; // já está como deveria
+        await db.cenas.update(c.id, { fora_do_roteiro: !dela });
+      }
+    }
+
     setVersoesAberto(false);
   };
   const [erro, setErro] = useState('');
@@ -280,22 +325,49 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
    * Grava as cenas detectadas pelo padrão de cabeçalho.
    *
    * Nada de deduplicar por nome de local: roteiro repete locação de propósito
-   * (o mesmo quarto em dias diferentes é cena diferente). Em vez disso,
-   * reprocessar o PDF substitui as cenas que vieram dele e preserva as que
-   * você criou na mão.
+   * (o mesmo quarto em dias diferentes é cena diferente).
+   *
+   * ⚠️ VERSÃO NOVA NÃO APAGA NADA. Ela reconcilia por número — a cena 42
+   * continua sendo a mesma cena 42, com o mesmo id, e por isso a ordem do
+   * stripboard, as estimativas e as diárias já montadas sobrevivem. Só quando a
+   * pessoa diz que é OUTRO roteiro é que as cenas do anterior saem da ordem — e
+   * mesmo aí elas não são apagadas, ficam marcadas como fora do roteiro.
+   * Ver `lib/reconciliarCenas.ts`.
    */
-  const gravarCenas = async (lista: CabecalhoCena[]) => {
+  const gravarCenas = async (lista: CabecalhoCena[], versaoNova: boolean) => {
+    const roteiroId = roteiroIdAtual || roteiro?.id || '';
     const existentes = await db.cenas.where('projeto_id').equals(projetoId!).toArray();
-    const antigasDoRoteiro = existentes.filter(c => c.origem_roteiro);
-    for (const c of antigasDoRoteiro) await db.cenas.delete(c.id);
-
-    const manuais = existentes.length - antigasDoRoteiro.length;
-    let ordem = manuais;
 
     /** Número da cena → id gravado, para as marcações saberem a que cena pertencem. */
     const idPorNumero = new Map<string, string>();
 
-    for (const c of lista) {
+    /*
+      "Outro roteiro" tira as cenas do anterior da ordem de filmagem, sem
+      apagá-las: elas continuam existindo com as marcações e o registro do que
+      já foi gravado, e voltam se aquela versão do roteiro for reativada.
+    */
+    if (!versaoNova) {
+      for (const c of existentes.filter(x => x.origem_roteiro && !x.fora_do_roteiro)) {
+        await db.cenas.update(c.id, { fora_do_roteiro: true });
+      }
+    }
+
+    const plano = reconciliarCenas(versaoNova ? existentes : [], lista, roteiroId);
+
+    for (const { cena, campos } of plano.atualizadas) {
+      await db.cenas.update(cena.id, campos);
+      idPorNumero.set(cena.numero, cena.id);
+    }
+
+    for (const c of plano.sairam) {
+      await db.cenas.update(c.id, { fora_do_roteiro: true });
+    }
+
+    // As novas entram DEPOIS de tudo o que já está na ordem, e não no meio: a
+    // ordem de filmagem é decisão da produção, e o roteiro não a conhece.
+    let ordem = Math.max(-1, ...existentes.map(c => c.ordem ?? -1)) + 1;
+
+    for (const c of plano.criadas) {
       const id = crypto.randomUUID();
       idPorNumero.set(c.numero, id);
       await db.cenas.add({
@@ -306,13 +378,21 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         ambiente: c.ambiente,
         periodo: c.periodo,
         origem_roteiro: true,
+        roteiro_id: roteiroId,
         ordem: ordem++,
         // Guardado para os relatórios saberem quem aparece em cada cena.
         // Cortado porque cena longa não acrescenta nome novo e o banco é local.
         corpo: c.corpo.slice(0, 4000),
       } as Cena);
     }
-    return { criadas: lista.length, substituidas: antigasDoRoteiro.length, idPorNumero };
+
+    return {
+      criadas: plano.criadas.length,
+      atualizadas: plano.atualizadas.length,
+      sairam: plano.sairam.length,
+      voltaram: plano.voltaram.length,
+      idPorNumero,
+    };
   };
 
   /**
@@ -371,6 +451,22 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
     return { criadas, descartadas };
   };
 
+  /**
+   * O que a análise fez, em uma frase.
+   *
+   * Diz o que MUDOU, e não só quantas cenas vieram: "128 cenas" numa reanálise
+   * não informa nada, porque era o que já havia antes. O que a pessoa precisa
+   * saber é se entrou cena nova e, principalmente, se alguma saiu.
+   */
+  const descreverResumo = (r: { criadas: number; atualizadas: number; sairam: number; voltaram: number }) => {
+    const partes: string[] = [];
+    if (r.criadas) partes.push(`${r.criadas} cena(s) nova(s)`);
+    if (r.atualizadas) partes.push(`${r.atualizadas} atualizada(s)`);
+    if (r.voltaram) partes.push(`${r.voltaram} voltou/voltaram ao roteiro`);
+    if (r.sairam) partes.push(`${r.sairam} saiu/saíram do roteiro e ficou/ficaram marcada(s)`);
+    return partes.length ? partes.join(' · ') : 'Nada mudou: o roteiro é igual ao que já estava aqui.';
+  };
+
   const processar = async (config: { modo: ModoProcessamento; departamentos: string[]; minucioso: boolean }) => {
     if (!paginasTexto) return;
 
@@ -378,6 +474,34 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
       setPaginasTexto(null);
       setMetaArquivo(null);
       return;
+    }
+
+    /*
+      Antes de escrever qualquer cena: este PDF é a versão nova do que já está
+      aqui, ou outro roteiro?
+
+      Só pergunta quando já existe cena de roteiro no projeto — na primeira
+      importação não há duas respostas possíveis, e uma pergunta com uma
+      resposta só é um clique cobrado à toa.
+    */
+    const jaGravadas = await db.cenas.where('projeto_id').equals(projetoId!).toArray();
+    const temRoteiroAntes = jaGravadas.some(c => c.origem_roteiro);
+
+    if (temRoteiroAntes) {
+      const detectadasAgora = extrairCenas(paginasTexto);
+      const parecido = semelhanca(jaGravadas, detectadasAgora);
+      const escolha = await new Promise<boolean | null>(resolver => {
+        setPerguntaRoteiro({
+          batem: parecido.batem,
+          total: parecido.total,
+          mesmaHistoria: parecido.fracao >= LIMITE_MESMA_HISTORIA,
+          seguir: v => { setPerguntaRoteiro(null); resolver(v); },
+        });
+      });
+      if (escolha === null) return;
+      versaoNovaRef.current = escolha;
+    } else {
+      versaoNovaRef.current = true;
     }
 
     const analiseTecnica = config.modo === 'FULL_BREAKDOWN';
@@ -405,14 +529,15 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
     //    inteira no nome da cena.
     setProgresso({ feito: 0, total: 1 });
     const cenasDetectadas = extrairCenas(paginasTexto);
-    const { criadas, substituidas, idPorNumero } = await gravarCenas(cenasDetectadas);
+    const resumo = await gravarCenas(cenasDetectadas, versaoNovaRef.current);
+    const { criadas, idPorNumero } = resumo;
 
     if (!analiseTecnica) {
       setPaginasTexto(null);
       setMetaArquivo(null);
       setProcessando(false);
       setProgresso(null);
-      setAviso(`${criadas} cena(s) extraídas do roteiro.` + (substituidas > 0 ? ` (${substituidas} da importação anterior foram substituídas.)` : ''));
+      setAviso(descreverResumo(resumo));
       return;
     }
 
@@ -669,6 +794,18 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   // ---- ETAPA 2: workspace do roteiro ----
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '32px' }}>
+
+      {/* A análise para aqui até esta pergunta ser respondida: o que ela vai
+          fazer com as cenas depende da resposta. */}
+      {perguntaRoteiro && (
+        <EscolhaDeRoteiro
+          batem={perguntaRoteiro.batem}
+          total={perguntaRoteiro.total}
+          mesmaHistoria={perguntaRoteiro.mesmaHistoria}
+          aoEscolher={perguntaRoteiro.seguir}
+          aoCancelar={() => perguntaRoteiro.seguir(null)}
+        />
+      )}
 
       <AnimatePresence>
         {aviso && (

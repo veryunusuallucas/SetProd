@@ -638,8 +638,29 @@ export interface Cena {
   anexos?: string[]; // URLs ou Base64 (Storyboard)
 
   // ---- Stripboard (v4) ----
-  /** true = veio da extração do roteiro (é substituída ao reprocessar o PDF). */
+  /** true = veio da extração do roteiro. */
   origem_roteiro?: boolean;
+  /**
+   * De QUAL roteiro ela veio.
+   *
+   * É o que permite cada roteiro ter o seu stripboard: o que está na tela é o
+   * do roteiro ativo, e voltar para a versão anterior devolve a ordem, as
+   * quebras e as estimativas daquela versão, em vez de um stripboard só,
+   * misturado, em que ninguém sabe qual roteiro manda na Ordem do Dia.
+   *
+   * Cena sem este campo é de antes da mudança, ou foi criada à mão — as duas
+   * aparecem em qualquer roteiro, porque não pertencem a nenhum.
+   */
+  roteiro_id?: string;
+  /**
+   * A versão nova do roteiro não tem mais esta cena.
+   *
+   * Ela sai da ordem de filmagem e fica numa lista à parte, sem ser apagada:
+   * roteirista corta cena e volta atrás, e a cena cortada pode já ter sido
+   * gravada — apagá-la levaria junto o registro do que aconteceu no set. Se
+   * voltar ao roteiro, volta com estimativa, elenco e locação intactos.
+   */
+  fora_do_roteiro?: boolean;
   /**
    * Texto da cena, guardado na importação.
    *
@@ -688,6 +709,13 @@ export type TipoStripboardItem =
   | 'BANNER_NOTE';
 
 export interface StripboardItem {
+  /**
+   * De qual roteiro é esta quebra/faixa. Ver `Cena.roteiro_id`.
+   *
+   * Sem ela, trocar de roteiro deixaria as quebras do roteiro antigo no meio
+   * das cenas do novo — dividindo o filme em dias que não existem.
+   */
+  roteiro_id?: string;
   id: string;
   projeto_id: string;
   tipo: TipoStripboardItem;
