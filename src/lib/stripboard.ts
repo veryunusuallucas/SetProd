@@ -264,3 +264,80 @@ export function agruparPorLocacao(linha: ItemLinha[], nomeLocacao: (cena: Cena) 
 
   return saida;
 }
+
+// ---------------------------------------------------------------------------
+// Outras formas de organizar a ordem de filmagem
+// ---------------------------------------------------------------------------
+
+/**
+ * As maneiras de reorganizar que a barra do stripboard oferece.
+ *
+ * Todas seguem a mesma regra: **a quebra de diária é uma parede**. Reorganizar
+ * embaralha as cenas dentro de cada dia, nunca entre dias — mover uma cena de
+ * quarta-feira para segunda por causa de uma ordenação automática seria remontar
+ * a produção pelas costas de quem a montou.
+ */
+export type ModoDeOrdenar = 'roteiro' | 'locacao' | 'ambiente' | 'periodo';
+
+export const MODOS_DE_ORDENAR: { modo: ModoDeOrdenar; rotulo: string; ajuda: string }[] = [
+  { modo: 'roteiro', rotulo: 'Ordem do roteiro', ajuda: 'Volta à sequência em que as cenas aparecem no roteiro, pelo número.' },
+  { modo: 'locacao', rotulo: 'Agrupar por locação', ajuda: 'Junta as cenas do mesmo lugar — é o que economiza deslocamento.' },
+  { modo: 'ambiente', rotulo: 'Agrupar por INT / EXT', ajuda: 'Internos de um lado, externos do outro. Externo depende do tempo; interno, não.' },
+  { modo: 'periodo', rotulo: 'Agrupar por dia / noite', ajuda: 'Junta o que é diurno e o que é noturno, para não virar a jornada duas vezes.' },
+];
+
+/**
+ * Reordena as cenas de cada dia por um critério, sem atravessar as quebras.
+ *
+ * `ordem do roteiro` desfaz qualquer agrupamento e devolve a sequência numérica
+ * — é o "desfazer" de quem experimentou uma organização e não gostou. Ele
+ * também respeita as quebras: cada dia volta à ordem do roteiro entre as suas
+ * próprias paredes.
+ */
+export function reordenar(
+  linha: ItemLinha[],
+  modo: ModoDeOrdenar,
+  nomeLocacao: (cena: Cena) => string
+): ItemLinha[] {
+  if (modo === 'locacao') return agruparPorLocacao(linha, nomeLocacao);
+
+  const chaveDe = (c: Cena): string => {
+    if (modo === 'ambiente') return c.ambiente === 'int' ? '1-int' : '2-ext';
+    if (modo === 'periodo') return c.periodo === 'noite' ? '2-noite' : '1-dia';
+    return '';
+  };
+
+  /** Número da cena como número, para "7A" vir logo depois de "7". */
+  const ordemNoRoteiro = (c: Cena): [number, string] => {
+    const n = parseInt(c.numero.replace(/\D/g, ''), 10);
+    return [isNaN(n) ? Number.MAX_SAFE_INTEGER : n, c.numero];
+  };
+
+  const saida: ItemLinha[] = [];
+  let bloco: ItemLinha[] = [];
+
+  const despejar = () => {
+    const cenas = bloco.filter((i): i is Extract<ItemLinha, { tipo: 'SCENE' }> => i.tipo === 'SCENE');
+    const outros = bloco.filter(i => i.tipo !== 'SCENE');
+
+    cenas.sort((a, b) => {
+      const ka = chaveDe(a.cena), kb = chaveDe(b.cena);
+      if (ka !== kb) return ka < kb ? -1 : 1;
+      // Dentro do grupo, a ordem do roteiro — que é a que a equipe já conhece.
+      const [na, ta] = ordemNoRoteiro(a.cena);
+      const [nb, tb] = ordemNoRoteiro(b.cena);
+      return na !== nb ? na - nb : ta.localeCompare(tb);
+    });
+
+    saida.push(...cenas, ...outros);
+    bloco = [];
+  };
+
+  for (const it of linha) {
+    if (it.tipo === 'DAY_BREAK') { despejar(); saida.push(it); continue; }
+    bloco.push(it);
+  }
+  despejar();
+
+  return saida;
+}

@@ -662,6 +662,15 @@ export interface Cena {
    */
   fora_do_roteiro?: boolean;
   /**
+   * Reconhecida pelo BURACO na numeração, e não pelo cabeçalho INT./EXT.
+   *
+   * "123. MONTAGEM DE JORNAIS" é cena de verdade e não tem ambiente nem
+   * período — os dois campos vieram do padrão, não do roteiro. A tira marca
+   * isso para alguém conferir, em vez de a produção escalar uma cena como
+   * interna/dia porque o app precisou preencher alguma coisa.
+   */
+  sem_cabecalho?: boolean;
+  /**
    * Texto da cena, guardado na importação.
    *
    * É o que permite saber em quais cenas um personagem aparece sem depender de

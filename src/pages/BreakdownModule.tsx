@@ -379,6 +379,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         periodo: c.periodo,
         origem_roteiro: true,
         roteiro_id: roteiroId,
+        ...(c.pelo_numero ? { sem_cabecalho: true } : {}),
         ordem: ordem++,
         // Guardado para os relatórios saberem quem aparece em cada cena.
         // Cortado porque cena longa não acrescenta nome novo e o banco é local.
