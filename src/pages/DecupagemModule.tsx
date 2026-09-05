@@ -107,7 +107,19 @@ export function DecupagemModule() {
   // Ordem de filmagem: usa `ordem` quando definida no stripboard; senão, o número da cena.
   const chaveOrdem = (c: Cena) =>
     c.ordem !== undefined ? c.ordem : (parseInt(c.numero.replace(/\D/g, '')) || 0);
-  const cenasOrdenadas = [...cenas].sort((a, b) => chaveOrdem(a) - chaveOrdem(b));
+  /*
+    A ordem de filmagem só tem o que está NO ROTEIRO ATUAL.
+
+    Cena que a versão nova cortou não é apagada — ela pode já ter sido gravada,
+    e o roteirista costuma voltar atrás —, mas também não pode continuar no
+    stripboard: ela entraria na conta de páginas, na estimativa de diárias e
+    poderia ser escalada para um dia. Fica na lista de fora, logo abaixo.
+  */
+  const cenasOrdenadas = [...cenas]
+    .filter(c => !c.fora_do_roteiro)
+    .sort((a, b) => chaveOrdem(a) - chaveOrdem(b));
+
+  const cenasForaDoRoteiro = cenas.filter(c => c.fora_do_roteiro);
 
   /**
    * Manda cenas para uma diária (v4 §2.4/§2.6).
@@ -344,7 +356,7 @@ export function DecupagemModule() {
 
             <StripboardTimeline
               projetoId={projetoId!}
-              cenas={cenas}
+              cenas={cenasOrdenadas}
               itens={itensStrip}
               locacoes={locacoes}
               paginaDaCena={paginaDaCena}
@@ -355,6 +367,34 @@ export function DecupagemModule() {
                 setModalDiaria(true);
               }}
             />
+
+            {/*
+              As que a versão nova do roteiro não tem mais.
+
+              Ficam fora da ordem de filmagem e visíveis, porque as duas coisas
+              importam: elas não podem entrar na conta de páginas nem ser
+              escaladas para um dia, e não podem sumir sem ninguém ver — a cena
+              cortada pode já ter sido gravada, e o roteirista volta atrás.
+            */}
+            {cenasForaDoRoteiro.length > 0 && (
+              <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px dashed var(--border-light)' }}>
+                <div className="text-xs text-muted uppercase tracking-widest font-bold" style={{ marginBottom: '8px' }}>
+                  Fora do roteiro atual · {cenasForaDoRoteiro.length}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {cenasForaDoRoteiro.map(c => (
+                    <span
+                      key={c.id}
+                      className="text-xs"
+                      style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', border: '1px dashed var(--border-light)', color: 'var(--text-muted)' }}
+                      title="A versão atual do roteiro não tem esta cena. Ela volta sozinha se aparecer numa versão seguinte."
+                    >
+                      {c.numero} · {c.descricao}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
