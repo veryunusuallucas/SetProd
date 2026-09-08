@@ -14,6 +14,7 @@ import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
+import { rotuloDoTrecho } from '../lib/partirCena';
 import { oitavosParaPaginas } from '../lib/decupagem';
 import { marcarCena, relatorioDoDia } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
@@ -847,8 +848,19 @@ export function DiariaModule() {
         dentro do carro.
       */
       const destino = c.item.locacao_id ? locacoes.find(l => l.id === c.item.locacao_id) : undefined;
+      /*
+        O TRECHO VAI IMPRESSO, e é a metade que faz a divisão valer alguma coisa.
+
+        Partir a cena só na tela resolveria o horário e não resolveria o set:
+        quem está com o papel na mão precisa saber que às 10h grava os planos
+        1 a 3, almoça, e volta nos planos 4 a 6 da MESMA cena. Sem isso, a OD
+        impressa mostra a cena 5 duas vezes sem explicar por quê.
+      */
+      const planosDoTrecho = c.cena ? rotuloDoTrecho(c.item, planosDaCena.get(c.cena.id) || []) : null;
       const rotulo = c.cena
-        ? `<b>Cena ${c.cena.numero}</b> — ${c.cena.descricao} <span class="muted">(${(c.cena.ambiente || 'ext').toUpperCase()} / ${c.cena.periodo || 'dia'})</span>`
+        ? `<b>Cena ${c.cena.numero}${c.item.parte || ''}</b> — ${c.cena.descricao} <span class="muted">(${(c.cena.ambiente || 'ext').toUpperCase()} / ${c.cena.periodo || 'dia'})</span>${
+            c.item.planos_ids && planosDoTrecho ? ` <b class="muted">· ${planosDoTrecho}</b>` : ''
+          }`
         : `${c.item.titulo || '—'}${destino ? ` <span class="muted">→ <b>${destino.nome}</b>${destino.endereco ? ` · ${destino.endereco}` : ''}</span>` : ''}`;
       return `<tr><td style="padding:4px 12px;font-weight:bold;white-space:nowrap">${c.hora}</td><td style="padding:4px 12px">${rotulo}</td></tr>`;
     }).join('');

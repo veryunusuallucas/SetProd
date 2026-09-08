@@ -617,6 +617,33 @@ export interface ItemDoDia {
   /** Modo interativo: a hora em que o item de fato começou. */
   hora_real?: string;
   /**
+   * Quais planos da cena entram NESTE trecho do dia.
+   *
+   * Ausente = a cena inteira, que é o caso normal. Presente = a cena foi
+   * partida: ela aparece mais de uma vez na linha, e cada aparição leva a sua
+   * parte da decupagem.
+   *
+   * De onde veio: *"antes do almoço vai ser gravado a cena 5 e os planos A, B,
+   * C, mas entre o C e o D vai ser o almoço"*. A unidade que a produção
+   * interrompe não é a cena — é o plano. Uma cena de entrevista pausa para o
+   * lanche e volta sendo a mesma cena, com os mesmos planos; o que muda é
+   * quando cada plano é gravado.
+   *
+   * ⚠️ A CENA CONTINUA SENDO UMA SÓ. Isto não cria 5A e 5B na decupagem, não
+   * divide as páginas e não duplica o registro do que foi gravado — quem
+   * confere o filme continua vendo a cena 5. O corte é de AGENDA.
+   */
+  planos_ids?: string[];
+  /**
+   * O rótulo do trecho quando a cena não tem decupagem: "A", "B".
+   *
+   * Sem planos não há por onde cortar com precisão, então o corte é no meio e
+   * as partes se chamam pela letra — que é como um stripboard de papel marca
+   * cena partida. Serve para a tira dizer "Cena 5A" em vez de repetir
+   * "Cena 5" duas vezes e ninguém saber qual é qual.
+   */
+  parte?: string;
+  /**
    * Para onde este item leva — a locação de destino de um deslocamento.
    *
    * De onde veio: *"quando você adicionar deslocamento na OD, você poder linkar

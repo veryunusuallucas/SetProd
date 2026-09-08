@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
   Flag, StickyNote, CircleDot, Timer, ClipboardList, Lightbulb, Drama, Brush,
-  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard,
+  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard, Scissors, Merge,
 } from 'lucide-react';
 import { db } from '../db/db';
-import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao } from '../types';
+import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao, Plano } from '../types';
 import {
   montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso,
   duracaoDoItem, COR_TIPO, emHora, type VisaoDoDia,
@@ -19,6 +19,7 @@ import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO } from '.
 import { faiscar } from './ui/Faisca';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { CampoTexto } from './ui/CampoTexto';
+import { partirItemDeCena, juntarTrechos, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
 
 /**
  * A Timeline Única — o protagonista da tela da diária.
@@ -142,7 +143,13 @@ export function LinhaDoDia({
   registros: RegistroCena[];
   meuPerfilId?: string;
   podeMarcar: boolean;
-  planosPorCena: Map<string, unknown[]>;
+  /**
+   * Cena → planos, na ordem de filmagem.
+   *
+   * Era `unknown[]` porque só a CONTAGEM importava. Agora a linha precisa dos
+   * planos de verdade: é por eles que a cena se parte no meio do dia.
+   */
+  planosPorCena: Map<string, Plano[]>;
   chamada?: string;
   /**
    * Quem grava é quem chamou.
@@ -158,6 +165,8 @@ export function LinhaDoDia({
   const [arrastando, setArrastando] = useState<number | null>(null);
   /** Qual cena está com o painel de cobertura aberto. */
   const [cobertura, setCobertura] = useState<string | null>(null);
+  /** Qual item está com o painel de "partir aqui" aberto. */
+  const [partindo, setPartindo] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
   const [adicionando, setAdicionando] = useState(false);
   /** Qual cena está escolhida no seletor do "acrescentar cena". */
@@ -200,6 +209,25 @@ export function LinhaDoDia({
   };
 
   const remover = (id: string) => gravar(linha.filter(i => i.id !== id));
+
+  /**
+   * Parte a cena em dois trechos, no plano escolhido.
+   *
+   * O segundo trecho entra LOGO DEPOIS do primeiro, e não no fim do dia: é
+   * entre os dois que a refeição vai entrar, e é o gesto seguinte de quem
+   * acabou de partir. Jogá-lo no fim obrigaria a arrastar de volta.
+   */
+  const partir = (item: ItemDoDia, cena: Cena | undefined, corteApos: number) => {
+    setPartindo(null);
+    const planos = cena ? (planosPorCena.get(cena.id) || []) : [];
+    const [a, b] = partirItemDeCena(item, planos, corteApos, duracaoInicial(item, cena?.estimativa));
+    const i = linha.findIndex(x => x.id === item.id);
+    const nova = [...linha];
+    nova.splice(i, 1, a, b);
+    gravar(nova);
+  };
+
+  const juntar = (cenaId: string) => gravar(juntarTrechos(linha, cenaId));
 
   const adicionar = (tipo: Exclude<TipoItemDia, 'cena'>, titulo: string) => {
     setAdicionando(false);
@@ -347,7 +375,18 @@ export function LinhaDoDia({
             const cor = c.item.tipo === 'cena' ? 'var(--accent)' : COR_TIPO[c.item.tipo];
             const registro = c.cena ? registroDe(registros, diaria.id, c.cena.id) : undefined;
             const tira = c.cena ? getStripboardColor(c.cena.ambiente, c.cena.periodo) : null;
-            const planos = c.cena ? (planosPorCena.get(c.cena.id) || []).length : 0;
+            const planosDaCena = c.cena ? (planosPorCena.get(c.cena.id) || []) : [];
+            /*
+              A contagem é a DESTE TRECHO, não a da cena.
+
+              Depois de partida, os dois trechos diziam "6 planos" cada um — o
+              total da cena — ao lado de "planos 1–3" e "planos 4–6". Duas
+              contas contraditórias na mesma linha, e a errada é a que aparece
+              primeiro no olho.
+            */
+            const planos = c.item.planos_ids ? c.item.planos_ids.length : planosDaCena.length;
+            const rotulo = c.cena ? rotuloDoTrecho(c.item, planosDaCena) : null;
+            const trechos = trechosDaCena(linha, c.cena?.id);
 
             return (
               <div
@@ -404,7 +443,26 @@ export function LinhaDoDia({
                     {c.cena ? (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span className="font-bold">Cena {c.cena.numero}</span>
+                          {/*
+                            "Cena 5A" quando não há decupagem; "Cena 5" com a
+                            faixa de planos ao lado quando há. A cena continua
+                            sendo a cena 5 nos dois casos — o que muda é o que
+                            se grava NESTE trecho do dia.
+                          */}
+                          <span className="font-bold">
+                            Cena {c.cena.numero}{c.item.parte || ''}
+                          </span>
+                          {c.item.planos_ids && rotulo && (
+                            <span
+                              className="text-xs font-bold"
+                              style={{
+                                padding: '1px 8px', borderRadius: 'var(--radius-full)',
+                                border: '1px solid var(--accent)', color: 'var(--accent)',
+                              }}
+                            >
+                              {rotulo}
+                            </span>
+                          )}
                           {tira && (
                             <span
                               className="text-xs font-bold"
@@ -610,6 +668,114 @@ export function LinhaDoDia({
                         />
                         <span className="text-xs text-secondary">som wild</span>
                       </label>
+                    </div>
+                  )}
+
+                  {/*
+                    PARTIR A CENA — o lanche entre o plano C e o plano D.
+
+                    Fica na cena, e não no menu de acrescentar, porque a
+                    pergunta é sobre ESTA cena: onde ela para. O menu de
+                    acrescentar responde outra coisa — o que mais entra no dia.
+
+                    Só em montagem: partir uma cena no meio do set, com a equipe
+                    seguindo o papel impresso, é mudar o plano por baixo de quem
+                    está trabalhando.
+                  */}
+                  {modo === 'criacao' && c.cena && !travada && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                      {trechos > 1 ? (
+                        <button
+                          onClick={() => juntar(c.cena!.id)}
+                          className="btn-icon text-muted"
+                          style={{ padding: '6px', border: 'none', background: 'transparent' }}
+                          title={`Juntar os ${trechos} trechos da cena ${c.cena.numero} de volta num só`}
+                        >
+                          <Merge size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setPartindo(a => (a === c.item.id ? null : c.item.id))}
+                          className="btn-icon text-muted"
+                          style={{ padding: '6px', border: 'none', background: 'transparent' }}
+                          title={planos > 0 ? 'Partir esta cena entre dois planos' : 'Partir esta cena ao meio'}
+                        >
+                          <Scissors size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/*
+                    ONDE PARTIR.
+
+                    Com decupagem, a pergunta é "depois de qual plano?" e as
+                    opções são os planos — o corte cai no lugar exato, e cada
+                    trecho já sabe o que grava. Sem decupagem não há por onde
+                    cortar com precisão, então sobra o meio, e os trechos viram
+                    5A e 5B como num stripboard de papel.
+                  */}
+                  {partindo === c.item.id && c.cena && (
+                    <div
+                      style={{
+                        flexBasis: '100%', marginTop: '8px', paddingTop: '10px',
+                        borderTop: '1px dashed var(--border-light)',
+                        display: 'flex', flexDirection: 'column', gap: '8px',
+                      }}
+                    >
+                      <div className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                        {planos > 0
+                          ? 'Até que plano vai a primeira parte? O que vier depois entra no segundo trecho, e entre os dois cabe a refeição ou o deslocamento.'
+                          : 'Esta cena não tem decupagem, então o corte é no meio: ela vira 5A e 5B. Fazendo a decupagem antes, dá para cortar no plano exato.'}
+                      </div>
+
+                      {planos > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {/* O último plano não aparece: cortar depois dele
+                              deixaria o segundo trecho vazio. */}
+                          {planosDaCena.slice(0, -1).map((pl, iPlano) => (
+                            <button
+                              key={pl.id}
+                              onClick={() => partir(c.item, c.cena, iPlano)}
+                              className="text-xs"
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                padding: '6px 11px', borderRadius: 'var(--radius-full)',
+                                border: '1px solid var(--border-light)', cursor: 'pointer',
+                                background: 'var(--bg-surface)', color: 'var(--text-primary)',
+                                maxWidth: '260px',
+                              }}
+                              title={pl.descricao || undefined}
+                            >
+                              <Scissors size={11} className="text-muted" />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                depois do <b>{pl.numero}</b>
+                                {pl.descricao ? ` · ${pl.descricao}` : ''}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => partir(c.item, c.cena, 0)}
+                          className="text-xs font-bold"
+                          style={{
+                            alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '7px 13px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
+                            border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
+                          }}
+                        >
+                          <Scissors size={12} /> Partir em {c.cena.numero}A e {c.cena.numero}B
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setPartindo(null)}
+                        className="text-xs text-muted"
+                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        cancelar
+                      </button>
                     </div>
                   )}
 
