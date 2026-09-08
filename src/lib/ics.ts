@@ -1,4 +1,4 @@
-import type { Diaria } from '../types';
+import type { Diaria, Locacao } from '../types';
 import { calcularDia, montarLinhaDoDia, emMinutos } from './linhaDoDia';
 import type { Cena } from '../types';
 
@@ -95,14 +95,36 @@ export interface DadosDoIcs {
   nomeDoProjeto: string;
   /** Nome das locações do dia, para o campo LOCATION. */
   locais: string[];
+  /**
+   * As locações do projeto, para o endereço de um item que tem destino próprio.
+   *
+   * Opcional: quem não passar continua tendo o LOCATION geral do dia, que é o
+   * que existia antes. Passando, o deslocamento das 14h leva o endereço PARA
+   * ONDE ele vai — e é ele que o celular abre no mapa, que é o pedido original:
+   * *"aí na hora já notifica todo mundo com o endereço"*.
+   */
+  locacoes?: Locacao[];
 }
 
-export function montarIcs({ diaria, cenas, nomeDoProjeto, locais }: DadosDoIcs): string {
+export function montarIcs({ diaria, cenas, nomeDoProjeto, locais, locacoes = [] }: DadosDoIcs): string {
   if (!diaria.data) return '';
 
   const dia = calcularDia(montarLinhaDoDia(diaria), diaria.chamada, id => cenas.find(c => c.id === id));
   const local = locais.join(' · ');
   const rotuloDiaria = `Diária ${String(diaria.numero).padStart(2, '0')} — ${nomeDoProjeto}`;
+
+  /**
+   * O endereço de um item que aponta para uma locação — e o do dia quando não
+   * aponta.
+   *
+   * Endereço na frente do nome de propósito: é o que o Google e o Apple Maps
+   * conseguem procurar. "Casa da Dona Zica" não abre rota nenhuma.
+   */
+  const localDoItem = (locacaoId?: string): string => {
+    const l = locacaoId ? locacoes.find(x => x.id === locacaoId) : undefined;
+    if (!l) return local;
+    return l.endereco ? `${l.endereco} (${l.nome})` : l.nome;
+  };
 
   const inicio = dia.itens.length ? dia.itens[0].inicio : (emMinutos(diaria.chamada) ?? 7 * 60);
   const fim = dia.itens.length ? dia.itens[dia.itens.length - 1].fim : inicio + 12 * 60;
@@ -134,7 +156,7 @@ export function montarIcs({ diaria, cenas, nomeDoProjeto, locais }: DadosDoIcs):
       inicio: c.inicio,
       fim: c.fim > c.inicio ? c.fim : c.inicio + 15,
       titulo: `${c.item.titulo || 'Marco'} — D${String(diaria.numero).padStart(2, '0')}`,
-      local,
+      local: localDoItem(c.item.locacao_id),
     });
   }
 

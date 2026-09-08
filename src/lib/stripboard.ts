@@ -341,3 +341,58 @@ export function reordenar(
 
   return saida;
 }
+
+/**
+ * Onde encaixar uma cena para que ela caia DENTRO de um dia do stripboard.
+ *
+ * Serve ao caminho inverso do normal: em vez de o stripboard mandar cenas para
+ * a diária, alguém acrescenta uma cena na Ordem do Dia e ela precisa aparecer
+ * no dia certo do stripboard. Sem isto, a cena some na abertura seguinte — o
+ * rascunho espelha o bloco, e o que não está no bloco não sobrevive.
+ *
+ * Devolve um `ordem` que põe a cena no FIM daquele dia, logo antes da quebra
+ * que o fecha. Fim e não começo porque cena acrescentada depois é, quase
+ * sempre, cena que se decidiu encaixar "se der tempo" — e quem quiser em outro
+ * lugar arrasta, que é o gesto natural do stripboard.
+ *
+ * `null` quando a quebra não existe mais. Não é "põe no fim": é "perdi a
+ * referência", e chutar um dia aqui escalaria a cena para o dia errado.
+ */
+export function ordemParaEntrarNoBloco(linha: ItemLinha[], quebraId: string): number | null {
+  const totalDias = linha.filter(i => i.tipo === 'DAY_BREAK').length + 1;
+
+  let numero: number;
+  if (quebraId === ULTIMO_BLOCO) {
+    numero = totalDias;
+  } else {
+    const i = linha.findIndex(x => x.id === quebraId);
+    if (i < 0) return null;
+    numero = diaNaPosicao(linha, i);
+  }
+
+  let dia = 1;
+  /** Último item do bloco, a quebra que o fecha e a que o abre. */
+  let ultimo: ItemLinha | null = null;
+  let fecha: ItemLinha | null = null;
+  let abre: ItemLinha | null = null;
+
+  for (const it of linha) {
+    if (it.tipo === 'DAY_BREAK') {
+      if (dia === numero) { fecha = it; break; }
+      dia += 1;
+      if (dia === numero) abre = it;
+      continue;
+    }
+    if (dia === numero) ultimo = it;
+  }
+
+  // Bloco final: nada o fecha, então basta vir depois de tudo.
+  if (!fecha) return (ultimo?.ordem ?? abre?.ordem ?? 0) + 1;
+
+  // O bloco tem cenas: entra entre a última delas e a quebra.
+  if (ultimo) return (ultimo.ordem + fecha.ordem) / 2;
+
+  // Dia vazio: no meio do espaço entre as duas quebras que o delimitam.
+  const inicio = abre ? abre.ordem : fecha.ordem - 1;
+  return (inicio + fecha.ordem) / 2;
+}

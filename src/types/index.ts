@@ -602,6 +602,23 @@ export interface ItemDoDia {
   hora_travada?: string;
   /** Modo interativo: a hora em que o item de fato começou. */
   hora_real?: string;
+  /**
+   * Para onde este item leva — a locação de destino de um deslocamento.
+   *
+   * De onde veio: *"quando você adicionar deslocamento na OD, você poder linkar
+   * com uma locação. aí na hora já notifica todo mundo com o endereço"*. Sem
+   * isto, "Company move" na Ordem do Dia é uma linha que diz que a equipe vai
+   * andar, e não para onde — e quem está no set precisa procurar o endereço em
+   * outra parte do papel, ou perguntar no rádio.
+   *
+   * Vale para qualquer tipo, e não só `move`: um almoço tem restaurante e uma
+   * chamada tem ponto de encontro. É o deslocamento que torna o campo
+   * necessário, não o que o torna exclusivo.
+   *
+   * Aponta para uma `Locacao` do projeto. Locação apagada vira um item sem
+   * endereço, e não um item quebrado — quem lê continua vendo o título.
+   */
+  locacao_id?: string;
 }
 
 export interface AnexoOD {
