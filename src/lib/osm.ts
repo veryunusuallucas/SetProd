@@ -43,6 +43,131 @@ export function linkMapa(lat: number, lng: number): string {
 }
 
 /**
+ * Os servidores da Overpass, em ordem de tentativa.
+ *
+ * São instâncias diferentes do MESMO banco (o OpenStreetMap inteiro), mantidas
+ * por gente diferente. Consultar a segunda quando a primeira falha não é gambiarra
+ * — é como a rede foi feita para ser usada.
+ */
+/**
+ * Os servidores da Overpass, em ordem de preferência.
+ *
+ * São instâncias diferentes do MESMO banco (o OpenStreetMap inteiro), mantidas
+ * por gente diferente. Perguntar à segunda quando a primeira não responde não é
+ * gambiarra — é como a rede foi feita para ser usada.
+ *
+ * Os dois foram conferidos de dentro do navegador: respondem à mesma consulta,
+ * com os mesmos dados, e mandam o cabeçalho de CORS. Espelho que só funciona no
+ * terminal não serve para nada aqui.
+ */
+const ESPELHOS_OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+
+/**
+ * Quanto esperar antes de perguntar também ao espelho seguinte.
+ *
+ * Num dia bom o primeiro responde em ~3s e nenhum outro chega a ser incomodado.
+ * Passando disto, a chance de ele estar congestionado é grande o bastante para
+ * valer uma segunda pergunta em paralelo — e o serviço é público e gratuito,
+ * então não se dispara para todos de uma vez sem motivo.
+ */
+const ESCALONAR_MS = 5_000;
+
+const esperar = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Pergunta à Overpass, escalonando os espelhos.
+ *
+ * ⚠️ POR QUE A TRAVA DE 429 QUE JÁ EXISTIA AQUI NUNCA PEGOU NADA
+ *
+ * Quando a Overpass está cheia ela responde 429 — mas responde SEM o cabeçalho
+ * `Access-Control-Allow-Origin`. O navegador então bloqueia a resposta antes de
+ * o app poder olhar para ela: o `fetch` estoura um `TypeError` genérico, o
+ * status nunca chega até aqui, e o que a pessoa via era um erro de CORS no
+ * console e um alerta dizendo "Failed to fetch".
+ *
+ * Ou seja: o modo mais comum de falhar era justamente o único que o tratamento
+ * de erro não alcançava.
+ *
+ * POR QUE EM PARALELO, E NÃO UM DEPOIS DO OUTRO
+ * Porque o espelho lento é tão comum quanto o espelho fora do ar. Medindo em
+ * horário comercial: o principal respondeu em 6s e o segundo, vivo e correto,
+ * levou 31s. Em fila, com um limite de tempo decente para cada um, a busca
+ * ficaria mais de um minuto em "Buscando..." antes de desistir — e ninguém
+ * espera um minuto olhando para um botão.
+ *
+ * Escalonado, o caso comum manda UMA pergunta só.
+ */
+async function consultarOverpass(query: string): Promise<any> {
+  /*
+    Nada de cabeçalho `Content-Type`, de propósito.
+
+    Sem ele o navegador manda `text/plain`, e isso faz da consulta uma
+    "requisição simples": ela vai direto, sem o OPTIONS de sondagem. Com o
+    Content-Type "certo", cada busca passaria a custar um preflight em cada
+    espelho — e nem todos respondem bem a ele.
+  */
+  const cancelamento = new AbortController();
+  const relogio = setTimeout(() => cancelamento.abort(), 40_000);
+  let respondido = false;
+
+  /*
+    A vez de cada espelho: o relógio OU a desistência do anterior, o que vier
+    primeiro.
+
+    O caso do CORS falha na hora — em milissegundos, sem nem chegar a ir à rede.
+    Sem este atalho o segundo espelho ficaria os 5 segundos parado esperando a
+    vez de um concorrente que já morreu, e são justamente esses segundos que
+    faltam quando ele está lento.
+  */
+  const liberar: (() => void)[] = [];
+  const vez = ESPELHOS_OVERPASS.map((_, i) =>
+    i === 0 ? Promise.resolve() : new Promise<void>(r => { liberar[i] = r; })
+  );
+
+  const perguntar = async (url: string, i: number) => {
+    await Promise.race([vez[i], esperar(i * ESCALONAR_MS)]);
+    // O anterior já voltou enquanto este esperava: não incomoda o espelho à toa.
+    if (respondido) throw new Error('já respondido');
+
+    try {
+      const res = await fetch(url, { method: 'POST', body: query, signal: cancelamento.signal });
+      if (!res.ok) throw new Error(`${new URL(url).host} respondeu ${res.status}`);
+      const dados = await res.json();
+      respondido = true;
+      return dados;
+    } catch (e) {
+      liberar[i + 1]?.();
+      throw e;
+    }
+  };
+
+  try {
+    return await Promise.any(ESPELHOS_OVERPASS.map(perguntar));
+  } catch {
+    /*
+      Todos falharam. A mensagem não tenta distinguir congestionado de fora do
+      ar de bloqueado pelo navegador: para quem está cadastrando uma locação,
+      os três significam a mesma coisa, e a saída é a mesma.
+
+      O que ela precisa dizer é que existe uma saída — o campo à mão logo
+      abaixo —, senão a pessoa fica tentando de novo achando que é ela.
+    */
+    throw new Error(
+      'Não deu para consultar o mapa agora. O serviço é gratuito e compartilhado, e costuma ficar ' +
+      'congestionado em horário comercial. Tente de novo em alguns minutos — ou escreva o hospital ' +
+      'à mão no campo abaixo, que funciona igual na Ordem do Dia.'
+    );
+  } finally {
+    clearTimeout(relogio);
+    // Encerra o que ainda estiver no ar: a resposta já não interessa a ninguém.
+    cancelamento.abort();
+  }
+}
+
+/**
  * Lista hospitais/prontos-socorros num raio (padrão 8km), ordenados por distância.
  * Retorna no máximo 8 candidatos para o usuário escolher.
  */
@@ -58,38 +183,7 @@ export async function buscarHospitaisProximos(
 );
 out center tags 30;`;
 
-  /*
-    A Overpass é gratuita e compartilhada: responde em 3s num dia bom e passa de
-    30s quando está cheia. Sem um limite, a busca ficava "Buscando..." por tempo
-    indeterminado e parecia travada. Trinta segundos é generoso para ela e curto
-    o bastante para a pessoa saber que falhou.
-  */
-  const cancelamento = new AbortController();
-  const relogio = setTimeout(() => cancelamento.abort(), 30_000);
-
-  let res: Response;
-  try {
-    res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: query,
-      signal: cancelamento.signal,
-    });
-  } catch (e: any) {
-    if (e?.name === 'AbortError') {
-      throw new Error('O serviço de mapas demorou demais para responder. Tente de novo em alguns minutos.');
-    }
-    throw e;
-  } finally {
-    clearTimeout(relogio);
-  }
-
-  // 429 e 504 são o serviço dizendo "estou cheio", não erro do app.
-  if (res.status === 429 || res.status === 504) {
-    throw new Error('O serviço de mapas está congestionado agora. Tente de novo em alguns minutos.');
-  }
-  if (!res.ok) throw new Error(`Overpass respondeu ${res.status}`);
-
-  const data = await res.json();
+  const data = await consultarOverpass(query);
   const elementos: any[] = data.elements || [];
 
   return elementos
