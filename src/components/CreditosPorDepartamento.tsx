@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Trash2, Link2, UserPlus, Users, LayoutGrid } from 'lucide-react';
+import { Plus, Trash2, Link2, UserPlus, Users, LayoutGrid, Wand2 } from 'lucide-react';
 import type { Projeto, Departamento } from '../types';
 import {
   DEPARTAMENTOS_PADRAO,
@@ -10,6 +10,7 @@ import {
   salvarCredito,
   removerCredito,
   ordenarCandidatos,
+  sugestoesPelaFicha,
   normalizar,
 } from '../lib/creditos';
 
@@ -36,6 +37,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
   // Linhas em que o usuário optou por digitar um nome em vez de escolher da equipe
   const [modoLivre, setModoLivre] = useState<Set<string>>(new Set());
   const [criandoDeptos, setCriandoDeptos] = useState(false);
+  const [preenchendo, setPreenchendo] = useState(false);
 
   const creditos = projeto.creditos || [];
 
@@ -57,6 +59,43 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
       if (criados === 0) alert('Todos os departamentos padrão já existem neste projeto.');
     } finally {
       setCriandoDeptos(false);
+    }
+  };
+
+  /*
+    O QUE A FICHA JÁ SABE.
+
+    Quem preencheu a função de cada pessoa ao montar a equipe chegava aqui e via
+    tudo em "— vazio —", tendo que dizer de novo o que já tinha dito. A regra de
+    quando dá para adivinhar (e quando não dá) mora em `lib/creditos.ts`; aqui
+    ela só é mostrada e aplicada.
+  */
+  const sugestoes = sugestoesPelaFicha(departamentos, perfis, creditos);
+  const sugestaoDe = new Map(sugestoes.map(s => [s.chave, s]));
+
+  /**
+   * Preenche de uma vez tudo que a ficha responde sem ambiguidade.
+   *
+   * Uma gravação por sugestão, e em série: `salvarCredito` lê `projeto.creditos`
+   * e devolve a lista inteira, então duas em paralelo se sobrescreveriam — a
+   * segunda apagaria a primeira. O `projeto` também precisa ser relido a cada
+   * volta pelo mesmo motivo: o da closure é o de antes da primeira gravação.
+   */
+  const preencherPelasFichas = async () => {
+    setPreenchendo(true);
+    try {
+      for (const s of sugestoes) {
+        const atual = await db.projetos.get(projeto.id);
+        if (!atual) break;
+        await salvarCredito({
+          projeto: atual,
+          departamentoId: s.departamentoId,
+          papel: s.papel,
+          perfilId: s.perfil.id,
+        });
+      }
+    } finally {
+      setPreenchendo(false);
     }
   };
 
@@ -155,8 +194,29 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
             Vincular um membro da equipe atualiza o departamento e a função dele no cadastro.
           </div>
         </div>
+        {/*
+          Preencher pelo que a ficha já diz — com o número na frente.
+
+          O número é o que torna o botão honesto: "preencher 6 funções" deixa
+          conferir o resultado, e some quando não há nada a preencher em vez de
+          ficar ali como um botão que não faz nada.
+        */}
+        {sugestoes.length > 0 && (
+          <button
+            onClick={preencherPelasFichas}
+            disabled={preenchendo}
+            className="btn-icon"
+            style={{ padding: '8px 14px', border: '1px solid var(--accent)', color: 'var(--accent)', gap: '6px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0, width: 'auto' }}
+            title="Usa o departamento e a função que estão no cadastro de cada pessoa"
+          >
+            <Wand2 size={14} />
+            {preenchendo
+              ? 'Preenchendo...'
+              : `Preencher ${sugestoes.length} pela ficha`}
+          </button>
+        )}
         {faltamPadrao && (
-          <button onClick={gerarPadrao} disabled={criandoDeptos} className="btn-icon" style={{ padding: '8px 14px', border: '1px solid var(--border-light)', gap: '6px', fontSize: '12px' }}>
+          <button onClick={gerarPadrao} disabled={criandoDeptos} className="btn-icon" style={{ padding: '8px 14px', border: '1px solid var(--border-light)', gap: '6px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0, width: 'auto' }}>
             <Plus size={14} /> {criandoDeptos ? 'Criando...' : 'Completar departamentos padrão'}
           </button>
         )}
@@ -212,6 +272,31 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                         <div className="text-xs text-accent" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Link2 size={11} /> vinculado à equipe
                         </div>
+                      )}
+                      {/*
+                        A sugestão aparece NA LINHA, e não só no botão de cima.
+
+                        O botão preenche tudo; esta linha diz de onde a resposta
+                        saiu, e deixa aceitar uma só. Sem ela, "Preencher 6 pela
+                        ficha" seria seis nomes aparecendo de uma vez sem
+                        explicação — e conferir depois é mais trabalho que
+                        preencher à mão.
+                      */}
+                      {!credito && sugestaoDe.has(chaveLinha) && (
+                        <button
+                          onClick={() => atribuir(depto.id, linha.papel, sugestaoDe.get(chaveLinha)!.perfil.id, undefined)}
+                          className="text-xs"
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', color: 'var(--text-muted)', textAlign: 'left' }}
+                          title="Está assim no cadastro desta pessoa"
+                        >
+                          <Wand2 size={11} style={{ flexShrink: 0 }} />
+                          <span>
+                            na ficha:{' '}
+                            <b style={{ color: 'var(--accent)' }}>
+                              {sugestaoDe.get(chaveLinha)!.perfil.nome} {sugestaoDe.get(chaveLinha)!.perfil.sobrenome || ''}
+                            </b>
+                          </span>
+                        </button>
                       )}
                     </div>
 
