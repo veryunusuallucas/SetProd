@@ -37,24 +37,37 @@ export function DiariasList() {
   const navigate = useNavigate();
 
   /**
-   * As diárias em ordem de DATA, não de número.
+   * As diárias NA ORDEM EM QUE ACONTECEM. Só isso.
    *
-   * O número é do plano; a data é do calendário, e é ela que responde a
-   * pergunta de quem abre a tela: "qual é o próximo dia?". Numa produção real
-   * os dois divergem o tempo todo — a Diária 07 é remarcada para antes da 05, e
-   * ordenar por número deixaria o próximo dia no meio da lista.
+   * ⚠️ NÃO VOLTE A JOGAR AS PASSADAS PARA O FIM.
    *
-   * As que já passaram vão para o FIM, da mais recente para a mais antiga.
-   * Elas não somem (o histórico importa), mas param de empurrar o que ainda vai
-   * acontecer para baixo.
+   * Era assim: as futuras primeiro, e as que já aconteceram no fim, da mais
+   * recente para a mais antiga. A ideia era boa no papel — deixar o próximo dia
+   * sempre no topo — e o efeito na tela era outro: numa produção com a Diária
+   * 01 no dia 3 e a Diária 02 no dia 26, aberta no dia 8, a lista mostrava a
+   * **02 acima da 01**. Uma lista de dias numerados fora da ordem dos números
+   * lê como defeito, e nenhum texto na tela explicava a regra.
+   *
+   * A data continua sendo a chave, e não o número — mas os dois quase nunca
+   * divergem, porque `renumerarPorData` reatribui os números pela data a cada
+   * criação, edição ou exclusão. O número desempata a diária remarcada para o
+   * mesmo dia de outra.
+   *
+   * Quem procura "onde eu estou" tem a aba Plano da semana, que abre
+   * centralizada no dia de hoje — essa é a pergunta que ela existe para
+   * responder, e responder duas vezes de jeitos diferentes era o problema.
    */
   const diarias = useLiveQuery(
     async () => {
       const arr = await db.diarias.where('projeto_id').equals(projetoId!).toArray();
-      const hoje = hojeISO();
-      const futuras = arr.filter(d => !d.data || d.data >= hoje).sort((a, b) => (a.data || '').localeCompare(b.data || ''));
-      const passadas = arr.filter(d => d.data && d.data < hoje).sort((a, b) => b.data.localeCompare(a.data));
-      return [...futuras, ...passadas];
+      // Diária sem data ainda vai para o fim: ela não aconteceu em lugar nenhum
+      // da linha do tempo, e chutar um lugar para ela seria inventar um dia.
+      return arr.sort((a, b) => {
+        if (!a.data && !b.data) return a.numero - b.numero;
+        if (!a.data) return 1;
+        if (!b.data) return -1;
+        return a.data.localeCompare(b.data) || a.numero - b.numero;
+      });
     },
     [projetoId]
   ) || [];
