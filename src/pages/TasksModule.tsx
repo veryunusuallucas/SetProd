@@ -20,6 +20,7 @@ import { BotaoTatil } from '../components/ui/BotaoTatil';
 import { faiscar } from '../components/ui/Faisca';
 import { confirmar } from '../components/ui/Confirmacao';
 import { responsaveisDaTask, respondePor, gravarResponsaveis } from '../lib/responsaveis';
+import { SeletorDePessoas } from '../components/ui/SeletorDePessoas';
 import { CampoData } from '../components/ui/CampoData';
 import { CampoTexto } from '../components/ui/CampoTexto';
 
@@ -495,66 +496,28 @@ export function TasksModule() {
                     ordem para saber qual seletor era qual. */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' }}>
                   {/*
-                    RESPONSÁVEIS, no plural.
+                    RESPONSÁVEIS, no plural — uma lista para marcar.
 
                     De onde veio: *"é importante conseguir colocar mais de uma
                     pessoa numa Task, porque às vezes dependem de múltiplas"*.
                     Bater a OD com a produção é de quem monta E de quem aprova;
                     com um dono só, uma das duas não via a tarefa em "Minhas".
 
-                    Não virou um seletor múltiplo do navegador: aquele exige
-                    segurar Ctrl para marcar o segundo, e some com a informação
-                    de quem já está marcado assim que a lista rola. Aqui quem
-                    está na tarefa aparece como ficha, e o seletor abaixo só
-                    oferece quem ainda não está.
+                    A primeira tentativa foi uma lista que oferecia um nome por
+                    vez. Funcionava e era burocrática: marcar três pessoas eram
+                    três idas ao mesmo seletor. Agora a lista abre inteira e cada
+                    linha é um alvo de toque — quem entra e quem sai se resolve
+                    numa passada só.
                   */}
                   <Campo rotulo="Responsáveis" icone={<User size={12} />}>
-                    {responsaveisDaTask(editando).length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                        {responsaveisDaTask(editando).map(id => {
-                          const p = perfis.find(x => x.id === id);
-                          return (
-                            <span
-                              key={id}
-                              className="text-xs"
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                padding: '4px 6px 4px 10px', borderRadius: 'var(--radius-full)',
-                                border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
-                              }}
-                            >
-                              {p ? `${p.nome} ${p.sobrenome || ''}`.trim() : 'Alguém que saiu da equipe'}
-                              <button
-                                onClick={() => db.tasks.update(editando.id, gravarResponsaveis(
-                                  responsaveisDaTask(editando).filter(x => x !== id)
-                                ))}
-                                title="Tirar da tarefa"
-                                style={{ display: 'flex', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
-                              >
-                                <X size={12} />
-                              </button>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <select
-                      value=""
-                      onChange={e => {
-                        if (!e.target.value) return;
-                        db.tasks.update(editando.id, gravarResponsaveis([...responsaveisDaTask(editando), e.target.value]));
-                      }}
-                      style={{ width: '100%' }}
-                    >
-                      <option value="">
-                        {responsaveisDaTask(editando).length === 0 ? 'Sem dono — escolher alguém' : 'Acrescentar mais alguém…'}
-                      </option>
-                      {perfis
-                        .filter(p => p.id !== 'caixa_central' && !responsaveisDaTask(editando).includes(p.id))
-                        .map(p => (
-                          <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
-                        ))}
-                    </select>
+                    <SeletorDePessoas
+                      escolhidos={responsaveisDaTask(editando)}
+                      aoMudar={ids => db.tasks.update(editando.id, gravarResponsaveis(ids))}
+                      pessoas={perfis}
+                      departamentos={departamentos}
+                      vazio="Sem dono — toque para escolher"
+                      titulo="Quem responde por esta tarefa"
+                    />
                   </Campo>
 
                   <Campo rotulo="Departamento" icone={<Building2 size={12} />}>
