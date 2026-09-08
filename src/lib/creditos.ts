@@ -222,3 +222,83 @@ export function ordenarCandidatos(perfis: Perfil[], departamentoId: string): Per
       return a.nome.localeCompare(b.nome);
     });
 }
+
+// ---------------------------------------------------------------------------
+// A ficha preenchendo os créditos
+// ---------------------------------------------------------------------------
+
+/** Uma função vazia e quem a ficha da equipe diz que a ocupa. */
+export interface SugestaoDeCredito {
+  chave: string;
+  departamentoId: string;
+  papel: string;
+  perfil: Perfil;
+}
+
+/**
+ * O que a ficha da equipe já sabe e a tela de créditos ainda não mostrava.
+ *
+ * O vínculo sempre foi de mão dupla no PAPEL — atribuir alguém a uma função
+ * grava departamento e função no cadastro dele (ver `salvarCredito`). Só que a
+ * volta nunca existiu: quem preencheu a função de cada pessoa na hora de criar
+ * a ficha chegava aqui e via três selects em "— vazio —", tendo que dizer de
+ * novo o que já tinha dito.
+ *
+ * ⚠️ ESTA FUNÇÃO NÃO GRAVA NADA. Ela devolve o que DARIA para preencher, e
+ * quem decide preencher é a pessoa. Créditos são a ficha técnica do filme —
+ * é o que vai no papel timbrado e no fim do rolo —, e um app que escreve nomes
+ * ali sozinho, ao abrir a tela, escreve errado sem ninguém ver.
+ *
+ * O QUE ELA SE RECUSA A ADIVINHAR
+ *
+ *   linha ocupada      alguém já foi atribuído ali; sugerir seria propor uma
+ *                      troca, e trocar crédito não é preencher crédito.
+ *   duas pessoas       duas fichas com a mesma função no mesmo departamento.
+ *                      Escolher uma seria escolher por sorteio.
+ *   duas funções       a função da ficha existe em mais de um departamento e a
+ *                      pessoa não está em nenhum deles. "Assistente de Produção"
+ *                      é de Produção ou de Direção? A ficha não disse.
+ *
+ * Nesses casos a lista de seleção continua ali, com quem é do departamento
+ * marcado e em primeiro — que é o que a tela já fazia bem.
+ */
+export function sugestoesPelaFicha(
+  departamentos: Departamento[],
+  perfis: Perfil[],
+  creditos: Credito[]
+): SugestaoDeCredito[] {
+  /** Todas as funções ainda vazias, de todos os departamentos. */
+  const vagas = departamentos.flatMap(d =>
+    linhasDoDepartamento(d, creditos)
+      .filter(l => !l.credito)
+      .map(l => ({ chave: `${d.id}::${l.papel}`, departamentoId: d.id, papel: l.papel }))
+  );
+
+  const porChave = new Map<string, SugestaoDeCredito>();
+  /** Vagas que mais de uma ficha reivindica — ninguém fica com elas. */
+  const disputadas = new Set<string>();
+
+  for (const perfil of perfis) {
+    if (!perfil.funcao || perfil.id === 'caixa_central') continue;
+
+    let candidatas = vagas.filter(v => normalizar(v.papel) === normalizar(perfil.funcao!));
+
+    /*
+      Com departamento na ficha, ele manda. Sem departamento, só serve se a
+      função existir num lugar só do projeto — senão a "Assistente de Produção"
+      da ficha entraria no departamento errado, e ninguém repararia.
+    */
+    if (perfil.departamento_id) {
+      candidatas = candidatas.filter(v => v.departamentoId === perfil.departamento_id);
+    }
+    if (candidatas.length !== 1) continue;
+
+    const vaga = candidatas[0];
+    if (porChave.has(vaga.chave)) { disputadas.add(vaga.chave); continue; }
+    porChave.set(vaga.chave, { ...vaga, perfil });
+  }
+
+  for (const chave of disputadas) porChave.delete(chave);
+
+  return [...porChave.values()];
+}
