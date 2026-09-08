@@ -2,6 +2,7 @@ import { db } from '../db/db';
 import { dinheiro } from './formato';
 import type { Perfil } from '../types';
 import { totalDaDiaria } from './despesasDaDiaria';
+import { responsaveisDaTask } from './responsaveis';
 
 /**
  * Coleta e formatação dos dados do projeto para exportação (Gestão de Dados).
@@ -316,12 +317,19 @@ export const CONJUNTOS: ConjuntoDados[] = [
       return {
         colunas: ['Tarefa', 'Status', 'Responsável', 'Departamento', 'Prazo', 'Subtarefas'],
         linhas: tasks.map(t => {
-          const resp = perfis.find(p => p.id === t.responsavel_id);
+          // Todos, separados por vírgula: a planilha existe para conferir, e
+          // esconder o segundo nome aqui faria a conferência mentir.
+          const resp = responsaveisDaTask(t)
+            .flatMap(id => {
+              const p = perfis.find(x => x.id === id);
+              return p ? [`${p.nome} ${p.sobrenome || ''}`.trim()] : [];
+            })
+            .join(', ');
           const subs = t.subtarefas || [];
           return [
             t.titulo,
             rotulo[t.status] || t.status,
-            resp ? `${resp.nome} ${resp.sobrenome || ''}`.trim() : '',
+            resp,
             deptos.find(d => d.id === t.departamento_id)?.nome || '',
             dataIso(t.data_conclusao),
             subs.length ? `${subs.filter(s => s.concluida).length}/${subs.length}` : '',

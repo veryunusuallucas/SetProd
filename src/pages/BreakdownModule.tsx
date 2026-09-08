@@ -381,6 +381,9 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
         roteiro_id: roteiroId,
         ...(c.pelo_numero ? { sem_cabecalho: true } : {}),
         ordem: ordem++,
+        // Medido no PDF, e não digitado: ninguém preenche 128 campos de
+        // página, e sem eles a conta de quanto do filme já saiu fica zerada.
+        ...(c.paginas ? { paginas: c.paginas } : {}),
         // Guardado para os relatórios saberem quem aparece em cada cena.
         // Cortado porque cena longa não acrescenta nome novo e o banco é local.
         corpo: c.corpo.slice(0, 4000),

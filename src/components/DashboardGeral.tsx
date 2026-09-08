@@ -301,10 +301,21 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                   gravada mede o filme. */}
               {progresso.cenasTotal > 0 && (
                 <div className="text-xs text-secondary" style={{ lineHeight: 1.6 }}>
-                  <div>
-                    <strong>{oitavosParaPaginas(progresso.oitavosGravados)}</strong> de{' '}
-                    <strong>{oitavosParaPaginas(progresso.oitavosTotal)}</strong> páginas gravadas
-                  </div>
+                  {/*
+                    A LINHA DE PÁGINAS SÓ EXISTE QUANDO HÁ ROTEIRO MEDIDO.
+
+                    Cena criada à mão no stripboard não tem página — ela nunca
+                    passou por um PDF. Sem esta guarda o card dizia "— de —
+                    páginas gravadas" para quem monta o dia sem roteiro: uma
+                    frase que parece defeito, não ausência. O resto do card
+                    (cenas prontas, a gravar) continua valendo para os dois.
+                  */}
+                  {progresso.oitavosTotal > 0 && (
+                    <div>
+                      <strong>{oitavosParaPaginas(progresso.oitavosGravados)}</strong> de{' '}
+                      <strong>{oitavosParaPaginas(progresso.oitavosTotal)}</strong> páginas gravadas
+                    </div>
+                  )}
                   <div className="text-muted">
                     {progresso.gravadas} cena(s) prontas
                     {progresso.parciais > 0 && ` · ${progresso.parciais} pela metade`}

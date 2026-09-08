@@ -188,6 +188,17 @@ export interface CabecalhoCena {
    * conferir, em vez de fingir que a cena veio completa.
    */
   pelo_numero?: boolean;
+  /**
+   * Onde o cabeçalho começa no texto do roteiro inteiro.
+   *
+   * ⚠️ NÃO É PARA GUARDAR. Vale só durante a extração, para medir quanto de
+   * página cada cena ocupa — é o intervalo entre um cabeçalho e o próximo que
+   * dá a resposta. Depois de virar uma `Cena`, o número perde o sentido: ele é
+   * uma posição NAQUELE texto, e o texto muda na versão seguinte do roteiro.
+   */
+  indice: number;
+  /** Quanto de página a cena ocupa, medido no PDF: "1 2/8". */
+  paginas?: string;
 }
 
 /**
@@ -305,7 +316,7 @@ export function extrairCenas(paginas: { numero: number; texto: string }[]): Cabe
     indice: number;
     fim: number;
     impresso?: string;
-    cab: Omit<CabecalhoCena, 'corpo' | 'numero'>;
+    cab: Omit<CabecalhoCena, 'corpo' | 'numero' | 'indice'>;
   }[] = [];
   RE_CABECALHO.lastIndex = 0;
 
@@ -357,11 +368,72 @@ export function extrairCenas(paginas: { numero: number; texto: string }[]): Cabe
     return {
       ...a.cab,
       numero,
+      indice: a.indice,
       corpo: completo.slice(a.fim, achados[i + 1]?.indice ?? completo.length).trim(),
     };
   });
 
-  return ordenar([...cenas, ...preencherBuracos(completo, cenas, paginaDe)]);
+  const todas = ordenar([...cenas, ...preencherBuracos(completo, cenas, paginaDe)]);
+
+  /*
+    A MEDIÇÃO VEM DEPOIS DA ORDENAÇÃO, e não podia vir antes.
+
+    Uma cena vai do cabeçalho dela até o cabeçalho seguinte — mas "o seguinte" é
+    o seguinte NO ROTEIRO, e as duas passadas encontram as cenas fora de ordem
+    (a que foi achada pelo buraco na numeração entra por último). Medindo antes
+    de ordenar, a cena 123 mediria daqui até o fim do arquivo.
+  */
+  return medirEmOitavos(todas, marcos, completo.length);
+}
+
+/**
+ * Quanto de página cada cena ocupa — a conta que a produção chama de oitavos.
+ *
+ * POR QUE ISTO EXISTE
+ * O campo `paginas` era digitado à mão, cena por cena. Ninguém preenche 128
+ * campos, então a conta de "quanto do filme já saiu" ficava zerada — e o
+ * dashboard mostrava uma barra parada mesmo com metade do roteiro gravado.
+ * A informação sempre esteve no PDF; faltava alguém ler.
+ *
+ * COMO SE MEDE, E POR QUE ASSIM
+ * Oitavo de página é medida de ESPAÇO VERTICAL no papel: divide-se a página em
+ * oito faixas e conta-se quantas a cena ocupa. O texto extraído de um PDF não
+ * tem altura — tem caracteres. Então a conta é feita por PÁGINA, e não no texto
+ * corrido: quanto dos caracteres DAQUELA página pertencem a esta cena.
+ *
+ * Isso se corrige sozinho no que mais importa. Uma página de diálogo tem pouco
+ * texto e muito espaço em branco; uma de ação, o contrário. Medindo em fração
+ * da própria página, meia página de diálogo dá 4/8 do mesmo jeito que meia
+ * página de ação — o que não aconteceria contando caracteres direto.
+ *
+ * É uma aproximação, e é assumida como tal: o mínimo é 1/8, porque cena que
+ * aparece no roteiro ocupa alguma coisa, e arredondar para zero faria uma cena
+ * curta sumir da conta do filme.
+ */
+function medirEmOitavos(
+  cenas: CabecalhoCena[],
+  marcos: { inicio: number; pagina: number }[],
+  total: number
+): CabecalhoCena[] {
+  /** Cada página como um intervalo do texto corrido, com o tamanho dela. */
+  const faixas = marcos.map((m, i) => {
+    const fim = marcos[i + 1]?.inicio ?? total;
+    return { inicio: m.inicio, fim, tamanho: Math.max(1, fim - m.inicio) };
+  });
+
+  return cenas.map((c, i) => {
+    const comeca = c.indice;
+    const termina = cenas[i + 1]?.indice ?? total;
+
+    let paginas = 0;
+    for (const f of faixas) {
+      const ini = Math.max(comeca, f.inicio);
+      const fim = Math.min(termina, f.fim);
+      if (fim > ini) paginas += (fim - ini) / f.tamanho;
+    }
+
+    return { ...c, paginas: oitavosParaPaginas(Math.max(1, Math.round(paginas * 8))) };
+  });
 }
 
 /**
@@ -435,6 +507,7 @@ function preencherBuracos(
       ambiente: 'int',
       periodo: 'dia',
       pagina: paginaDe(indice),
+      indice,
       corpo: completo.slice(indice, indice + 2000).trim(),
       pelo_numero: true,
     });
