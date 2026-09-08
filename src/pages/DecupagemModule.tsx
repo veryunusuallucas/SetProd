@@ -15,8 +15,8 @@ import { RelatoriosModal } from '../components/RelatoriosModal';
 import { sincronizarElementos } from '../lib/elementos';
 import { registrarDocumento } from '../lib/documentos';
 import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
-import { ULTIMO_BLOCO } from '../lib/stripboard';
-import { jaAconteceu } from '../lib/sincronizaOD';
+import { ULTIMO_BLOCO, montarLinha, diaNaPosicao } from '../lib/stripboard';
+import { jaAconteceu, estadoDa, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { confirmar } from '../components/ui/Confirmacao';
 import { CampoTexto } from '../components/ui/CampoTexto';
 
@@ -122,6 +122,25 @@ export function DecupagemModule() {
   const cenasForaDoRoteiro = cenas.filter(c => c.fora_do_roteiro);
 
   /**
+   * "Dia 3 do stripboard" — o nome legível de uma quebra.
+   *
+   * O número é POSICIONAL e muda quando alguém acrescenta uma quebra antes;
+   * por isso ele só serve para falar com a pessoa, nunca para guardar. O que
+   * fica gravado é sempre o id da quebra.
+   */
+  const nomeDoDia = (quebraId: string): string => {
+    const linha = montarLinha(cenas, itensStrip);
+    // O bloco final não é fechado por quebra nenhuma: ele é o dia seguinte à
+    // última. Dizer "Dia 2" é o que a pessoa vê na tela; "último bloco" é
+    // vocabulário do código.
+    if (quebraId === ULTIMO_BLOCO) {
+      return `Dia ${linha.filter(i => i.tipo === 'DAY_BREAK').length + 1}`;
+    }
+    const i = linha.findIndex(it => it.id === quebraId);
+    return i < 0 ? 'um dia que não existe mais' : `Dia ${diaNaPosicao(linha, i)}`;
+  };
+
+  /**
    * Manda cenas para uma diária (v4 §2.4/§2.6).
    *
    * Sem seleção, vai a ordem inteira. Com o botão "Virar OD" de uma quebra,
@@ -148,6 +167,79 @@ export function DecupagemModule() {
       if (!seguir) return;
     }
 
+    /*
+      ⚠️ A DIÁRIA ERRADA NÃO PODE SER UM CLIQUE.
+
+      O relato que trouxe esta trava: o AD clicou em "Virar OD" na quebra do
+      dia 2, errou a mira na lista e acertou a Diária 01 — que já era o espelho
+      de outro dia. No instante seguinte a Diária 01 se remontou com as cenas do
+      dia 2 e a Ordem do Dia que ele tinha montado sumiu, sem uma pergunta.
+
+      A mecânica é a do rascunho: enquanto a diária espelha uma quebra, abrir
+      ela reescreve `cena_ids` e a linha do tempo a partir do bloco
+      (`aplicarDoStripboard`). Trocar o vínculo, portanto, não é "acrescentar
+      cenas" — é apontar a diária para outro dia inteiro. Isso pergunta antes.
+    */
+    if (quebraDeOrigem && diaria.stripboard_item_id && diaria.stripboard_item_id !== quebraDeOrigem) {
+      const ok = await confirmar({
+        titulo: `A Diária ${String(diaria.numero).padStart(2, '0')} já é o ${nomeDoDia(diaria.stripboard_item_id)} do stripboard.`,
+        detalhe:
+          `Seguir aponta ela para o ${nomeDoDia(quebraDeOrigem)}: as cenas dela são trocadas pelas deste dia, e a linha do dia montada nela se perde junto. Não dá para desfazer.
+
+` +
+          'Se a ideia era montar este dia num lugar novo, cancele e crie uma diária em Diárias e Eventos.',
+        confirmar: 'Trocar o vínculo',
+        cancelar: 'Deixar como está',
+        perigo: true,
+      });
+      if (!ok) return;
+    }
+
+    /*
+      A quebra também pode já ser de outra diária.
+
+      Uma quebra não pode espelhar duas diárias ao mesmo tempo — as duas ficariam
+      se reescrevendo com o mesmo bloco. Então o vínculo MUDA de dono, e quem
+      perde precisa saber: ela mantém as cenas que tem, só para de acompanhar.
+    */
+    const donoAnterior = quebraDeOrigem
+      ? diarias.find(d => d.id !== diariaId && d.stripboard_item_id === quebraDeOrigem)
+      : undefined;
+
+    if (donoAnterior) {
+      const ok = await confirmar({
+        titulo: `Este dia já está na Diária ${String(donoAnterior.numero).padStart(2, '0')}.`,
+        detalhe:
+          `Um dia do stripboard acompanha uma diária só. Seguindo, quem passa a acompanhar é a Diária ${String(diaria.numero).padStart(2, '0')}.
+
+` +
+          `A Diária ${String(donoAnterior.numero).padStart(2, '0')} não perde nada do que já tem — ela só para de se atualizar sozinha quando o stripboard mudar.`,
+        confirmar: 'Passar para esta diária',
+        cancelar: 'Cancelar',
+      });
+      if (!ok) return;
+    }
+
+    /*
+      Diária congelada não recebe cena em silêncio.
+
+      Travada e publicada existem justamente para nada entrar sozinho. A equipe
+      já pode estar com o PDF na mão, e uma cena a mais no papel de amanhã sem
+      ninguém saber é o tipo de erro que só aparece no set.
+    */
+    if (estadoDa(diaria) !== 'rascunho') {
+      const ok = await confirmar({
+        titulo: `A Diária ${String(diaria.numero).padStart(2, '0')} está ${ROTULO_ESTADO[estadoDa(diaria)].toLowerCase()}.`,
+        detalhe:
+          'As cenas entram mesmo assim, mas a linha do dia não se remonta — você vai precisar encaixá-las na mão lá dentro.\n\n' +
+          (estadoDa(diaria) === 'publicada'
+            ? 'E ela já foi distribuída: quem está no set tem a versão anterior. Republique depois de encaixar.'
+            : 'Destrave antes se quiser que ela volte a acompanhar o stripboard.'),
+        confirmar: 'Mandar assim mesmo',
+      });
+      if (!ok) return;
+    }
+
     const escolhidas = cenasParaExportar ?? cenasOrdenadas;
     const atuais = diaria.cena_ids || [];
     const novos = escolhidas.map(c => c.id).filter(id => !atuais.includes(id));
@@ -166,6 +258,11 @@ export function DecupagemModule() {
     await db.diarias.update(diariaId, { cena_ids: [...atuais, ...novos], ...vinculo });
     if (quebraDeOrigem && quebraDeOrigem !== ULTIMO_BLOCO) {
       await db.stripboard_itens.update(quebraDeOrigem, { diaria_id: diariaId }).catch(() => {});
+    }
+    // O dono antigo solta a quebra. Sem isto as duas diárias continuariam
+    // espelhando o mesmo bloco, cada uma se reescrevendo ao ser aberta.
+    if (donoAnterior) {
+      await db.diarias.update(donoAnterior.id, { stripboard_item_id: undefined });
     }
 
     setModalDiaria(false);
@@ -634,14 +731,32 @@ export function DecupagemModule() {
                   className="btn-icon"
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', width: '100%' }}
                 >
-                  <span className="font-bold" style={{ opacity: jaAconteceu(d) ? 0.55 : 1 }}>
-                    Diária {String(d.numero).padStart(2, '0')}
+                  {/*
+                    O que a diária JÁ É aparece antes do clique.
+
+                    A confirmação salva de perder o trabalho, mas ninguém devia
+                    precisar dela: ver "espelha o Dia 3" na linha da Diária 01
+                    é o que faz a pessoa não clicar ali por engano.
+                  */}
+                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', minWidth: 0 }}>
+                    <span className="font-bold" style={{ opacity: jaAconteceu(d) ? 0.55 : 1 }}>
+                      Diária {String(d.numero).padStart(2, '0')}
+                    </span>
+                    {d.stripboard_item_id && d.stripboard_item_id !== quebraDeOrigem && (
+                      <span className="text-xs" style={{ color: 'var(--color-warning, #fbbf24)' }}>
+                        espelha o {nomeDoDia(d.stripboard_item_id)}
+                      </span>
+                    )}
+                    {d.stripboard_item_id && d.stripboard_item_id === quebraDeOrigem && (
+                      <span className="text-xs text-muted">é este dia</span>
+                    )}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted" style={{ textAlign: 'right', flexShrink: 0 }}>
                     {/* O dia vencido aparece marcado, e não escondido: às vezes
                         é ele mesmo que se quer, quando se está lançando algo
                         depois do fato. */}
                     {jaAconteceu(d) && <span style={{ color: 'var(--color-warning, #fbbf24)' }}>já passou · </span>}
+                    {estadoDa(d) !== 'rascunho' && <span>{ROTULO_ESTADO[estadoDa(d)].toLowerCase()} · </span>}
                     {(d.cena_ids || []).length} cena(s)
                   </span>
                 </button>
