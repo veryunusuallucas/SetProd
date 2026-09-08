@@ -12,6 +12,7 @@ import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
 import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
+import { PlanoDaSemana } from '../components/PlanoDaSemana';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -99,7 +100,7 @@ export function DiariasList() {
     evento tem hora e convidados. Ver os dois numa lista só embaralharia a
     numeração das diárias, que é a espinha do planejamento.
   */
-  const [aba, setAba] = useState<'diarias' | 'eventos'>('diarias');
+  const [aba, setAba] = useState<'diarias' | 'semana' | 'eventos'>('diarias');
   const eventosFuturos = useLiveQuery(async () => {
     const hoje = new Date().toISOString().slice(0, 10);
     const todos = await db.eventos.where('projeto_id').equals(projetoId!).toArray();
@@ -252,6 +253,7 @@ export function DiariasList() {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
         {([
           { id: 'diarias' as const, nome: 'Diárias', contagem: diarias.length },
+          { id: 'semana' as const, nome: 'Plano da semana', contagem: 0 },
           { id: 'eventos' as const, nome: 'Eventos', contagem: eventosFuturos },
         ]).map(t => (
           <button
@@ -360,6 +362,11 @@ export function DiariasList() {
       {/* `display: none` e não `&&`: desmontar a grade a cada troca de aba
           descartaria o estado interno dos cards e faria a lista piscar na
           volta. Escondida, ela continua montada e reaparece pronta. */}
+      {/* O plano da semana e a lista respondem a perguntas diferentes: a lista
+          diz "o que existe", a semana diz "como o mês está montado". Por isso
+          duas abas, e não um botão que troca a forma da mesma coisa. */}
+      {aba === 'semana' && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} />}
+
       <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {
           const totalDespesas = totalDaDiaria(despesas, d.id);
