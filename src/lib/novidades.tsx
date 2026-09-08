@@ -1,6 +1,6 @@
 import {
   Sparkles, HelpCircle,
-  UserPlus, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
+  UserPlus, Users, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
   Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock,
@@ -224,7 +224,7 @@ const GRUPOS_4_4: Grupo[] = [
 export const VERSOES: Versao[] = [
   {
     versao: '4.8.2',
-    resumo: <>Trocar a versão do roteiro parou de custar o stripboard, e a Ordem do Dia deixou de obrigar a ir e voltar de tela.</>,
+    resumo: <>Trocar a versão do roteiro parou de custar o stripboard, a Ordem do Dia deixou de obrigar a ir e voltar de tela, e o app passou a medir sozinho quanto de roteiro cada cena ocupa.</>,
     grupos: [
       {
         id: 'roteiro',
@@ -249,6 +249,12 @@ export const VERSOES: Versao[] = [
             icone: <Undo2 size={20} />,
             titulo: 'Cena cortada não some',
             texto: 'Ela sai da ordem de filmagem e fica numa lista "fora do roteiro atual", logo abaixo do stripboard. Cena cortada pode já ter sido gravada, e roteirista volta atrás: se ela reaparecer numa versão seguinte, volta com estimativa, elenco e locação intactos. E voltar para uma versão antiga do roteiro devolve o stripboard daquela versão, não só o PDF.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'As páginas de cada cena são medidas no próprio roteiro',
+            texto: 'O campo era digitado à mão, cena por cena. Ninguém preenche 128 campos — e sem eles a conta de quanto do filme já saiu ficava zerada, com a barra do painel parada mesmo depois de meia produção gravada. Agora a análise do PDF mede quanto de página cada cena ocupa, e a versão nova do roteiro atualiza a medida: cena que encolheu de duas páginas para meia encolheu de verdade.',
           },
           {
             tipo: 'corrigido',
@@ -303,6 +309,12 @@ export const VERSOES: Versao[] = [
             texto: 'Duas setas ao lado do título, que dizem para onde levam antes de você clicar. Elas param na primeira e na última: cair de uma ponta na outra é o tipo de salto que só se percebe depois de editar a diária errada.',
           },
           {
+            tipo: 'corrigido',
+            icone: <PieChart size={20} />,
+            titulo: 'O andamento dizia "— de — páginas gravadas" sem roteiro nenhum',
+            texto: 'Quem monta o dia sem decupagem via uma frase que parece defeito, e não ausência. Agora a linha de páginas só aparece quando existe roteiro medido — o resto do card (cenas prontas, cenas a gravar) continua valendo para quem trabalha sem roteiro.',
+          },
+          {
             tipo: 'novo',
             icone: <MapPin size={20} />,
             titulo: 'O deslocamento agora tem destino',
@@ -312,8 +324,8 @@ export const VERSOES: Versao[] = [
       },
       {
         id: 'equipe',
-        titulo: 'A ficha da equipe',
-        resumo: 'O app já sabia a função de cada pessoa. Só não estava usando o que sabia.',
+        titulo: 'A equipe e a ficha técnica',
+        resumo: 'O app já sabia a função de cada pessoa. Só não estava usando o que sabia — e insistia que cada função tem um dono só.',
         cor: '#ffd166',
         itens: [
           {
@@ -321,6 +333,44 @@ export const VERSOES: Versao[] = [
             icone: <IdCard size={20} />,
             titulo: 'A ficha técnica se preenche pelo cadastro da equipe',
             texto: 'Quem preencheu a função de cada pessoa ao montar a equipe chegava nos créditos e via tudo vazio, tendo que dizer de novo o que já tinha dito. Agora cada função mostra quem a ficha diz que a ocupa, e um botão no topo preenche todas de uma vez. Ele não adivinha quando há duas pessoas com a mesma função no mesmo departamento, nem quando a função existe em mais de um departamento — nesses casos a lista de escolha continua ali.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Users size={20} />,
+            titulo: 'Duas pessoas na mesma função — a segunda ficava invisível',
+            texto: 'Uma produção com duas câmeras tem dois operadores, e a tela mostrava um só: o segundo ficava gravado no projeto e não aparecia em lugar nenhum. Agora o "＋" na linha da função abre uma vaga a mais, e as duas ganham a marca que as distingue — Operador de Câmera A e B. Dá para trocar a letra por "principal" e "complementar", ou o que fizer sentido no seu set.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <IdCard size={20} />,
+            titulo: 'O campo de função sugere, em vez de esperar você lembrar',
+            texto: 'Era um campo em branco, e cada um escrevia o que lembrava: "Dir. Fotografia", "Diretor de fotografia", "DOP". A mesma função virava três na ficha técnica — e, pior, era esse texto que ligava a pessoa ao crédito, então uma letra de diferença fazia a ligação não acontecer. Agora ele filtra o catálogo do audiovisual conforme você digita, mostra a que área cada função pertence, e escolher "Microfonista" já preenche Som no campo de baixo. Se alguém da produção já tem aquela função, ele avisa antes de você salvar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Users size={20} />,
+            titulo: 'A ficha de créditos ficou legível',
+            texto: 'Ela é um documento — vai no papel timbrado e no fim do rolo — e estava desenhada como formulário: trinta campos iguais em que não dava para conferir nada. Agora tem a inicial de cada pessoa na cor do departamento, o DRT ao lado do nome, uma barra de quanto falta em cada área e o total de gente creditada no topo.',
+          },
+          {
+            tipo: 'novo',
+            icone: <CheckSquare size={20} />,
+            titulo: 'Mais de uma pessoa na mesma task',
+            texto: 'Bater a OD com a produção é de quem monta e de quem aprova — e com um dono só, uma das duas não via a tarefa em "Minhas". O campo de responsável virou uma lista que abre: marque quem entra, com busca por nome, função ou área. Todos recebem o aviso quando a tarefa destrava, todos a veem em "Minhas", e a exportação sai com os nomes.',
+          },
+        ],
+      },
+      {
+        id: 'locacao',
+        titulo: 'Locações',
+        resumo: 'O serviço de mapas é de graça, e de vez em quando cobra por isso ficando fora do ar.',
+        cor: '#fd79a8',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <MapPin size={20} />,
+            titulo: '"Achar Hospital Próximo" falhava com um erro incompreensível',
+            texto: 'O serviço de mapas é gratuito e compartilhado, e quando está congestionado ele recusa a consulta de um jeito que o navegador bloqueia antes do app conseguir ler — o resultado era um alerta dizendo "Failed to fetch". Agora ele diz o que aconteceu, que costuma ser passageiro, e lembra que dá para escrever o hospital à mão, que funciona igual na Ordem do Dia. E tenta um segundo servidor antes de desistir.',
           },
         ],
       },
