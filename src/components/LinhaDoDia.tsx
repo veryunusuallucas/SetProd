@@ -3,15 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
   Flag, StickyNote, CircleDot, Timer, ClipboardList, Lightbulb, Drama, Brush,
-  Coffee, PackageOpen,
+  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard,
 } from 'lucide-react';
 import { db } from '../db/db';
-import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena } from '../types';
+import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao } from '../types';
 import {
   montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso,
   duracaoDoItem, COR_TIPO, emHora, type VisaoDoDia,
 } from '../lib/linhaDoDia';
 import { getStripboardColor } from '../lib/decupagem';
+import { parseCoords } from '../lib/clima';
+import { linkMapa } from '../lib/osm';
 import { formatarDuracao } from '../lib/stripboard';
 import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO } from '../lib/registroSet';
 import { faiscar } from './ui/Faisca';
@@ -82,7 +84,8 @@ const GRUPOS_NOVOS: { grupo: string; itens: { tipo: Exclude<TipoItemDia, 'cena'>
 
 export function LinhaDoDia({
   diaria, visao, cenas, registros, meuPerfilId, podeMarcar, planosPorCena,
-  chamada, aoGravar, aoMudarChamada, modo, travada = false,
+  chamada, aoGravar, aoMudarChamada, modo, travada = false, locacoes = [],
+  cenasDisponiveis = [], aoAcrescentarCena,
 }: {
   /**
    * Diária TRAVADA: o plano está congelado esperando publicação.
@@ -109,6 +112,33 @@ export function LinhaDoDia({
    */
   visao: VisaoDoDia;
   cenas: Cena[];
+  /**
+   * As locações do projeto, para o "para onde" de um deslocamento.
+   *
+   * Vem de fora pelo mesmo motivo que `cenas`: este componente não consulta o
+   * banco, ele desenha o que recebe — é o que permite usá-lo tanto na diária
+   * quanto numa frente dentro dela.
+   */
+  locacoes?: Locacao[];
+  /**
+   * As cenas do projeto que AINDA NÃO estão neste dia.
+   *
+   * Quem filtra é quem chamou: só ele sabe o que já está escalado nas outras
+   * frentes do mesmo dia.
+   */
+  cenasDisponiveis?: Cena[];
+  /**
+   * Escala uma cena neste dia.
+   *
+   * ⚠️ NÃO É `aoGravar` COM UM ITEM A MAIS. Escalar uma cena mexe em três
+   * lugares — a linha do tempo, a lista `cena_ids` (que é a verdade sobre
+   * quais cenas são do dia) e o bloco do stripboard que a diária espelha. Este
+   * componente não conhece nenhum dos dois últimos, e não deveria: quem sabe
+   * onde guardar é quem montou a tela.
+   *
+   * Ausente = a tela não oferece acrescentar cena.
+   */
+  aoAcrescentarCena?: (cena: Cena) => void;
   registros: RegistroCena[];
   meuPerfilId?: string;
   podeMarcar: boolean;
@@ -130,6 +160,8 @@ export function LinhaDoDia({
   const [cobertura, setCobertura] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
   const [adicionando, setAdicionando] = useState(false);
+  /** Qual cena está escolhida no seletor do "acrescentar cena". */
+  const [cenaEscolhida, setCenaEscolhida] = useState('');
 
   const linha = montarLinhaDoDia(visao);
   const porId = new Map(cenas.map(c => [c.id, c]));
@@ -155,6 +187,8 @@ export function LinhaDoDia({
     com o stripboard, porque horário não existe lá.
   */
   const MUDA_O_QUE_VEM_DE_LA: (keyof ItemDoDia)[] = ['titulo', 'duracao_min'];
+
+  const porLocacao = new Map(locacoes.map(l => [l.id, l]));
 
   const mudarItem = (id: string, campos: Partial<ItemDoDia>) => {
     const desgruda = MUDA_O_QUE_VEM_DE_LA.some(c => c in campos);
@@ -404,6 +438,40 @@ export function LinhaDoDia({
                     )}
                   </div>
 
+                  {/*
+                    PARA ONDE — o destino de um deslocamento.
+
+                    Pedido por um AD: *"quando você adicionar deslocamento na
+                    OD, você poder linkar com uma locação. aí na hora já notifica
+                    todo mundo com o endereço"*. Um "Company move" sem destino é
+                    uma linha dizendo que a equipe vai andar; com destino, ele é
+                    o endereço que vai no papel, no .ics e no bolso de quem está
+                    dirigindo.
+
+                    Só aparece em quem leva a algum lugar. Numa cena o lugar já
+                    é a locação dela, e repetir a pergunta aqui seria criar uma
+                    segunda resposta para a mesma coisa.
+                  */}
+                  {LEVA_A_ALGUM_LUGAR.has(c.item.tipo) && locacoes.length > 0 && (
+                    modo === 'criacao' ? (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }} title="Para onde este deslocamento leva">
+                        <MapPin size={13} className="text-muted" />
+                        <select
+                          value={c.item.locacao_id || ''}
+                          onChange={e => mudarItem(c.item.id, { locacao_id: e.target.value || undefined })}
+                          style={{ padding: '4px 6px', fontSize: '13px', maxWidth: '170px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                        >
+                          <option value="">para onde?</option>
+                          {locacoes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                        </select>
+                      </label>
+                    ) : (
+                      c.item.locacao_id && porLocacao.has(c.item.locacao_id) && (
+                        <DestinoDoItem locacao={porLocacao.get(c.item.locacao_id)!} />
+                      )
+                    )
+                  )}
+
                   {/* Duração. Marco e nota não consomem tempo por padrão, e
                       mostrar "0min" neles seria ruído; mas dá para dar duração
                       a qualquer um, porque uma nota pode ser uma pausa. */}
@@ -558,6 +626,22 @@ export function LinhaDoDia({
                       <Trash2 size={14} />
                     </button>
                   )}
+
+                  {/*
+                    O endereço fecha o item, numa linha só dele.
+
+                    Quem escolheu a locação precisa ver que escolheu a certa — o
+                    nome sozinho ("Casa 2") não distingue duas casas na mesma
+                    rua, e descobrir a troca no dia seguinte custa uma manhã.
+                    Fica DEPOIS dos controles porque `flexBasis: 100%` quebra a
+                    linha: no meio, ele empurrava os minutos e a lixeira para
+                    baixo do endereço.
+                  */}
+                  {modo === 'criacao' && c.item.locacao_id && porLocacao.get(c.item.locacao_id)?.endereco && (
+                    <div style={{ flexBasis: '100%', paddingLeft: '26px' }}>
+                      <DestinoDoItem locacao={porLocacao.get(c.item.locacao_id)!} />
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -578,6 +662,61 @@ export function LinhaDoDia({
                 transition={MOLA}
                 style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
               >
+                {/*
+                  ACRESCENTAR CENA AQUI DENTRO, SEM IR AO STRIPBOARD.
+
+                  De onde veio: *"eu preciso mesmo sair da página da diária,
+                  voltar para o stripboard para adicionar uma cena OD?"*. Não —
+                  e a viagem de ida e volta era a causa do erro mais caro que
+                  este app já produziu: um AD indo ao stripboard para escalar
+                  uma cena, errando a diária na volta e perdendo a Ordem do Dia
+                  inteira.
+
+                  Aparece antes dos marcadores porque é o que se acrescenta com
+                  mais frequência — e some quando não há mais cena para escalar,
+                  em vez de mostrar um seletor vazio.
+                */}
+                {aoAcrescentarCena && cenasDisponiveis.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className="text-xs text-muted uppercase tracking-widest" style={{ width: '110px', flexShrink: 0 }}>
+                      Do roteiro
+                    </span>
+                    <select
+                      value={cenaEscolhida}
+                      onChange={e => setCenaEscolhida(e.target.value)}
+                      style={{ padding: '7px 10px', fontSize: '13px', maxWidth: '340px', flex: 1, minWidth: '180px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-full)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="">Escolha uma cena…</option>
+                      {cenasDisponiveis.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.numero} — {(c.ambiente || 'ext').toUpperCase()}. {c.descricao}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        const c = cenasDisponiveis.find(x => x.id === cenaEscolhida);
+                        if (!c) return;
+                        setCenaEscolhida('');
+                        setAdicionando(false);
+                        aoAcrescentarCena(c);
+                      }}
+                      disabled={!cenaEscolhida}
+                      className="text-xs font-bold"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 13px',
+                        borderRadius: 'var(--radius-full)', border: '1px solid var(--accent)',
+                        backgroundColor: cenaEscolhida ? 'var(--accent)' : 'transparent',
+                        color: cenaEscolhida ? '#000' : 'var(--accent)',
+                        cursor: cenaEscolhida ? 'pointer' : 'not-allowed',
+                        opacity: cenaEscolhida ? 1 : 0.5,
+                      }}
+                    >
+                      <Clapperboard size={13} /> Escalar
+                    </button>
+                  </div>
+                )}
+
                 {GRUPOS_NOVOS.map(g => (
                   <div key={g.grupo} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span className="text-xs text-muted uppercase tracking-widest" style={{ width: '110px', flexShrink: 0 }}>
@@ -630,6 +769,40 @@ export function LinhaDoDia({
         se ajusta sozinho.
       </div>
     </div>
+  );
+}
+
+/**
+   * Os itens que levam a equipe a um lugar.
+   *
+   * Deslocamento é o caso óbvio. Refeição entra porque o restaurante costuma
+   * ser outro endereço, e chamada porque o ponto de encontro é a pergunta que
+   * mais aparece no rádio às seis da manhã.
+   */
+const LEVA_A_ALGUM_LUGAR = new Set<TipoItemDia>(['move', 'almoco', 'coffee', 'marco']);
+
+/** Nome, endereço e um link para o mapa — o que serve para chegar lá. */
+function DestinoDoItem({ locacao }: { locacao: Locacao }) {
+  const coords = parseCoords(locacao.coordenadas);
+
+  return (
+    <span className="text-xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', minWidth: 0 }}>
+      <MapPin size={12} style={{ color: COR_TIPO.move, flexShrink: 0 }} />
+      <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>{locacao.nome}</span>
+      {locacao.endereco && <span className="text-muted">· {locacao.endereco}</span>}
+      {coords && (
+        <a
+          href={linkMapa(coords.lat, coords.lng)}
+          target="_blank"
+          rel="noreferrer"
+          className="text-muted"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+          title="Abrir no mapa"
+        >
+          mapa <ExternalLink size={10} />
+        </a>
+      )}
+    </span>
   );
 }
 

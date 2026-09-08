@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, FileDown, Wallet, Archive, Lock } from 'lucide-react';
-import type { DiariaTask, AnexoOD, Locacao, ItemDoDia } from '../types';
+import type { DiariaTask, AnexoOD, Locacao, ItemDoDia, Cena } from '../types';
 import { logAction } from '../lib/audit';
 import { parseCoords, buscarClima, descreverClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
 import { formatarDistancia, linkRota } from '../lib/osm';
@@ -21,6 +21,7 @@ import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
 import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, emMinutos } from '../lib/linhaDoDia';
 import { estadoDa, publicarDiaria, ROTULO_ESTADO } from '../lib/sincronizaOD';
+import { montarLinha, ordemParaEntrarNoBloco } from '../lib/stripboard';
 import { faseDoDia } from '../lib/faseDoDia';
 import { ResumoEquipamento } from '../components/ResumoEquipamento';
 import { CardDeLocacao } from '../components/CardDeLocacao';
@@ -34,6 +35,7 @@ import { useRole } from '../hooks/useRole';
 import { useArquivo } from '../hooks/useArquivo';
 import { confirmar } from '../components/ui/Confirmacao';
 import { despesasDaDiaria } from '../lib/despesasDaDiaria';
+import { NavegacaoDeDiarias } from '../components/NavegacaoDeDiarias';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -66,6 +68,23 @@ export function DiariaModule() {
   const cenasDaDiaria = (diaria?.cena_ids || [])
     .map(id => cenasGlobais.find(c => c.id === id))
     .filter((c): c is NonNullable<typeof c> => Boolean(c));
+
+  /**
+   * O que dá para escalar aqui: as cenas do projeto que ainda não são do dia.
+   *
+   * Fora as que a versão nova do roteiro cortou — elas estão na lista "fora do
+   * roteiro atual" da decupagem justamente para não serem escaladas de novo por
+   * engano, e oferecê-las aqui desfaria isso em silêncio.
+   *
+   * A ordem é a de filmagem (`ordem` do stripboard), e não a do banco: quem
+   * procura a cena 47 no seletor procura entre a 46 e a 48.
+   */
+  const cenasForaDoDia = cenasGlobais
+    .filter(c => !c.fora_do_roteiro && !(diaria?.cena_ids || []).includes(c.id))
+    .sort((a, b) => {
+      const chave = (c: typeof a) => c.ordem ?? (parseInt(c.numero.replace(/\D/g, '')) || 0);
+      return chave(a) - chave(b);
+    });
 
   /** cena → planos decupados, já na ordem de filmagem (ver `lib/planos.ts`). */
   const planosDaCena = planosPorCena(planosGlobais);
@@ -267,6 +286,66 @@ export function DiariaModule() {
 
   const gravarChamada = (hora: string) =>
     dividido ? gravarNaFrente({ chamada: hora }) : db.diarias.update(diariaId!, { chamada: hora });
+
+  /**
+   * Escala uma cena no dia SEM passar pelo stripboard.
+   *
+   * De onde veio: *"eu preciso mesmo sair da página da diária, voltar para o
+   * stripboard para adicionar uma cena OD?"*.
+   *
+   * ⚠️ TRÊS GRAVAÇÕES, E A TERCEIRA É A QUE NINGUÉM ESPERA.
+   *
+   * 1. `cena_ids` — a verdade sobre QUAIS cenas são deste dia. É o que a
+   *    exportação lê e o que o fechamento confere.
+   * 2. `linha_do_tempo` — o QUANDO. A cena entra no fim, que é onde alguém
+   *    encaixando algo a mais quer que ela esteja; daí em diante se arrasta.
+   * 3. O STRIPBOARD. Enquanto a diária é rascunho ela ESPELHA um bloco do
+   *    stripboard: abrir a tela reescreve os dois campos acima a partir dele.
+   *    Sem escrever a cena de volta no bloco, ela apareceria aqui e sumiria
+   *    sozinha na próxima abertura — que é a pior forma de perder trabalho,
+   *    porque não há erro, não há aviso, e a pessoa jura que escalou.
+   *
+   * Quando o dia está dividido em frentes, a cena entra na diária E na frente
+   * aberta: sem o primeiro ela não é do dia, sem o segundo ela fica órfã, na
+   * lista de "ainda não foram para nenhuma frente".
+   */
+  const acrescentarCena = async (cena: Cena) => {
+    // 1. Escalada no dia.
+    const noDia = diaria.cena_ids || [];
+    if (!noDia.includes(cena.id)) {
+      await db.diarias.update(diariaId!, { cena_ids: [...noDia, cena.id] });
+    }
+
+    // 2. Na linha do tempo — da visão aberta, que pode ser uma frente.
+    const item: ItemDoDia = { id: `cena-${cena.id}`, tipo: 'cena', cena_id: cena.id };
+    const linhaAtual = montarLinhaDoDia(visaoDoDia);
+    if (!linhaAtual.some(i => i.id === item.id)) {
+      if (dividido) {
+        await gravarNaFrente({
+          linha_do_tempo: [...linhaAtual, item],
+          cena_ids: [...(frente?.cena_ids || []), cena.id],
+        });
+      } else {
+        await db.diarias.update(diariaId!, { linha_do_tempo: [...linhaAtual, item] });
+      }
+    }
+
+    // 3. De volta ao stripboard, para o espelho não desfazer o que acabou de
+    //    ser feito. Só quando a diária de fato espelha um bloco.
+    if (!diaria.stripboard_item_id) return;
+
+    const itensStrip = await db.stripboard_itens.where('projeto_id').equals(projetoId!).toArray();
+    const linhaStrip = montarLinha(cenasGlobais, itensStrip);
+    const ordem = ordemParaEntrarNoBloco(linhaStrip, diaria.stripboard_item_id);
+
+    /*
+      Quebra apagada: a diária virou órfã e a faixa de sincronia já avisa isso
+      na tela. Chutar uma posição aqui escalaria a cena para outro dia do
+      stripboard sem ninguém pedir.
+    */
+    if (ordem === null) return;
+    await db.cenas.update(cena.id, { ordem });
+  };
 
   /** Cenas escaladas no dia que ainda não foram para nenhuma frente. */
   const cenasEmFrentes = new Set(
@@ -759,9 +838,18 @@ export function DiariaModule() {
     */
     const diaCalculado = calcularDia(montarLinhaDoDia(diaria), diaria.chamada, id => cenasGlobais.find(c => c.id === id));
     const linhaHorarios = diaCalculado.itens.map(c => {
+      /*
+        O DESTINO VAI NA MESMA LINHA DO DESLOCAMENTO.
+
+        Pedido de um AD: "Company move" sem endereço obriga quem está dirigindo
+        a procurar o lugar na seção de Locações, lá embaixo, e a cruzar qual das
+        três é a certa. O endereço ao lado da hora é o que faz o papel funcionar
+        dentro do carro.
+      */
+      const destino = c.item.locacao_id ? locacoes.find(l => l.id === c.item.locacao_id) : undefined;
       const rotulo = c.cena
         ? `<b>Cena ${c.cena.numero}</b> — ${c.cena.descricao} <span class="muted">(${(c.cena.ambiente || 'ext').toUpperCase()} / ${c.cena.periodo || 'dia'})</span>`
-        : (c.item.titulo || '—');
+        : `${c.item.titulo || '—'}${destino ? ` <span class="muted">→ <b>${destino.nome}</b>${destino.endereco ? ` · ${destino.endereco}` : ''}</span>` : ''}`;
       return `<tr><td style="padding:4px 12px;font-weight:bold;white-space:nowrap">${c.hora}</td><td style="padding:4px 12px">${rotulo}</td></tr>`;
     }).join('');
     const linhaLoc = nomeLoc.map((l: any) => `<li><b>${l.nome}</b> — ${l.endereco}${l.hospital_proximo ? ` · Hospital: ${l.hospital_proximo}` : ''}</li>`).join('');
@@ -889,6 +977,12 @@ export function DiariaModule() {
       */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         <button onClick={() => navigate(`/projeto/${projetoId}/diarias`)} className="btn-icon"><ArrowLeft size={20} /></button>
+
+        {/* Passar de uma diária para a outra sem voltar para a lista. Fica
+            colado na seta de voltar porque é navegação, e não uma ação sobre
+            esta diária — misturado com os botões da direita viraria mais um
+            botão que faz alguma coisa com o dia. */}
+        <NavegacaoDeDiarias projetoId={projetoId!} diariaId={diariaId!} />
 
         <div style={{ flex: 1, minWidth: '200px' }}>
           <h1 className="text-xl font-bold" style={{ lineHeight: 1.2 }}>
@@ -1082,6 +1176,9 @@ export function DiariaModule() {
             podeMarcar={podeMarcarODia}
             planosPorCena={planosDaCena}
             travada={congelada}
+            locacoes={locacoes}
+            cenasDisponiveis={cenasForaDoDia}
+            aoAcrescentarCena={planejando && !congelada ? acrescentarCena : undefined}
           />
 
           {/*
@@ -1114,6 +1211,7 @@ export function DiariaModule() {
               escalados={escaladosDaVisao}
               nomeDoProjeto={projeto?.nome || 'Produção'}
               locais={locsDaDiaria.map(l => l.nome)}
+              locacoes={locacoes}
               montarHtmlOD={montarHtmlOD}
               podeEnviar={podeMarcarODia}
             />

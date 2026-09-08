@@ -5,7 +5,7 @@ import {
   Share2, Copy, ChevronDown,
 } from 'lucide-react';
 import { db } from '../db/db';
-import type { Cena, Diaria, Perfil } from '../types';
+import type { Cena, Diaria, Perfil, Locacao } from '../types';
 import { montarIcs, baixarIcs, linkGoogleAgenda } from '../lib/ics';
 import { enviarOD, corpoDoEmail } from '../lib/emailOD';
 import { htmlParaTexto } from '../lib/textoDeHtml';
@@ -31,13 +31,15 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
  */
 
 export function DistribuirOD({
-  diaria, cenas, escalados, nomeDoProjeto, locais, montarHtmlOD, podeEnviar,
+  diaria, cenas, escalados, nomeDoProjeto, locais, locacoes, montarHtmlOD, podeEnviar,
 }: {
   diaria: Diaria;
   cenas: Cena[];
   escalados: Perfil[];
   nomeDoProjeto: string;
   locais: string[];
+  /** As locações do projeto — o .ics usa o endereço do destino de cada item. */
+  locacoes?: Locacao[];
   /** O mesmo gerador que imprime o papel — para tudo dizer a mesma coisa. */
   montarHtmlOD: (completo?: boolean) => string;
   podeEnviar: boolean;
@@ -53,7 +55,7 @@ export function DistribuirOD({
   const [marcados, setMarcados] = useState<Set<string>>(() => new Set(comEmail.map(p => p.id)));
 
   const versao = diaria.versao_od || 1;
-  const dados = { diaria, cenas, nomeDoProjeto, locais };
+  const dados = { diaria, cenas, nomeDoProjeto, locais, locacoes };
   const rotulo = `OD Diária ${String(diaria.numero).padStart(2, '0')}${versao > 1 ? ` — v${versao}` : ''}`;
   const assunto = `${rotulo} · ${nomeDoProjeto}`;
   const nomeDoArquivo = `diaria-${String(diaria.numero).padStart(2, '0')}-${nomeDoProjeto.replace(/\W+/g, '-').toLowerCase()}`;
