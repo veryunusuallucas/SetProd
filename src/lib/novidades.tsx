@@ -223,6 +223,110 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.8.2',
+    resumo: <>Trocar a versão do roteiro parou de custar o stripboard, e a Ordem do Dia deixou de obrigar a ir e voltar de tela.</>,
+    grupos: [
+      {
+        id: 'roteiro',
+        titulo: 'O roteiro muda, o trabalho fica',
+        resumo: 'Roteirista manda versão nova toda semana. Até agora, cada versão apagava o que a produção tinha construído em cima da anterior.',
+        cor: '#a4de6c',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <RefreshCw size={20} />,
+            titulo: 'Reanalisar o roteiro apagava tudo que estava em cima dele',
+            texto: 'As cenas eram destruídas e recriadas com identidade nova. Iam junto a ordem do stripboard, as quebras de diária, as estimativas e o elenco marcado — e as diárias já montadas ficavam apontando para cenas que não existiam mais, sem um aviso. Agora a cena 42 continua sendo a mesma cena 42: a versão nova atualiza o cabeçalho, o local e o texto, e não encosta no que é da produção.',
+          },
+          {
+            tipo: 'novo',
+            icone: <GitCompare size={20} />,
+            titulo: 'Versão nova ou outro roteiro?',
+            texto: 'Analisando um roteiro num projeto que já tem cenas, o app pergunta — e sugere a resposta contando quantos números de cena batem ("112 das 128 cenas são as mesmas"). Versão nova reconcilia com o que já existe; outro roteiro começa um stripboard próprio, sem apagar o anterior.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Undo2 size={20} />,
+            titulo: 'Cena cortada não some',
+            texto: 'Ela sai da ordem de filmagem e fica numa lista "fora do roteiro atual", logo abaixo do stripboard. Cena cortada pode já ter sido gravada, e roteirista volta atrás: se ela reaparecer numa versão seguinte, volta com estimativa, elenco e locação intactos. E voltar para uma versão antiga do roteiro devolve o stripboard daquela versão, não só o PDF.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Film size={20} />,
+            titulo: 'Num roteiro de 128 cenas, três não eram reconhecidas',
+            texto: 'E sumiam sem aviso nenhum. Eram três causas diferentes: período qualificado ("INÍCIO DA MANHÃ"), período que não é hora do dia ("MONTAGEM", "FLASHBACK") e cabeçalho sem INT./EXT. nenhum ("123. MONTAGEM DE JORNAIS"). A terceira agora é procurada pelo buraco na numeração — se o app achou a 122 e a 124 e não achou a 123, então existe uma cena 123 —, e a tira dela vem marcada CONFIRA, porque ali o interno/externo é chute.',
+          },
+        ],
+      },
+      {
+        id: 'stripboard',
+        titulo: 'Organizar o stripboard',
+        resumo: 'Reagrupar a ordem de filmagem é a primeira coisa que um assistente de direção faz. Havia um jeito só.',
+        cor: '#8e44ad',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <ListChecks size={20} />,
+            titulo: 'Quatro formas de organizar',
+            texto: 'O chip "Agrupar por locação" virou um menu: ordem do roteiro, por locação, por INT/EXT e por dia/noite. A ordem do roteiro é o desfazer de quem experimentou um agrupamento e não gostou. Nenhuma delas atravessa uma quebra de diária — reorganizar embaralha as cenas dentro de cada dia, e nunca muda uma cena de dia.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Trash2 size={20} />,
+            titulo: 'Apagar uma cena direto na tira',
+            texto: 'Com a confirmação dizendo o que vai junto — a estimativa, o elenco marcado, a locação. Cena que veio do roteiro volta na próxima análise, porque quem manda nela é o PDF, e a confirmação avisa disso em vez de deixar você descobrir sozinho que "apagou e voltou".',
+          },
+        ],
+      },
+      {
+        id: 'od',
+        titulo: 'A Ordem do Dia sem ir e voltar',
+        resumo: 'Três pedidos de um mesmo assistente de direção, na mesma tarde, que eram a mesma dor: ficar preso trocando de tela.',
+        cor: '#4cc9f0',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'Mandar cenas para a diária errada apagava a OD dela',
+            texto: 'Sem perguntar nada. Enquanto a diária é rascunho ela espelha um dia do stripboard, e apontá-la para outro dia não era acrescentar cenas: era trocar o dia inteiro dela. Agora isso pede confirmação dizendo o que se perde, uma diária travada ou publicada avisa antes de receber cena, e a lista de escolha mostra "espelha o Dia 3" e o estado de cada diária antes do clique.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'Escalar uma cena dentro da própria diária',
+            texto: 'Sem ir ao stripboard e voltar. Ela entra no fim do dia e, se a diária estiver seguindo o stripboard, aparece lá também — no dia certo, para não sumir na próxima vez que a tela abrir.',
+          },
+          {
+            tipo: 'novo',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Passar da Diária 01 para a 02 sem voltar para a lista',
+            texto: 'Duas setas ao lado do título, que dizem para onde levam antes de você clicar. Elas param na primeira e na última: cair de uma ponta na outra é o tipo de salto que só se percebe depois de editar a diária errada.',
+          },
+          {
+            tipo: 'novo',
+            icone: <MapPin size={20} />,
+            titulo: 'O deslocamento agora tem destino',
+            texto: 'Deslocamento, refeição e marco podem apontar para uma locação. O endereço aparece na linha do dia, sai impresso ao lado da hora na OD e vira o endereço do evento no arquivo de calendário — quem abre no celular já tem a rota. "Company move" sem endereço obrigava quem estava dirigindo a procurar o lugar em outra parte do papel.',
+          },
+        ],
+      },
+      {
+        id: 'equipe',
+        titulo: 'A ficha da equipe',
+        resumo: 'O app já sabia a função de cada pessoa. Só não estava usando o que sabia.',
+        cor: '#ffd166',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <IdCard size={20} />,
+            titulo: 'A ficha técnica se preenche pelo cadastro da equipe',
+            texto: 'Quem preencheu a função de cada pessoa ao montar a equipe chegava nos créditos e via tudo vazio, tendo que dizer de novo o que já tinha dito. Agora cada função mostra quem a ficha diz que a ocupa, e um botão no topo preenche todas de uma vez. Ele não adivinha quando há duas pessoas com a mesma função no mesmo departamento, nem quando a função existe em mais de um departamento — nesses casos a lista de escolha continua ali.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     versao: '4.8.1',
     resumo: <>Os campos de texto pararam de brigar com quem digita, e o stripboard passou a alimentar a linha do dia.</>,
     itens: [
