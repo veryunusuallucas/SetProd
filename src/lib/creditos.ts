@@ -118,6 +118,39 @@ export interface LinhaCredito {
   papel: string;
   credito?: Credito;        // o registro salvo, quando alguém já foi atribuído
   doCatalogo: boolean;
+  /**
+   * Quantas pessoas ocupam esta MESMA função no departamento.
+   *
+   * 1 é o caso comum — um diretor de fotografia, um continuísta. Acima disso a
+   * tela precisa mostrar a variante de cada um, senão a ficha técnica lista dois
+   * "Operador de Câmera" e ninguém sabe qual é a câmera A.
+   */
+  irmas: number;
+}
+
+/**
+ * Como o crédito se chama na ficha técnica: a função, mais o que distingue.
+ *
+ * ⚠️ USE ISTO EM VEZ DE `credito.papel` EM QUALQUER LUGAR QUE MOSTRE O CRÉDITO
+ * PARA ALGUÉM. `papel` é a função canônica — é por ele que o app casa a ficha
+ * da pessoa com a vaga, e por isso ele NÃO carrega o "(B)" dentro. Quem tem que
+ * juntar as duas coisas é quem escreve na tela.
+ */
+export function nomeDoCredito(credito: Credito): string {
+  return credito.variante ? `${credito.papel} (${credito.variante})` : credito.papel;
+}
+
+/**
+ * A variante sugerida para quem entra numa função que já tem gente.
+ *
+ * Letras, que é como um set nomeia câmera e som desde sempre: A, B, C. A pessoa
+ * pode trocar por "principal", "2ª unidade" ou o que fizer sentido — o campo é
+ * livre. O que não pode é a segunda pessoa entrar sem marca nenhuma, porque aí
+ * a ficha técnica sai com dois nomes idênticos e nenhuma diferença entre eles.
+ */
+export function proximaVariante(quantosJaTem: number): string {
+  const LETRAS = 'ABCDEFGHIJ';
+  return LETRAS[quantosJaTem] || String(quantosJaTem + 1);
 }
 
 /**
@@ -129,12 +162,32 @@ export function linhasDoDepartamento(departamento: Departamento, creditos: Credi
   const catalogo = catalogoDoDepartamento(departamento);
   const funcoesPadrao = catalogo?.funcoes || [];
 
-  const linhas: LinhaCredito[] = funcoesPadrao.map(papel => ({
-    chave: `${departamento.id}::${papel}`,
-    papel,
-    credito: doDepto.find(c => normalizar(c.papel) === normalizar(papel)),
-    doCatalogo: true,
-  }));
+  /*
+    Uma função pode ter MAIS DE UMA linha.
+
+    Antes era `find`: uma função do catálogo, um crédito. Quem tivesse dois
+    operadores de câmera via um só — o segundo ficava gravado no projeto e
+    invisível na tela, porque também não caía nos "extras" (o papel dele está no
+    catálogo). Agora cada pessoa na mesma função é uma linha, na ordem em que
+    entraram, e a `chave` de uma linha ocupada é o id do crédito: duas linhas da
+    mesma função precisam de identidades diferentes para a tela não confundi-las.
+  */
+  const linhas: LinhaCredito[] = funcoesPadrao.flatMap(papel => {
+    const mesmos = doDepto
+      .filter(c => normalizar(c.papel) === normalizar(papel))
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+    if (mesmos.length === 0) {
+      return [{ chave: `${departamento.id}::${papel}`, papel, doCatalogo: true, irmas: 1 }];
+    }
+    return mesmos.map(c => ({
+      chave: c.id,
+      papel,
+      credito: c,
+      doCatalogo: true,
+      irmas: mesmos.length,
+    }));
+  });
 
   const extras = doDepto
     .filter(c => !funcoesPadrao.some(f => normalizar(f) === normalizar(c.papel)))
@@ -144,6 +197,7 @@ export function linhasDoDepartamento(departamento: Departamento, creditos: Credi
       papel: c.papel,
       credito: c,
       doCatalogo: false,
+      irmas: 1,
     }));
 
   return [...linhas, ...extras];
@@ -162,8 +216,10 @@ export async function salvarCredito(params: {
   nomeLivre?: string;
   creditoExistente?: Credito;
   sincronizarPerfil?: boolean;
+  /** O que distingue este de outro na mesma função — "A", "B", "complementar". */
+  variante?: string;
 }): Promise<void> {
-  const { projeto, departamentoId, papel, perfilId, nomeLivre, creditoExistente, sincronizarPerfil = true } = params;
+  const { projeto, departamentoId, papel, perfilId, nomeLivre, creditoExistente, sincronizarPerfil = true, variante } = params;
 
   let nome = (nomeLivre || '').trim();
   if (perfilId) {
@@ -181,6 +237,9 @@ export async function salvarCredito(params: {
     perfil_id: perfilId || undefined,
     ordem: creditoExistente?.ordem ?? creditos.length,
     padrao: creditoExistente?.padrao,
+    // A variante do parâmetro ganha; sem parâmetro, a que já estava fica. É o
+    // que permite trocar a pessoa de uma linha sem que ela perca o "(B)".
+    variante: variante !== undefined ? (variante || undefined) : creditoExistente?.variante,
   };
 
   const atualizados = creditoExistente
@@ -271,7 +330,7 @@ export function sugestoesPelaFicha(
   const vagas = departamentos.flatMap(d =>
     linhasDoDepartamento(d, creditos)
       .filter(l => !l.credito)
-      .map(l => ({ chave: `${d.id}::${l.papel}`, departamentoId: d.id, papel: l.papel }))
+      .map(l => ({ chave: l.chave, departamentoId: d.id, papel: l.papel }))
   );
 
   const porChave = new Map<string, SugestaoDeCredito>();

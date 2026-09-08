@@ -53,6 +53,20 @@ export interface Credito {
   ordem?: number;           // posição dentro do departamento (chefe primeiro)
   /** true = veio do catálogo padrão da indústria; false = adicionado pelo usuário */
   padrao?: boolean;
+  /**
+   * O que distingue duas pessoas na MESMA função.
+   *
+   * Uma produção pode ter dois operadores de câmera, e no set eles não são
+   * intercambiáveis: existe a câmera A e a câmera B, e quem lê a ficha técnica
+   * precisa saber qual é qual. O padrão da indústria é a letra, e é o que o app
+   * sugere sozinho quando a segunda pessoa entra — mas o campo é texto livre,
+   * porque em muitos sets a distinção é outra: "principal" e "complementar",
+   * "1ª unidade" e "2ª unidade".
+   *
+   * Vazio na função ocupada por uma pessoa só, que é o caso comum. Aí não há o
+   * que distinguir, e um "(A)" pendurado seria ruído.
+   */
+  variante?: string;
 }
 
 /** Categoria de breakdown criada pelo usuário (a cor vira o destaque no PDF). */

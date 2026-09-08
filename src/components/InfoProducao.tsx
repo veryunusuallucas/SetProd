@@ -9,6 +9,7 @@ import { DetalhesUsuario } from './DetalhesUsuario';
 import { CreditosPorDepartamento } from './CreditosPorDepartamento';
 import { PesquisasPanel } from './PesquisasPanel';
 import type { Credito } from '../types';
+import { nomeDoCredito } from '../lib/creditos';
 
 type SubAba = 'creditos' | 'departamentos' | 'equipe' | 'pesquisas';
 
@@ -69,7 +70,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
     if (projeto.creditos && projeto.creditos.length > 0) {
       txt += `\nAPOIOS E EXTRAS:\n`;
       projeto.creditos.forEach(c => {
-        txt += `${c.nome} - ${c.papel}\n`;
+        txt += `${c.nome} - ${nomeDoCredito(c)}\n`;
       });
     }
     const blob = new Blob([txt], { type: 'text/plain' });
@@ -149,7 +150,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
                 <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
                   <div>
                     <div className="font-bold">{c.nome}</div>
-                    <div className="text-xs text-muted">{c.papel}</div>
+                    <div className="text-xs text-muted">{nomeDoCredito(c)}</div>
                   </div>
                   <button onClick={() => removerCredito(c.id)} className="btn-icon text-danger" style={{ padding: '4px' }}>
                     <Trash2 size={16} />

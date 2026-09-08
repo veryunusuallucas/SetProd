@@ -17,6 +17,7 @@ import { useLayoutContext } from '../pages/ProjectLayout';
 import { montarSchemaFicha, validarObrigatorios, valoresParaPerfil } from '../lib/camposFicha';
 import { confirmar } from './ui/Confirmacao';
 import { CampoData } from './ui/CampoData';
+import { CampoFuncao } from './ui/CampoFuncao';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -674,7 +675,22 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                 <Step>
                   <h2 style={{ marginBottom: '16px', fontSize: '20px', fontWeight: 'bold' }}>Profissional / Set</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <input placeholder={ph('funcao', 'Função (ex: Diretor, Atriz)')} value={funcao} onChange={e => setFuncao(e.target.value)} />
+                    {/*
+                      O campo de função sugere do catálogo do audiovisual, ensina
+                      o departamento e avisa quando alguém já ocupa a mesma função.
+                      Ele era um input em branco, e o texto livre fazia a mesma
+                      função virar tres nomes diferentes na ficha tecnica.
+                    */}
+                    <CampoFuncao
+                      value={funcao}
+                      aoMudar={setFuncao}
+                      departamentoId={departamentoId}
+                      aoEscolherDepartamento={setDepartamentoId}
+                      departamentos={departamentos || []}
+                      perfis={perfis || []}
+                      meuId={editId || undefined}
+                      placeholder={ph('funcao', 'Função (ex: Diretor, Operador de Câmera)')}
+                    />
                     <select 
                       value={departamentoId} 
                       onChange={e => setDepartamentoId(e.target.value)}
