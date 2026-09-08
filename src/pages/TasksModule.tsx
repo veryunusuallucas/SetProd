@@ -19,6 +19,7 @@ import { useOrigemAncorada } from '../components/ui/origemAncorada';
 import { BotaoTatil } from '../components/ui/BotaoTatil';
 import { faiscar } from '../components/ui/Faisca';
 import { confirmar } from '../components/ui/Confirmacao';
+import { responsaveisDaTask, respondePor, gravarResponsaveis } from '../lib/responsaveis';
 import { CampoData } from '../components/ui/CampoData';
 import { CampoTexto } from '../components/ui/CampoTexto';
 
@@ -160,7 +161,7 @@ export function TasksModule() {
       projeto_id: projetoId,
       titulo: novaTaskTitulo.trim(),
       status: 'todo',
-      responsavel_id: meuPerfilId || undefined,
+      ...gravarResponsaveis(meuPerfilId ? [meuPerfilId] : []),
       subtarefas: [],
       depends_on: [],
       data_criacao: Date.now(),
@@ -210,13 +211,19 @@ export function TasksModule() {
     if (status === 'done' && antes !== 'done') {
       for (const t of dependentes) {
         if (bloqueadaAntes(t) && !bloqueada(t)) {
-          await notificar(projetoId!, `Task liberada: "${t.titulo}" (dependência concluída)`, { perfil_id: t.responsavel_id, task_id: t.id });
+          // Todos os responsáveis são avisados, e não só o primeiro: quem
+          // ficou de fora esperaria sem saber que a tarefa destravou.
+          for (const id of responsaveisDaTask(t)) {
+            await notificar(projetoId!, `Task liberada: "${t.titulo}" (dependência concluída)`, { perfil_id: id, task_id: t.id });
+          }
         }
       }
     } else if (antes === 'done' && status !== 'done') {
       for (const t of dependentes) {
         if (bloqueada(t)) {
-          await notificar(projetoId!, `Task bloqueada de novo: "${t.titulo}" (dependência reaberta)`, { perfil_id: t.responsavel_id, task_id: t.id });
+          for (const id of responsaveisDaTask(t)) {
+            await notificar(projetoId!, `Task bloqueada de novo: "${t.titulo}" (dependência reaberta)`, { perfil_id: id, task_id: t.id });
+          }
         }
       }
     }
@@ -249,7 +256,9 @@ export function TasksModule() {
     setSubEmFoco(id);
   };
 
-  const tarefasVisiveis = tasks.filter(t => filtro === 'todas' || t.responsavel_id === meuPerfilId);
+  // "Minhas" inclui a tarefa dividida com outra pessoa — era o caso que sumia
+  // da lista de quem não era o primeiro nome.
+  const tarefasVisiveis = tasks.filter(t => filtro === 'todas' || respondePor(t, meuPerfilId || undefined));
   /*
     ⚠️ `hojeISO()`, e NÃO `toISOString().slice(0,10)`.
 
@@ -387,7 +396,7 @@ export function TasksModule() {
                     key={t.id}
                     task={t}
                     depto={departamentos.find(d => d.id === t.departamento_id)}
-                    responsavel={perfis.find(p => p.id === t.responsavel_id)}
+                    responsaveis={responsaveisDaTask(t).map(id => perfis.find(p => p.id === id)).filter(Boolean) as { nome: string; sobrenome?: string }[]}
                     bloqueada={isTaskLocked(t)}
                     motivoBloqueio={getDependenciesNames(t)}
                     urgencia={urgenciaDe(t, hoje)}
@@ -485,16 +494,66 @@ export function TasksModule() {
                     para os dois: "Responsável & Departamento" obrigava a ler a
                     ordem para saber qual seletor era qual. */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' }}>
-                  <Campo rotulo="Responsável" icone={<User size={12} />}>
+                  {/*
+                    RESPONSÁVEIS, no plural.
+
+                    De onde veio: *"é importante conseguir colocar mais de uma
+                    pessoa numa Task, porque às vezes dependem de múltiplas"*.
+                    Bater a OD com a produção é de quem monta E de quem aprova;
+                    com um dono só, uma das duas não via a tarefa em "Minhas".
+
+                    Não virou um seletor múltiplo do navegador: aquele exige
+                    segurar Ctrl para marcar o segundo, e some com a informação
+                    de quem já está marcado assim que a lista rola. Aqui quem
+                    está na tarefa aparece como ficha, e o seletor abaixo só
+                    oferece quem ainda não está.
+                  */}
+                  <Campo rotulo="Responsáveis" icone={<User size={12} />}>
+                    {responsaveisDaTask(editando).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                        {responsaveisDaTask(editando).map(id => {
+                          const p = perfis.find(x => x.id === id);
+                          return (
+                            <span
+                              key={id}
+                              className="text-xs"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '4px 6px 4px 10px', borderRadius: 'var(--radius-full)',
+                                border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
+                              }}
+                            >
+                              {p ? `${p.nome} ${p.sobrenome || ''}`.trim() : 'Alguém que saiu da equipe'}
+                              <button
+                                onClick={() => db.tasks.update(editando.id, gravarResponsaveis(
+                                  responsaveisDaTask(editando).filter(x => x !== id)
+                                ))}
+                                title="Tirar da tarefa"
+                                style={{ display: 'flex', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     <select
-                      value={editando.responsavel_id || ''}
-                      onChange={e => db.tasks.update(editando.id, { responsavel_id: e.target.value || undefined })}
+                      value=""
+                      onChange={e => {
+                        if (!e.target.value) return;
+                        db.tasks.update(editando.id, gravarResponsaveis([...responsaveisDaTask(editando), e.target.value]));
+                      }}
                       style={{ width: '100%' }}
                     >
-                      <option value="">Sem dono</option>
-                      {perfis.filter(p => p.id !== 'caixa_central').map(p => (
-                        <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
-                      ))}
+                      <option value="">
+                        {responsaveisDaTask(editando).length === 0 ? 'Sem dono — escolher alguém' : 'Acrescentar mais alguém…'}
+                      </option>
+                      {perfis
+                        .filter(p => p.id !== 'caixa_central' && !responsaveisDaTask(editando).includes(p.id))
+                        .map(p => (
+                          <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} ({p.funcao || 'Equipe'})</option>
+                        ))}
                     </select>
                   </Campo>
 
@@ -798,12 +857,12 @@ function BarraProgresso({ feito, total }: { feito: number; total: number }) {
  * um modal para isso seriam três toques onde cabe um.
  */
 function CartaoTask({
-  task, depto, responsavel, bloqueada, motivoBloqueio, urgencia,
+  task, depto, responsaveis, bloqueada, motivoBloqueio, urgencia,
   subsAbertas, aoAlternarSubs, aoMarcarSub, aoAbrir, aoAvancar,
 }: {
   task: Task;
   depto?: { nome: string; cor?: string };
-  responsavel?: { nome: string; sobrenome?: string };
+  responsaveis: { nome: string; sobrenome?: string }[];
   bloqueada: boolean;
   motivoBloqueio: string;
   urgencia: Urgencia;
@@ -915,8 +974,18 @@ function CartaoTask({
                 {depto.nome}
               </span>
             )}
+            {/*
+              Com duas pessoas, o cartão mostra a primeira e "+1".
+
+              O nome inteiro das duas empurraria o departamento e o prazo para
+              fora do cartão — e o quadro existe para ser lido de relance. Quem
+              precisa saber quem são abre a tarefa.
+            */}
             <span className="text-xs text-muted">
-              {responsavel ? `${responsavel.nome} ${responsavel.sobrenome || ''}`.trim() : 'Sem dono'}
+              {responsaveis.length === 0
+                ? 'Sem dono'
+                : `${responsaveis[0].nome} ${responsaveis[0].sobrenome || ''}`.trim()
+                  + (responsaveis.length > 1 ? ` +${responsaveis.length - 1}` : '')}
             </span>
             {task.data_conclusao && (
               <span className="text-xs text-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>

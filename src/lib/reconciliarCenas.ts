@@ -70,10 +70,16 @@ export function reconciliarCenas(
     /*
       O que a nova versão manda, e o que ela não encosta.
 
-      Manda no que é do ROTEIRO: cabeçalho, local, interno/externo, período e o
-      texto da cena. Não encosta no que é da PRODUÇÃO — ordem no stripboard,
-      estimativa de duração, elenco escalado, locação escolhida —, porque isso
-      não estava no PDF e não é o PDF que decide.
+      Manda no que é do ROTEIRO: cabeçalho, local, interno/externo, período, o
+      texto da cena e quanto de página ela ocupa. Não encosta no que é da
+      PRODUÇÃO — ordem no stripboard, estimativa de duração, elenco escalado,
+      locação escolhida —, porque isso não estava no PDF e não é o PDF que
+      decide.
+
+      `paginas` fica do lado do roteiro, e não da produção, porque ela É uma
+      medida do papel: a cena que encolheu de duas páginas para meia encolheu
+      de verdade, e manter a medida antiga faria a conta de quanto falta
+      gravar mentir sobre um filme que mudou.
     */
     const campos: Partial<Cena> = {
       descricao: nova.local,
@@ -81,6 +87,7 @@ export function reconciliarCenas(
       periodo: nova.periodo,
       corpo: nova.corpo.slice(0, 4000),
       roteiro_id: roteiroId,
+      ...(nova.paginas ? { paginas: nova.paginas } : {}),
     };
     if (antiga.fora_do_roteiro) {
       campos.fora_do_roteiro = false;

@@ -955,7 +955,26 @@ export interface Task {
   titulo: string;
   descricao?: string;
   status: 'todo' | 'doing' | 'done';
+  /**
+   * ⚠️ O PRIMEIRO RESPONSÁVEL, e não O responsável. Leia por responsaveisDaTask().
+   *
+   * Continua existindo por dois motivos: é o índice da tabela no Dexie (as
+   * consultas por dono passam por ele) e é o único campo que as tasks criadas
+   * antes da lista têm gravado. Quem escreve mantém os dois em pé — este com a
+   * primeira pessoa, responsaveis_ids com todas.
+   */
   responsavel_id?: string;
+  /**
+   * Todo mundo que responde por esta tarefa.
+   *
+   * De onde veio: *"é importante conseguir colocar mais de uma pessoa numa
+   * Task, porque às vezes dependem de múltiplas"*. Bater a OD com a produção
+   * não é tarefa de uma pessoa — é de quem monta e de quem aprova, e com um
+   * dono só uma das duas não vê a tarefa na lista dela.
+   *
+   * Ausente nas tasks antigas: nelas quem vale é responsavel_id.
+   */
+  responsaveis_ids?: string[];
   departamento_id?: string; // Fase 5
   subtarefas?: { id: string, titulo: string, concluida: boolean }[];
   depends_on?: string[]; // IDs das tasks de que esta depende
