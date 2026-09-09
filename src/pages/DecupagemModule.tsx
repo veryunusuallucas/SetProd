@@ -18,6 +18,9 @@ import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategori
 import { ULTIMO_BLOCO, montarLinha, diaNaPosicao } from '../lib/stripboard';
 import { jaAconteceu, estadoDa, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { confirmar } from '../components/ui/Confirmacao';
+import { criarDiaria, dataSugerida } from '../lib/criarDiaria';
+import { CampoData } from '../components/ui/CampoData';
+import { numeroPrevisto } from '../lib/numeracao';
 import { CampoTexto } from '../components/ui/CampoTexto';
 
 export function DecupagemModule() {
@@ -41,6 +44,9 @@ export function DecupagemModule() {
   const [quebraDeOrigem, setQuebraDeOrigem] = useState<string | null>(null);
   /** Página que o Roteiro deve abrir ao clicar numa tira. */
   const [paginaAlvo, setPaginaAlvo] = useState<number | null>(null);
+  /** Data da diária que está sendo criada dentro do modal; null = fechado. */
+  const [dataNova, setDataNova] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
 
   const projeto = useLiveQuery(() => db.projetos.get(projetoId!), [projetoId]);
   const itensStrip = useLiveQuery(
@@ -148,7 +154,16 @@ export function DecupagemModule() {
    * stripboard vira uma Ordem do Dia.
    */
   const enviarParaDiaria = async (diariaId: string) => {
-    const diaria = diarias.find(d => d.id === diariaId);
+    /*
+      ⚠️ O BANCO, E NÃO A LISTA DA TELA.
+
+      Era `diarias.find(...)`. Funcionava enquanto a diária vinha da lista —
+      mas a diária recém-criada aqui dentro ainda NÃO está nela: o
+      `useLiveQuery` só se atualiza no render seguinte, e este código roda no
+      mesmo passo em que ela nasceu. O `find` devolvia `undefined`, a função
+      voltava calada, e a pessoa via a diária criada sem cena nenhuma.
+    */
+    const diaria = diarias.find(d => d.id === diariaId) || (await db.diarias.get(diariaId));
     if (!diaria) return;
 
     /*
@@ -273,6 +288,32 @@ export function DecupagemModule() {
         ? `${novos.length} cena(s) adicionadas à Diária ${diaria.numero}, na ordem do stripboard.`
         : 'Essa diária já tinha todas as cenas.'
     );
+  };
+
+  /**
+   * Cria a diária E manda as cenas para ela, num gesto só.
+   *
+   * ⚠️ CRIAR SEM MANDAR SERIA PIOR QUE NÃO TER O BOTÃO.
+   *
+   * Quem chega aqui já disse o que quer: virar este dia do stripboard numa
+   * Ordem do Dia. Criar a diária e devolver a lista para ela escolher de novo
+   * transformaria um gesto em três, e o terceiro é justamente o que dá errado —
+   * é o clique na diária errada que apagava a OD montada (ver `enviarParaDiaria`).
+   *
+   * Por isso a diária nasce e recebe as cenas na mesma ação. E como ela nasce
+   * vazia, nenhuma das travas de `enviarParaDiaria` tem o que barrar: não há
+   * vínculo anterior para trocar, nem dono a destituir, nem estado congelado.
+   */
+  const criarEEnviar = async () => {
+    if (!dataNova) return;
+    setCriando(true);
+    try {
+      const { diaria } = await criarDiaria(projetoId!, dataNova);
+      setDataNova(null);
+      await enviarParaDiaria(diaria.id);
+    } finally {
+      setCriando(false);
+    }
   };
 
   /** Primeira página do roteiro em que a cena aparece, para o "ver no roteiro". */
@@ -720,10 +761,14 @@ export function DecupagemModule() {
               </div>
               {/* Limpa a seleção ao fechar, senão ela sobreviveria para o
                   próximo "Enviar tudo" e mandaria menos cenas do que o rótulo diz. */}
-              <button onClick={() => { setModalDiaria(false); setCenasParaExportar(null); setQuebraDeOrigem(null); }} className="btn-icon"><X size={18} /></button>
+              <button onClick={() => { setModalDiaria(false); setCenasParaExportar(null); setQuebraDeOrigem(null); setDataNova(null); }} className="btn-icon"><X size={18} /></button>
             </div>
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {diarias.length === 0 && <div className="text-sm text-muted">Nenhuma diária criada ainda.</div>}
+              {diarias.length === 0 && dataNova === null && (
+                <div className="text-sm text-muted" style={{ lineHeight: 1.6 }}>
+                  Nenhuma diária criada ainda — crie a primeira aqui embaixo e as cenas já entram nela.
+                </div>
+              )}
               {[...diarias].sort((a, b) => a.numero - b.numero).map(d => (
                 <button
                   key={d.id}
@@ -761,6 +806,77 @@ export function DecupagemModule() {
                   </span>
                 </button>
               ))}
+
+              {/*
+                CRIAR A DIÁRIA AQUI DENTRO.
+
+                Antes, quem montava o dia no stripboard e não tinha diária para
+                ele batia num beco: fechar o modal, ir para Diárias e Eventos,
+                criar, voltar para a decupagem, achar a quebra de novo e clicar
+                em "Virar OD" outra vez. Seis passos para uma decisão que já
+                tinha sido tomada.
+
+                Fica DEPOIS da lista, e não antes: quando já existem diárias, a
+                resposta certa quase sempre é uma delas. É só quando nenhuma
+                serve que se cria — e aí ele está exatamente onde o olho para.
+              */}
+              {dataNova === null ? (
+                <button
+                  onClick={() => setDataNova(dataSugerida(diarias))}
+                  className="btn-icon"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    padding: '12px', width: '100%', fontSize: '13px',
+                    border: `1px dashed ${diarias.length === 0 ? 'var(--accent)' : 'var(--border-color)'}`,
+                    color: diarias.length === 0 ? 'var(--accent)' : 'var(--text-secondary)',
+                    backgroundColor: 'transparent',
+                  }}
+                >
+                  <CalendarPlus size={15} /> Criar uma diária nova
+                </button>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px',
+                    border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-surface)',
+                  }}
+                >
+                  <div>
+                    <div className="text-sm font-bold">Que dia esta diária vai ser?</div>
+                    {/*
+                      O número aparece ANTES de confirmar, e é calculado pela
+                      data. Numa produção que já tem cinco dias, criar a diária
+                      de uma terça no meio empurra as seguintes — e ver "vai ser
+                      a Diária 03" evita a surpresa de procurar a 06 depois.
+                    */}
+                    <div className="text-xs text-muted">
+                      Vai ser a <b>Diária {String(numeroPrevisto(diarias, dataNova)).padStart(2, '0')}</b>,
+                      {' '}e as {(cenasParaExportar ?? cenasOrdenadas).length} cena(s) deste dia entram nela.
+                    </div>
+                  </div>
+
+                  <CampoData value={dataNova} onChange={setDataNova} />
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      onClick={criarEEnviar}
+                      disabled={!dataNova || criando}
+                      className="btn-primary"
+                      style={{ flex: 1, opacity: dataNova && !criando ? 1 : 0.5 }}
+                    >
+                      {criando ? 'Criando…' : 'Criar e mandar as cenas'}
+                    </button>
+                    <button
+                      onClick={() => setDataNova(null)}
+                      className="btn-icon text-muted"
+                      style={{ padding: '10px 14px', border: 'none', background: 'transparent', width: 'auto' }}
+                    >
+                      cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

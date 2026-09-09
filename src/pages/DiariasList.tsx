@@ -9,6 +9,7 @@ import { logAction } from '../lib/audit';
 import { EventosPanel } from '../components/EventosPanel';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
 import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
+import { criarDiaria } from '../lib/criarDiaria';
 import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
@@ -142,29 +143,22 @@ export function DiariasList() {
     }
   };
 
-  const criarDiaria = async (e: React.FormEvent) => {
+  /*
+    A criação mora em `lib/criarDiaria.ts`, e não aqui.
+
+    O stripboard também cria diárias agora, direto do "Virar OD". Duas telas
+    criando a mesma coisa por caminhos próprios divergem em uma versão: uma
+    esquece de renumerar, a outra esquece o registro de auditoria, e o projeto
+    fica com dois tipos de diária conforme onde ela foi feita.
+  */
+  const criarNovaDiaria = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!data) return;
 
-    /*
-      Nasce com o número previsto e é renumerada logo em seguida.
-
-      O previsto já é o certo em quase todo caso; a renumeração existe para o
-      resto do projeto acompanhar quando o dia novo entra no meio da sequência.
-    */
-    const nova: Diaria = {
-      id: crypto.randomUUID(),
-      projeto_id: projetoId!,
-      numero: numeroPrevisto(diarias, data),
-      data,
-      tem_unidade_b: false,
-      equipe_escalada: [],
-      locacoes_ids: []
-    };
-
-    await db.diarias.add(nova);
-    await renumerar();
-    await logAction(projetoId!, 'criar', 'diaria', nova.id, `Criou uma diária para o dia ${data}`);
+    const { renumeracao } = await criarDiaria(projetoId!, data);
+    if (renumeracao.jaCirculavam.length) {
+      setRenumeradas(renumeracao.jaCirculavam.map(x => ({ de: x.de, para: x.para })));
+    }
     fecharFormulario();
   };
 
@@ -330,7 +324,7 @@ export function DiariasList() {
 
       {aba === 'diarias' && showForm && (
         <>
-        <form onSubmit={criarDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
+        <form onSubmit={criarNovaDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '170px' }}>
             <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">
               Data da filmagem
