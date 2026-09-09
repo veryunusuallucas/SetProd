@@ -265,19 +265,58 @@ A cena é: "${descricaoCena}"`;
 
 // ---- Ordem do Dia ----
 
-export async function gerarOrdemDoDia(
-  projeto: any,
-  diaria: any,
-  equipe: any[],
-  _locacoes: any[],
-  _departamentos: any[],
-  _cenasGlobais: any[]
-) {
-  const prompt = `Você é um assistente de produção. Crie uma Ordem do Dia profissional em formato HTML.
-Projeto: ${projeto.nome}
-Diária: ${diaria.numero} (${diaria.data})
-Equipe: ${equipe.map(e => e.nome).join(', ')}
-Responda APENAS com o código HTML. Sem formatação markdown.`;
+/**
+ * Diagrama a Ordem do Dia. NÃO a escreve.
+ *
+ * ⚠️ ESTA FUNÇÃO JÁ MANDOU A IA INVENTAR, E O PAPEL SAIU PARA A EQUIPE.
+ *
+ * A versão anterior dizia, literalmente, "Crie uma Ordem do Dia profissional" —
+ * e passava só o nome do projeto, o número da diária e uma lista de nomes. As
+ * cenas, os horários, as locações e o transporte a IA inventava, porque foi
+ * mandada inventar; os parâmetros com os dados reais chegavam aqui e eram
+ * descartados (`_locacoes`, `_cenasGlobais`). Uma produção inteira de mentira,
+ * impressa e distribuída.
+ *
+ * Agora ela recebe a OD PRONTA, montada pelo app com os dados da diária, e a
+ * única liberdade que tem é visual. É o mesmo contrato de `diagramarRelatorio`,
+ * e pela mesma razão: documento que a equipe segue não se gera, se formata.
+ *
+ * Quem chama ainda confere o resultado (`lib/conferirOD.ts`) antes de deixar
+ * imprimir. "A instrução proíbe" não é garantia.
+ */
+export async function gerarOrdemDoDia(params: {
+  tituloProjeto: string;
+  /** "Diária 03 · 12/09/2026" — o que vai no cabeçalho. */
+  subtitulo: string;
+  /** A Ordem do Dia já montada pelo app, em HTML. É a VERDADE. */
+  conteudo: string;
+}): Promise<string> {
+  const { tituloProjeto, subtitulo, conteudo } = params;
+
+  const prompt = `Você é uma DIAGRAMADORA de Ordem do Dia (call sheet) de cinema.
+
+O DOCUMENTO ABAIXO JÁ ESTÁ PRONTO E CORRETO. Sua única função é reapresentá-lo
+com melhor hierarquia visual para impressão em A4.
+
+REGRAS ABSOLUTAS — o descumprimento coloca a equipe no lugar errado na hora errada:
+1. NUNCA invente, altere, recalcule ou complete nada. Horários, nomes, números de
+   cena, endereços, telefones e datas devem sair EXATAMENTE como estão abaixo.
+2. NÃO acrescente horário, cena, pessoa, locação, refeição ou observação que não
+   esteja no documento. Se a OD não tem almoço, ela não tem almoço.
+3. NÃO remova nada. Toda informação que está abaixo tem que aparecer no resultado.
+4. Campo vazio continua vazio, ou "—". Nunca preencha com suposição.
+5. Sua liberdade é só visual: tabelas, colunas, espaçamento, negrito, ordem das
+   SEÇÕES, títulos de seção. O CONTEÚDO é intocável.
+
+FORMATO DE SAÍDA:
+- APENAS o HTML do corpo (sem <html>, <head> ou <body>).
+- CSS inline (style="..."), porque o HTML vai ser impresso sozinho.
+- Papel: fundo branco, texto escuro, Arial. Legível em A4 impresso em preto e branco.
+- A linha do dia (horários) é o coração da OD: ela vem primeiro e em tabela.
+- Cabeçalho com ${tituloProjeto} e ${subtitulo}.
+
+DOCUMENTO A DIAGRAMAR:
+${conteudo}`;
 
   return limpar(await chamarIA(prompt));
 }

@@ -1657,8 +1657,8 @@ export function DiariaModule() {
           diaria={diaria}
           equipe={perfis}
           locacoes={locacoes}
-          departamentos={departamentos}
           cenasGlobais={cenasGlobais}
+          montarHtmlOD={montarHtmlOD}
         />
       )}
 
