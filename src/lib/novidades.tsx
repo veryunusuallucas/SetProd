@@ -1,9 +1,9 @@
 import {
   Sparkles, HelpCircle,
-  UserPlus, Users, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck,
+  UserPlus, Users, ShieldCheck, Lock, IdCard, Clapperboard, ClipboardCheck, Scissors,
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
-  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock,
+  Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock, CalendarPlus,
   FileText,
 } from 'lucide-react';
 
@@ -222,6 +222,70 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.9.0',
+    resumo: <>A Ordem do Dia parou de inventar — e o dia passou a se montar sem trocar de tela.</>,
+    grupos: [
+      {
+        id: 'od-verdade',
+        titulo: 'A Ordem do Dia diz a verdade',
+        resumo: 'Se você exportou alguma OD antes desta versão, confira o papel que circulou.',
+        cor: '#e84118',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'A OD exportada era inventada pela inteligência artificial',
+            texto: 'A exportação pedia à IA, com estas palavras, "crie uma Ordem do Dia profissional" — e mandava só o nome do projeto, o número da diária e uma lista de nomes. As cenas, os horários, as locações e o transporte ela inventava, porque foi mandada inventar. Agora o app monta a Ordem do Dia com os dados reais da sua diária, e a IA só a rediagrama: ela está proibida de alterar, acrescentar ou remover qualquer coisa.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'O documento é conferido antes de você imprimir',
+            texto: 'Proibir não é garantir. Depois de diagramar, o app confere se cada horário, cena, pessoa escalada e locação continua no papel — e se apareceu algum horário que não existe na diária. Não batendo, ele barra a impressão, diz exatamente o que sumiu ou foi inventado, e oferece o documento do próprio app no lugar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'Imprimir sem passar pela IA',
+            texto: 'O mesmo conteúdo, direto do app, sem depender de inteligência artificial nenhuma. Serve para quando não há internet, para quando a diagramação não convenceu, ou simplesmente por preferência.',
+          },
+        ],
+      },
+      {
+        id: 'montar-o-dia',
+        titulo: 'Montar o dia sem trocar de tela',
+        resumo: 'Cada ida e volta entre telas é onde o erro acontece — e onde o tempo vai.',
+        cor: '#4cc9f0',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Plano da semana: todas as ODs lado a lado',
+            texto: 'Uma aba nova em Diárias e Eventos com os dias em colunas — chamada, wrap previsto, páginas e a linha do dia inteira de cada um. Dá para ver de relance onde está o buraco, onde o dia estourou e qual dia ainda não tem nada. A tela abre já no dia de hoje, e um toque na coluna abre a diária para mexer.',
+          },
+          {
+            tipo: 'novo',
+            icone: <CalendarPlus size={20} />,
+            titulo: 'Criar a diária direto do stripboard',
+            texto: 'Ao clicar em "Virar OD", o modal agora oferece criar a diária ali mesmo: a data já vem sugerida (o dia seguinte ao da última) e ele mostra que número ela vai ter antes de você confirmar. A diária nasce e recebe as cenas no mesmo gesto. Sem diária nenhuma no projeto, o modal deixava de ter saída — agora convida a criar a primeira.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Scissors size={20} />,
+            titulo: 'Partir uma cena no plano exato',
+            texto: 'A tesoura na linha do dia pergunta até que plano vai a primeira parte, e a cena passa a aparecer duas vezes: "Cena 5 · planos 1–3", o lanche, "Cena 5 · planos 4–6". Cena sem decupagem é partida ao meio e vira 5A e 5B. A cena continua sendo uma só na decupagem, nas páginas e no registro do que foi gravado — o que se parte é a agenda. O trecho vai impresso na OD, e a estimativa é repartida entre as partes para o wrap previsto não andar sozinho.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <ListChecks size={20} />,
+            titulo: 'A lista de diárias mostrava a 02 acima da 01',
+            texto: 'Era de propósito: as que já passaram iam para o fim, para o próximo dia ficar no topo. Só que o efeito era uma lista de dias numerados fora de ordem, que lê como defeito e nada explicava. Agora elas ficam na ordem em que acontecem, do primeiro ao último. Para saber onde você está, o Plano da semana abre no dia de hoje.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.8.2',
     resumo: <>Trocar a versão do roteiro parou de custar o stripboard, a Ordem do Dia deixou de obrigar a ir e voltar de tela, e o app passou a medir sozinho quanto de roteiro cada cena ocupa.</>,
