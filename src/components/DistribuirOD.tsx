@@ -8,7 +8,6 @@ import { db } from '../db/db';
 import type { Cena, Diaria, Perfil, Locacao } from '../types';
 import { montarIcs, baixarIcs, linkGoogleAgenda } from '../lib/ics';
 import { enviarOD, corpoDoEmail } from '../lib/emailOD';
-import { htmlParaTexto } from '../lib/textoDeHtml';
 import { compartilharOD, copiar, linkDeEmail } from '../lib/compartilhar';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 
@@ -31,7 +30,7 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
  */
 
 export function DistribuirOD({
-  diaria, cenas, escalados, nomeDoProjeto, locais, locacoes, montarHtmlOD, podeEnviar,
+  diaria, cenas, escalados, nomeDoProjeto, locais, locacoes, montarConteudo, podeEnviar,
 }: {
   diaria: Diaria;
   cenas: Cena[];
@@ -40,8 +39,12 @@ export function DistribuirOD({
   locais: string[];
   /** As locações do projeto — o .ics usa o endereço do destino de cada item. */
   locacoes?: Locacao[];
-  /** O mesmo gerador que imprime o papel — para tudo dizer a mesma coisa. */
-  montarHtmlOD: (completo?: boolean) => string;
+  /**
+   * O MESMO documento que vira o PDF, nas formas que o email e o WhatsApp
+   * aceitam. Assíncrono porque a OD é montada a partir do banco — e é essa
+   * ida ao banco que garante que o que se manda é o que está gravado agora.
+   */
+  montarConteudo: () => Promise<{ html: string; texto: string }>;
   podeEnviar: boolean;
 }) {
   const reduzido = useMovimentoReduzido();
@@ -61,8 +64,8 @@ export function DistribuirOD({
   const nomeDoArquivo = `diaria-${String(diaria.numero).padStart(2, '0')}-${nomeDoProjeto.replace(/\W+/g, '-').toLowerCase()}`;
 
   /** A OD em texto puro, com um cabeçalho que diz de onde ela veio. */
-  const textoDaOD = () => {
-    const corpo = htmlParaTexto(montarHtmlOD(false));
+  const textoDaOD = async () => {
+    const corpo = (await montarConteudo()).texto;
     const cabecalho = [
       nomeDoProjeto.toUpperCase(),
       `Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')}${versao > 1 ? ` (v${versao})` : ''}`,
@@ -81,7 +84,7 @@ export function DistribuirOD({
   const compartilhar = async () => {
     const r = await compartilharOD({
       titulo: assunto,
-      texto: textoDaOD(),
+      texto: await textoDaOD(),
       ics: montarIcs(dados) || undefined,
       nomeDoArquivo,
     });
@@ -90,7 +93,7 @@ export function DistribuirOD({
   };
 
   const copiarOD = async () => {
-    avisar(await copiar(textoDaOD()) ? 'OD copiada. Cole no WhatsApp, no email, onde precisar.' : 'Não consegui copiar.');
+    avisar(await copiar(await textoDaOD()) ? 'OD copiada. Cole no WhatsApp, no email, onde precisar.' : 'Não consegui copiar.');
   };
 
   /*
@@ -107,7 +110,7 @@ export function DistribuirOD({
       avisar('Ninguém da equipe tem email cadastrado na ficha.');
       return;
     }
-    const copiou = await copiar(textoDaOD());
+    const copiou = await copiar(await textoDaOD());
     window.location.href = linkDeEmail({ destinatarios: enderecos, assunto });
     avisar(copiou
       ? 'Abri seu email com a equipe em cópia oculta. A OD está copiada — cole no corpo.'
@@ -142,7 +145,7 @@ export function DistribuirOD({
       para,
       assunto,
       html: corpoDoEmail({
-        conteudoDaOD: montarHtmlOD(false),
+        conteudoDaOD: (await montarConteudo()).html,
         nomeDoProjeto,
         numero: diaria.numero,
         versao,

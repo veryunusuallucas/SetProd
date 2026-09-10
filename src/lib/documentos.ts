@@ -13,6 +13,7 @@ const PASTAS_POR_ORIGEM: Record<OrigemDocumento, { nome: string; cor: string }> 
   comprovante: { nome: 'NFs e Comprovantes', cor: '#1dd1a1' },
   diaria: { nome: 'Diárias', cor: '#fca311' },
   storyboard: { nome: 'Storyboard', cor: '#9d4edd' },
+  od: { nome: 'Ordens do Dia', cor: '#fb8500' },
 };
 
 /**
@@ -97,6 +98,7 @@ export function descreverOrigem(doc: Documento): string | null {
     case 'comprovante': return 'o comprovante anexado à despesa';
     case 'diaria': return 'o anexo da diária';
     case 'storyboard': return 'a referência de storyboard da cena';
+    case 'od': return null;
     default: return null;
   }
 }
