@@ -530,6 +530,24 @@ export function LinhaDoDia({
                     )
                   )}
 
+                  {/*
+                    ONDE SE COME — a linha "Local: ____" do modelo de OD.
+
+                    Existe ao lado do seletor de locação, e não no lugar dele,
+                    porque quase nunca o refeitório é uma locação cadastrada:
+                    é "no galpão", "na varanda da casa", "no Bar do Zé da
+                    esquina". Obrigar o cadastro para escrever isso deixaria a
+                    linha em branco no papel, que é o que acontecia.
+                  */}
+                  {modo === 'criacao' && COME_EM_ALGUM_LUGAR.has(c.item.tipo) && (
+                    <CampoTexto
+                      value={c.item.local || ''}
+                      aoGravar={v => mudarItem(c.item.id, { local: v || undefined })}
+                      placeholder="onde?"
+                      style={{ width: '130px', flexShrink: 0, padding: '4px 6px', fontSize: '13px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '6px' }}
+                    />
+                  )}
+
                   {/* Duração. Marco e nota não consomem tempo por padrão, e
                       mostrar "0min" neles seria ruído; mas dá para dar duração
                       a qualquer um, porque uma nota pode ser uma pausa. */}
@@ -946,6 +964,9 @@ export function LinhaDoDia({
    * mais aparece no rádio às seis da manhã.
    */
 const LEVA_A_ALGUM_LUGAR = new Set<TipoItemDia>(['move', 'almoco', 'coffee', 'marco']);
+
+/** Os que o modelo de OD acompanha de um "Local: ____" escrito à mão. */
+const COME_EM_ALGUM_LUGAR = new Set<TipoItemDia>(['almoco', 'coffee']);
 
 /** Nome, endereço e um link para o mapa — o que serve para chegar lá. */
 function DestinoDoItem({ locacao }: { locacao: Locacao }) {

@@ -6,15 +6,15 @@ import { db } from '../db/db';
 import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, FileDown, Wallet, Archive, Lock } from 'lucide-react';
 import type { DiariaTask, AnexoOD, Locacao, ItemDoDia, Cena } from '../types';
 import { logAction } from '../lib/audit';
-import { parseCoords, buscarClima, descreverClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
-import { formatarDistancia, linkRota } from '../lib/osm';
+import { parseCoords, buscarClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
 import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
 import { GeradorODModal } from '../components/GeradorODModal';
+import { DadosDaOD } from '../components/DadosDaOD';
+import { prepararOD } from '../lib/od/exportar';
 import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
-import { rotuloDoTrecho } from '../lib/partirCena';
 import { oitavosParaPaginas } from '../lib/decupagem';
 import { marcarCena, relatorioDoDia } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
@@ -109,18 +109,6 @@ export function DiariaModule() {
 
   const [geradorAberto, setGeradorAberto] = useState(false);
 
-  /*
-    O que entra no HTML montado por template.
-
-    Era um formulário de caixinhas no modal de exportação, e o modal acabou: a
-    OD que a equipe recebe é a da IA. O template continua servindo o corpo do
-    e-mail e o DPR, e ali não há ninguém para escolher — vai tudo.
-  */
-  const exportConfig = {
-    clima: true, horarios: true, locacoes: true, equipe: true,
-    transporte: true, checklist: true, observacoes: true, shotlist: true,
-    hospital: true,
-  };
 
   /*
     ---- AS FRENTES DO DIA (spec §3) ----
@@ -529,18 +517,6 @@ export function DiariaModule() {
     traz o hospital de uma frente e omite o da outra é pior que nenhum: quem
     está na frente que ficou de fora acha que está coberto.
   */
-  const locsComHospital = idsDasLocacoesDoDia
-    .map(lid => locacoes.find(l => l.id === lid))
-    .filter((l): l is Locacao => Boolean(l?.hospital_proximo));
-
-  const rotaHospital = (loc: typeof locacoes[number]) => {
-    const origem = parseCoords(loc.coordenadas);
-    if (!origem || !loc.hospital_coordenadas) return null;
-    const [hLat, hLng] = loc.hospital_coordenadas.split(',').map(Number);
-    if (Number.isNaN(hLat) || Number.isNaN(hLng)) return null;
-    return linkRota(origem, { lat: hLat, lng: hLng });
-  };
-
   // ---- Fechar / arquivar diária (v4 §4.5) ----
   // Arquivar = gerar o documento de prestação de contas. Os dados CONTINUAM no banco.
   const fecharDiaria = async () => {
@@ -815,125 +791,23 @@ export function DiariaModule() {
     if (!imprimirHtml(html)) baixarHtml(html, `dpr-diaria-${diaria.numero}`);
   };
 
-  // ---- Exportar OD em PDF (via impressão do navegador) ----
   /**
-   * Monta o documento da Ordem do Dia.
+   * O MESMO documento que vira o PDF, nas formas que o email e o WhatsApp aceitam.
    *
-   * Separado da impressão porque agora ele tem dois destinos: a caixa de
-   * impressão do navegador e o corpo do email. Um só gerador é o que garante
-   * que o papel e o email digam a mesma coisa — duas montagens divergem no
-   * primeiro campo novo que alguém acrescenta em um lado só.
+   * ⚠️ NÃO EXISTE MAIS UM `montarHtmlOD` AQUI DENTRO, e a ausência é a mudança.
    *
-   * `completo` decide se sai com `<html>` em volta. Cliente de email arranca a
-   * casca e a folha de estilo, então para lá vai só o miolo.
+   * Ele montava a Ordem do Dia por concatenação de string, dentro desta tela, e
+   * a MESMA string servia o papel da equipe, o corpo do email e o resumo do
+   * WhatsApp — três destinos com exigências opostas. Melhorar o papel estragava
+   * o email, e foi por isso que o papel nunca melhorou.
+   *
+   * Agora a OD é montada como ESTRUTURA em `lib/od/`, e cada destino a desenha
+   * do seu jeito: o papel é PDF de verdade, o email é tabela, o WhatsApp é
+   * texto. Uma origem, três desenhos.
    */
-  const montarHtmlOD = (completo = true, versaoForcada?: number) => {
-    const nomeLoc = idsDasLocacoesDoDia.map(id => locacoes.find(l => l.id === id)).filter(Boolean);
-    const linhaEquipe = escalados.map(p => `<li>${p.nome} ${p.sobrenome || ''} — ${p.funcao || 'Equipe'}${(diaria.confirmacoes || []).includes(p.id) ? ' ✔ confirmado' : ''}</li>`).join('');
-    /*
-      O cronograma impresso sai da MESMA linha do tempo que está na tela.
-
-      Antes ele lia `diaria.horarios`, que era outra lista — a equipe recebia um
-      papel com a chamada e o almoço, e nenhuma das cenas do dia. Agora sai o
-      dia inteiro, cenas incluídas, com os horários já encadeados.
-    */
-    const diaCalculado = calcularDia(montarLinhaDoDia(diaria), diaria.chamada, id => cenasGlobais.find(c => c.id === id));
-    const linhaHorarios = diaCalculado.itens.map(c => {
-      /*
-        O DESTINO VAI NA MESMA LINHA DO DESLOCAMENTO.
-
-        Pedido de um AD: "Company move" sem endereço obriga quem está dirigindo
-        a procurar o lugar na seção de Locações, lá embaixo, e a cruzar qual das
-        três é a certa. O endereço ao lado da hora é o que faz o papel funcionar
-        dentro do carro.
-      */
-      const destino = c.item.locacao_id ? locacoes.find(l => l.id === c.item.locacao_id) : undefined;
-      /*
-        O TRECHO VAI IMPRESSO, e é a metade que faz a divisão valer alguma coisa.
-
-        Partir a cena só na tela resolveria o horário e não resolveria o set:
-        quem está com o papel na mão precisa saber que às 10h grava os planos
-        1 a 3, almoça, e volta nos planos 4 a 6 da MESMA cena. Sem isso, a OD
-        impressa mostra a cena 5 duas vezes sem explicar por quê.
-      */
-      const planosDoTrecho = c.cena ? rotuloDoTrecho(c.item, planosDaCena.get(c.cena.id) || []) : null;
-      const rotulo = c.cena
-        ? `<b>Cena ${c.cena.numero}${c.item.parte || ''}</b> — ${c.cena.descricao} <span class="muted">(${(c.cena.ambiente || 'ext').toUpperCase()} / ${c.cena.periodo || 'dia'})</span>${
-            c.item.planos_ids && planosDoTrecho ? ` <b class="muted">· ${planosDoTrecho}</b>` : ''
-          }`
-        : `${c.item.titulo || '—'}${destino ? ` <span class="muted">→ <b>${destino.nome}</b>${destino.endereco ? ` · ${destino.endereco}` : ''}</span>` : ''}`;
-      return `<tr><td style="padding:4px 12px;font-weight:bold;white-space:nowrap">${c.hora}</td><td style="padding:4px 12px">${rotulo}</td></tr>`;
-    }).join('');
-    const linhaLoc = nomeLoc.map((l: any) => `<li><b>${l.nome}</b> — ${l.endereco}${l.hospital_proximo ? ` · Hospital: ${l.hospital_proximo}` : ''}</li>`).join('');
-    const linhaTasks = tasks.map(t => `<li>${t.status === 'concluido' ? '☑' : '☐'} ${t.descricao}</li>`).join('');
-
-    const linhaComboios = (diaria.comboios || []).map(c => {
-      const pNomes = c.passageiros_ids.map(id => {
-        const p = perfis.find(per => per.id === id);
-        return p ? `${p.nome} ${p.sobrenome || ''}` : '';
-      }).filter(Boolean).join(', ');
-      return `<tr><td style="padding:4px 12px;font-weight:bold">${c.veiculo || 'Veículo'}</td><td style="padding:4px 12px">${c.motorista || '-'}</td><td style="padding:4px 12px">${c.ponto_encontro || '-'}</td><td style="padding:4px 12px;font-weight:bold">${c.saida || '-'}</td><td style="padding:4px 12px;font-size:12px">${pNomes}</td></tr>`;
-    }).join('');
-
-    /*
-      A versão pode vir de fora porque o `useLiveQuery` ainda não devolveu a
-      diária nova quando o documento é montado logo depois do `update`. Ler
-      `diaria.versao_od` ali imprimiria "v1" no papel que acabou de virar v2 —
-      e o número no cabeçalho é justamente o que impede alguém de seguir o PDF
-      velho.
-    */
-    const versao = versaoForcada ?? diaria.versao_od ?? 1;
-    const corpo = `
-      ${completo ? `<h1>${projeto?.nome || 'Produção'}</h1>
-      <div class="muted">Ordem do Dia — Diária ${String(diaria.numero).padStart(2, '0')}${versao > 1 ? ` (v${versao})` : ''} · ${formataData(diaria.data)}</div>` : ''}
-      ${diaria.link_reuniao && completo ? `<p><b>Reunião:</b> <a href="${diaria.link_reuniao}">${diaria.link_reuniao}</a></p>` : ''}
-      ${/*
-          A previsão impressa traz TODOS os sets do dia, com o nome de cada um.
-          Sem o nome, a equipe lia uma previsão sem saber de onde ela era — e
-          numa diária que atravessa a cidade isso é pior que não imprimir nada.
-        */''}
-      ${exportConfig.clima && gruposDeClima.length > 0 ? `<h2>Previsão</h2>${
-        gruposDeClima.map(g => `<p><b>${g.locais.join(' · ')}</b><br>${descreverClima(g.clima.code).emoji} ${descreverClima(g.clima.code).texto} · Nascer ${g.clima.sunrise||'--'} · Pôr ${g.clima.sunset||'--'} · Máx ${Math.round(g.clima.tempMax)}° / Mín ${Math.round(g.clima.tempMin)}° · Chuva ${g.clima.chuvaProb}%</p>`).join('')
-      }` : ''}
-      ${exportConfig.horarios && linhaHorarios ? `<h2>Linha do dia</h2><table style="width:100%">${linhaHorarios}</table>${diaCalculado.wrap ? `<p class="muted" style="font-size:12px">Wrap previsto: <b>${diaCalculado.wrap}</b></p>` : ''}` : ''}
-      ${exportConfig.locacoes && linhaLoc ? `<h2>Locações</h2><ul>${linhaLoc}</ul>` : ''}
-      ${exportConfig.equipe && linhaEquipe ? `<h2>Equipe Escalada</h2><ul>${linhaEquipe}</ul>` : ''}
-      ${exportConfig.transporte && ((diaria.comboios && diaria.comboios.length > 0) || diaria.transporte) ? `
-        <h2>Transporte / Logística</h2>
-        ${diaria.transporte ? `<p>${diaria.transporte.replace(/\n/g, '<br>')}</p>` : ''}
-        ${linhaComboios ? `<table style="width:100%;font-size:13px;margin-top:8px"><tr style="text-align:left;background:#eee"><th>Veículo</th><th>Motorista</th><th>Ponto de encontro</th><th>Saída</th><th>Passageiros</th></tr>${linhaComboios}</table>` : ''}
-      ` : ''}
-      ${exportConfig.hospital && locsComHospital.length > 0 ? `<h2>Emergência — Hospital mais próximo</h2><ul>${
-        locsComHospital.map(l => {
-          const rota = rotaHospital(l);
-          return `<li><b>${l.hospital_proximo}</b>${l.hospital_distancia !== undefined ? ` — ${formatarDistancia(l.hospital_distancia)}` : ''}${l.hospital_telefone ? ` · Tel: ${l.hospital_telefone}` : ''} <span class="muted">(a partir de ${l.nome})</span>${rota ? `<br><span style="font-size:11px">Rota: ${rota}</span>` : ''}</li>`;
-        }).join('')
-      }</ul>` : ''}
-      ${exportConfig.checklist && linhaTasks ? `<h2>Checklist</h2><ul>${linhaTasks}</ul>` : ''}
-      ${exportConfig.observacoes && diaria.observacoes ? `<h2>Observações</h2><p>${diaria.observacoes}</p>` : ''}
-      
-      ${exportConfig.shotlist && cenasDaDiaria.length > 0 ? `<h2>Shot List</h2>
-        ${cenasDaDiaria.map(c => {
-          const pl = planosDaCena.get(c.id) || [];
-          const trs = pl.map(p => `<tr><td style="width:40px;text-align:center"><b>${p.numero}</b></td><td>${p.descricao || '-'}</td><td>${p.tamanho||'-'}</td><td>${p.movimento||'-'}</td><td>${p.lente||'-'}</td></tr>`).join('');
-          return `
-            <div style="margin-top:16px;background:#f9f9f9;padding:12px;border:1px solid #ddd;border-radius:8px">
-              <strong>Cena ${c.numero}</strong>: ${c.descricao} (${c.ambiente||'ext'} / ${c.periodo||'dia'})
-              ${pl.length > 0 ? `<table style="width:100%;margin-top:8px;font-size:13px">
-                <tr style="text-align:left;background:#eee"><th>Plano</th><th>Ação</th><th>Tamanho</th><th>Movimento</th><th>Lente</th></tr>
-                ${trs}
-              </table>` : '<div class="muted" style="margin-top:6px;font-size:12px">Sem decupagem para esta cena.</div>'}
-            </div>
-          `;
-        }).join('')}
-      ` : ''}`;
-
-    if (!completo) return corpo;
-
-    return `<!doctype html><html><head><meta charset="utf-8"><title>OD - Diária ${diaria.numero}${versao > 1 ? ` v${versao}` : ''}</title>
-      <style>body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:800px;margin:0 auto}
-      h1{margin:0}h2{border-bottom:2px solid #111;padding-bottom:4px;margin-top:24px;font-size:15px;text-transform:uppercase}
-      table{border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px}li{margin:2px 0}.muted{color:#666}</style></head><body>${corpo}</body></html>`;
+  const montarConteudoOD = async () => {
+    const pronta = await prepararOD(diariaId!, { clima: gruposDeClima });
+    return pronta ? { html: pronta.html, texto: pronta.texto } : { html: '', texto: '' };
   };
 
   /**
@@ -1224,10 +1098,15 @@ export function DiariaModule() {
               nomeDoProjeto={projeto?.nome || 'Produção'}
               locais={locsDaDiaria.map(l => l.nome)}
               locacoes={locacoes}
-              montarHtmlOD={montarHtmlOD}
+              montarConteudo={montarConteudoOD}
               podeEnviar={podeMarcarODia}
             />
           )}
+
+          {/* O que só a Ordem do Dia pergunta: a base do dia e os horários do
+              elenco. Fica aqui, ao lado das locações, porque as três respostas
+              são "onde a equipe está" — e fechado, porque nenhuma é obrigatória. */}
+          {planejando && <DadosDaOD diaria={diaria} />}
 
           {/* Locação: o exemplo-mestre do agrupamento por afinidade (§9.1).
               Lugar, tempo daquele lugar e hospital daquele lugar, juntos. */}
@@ -1653,12 +1532,10 @@ export function DiariaModule() {
           onClose={() => setGeradorAberto(false)}
           aoExportar={aoExportarOD}
           versao={(diaria.versao_od || 0) + 1}
-          projeto={projeto}
-          diaria={diaria}
-          equipe={perfis}
-          locacoes={locacoes}
-          cenasGlobais={cenasGlobais}
-          montarHtmlOD={montarHtmlOD}
+          diariaId={diariaId!}
+          numeroDiaria={diaria.numero}
+          climas={climas}
+          aoAbrirDocumentos={() => navigate(`/projeto/${projetoId}/documentos`)}
         />
       )}
 

@@ -13,6 +13,7 @@ import { criarDiaria } from '../lib/criarDiaria';
 import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
+import { PadraoDaOD } from '../components/PadraoDaOD';
 import { PlanoDaSemana } from '../components/PlanoDaSemana';
 
 /**
@@ -373,6 +374,10 @@ export function DiariasList() {
           diz "o que existe", a semana diz "como o mês está montado". Por isso
           duas abas, e não um botão que troca a forma da mesma coisa. */}
       {aba === 'semana' && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} />}
+
+      {/* O logo e os avisos que se repetem em toda OD. Fechado: nenhum dos
+          dois é obrigatório, e a lista de diárias é sobre os dias. */}
+      {aba === 'diarias' && diarias.length > 0 && <PadraoDaOD projetoId={projetoId!} />}
 
       <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {

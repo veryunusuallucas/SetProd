@@ -43,6 +43,8 @@ export const CAMPOS_PADRAO: Omit<DefinicaoCampo, 'obrigatorio' | 'custom'>[] = [
   // Profissional
   { id: 'funcao', nome: 'Função / Cargo', tipo: 'texto', grupo: 'profissional', placeholder: 'Ex: Diretor, Atriz' },
   { id: 'drt', nome: 'DRT', tipo: 'texto', grupo: 'profissional' },
+  // Vai para a coluna "Rádio" da Ordem do Dia. A coluna some quando ninguém tem.
+  { id: 'radio', nome: 'Canal de Rádio', tipo: 'texto', grupo: 'profissional', placeholder: 'Ex: 1, 2, Produção' },
   { id: 'experiencia', nome: 'Experiência', tipo: 'texto', grupo: 'profissional' },
 
   // Saúde

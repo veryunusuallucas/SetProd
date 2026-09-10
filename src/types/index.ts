@@ -36,6 +36,22 @@ export interface Projeto {
   lixeira_por?: string;
   moeda: string;
   campos_obrigatorios?: string[]; // IDs ou nomes dos campos obrigatórios
+
+  /**
+   * Logo da produtora, para o topo da Ordem do Dia.
+   *
+   * Guardado como referência de arquivo (`arquivo:<caminho>`), igual ao roteiro
+   * e aos comprovantes. Opcional: sem ele o cabeçalho usa só o nome da produção.
+   */
+  logo_od?: string;
+  /**
+   * O que se repete em TODA Ordem do Dia desta produção.
+   *
+   * "Hidrate-se e encha sua garrafinha", "celulares sempre no silencioso". No
+   * modelo do mercado isso é um bloco fixo no pé da segunda página, e é fixo
+   * mesmo — quem digitasse a cada diária acabaria não digitando.
+   */
+  observacoes_od?: string;
   creditos?: Credito[]; // Apoios e extras da Fase 3
   /** Categorias de breakdown criadas pelo usuário, além das padrão da indústria. */
   categorias_extras?: CategoriaCustomizada[];
@@ -116,6 +132,14 @@ export interface Perfil {
   plano_saude?: string;
   funcao?: string;
   departamento_id?: string;
+  /**
+   * Canal do rádio desta pessoa no set ("1", "2", "Produção").
+   *
+   * Texto livre porque a numeração é da produção, não do app — em set com duas
+   * unidades os canais viram "A1"/"B1", e um número puro obrigaria a mentir.
+   * Vazio na maioria das produções: a coluna some da OD quando ninguém tem.
+   */
+  radio?: string;
   drt?: string;
   experiencia?: string;
   valor_diaria?: number;
@@ -335,6 +359,30 @@ export interface Diaria {
   chamada?: string;
 
   /**
+   * A base do dia: onde a equipe se concentra, come e troca de roupa.
+   *
+   * ⚠️ NÃO É UMA LOCAÇÃO, e por isso não entra em `locacoes_ids`. Locação é
+   * onde se filma — ela puxa clima, hospital de referência e aparece na grade
+   * hora a hora. A base costuma ser um galpão alugado, a casa de alguém ou o
+   * estacionamento do set; colocá-la entre as locações faria o app dizer que o
+   * dia tem três locações quando tem duas, e a conta de páginas por locação é
+   * usada de verdade.
+   */
+  base?: { nome?: string; endereco?: string; obs?: string };
+
+  /**
+   * Os horários de cada personagem NESTE dia.
+   *
+   * A chave é o `id` do `Elemento` de categoria ELENCO — o personagem, não o
+   * ator. É o personagem que está na cena; quem o interpreta pode mudar (dublê,
+   * criança com dois intérpretes) sem que a escala do dia mude.
+   *
+   * Por diária, e não no elenco do projeto: o ator chega às 6h na quinta e às
+   * 14h na sexta, e é justamente essa diferença que a OD comunica.
+   */
+  elenco?: Record<string, HorarioElenco>;
+
+  /**
    * Qual versão da OD está na mão da equipe.
    *
    * Sobe a cada exportação. Existe porque voltar ao rascunho e reexportar é
@@ -452,6 +500,26 @@ export interface Diaria {
   cena_ids?: string[]; // IDs das cenas globais escaladas para o dia
   cenas?: Cena[]; // DEPRECATED: manter para não quebrar antigas
   planos?: Plano[]; // DEPRECATED
+}
+
+/**
+ * A jornada de um personagem no dia, como o elenco lê.
+ *
+ * Os quatro horários não são redundantes: chegar à base, sentar na maquiagem,
+ * estar pronto no set e ser liberado são quatro momentos distintos, e a
+ * diferença entre eles é o que a produção negocia com o agente do ator.
+ */
+export interface HorarioElenco {
+  /** Chegada à base. */
+  chegada?: string;
+  /** Maquiagem e figurino. */
+  maq_fig?: string;
+  /** Pronto no set. */
+  no_set?: string;
+  /** Liberado. */
+  fim?: string;
+  /** Observações de figurino/maquiagem/arte para este dia. */
+  obs?: string;
 }
 
 export interface Comboio {
@@ -616,6 +684,14 @@ export interface ItemDoDia {
   hora_travada?: string;
   /** Modo interativo: a hora em que o item de fato começou. */
   hora_real?: string;
+  /**
+   * ONDE este marco acontece — o refeitório do almoço, a sala do ensaio.
+   *
+   * Texto livre e não um `locacao_id`: o modelo pede "ALMOÇO 12h às 13h ·
+   * Local: ____", e quase nunca esse local é uma locação cadastrada. Obrigar o
+   * cadastro para escrever "no galpão" faria a linha ficar em branco.
+   */
+  local?: string;
   /**
    * Quais planos da cena entram NESTE trecho do dia.
    *
@@ -958,7 +1034,7 @@ export interface Pasta {
   data_criacao: number;
 }
 
-export type OrigemDocumento = 'manual' | 'roteiro' | 'comprovante' | 'diaria' | 'storyboard';
+export type OrigemDocumento = 'manual' | 'roteiro' | 'comprovante' | 'diaria' | 'storyboard' | 'od';
 
 export interface Documento {
   id: string;
