@@ -85,7 +85,7 @@ interface ConteudoDoDia {
   um mês com oito diárias em amarelo cheio cansa a vista, e o texto dos chips
   some em cima dele.
 */
-function estiloDoPeso(peso: ConteudoDoDia['peso']): React.CSSProperties {
+export function estiloDoPeso(peso: ConteudoDoDia['peso']): React.CSSProperties {
   if (peso === 'diaria') {
     return {
       backgroundColor: 'color-mix(in srgb, var(--cor-set) 13%, var(--bg-primary))',
@@ -109,9 +109,9 @@ function estiloDoPeso(peso: ConteudoDoDia['peso']): React.CSSProperties {
   filmagem. Verde não disputa com nenhum dos dois pesos, e diz "você está
   aqui" sem dizer "tem set".
 */
-const COR_DE_HOJE = 'var(--color-success)';
+export const COR_DE_HOJE = 'var(--color-success)';
 
-const COR_DO_PESO = { diaria: 'var(--cor-set)', prazo: 'var(--color-warning)' } as const;
+export const COR_DO_PESO = { diaria: 'var(--cor-set)', prazo: 'var(--color-warning)' } as const;
 
 export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
