@@ -149,6 +149,48 @@ h1, h2, h3, h4, h5, h6 {
   scroll-snap-align: start;
 }
 
+/* Calendário do Dashboard (CalendarioDashboard.tsx).
+ *
+ * Mês: no celular a célula tem ~40px, e os chips com texto viram "C…". Abaixo
+ * de 600px eles saem e entram pontinhos coloridos; o texto está no cartão
+ * que abre ao tocar no dia.
+ *
+ * Semana: sete colunas só a partir de 1024px. Abaixo disso cada coluna teria
+ * menos de 100px, e a semana vira uma lista de sete dias, com o texto inteiro.
+ */
+.cal-mes { gap: 8px; }
+.cal-mes-dia { min-height: 80px; padding: 8px; }
+.cal-chips { display: flex; }
+.cal-pontos { display: none; }
+
+.cal-semana {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+@media (min-width: 1024px) {
+  .cal-semana { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-semana > * { min-height: 160px; }
+}
+
+@media (max-width: 599px) {
+  .cal-mes { gap: 4px; }
+  .cal-mes-dia { min-height: 48px; padding: 5px 4px; }
+  .cal-chips { display: none; }
+  .cal-pontos {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: auto;
+  }
+  .cal-pontos > span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+}
+
 /* Linha de crédito da Produção: função | pessoa | ações.
  *
  * 150px + 180px + ações + folgas passam de 400px, e um celular tem ~312px de

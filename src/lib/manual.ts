@@ -138,7 +138,9 @@ export const MANUAL: SecaoManual[] = [
       'A visão geral: saldo disponível (caixa inicial menos gastos), total gasto, maior gasto e o andamento da produção. ' +
       'O andamento mostra quantas diárias já fecharam e quantas páginas de roteiro já foram gravadas — página gravada é a medida honesta, porque dez diárias de meia página não são metade de um filme. ' +
       'Se alguma cena ficou para trás numa diária fechada, ela aparece aqui no topo, com o motivo e um botão para reencaixar em outro dia. ' +
-      'Tem também o calendário da produção, com o clima previsto — escolha de qual locação, no seletor ao lado.',
+      'Tem também o calendário da produção, com o clima previsto — escolha de qual locação, no seletor ao lado. ' +
+      'Ele se vê de três jeitos: Dias (só os dias com alguma coisa, com o texto inteiro — o melhor no celular), Semana e Mês. ' +
+      'Dia de diária fica amarelo, e dia com prazo de task em aberto fica laranja. Toque num dia para ver tudo o que tem nele.',
   },
   {
     id: 'producao',
