@@ -4,7 +4,7 @@ import {
   RotateCcw, GitCompare, PieChart, CloudSun, Trash2, GitMerge, MapPin, Clock,
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
   Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock, CalendarPlus,
-  FileText,
+  FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
 } from 'lucide-react';
 
 /**
@@ -222,6 +222,132 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.10.0',
+    resumo: <>A Ordem do Dia virou papel de verdade, o set ganhou o "a seguir", e o fim do dia agora tem festa.</>,
+    grupos: [
+      {
+        id: 'od-papel',
+        titulo: 'A Ordem do Dia virou papel de verdade',
+        resumo: 'Um PDF montado pelo app, no formato que a produção já usa — e guardado.',
+        cor: '#fca311',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'A OD agora é um PDF feito pelo app',
+            texto: 'Não é mais a impressão do navegador. O documento sai em paisagem, com a grade hora a hora — horário, cena, I/E, D/N, locação, sinopse, planos, páginas e elenco —, cabeçalho e rodapé em toda página, e uma linha de total com as páginas e as horas do dia somadas. Sai igual em qualquer computador.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FolderOpen size={20} />,
+            titulo: 'O papel exportado fica guardado',
+            texto: 'Toda OD exportada vai para Documentos → Ordens do Dia, uma entrada por versão. Precisar de outra cópia não obriga mais a exportar de novo — e exportar de novo era o que subia a versão da diária e fazia a equipe receber aviso de uma mudança que não houve.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <MapPin size={20} />,
+            titulo: 'O hospital ao lado do endereço',
+            texto: 'Na tabela de locações, cada set traz o seu endereço e o seu hospital mais próximo na mesma linha, com telefone e distância. Antes o hospital ficava numa seção separada, longe do endereço a que se referia.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Users size={20} />,
+            titulo: 'Equipe em duas colunas, com o canal de rádio',
+            texto: 'A equipe sai agrupada por departamento, em duas colunas, com o telefone de cada um — cabe o dobro de gente na mesma página. O canal de rádio de cada pessoa agora é um campo da ficha, e aparece na OD quando está preenchido.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Home size={20} />,
+            titulo: 'Base e camarim, e os horários do elenco',
+            texto: 'Na diária, em "Base e elenco na OD": onde a equipe se concentra e troca de roupa, com endereço próprio, e a chegada, maquiagem e figurino, hora no set e liberação de cada personagem. Os personagens do dia aparecem sozinhos, a partir da decupagem. Tudo opcional — o que não for preenchido não sai no papel.',
+          },
+          {
+            tipo: 'novo',
+            icone: <CalendarDays size={20} />,
+            titulo: 'As cenas do dia seguinte',
+            texto: 'A OD traz as cenas da próxima diária, com locação, páginas e sinopse — para quem se prepara na véspera. E cada refeição da linha do dia ganhou um campo de local ("almoço 12h às 13h · sob a tenda").',
+          },
+          {
+            tipo: 'novo',
+            icone: <Settings size={20} />,
+            titulo: 'Logo e avisos fixos da produção',
+            texto: 'Em Configurações, "Padrão da Ordem do Dia": o logo da produtora e as observações que se repetem em todo papel ("hidrate-se", "celular no silencioso"). Configurados uma vez, saem em toda OD.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Sparkles size={20} />,
+            titulo: 'A inteligência artificial saiu do caminho',
+            texto: 'A OD é montada e desenhada pelo app, do começo ao fim — não há nada entre os seus dados e o papel. "Diagramar com IA" continua existindo num botão ao lado, para quem quiser outro visual, com a conferência da v4.9.0 intacta.',
+          },
+        ],
+      },
+      {
+        id: 'no-set',
+        titulo: 'No set',
+        resumo: 'Quanto falta, o que corrigir, e como o dia termina.',
+        cor: '#4cc9f0',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Timer size={20} />,
+            titulo: 'Quanto falta para o próximo item',
+            texto: 'Ao lado do relógio aparece "A seguir — Almoço, em 12min", e a linha do dia marca qual é o item. A conta usa o plano mais o atraso do dia: num dia 50min atrasado, o papel diria que o almoço é em 10min, e a tela diz que é em uma hora. Passou da hora e ninguém marcou, ela avisa: "era para ter começado há 8min".',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Clock size={20} />,
+            titulo: 'Corrigir a hora em que algo começou',
+            texto: 'Tocar em "começou" continua marcando a hora de agora — e abre um campo "Começou às" para corrigir. Esqueceu de marcar o café das 7h? Um toque em "começou no previsto" devolve o item ao horário do plano, e o atraso que só existia por falta de marcação some. Tocar numa hora já marcada abre o ajuste, e não apaga mais o registro.',
+          },
+          {
+            tipo: 'novo',
+            icone: <PartyPopper size={20} />,
+            titulo: 'O fim do dia tem festa',
+            texto: 'Marcar a desprodução solta fogos. Fechar a diária abre a carta de wrap, com uma frase e os números do dia — cenas gravadas, páginas, e o wrap real contra o previsto. Na última diária do filme ela é outra: frase própria, mais fogos, e o total da produção inteira.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <FileText size={20} />,
+            titulo: 'O relatório do dia não abre mais sozinho',
+            texto: 'Fechar a diária abria a caixa de impressão do relatório sem aviso, no meio do wrap. Agora ele é o botão principal da carta de wrap — a mesma ação, na hora em que você escolhe.',
+          },
+        ],
+      },
+      {
+        id: 'diarias-eventos',
+        titulo: 'Diárias e Eventos',
+        resumo: 'Duas páginas, duas formas de ver, e dias que se copiam.',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <CalendarClock size={20} />,
+            titulo: 'Eventos tem página própria',
+            texto: 'Visita de locação, teste e reunião saíram de dentro das Diárias, onde eram uma terceira aba, e viraram um item próprio do menu. No celular, ficam no "Mais".',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Columns3 size={20} />,
+            titulo: 'Diárias: Simplificada e Detalhada',
+            texto: 'A simplificada é a lista de cartões de sempre. A detalhada é o antigo Plano da semana, com os dias lado a lado e a linha do dia inteira de cada um — e agora com "editar" em cada coluna. O app lembra a sua escolha neste aparelho.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Copy size={20} />,
+            titulo: 'Duplicar uma diária',
+            texto: 'No lápis de editar, o botão de copiar cria uma diária igual numa data que você escolhe, e abre a cópia. Vem o plano — linha do dia, cenas, equipe, locações, transporte, base, elenco e a checklist desmarcada. Não vem o que aconteceu: presença, cenas gravadas, gastos e a OD publicada. A cópia nasce como rascunho.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Pencil size={20} />,
+            titulo: 'Os ajustes foram para Configurações',
+            texto: 'O padrão da Ordem do Dia e a comemoração do wrap ficavam no topo da lista de diárias, empurrando os dias para baixo. Agora estão em Configurações, onde se mexe uma vez por produção.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.9.0',
     resumo: <>A Ordem do Dia parou de inventar — e o dia passou a se montar sem trocar de tela.</>,
