@@ -20,7 +20,7 @@ import { marcarCena, relatorioDoDia } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
-import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, emMinutos } from '../lib/linhaDoDia';
+import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, proximoDoDia, emMinutos } from '../lib/linhaDoDia';
 import { estadoDa, publicarDiaria, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { montarLinha, ordemParaEntrarNoBloco } from '../lib/stripboard';
 import { faseDoDia } from '../lib/faseDoDia';
@@ -243,6 +243,16 @@ export function DiariaModule() {
   const congelada = estado === 'travada';
   const dia = calcularDia(montarLinhaDoDia(dividido ? { linha_do_tempo: frente?.linha_do_tempo, cena_ids: frente?.cena_ids || [] } : diaria), dividido ? frente?.chamada : diaria.chamada, id => cenasGlobais.find(c => c.id === id));
   const atrasoDoDia = calcularAtraso(dia);
+
+  /*
+    Qual item é o próximo — só a identidade, não a contagem.
+
+    QUEM é o próximo não depende do relógio: depende de até onde o dia foi
+    marcado. Por isso sai daqui com `0` no lugar do horário e sem nenhum
+    temporizador; a contagem regressiva, essa sim depende do minuto, e é feita
+    dentro do RelogioDoSet, que já bate de minuto em minuto.
+  */
+  const proximoId = proximoDoDia(dia, atrasoDoDia, 0)?.item.item.id;
 
   /** Quem aparece na aba aberta. Sem divisão, é o dia inteiro. */
   const escaladosDaVisao = dividido
@@ -947,7 +957,7 @@ export function DiariaModule() {
         rouba o lugar do cronograma, que é o que se está montando ali.
       */}
       {!planejando && !diaria.fechada && (
-        <RelogioDoSet fase={fase} atraso={atrasoDoDia} wrap={atrasoDoDia.wrapPrevisto} />
+        <RelogioDoSet fase={fase} atraso={atrasoDoDia} wrap={atrasoDoDia.wrapPrevisto} dia={dia} />
       )}
 
       {diaria.fechada && (
@@ -1065,6 +1075,7 @@ export function DiariaModule() {
             locacoes={locacoes}
             cenasDisponiveis={cenasForaDoDia}
             aoAcrescentarCena={planejando && !congelada ? acrescentarCena : undefined}
+            proximoId={proximoId}
           />
 
           {/*

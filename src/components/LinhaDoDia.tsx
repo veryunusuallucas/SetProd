@@ -86,8 +86,17 @@ const GRUPOS_NOVOS: { grupo: string; itens: { tipo: Exclude<TipoItemDia, 'cena'>
 export function LinhaDoDia({
   diaria, visao, cenas, registros, meuPerfilId, podeMarcar, planosPorCena,
   chamada, aoGravar, aoMudarChamada, modo, travada = false, locacoes = [],
-  cenasDisponiveis = [], aoAcrescentarCena,
+  cenasDisponiveis = [], aoAcrescentarCena, proximoId,
 }: {
+  /**
+   * Qual item é o próximo a acontecer — o mesmo que o relógio do set conta.
+   *
+   * Só a identidade chega aqui, nunca a contagem: dois números descontando o
+   * mesmo minuto em dois cantos da tela se desencontrariam no primeiro tique, e
+   * de qualquer forma quem está com o dedo na linha quer saber ONDE marcar, não
+   * quantos minutos faltam — isso o topo já diz.
+   */
+  proximoId?: string;
   /**
    * Diária TRAVADA: o plano está congelado esperando publicação.
    *
@@ -387,6 +396,7 @@ export function LinhaDoDia({
             const planos = c.item.planos_ids ? c.item.planos_ids.length : planosDaCena.length;
             const rotulo = c.cena ? rotuloDoTrecho(c.item, planosDaCena) : null;
             const trechos = trechosDaCena(linha, c.cena?.id);
+            const ehProximo = modo === 'interativo' && c.item.id === proximoId;
 
             return (
               <div
@@ -430,7 +440,8 @@ export function LinhaDoDia({
                   style={{
                     flex: 1, minWidth: 0, marginBottom: '8px', padding: '10px 12px',
                     borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-light)', borderLeft: `3px solid ${cor}`,
+                    border: `1px solid ${ehProximo ? 'var(--accent)' : 'var(--border-light)'}`,
+                    borderLeft: `3px solid ${cor}`,
                     display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
                   }}
                 >
@@ -438,6 +449,17 @@ export function LinhaDoDia({
                     <GripVertical size={14} className="text-muted" style={{ cursor: 'grab', flexShrink: 0 }} />
                   )}
                   <Icone size={15} style={{ color: cor, flexShrink: 0 }} />
+
+                  {/* A mesma marca que o relógio do set aponta lá em cima. Sem
+                      número: o topo conta os minutos, aqui só se diz qual é. */}
+                  {ehProximo && (
+                    <span
+                      className="text-xs font-bold uppercase tracking-widest"
+                      style={{ padding: '1px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--accent)', color: '#000', flexShrink: 0 }}
+                    >
+                      a seguir
+                    </span>
+                  )}
 
                   <div style={{ flex: 1, minWidth: '140px' }}>
                     {c.cena ? (
