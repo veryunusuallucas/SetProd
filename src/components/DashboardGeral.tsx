@@ -122,11 +122,13 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '16px' }}>
+    <div className="dashboard-geral" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Título e Progresso */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="desktop-only" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
+          {/* Só no computador. No celular o cabeçalho fixo já diz o nome, e o
+              título repetido logo embaixo gastava a primeira tela. */}
           <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>{projeto.nome}</h2>
         </div>
       </div>

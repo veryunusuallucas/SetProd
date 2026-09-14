@@ -119,6 +119,38 @@ h1, h2, h3, h4, h5, h6 {
   padding: 24px;
 }
 
+/* Etapa 2 do UI-MOBILE: o respiro vertical. Tudo abaixo de 900px, onde o app
+ * tem barra de baixo e cabeçalho fixo; o computador fica como estava. */
+.main-content { padding-bottom: 90px; }
+.mobile-header { padding: 16px 24px; }
+.dashboard-geral { padding: 16px; }
+
+@media (max-width: 899px) {
+  /* O fim da página passava atrás da barra de baixo: 90px fixos não contavam a
+     faixa de gestos do Android nem a do iPhone. Altura da barra + a faixa +
+     um respiro de verdade. */
+  .main-content { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 32px); }
+
+  /* As telas da produção (Diárias, Locações, Tasks, a diária…) têm o próprio
+     .screen-padding, e moram dentro do .screen-padding do layout. Eram 24px
+     + 24px de cada lado: 96px de uma tela de 360px jogados fora. Por dentro,
+     só o de fora vale. */
+  .screen-padding .screen-padding { padding-left: 0; padding-right: 0; padding-top: 0; }
+
+  /* O painel geral tinha o mesmo acúmulo, com 16px próprios. */
+  .dashboard-geral { padding: 0; }
+}
+
+@media (max-width: 599px) {
+  .screen-padding { padding: 16px; }
+  .mobile-header { padding: 12px 16px; }
+
+  /* Escala menor no celular. 24px de título numa tela de 360px quebra o nome
+     da produção em duas linhas; 20px cabe. */
+  .text-xl { font-size: 20px; }
+  .text-lg { font-size: 16px; }
+}
+
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -404,6 +436,19 @@ button {
   justify-content: space-around;
   align-items: center;
   z-index: 50;
+}
+
+@media (max-width: 899px) {
+  .glass-nav {
+    /* 88%, e não os 72% de quando ela virou vidro: com 72% o texto que passava
+       por baixo competia com os rótulos da barra. Continua vidro, com o
+       conteúdo por baixo só insinuado. Decidido pelo Lucas em 14/09/2026. */
+    background-color: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    /* A faixa de gestos entra SOMADA à altura. Com `height: 64px` e o
+       padding dentro dela, no iPhone os ícones e rótulos eram espremidos
+       nos 30px que sobravam. */
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Quem pediu menos transparência no sistema tem motivo — e num set, com sol na

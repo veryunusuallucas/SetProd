@@ -283,12 +283,15 @@ export function ProjectLayout() {
       )}
 
       {/* Main Content Area */}
-      <main className="main-content" style={{ paddingBottom: '90px' }}>
+      {/* O espaço embaixo mora no CSS (.main-content), e não aqui: no celular ele
+          depende da altura da barra de baixo e da faixa de gestos do aparelho,
+          e estilo inline não obedece a media query. */}
+      <main className="main-content">
         
         {/* Mobile Header */}
         <header className="mobile-header mobile-only" style={{ 
           position: 'sticky', top: 0, zIndex: 40, backgroundColor: 'var(--bg-primary)', 
-          padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px',
+          display: 'flex', alignItems: 'center', gap: '16px',
           borderBottom: '1px solid var(--border-light)'
         }}>
           <button onClick={voltar} className="btn-icon" style={{ padding: 0 }} title={destinoDoVoltar.rotulo} aria-label={destinoDoVoltar.rotulo}>
