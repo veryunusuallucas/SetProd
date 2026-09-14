@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CircleDot, Clock, MapPin, Utensils, Truck, Flag, StickyNote, Coffee, PackageOpen, Lightbulb, Drama, Brush, ArrowRight } from 'lucide-react';
+import { CircleDot, Clock, MapPin, Utensils, Truck, Flag, StickyNote, Coffee, PackageOpen, Lightbulb, Drama, Brush, ArrowRight, Edit2 } from 'lucide-react';
 import { db } from '../db/db';
 import type { Cena, Diaria, TipoItemDia } from '../types';
 import { montarLinhaDoDia, calcularDia, COR_TIPO } from '../lib/linhaDoDia';
@@ -41,7 +41,18 @@ const ICONE: Record<TipoItemDia, typeof Flag> = {
  * O que ela responde de relance, e a lista de cartões não respondia: onde está
  * o buraco, onde o dia estourou, e qual dia ainda não tem nada.
  */
-export function PlanoDaSemana({ projetoId, diarias }: { projetoId: string; diarias: Diaria[] }) {
+export function PlanoDaSemana({ projetoId, diarias, aoEditar }: {
+  projetoId: string;
+  diarias: Diaria[];
+  /**
+   * Abre o MESMO modal de edição da visão simplificada — data, duplicar, apagar.
+   *
+   * Vem de fora, e não é um modal próprio desta tela: as duas visões mostram as
+   * mesmas diárias, e duas formas de editar a mesma coisa divergem na primeira
+   * mudança que alguém fizer em uma só. Quem é dono do modal é a lista.
+   */
+  aoEditar?: (diaria: Diaria) => void;
+}) {
   const navigate = useNavigate();
   const trilho = useRef<HTMLDivElement>(null);
   const hojeRef = useRef<HTMLDivElement>(null);
@@ -213,7 +224,26 @@ export function PlanoDaSemana({ projetoId, diarias }: { projetoId: string; diari
                       <MapPin size={10} /> {locais} local{locais === 1 ? '' : 'is'}
                     </span>
                   )}
-                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '3px', color: 'var(--text-secondary)' }}>
+                  {/*
+                    O lápis PARA o clique antes de ele chegar na coluna.
+
+                    A coluna inteira é o botão de abrir a diária. Sem o
+                    `stopPropagation`, tocar em editar abriria o modal e, no
+                    mesmo toque, navegaria para a diária — a pessoa veria o
+                    modal piscar e sumir sob a tela nova.
+                  */}
+                  {aoEditar && (
+                    <button
+                      onClick={e => { e.stopPropagation(); aoEditar(d); }}
+                      className="btn-icon"
+                      aria-label={`Editar a Diária ${String(d.numero).padStart(2, '0')}`}
+                      title="Editar data, duplicar ou apagar"
+                      style={{ marginLeft: 'auto', width: 'auto', padding: '5px 8px', border: '1px solid var(--border-light)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px' }}
+                    >
+                      <Edit2 size={11} /> editar
+                    </button>
+                  )}
+                  <span style={{ marginLeft: aoEditar ? undefined : 'auto', display: 'inline-flex', alignItems: 'center', gap: '3px', color: 'var(--text-secondary)' }}>
                     abrir <ArrowRight size={10} />
                   </span>
                 </div>

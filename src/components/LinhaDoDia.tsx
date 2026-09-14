@@ -9,7 +9,7 @@ import { db } from '../db/db';
 import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao, Plano } from '../types';
 import {
   montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso,
-  duracaoDoItem, COR_TIPO, emHora, type VisaoDoDia,
+  duracaoDoItem, COR_TIPO, emHora, emMinutos, type VisaoDoDia,
 } from '../lib/linhaDoDia';
 import { getStripboardColor } from '../lib/decupagem';
 import { parseCoords } from '../lib/clima';
@@ -179,6 +179,8 @@ export function LinhaDoDia({
   const [partindo, setPartindo] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
   const [adicionando, setAdicionando] = useState(false);
+  /** Qual item está com o ajuste da hora real aberto. */
+  const [ajustandoHora, setAjustandoHora] = useState<string | null>(null);
   /** Fogos curtos: a desprodução acabou de ser marcada. */
   const [festejando, setFestejando] = useState(false);
   /** Qual cena está escolhida no seletor do "acrescentar cena". */
@@ -266,12 +268,32 @@ export function LinhaDoDia({
   const alternarTrava = (c: (typeof dia.itens)[number]) =>
     mudarItem(c.item.id, { hora_travada: c.travado ? undefined : c.hora });
 
+  /**
+   * O botão "começou".
+   *
+   * ⚠️ ELE NÃO APAGA MAIS A HORA. Apagava: tocar em "real 07:40" tirava a
+   * marcação, e esse era o único jeito de mexer nela. Quem só queria corrigir o
+   * horário perdia o registro e tinha que marcar de novo — com a hora ERRADA,
+   * que é a de agora.
+   *
+   * O pedido, em duas vozes: *"acontece de eu esquecer de clicar"* (Raphael,
+   * no set) e *"o café começou certo às 7h mas o AD não colocou, e agora
+   * tecnicamente estamos atrasados"* (Lucas). A hora real alimenta o radar de
+   * atraso, o wrap previsto e a contagem do "a seguir" — um carimbo errado
+   * contamina os três, e o dia inteiro aparece atrasado sem estar.
+   *
+   * Agora: sem marcação, marca a hora de agora (o caminho rápido continua de um
+   * toque) e já abre o ajuste embaixo. Com marcação, abre e fecha o ajuste.
+   */
   const marcarAgora = (item: ItemDoDia) => {
     const agora = new Date();
     const marcando = !item.hora_real;
-    mudarItem(item.id, {
-      hora_real: marcando ? emHora(agora.getHours() * 60 + agora.getMinutes()) : undefined,
-    });
+    if (!marcando) {
+      setAjustandoHora(a => (a === item.id ? null : item.id));
+      return;
+    }
+    mudarItem(item.id, { hora_real: emHora(agora.getHours() * 60 + agora.getMinutes()) });
+    setAjustandoHora(item.id);
 
     /*
       FOGOS AO MARCAR A DESPRODUÇÃO — o primeiro dos dois momentos.
@@ -624,8 +646,8 @@ export function LinhaDoDia({
                         }}
                         title={
                           !podeMarcar ? 'Só AD e produção marcam o dia'
-                            : c.item.hora_real ? 'Toque para apagar a hora real'
-                            : 'Começou agora'
+                            : c.item.hora_real ? 'Ajustar a hora em que começou'
+                            : 'Começou agora — dá para ajustar a hora depois'
                         }
                       >
                         {c.item.hora_real ? `real ${c.item.hora_real}` : 'começou'}
@@ -664,6 +686,84 @@ export function LinhaDoDia({
                           {registro ? ROTULO[registro.status] : 'marcar'}
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/*
+                    AJUSTAR A HORA REAL — "o café começou às 7h, mas ninguém marcou".
+
+                    Abre embaixo da linha, como a cobertura, e não num modal: a
+                    pessoa está olhando para o item que quer corrigir, e um modal
+                    tiraria o dia inteiro da vista justo quando ela precisa
+                    comparar com os horários vizinhos.
+                  */}
+                  {modo === 'interativo' && ajustandoHora === c.item.id && c.item.hora_real && (
+                    <div
+                      style={{
+                        flexBasis: '100%', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end',
+                        paddingTop: '10px', marginTop: '4px', borderTop: '1px dashed var(--border-light)',
+                      }}
+                    >
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <span className="text-xs text-muted uppercase">Começou às</span>
+                        <input
+                          type="time"
+                          value={c.item.hora_real}
+                          onChange={e => {
+                            // Campo apagado não vira "sem marcação": para isso
+                            // existe o botão ao lado, que diz o que faz.
+                            if (podeMarcar && emMinutos(e.target.value) !== null) {
+                              mudarItem(c.item.id, { hora_real: e.target.value });
+                            }
+                          }}
+                          disabled={!podeMarcar}
+                          style={{ ...campoCobertura, width: '112px', fontVariantNumeric: 'tabular-nums' }}
+                        />
+                      </label>
+
+                      {/*
+                        O ATALHO É O CASO DO PEDIDO.
+
+                        "Começou certo às 7h" é, quase sempre, "começou no
+                        horário que estava no plano". Um toque devolve o item ao
+                        horário previsto — e o atraso que só existia por falta de
+                        marcação desaparece.
+                      */}
+                      {c.item.hora_real !== c.hora && (
+                        <button
+                          onClick={() => podeMarcar && mudarItem(c.item.id, { hora_real: c.hora })}
+                          disabled={!podeMarcar}
+                          className="text-xs font-bold"
+                          style={{
+                            padding: '7px 11px', borderRadius: 'var(--radius-full)', cursor: podeMarcar ? 'pointer' : 'not-allowed',
+                            border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
+                          }}
+                        >
+                          começou no previsto · {c.hora}
+                        </button>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+                        <button
+                          onClick={() => {
+                            if (!podeMarcar) return;
+                            mudarItem(c.item.id, { hora_real: undefined });
+                            setAjustandoHora(null);
+                          }}
+                          disabled={!podeMarcar}
+                          className="text-xs"
+                          style={{ padding: '7px 11px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-muted)', cursor: podeMarcar ? 'pointer' : 'not-allowed' }}
+                        >
+                          tirar a marcação
+                        </button>
+                        <button
+                          onClick={() => setAjustandoHora(null)}
+                          className="text-xs font-bold"
+                          style={{ padding: '7px 13px', borderRadius: 'var(--radius-full)', border: 'none', backgroundColor: 'var(--accent)', color: '#000', cursor: 'pointer' }}
+                        >
+                          pronto
+                        </button>
+                      </div>
                     </div>
                   )}
 
