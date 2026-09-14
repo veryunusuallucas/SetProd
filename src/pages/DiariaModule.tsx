@@ -15,9 +15,10 @@ import { AIButton } from '../components/ui/AIButton';
 import { imprimirHtml, baixarHtml } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
-import { oitavosParaPaginas } from '../lib/decupagem';
+import { oitavosParaPaginas, paginasParaOitavos } from '../lib/decupagem';
 import { marcarCena, relatorioDoDia } from '../lib/registroSet';
 import { FechamentoDiaria } from '../components/FechamentoDiaria';
+import { CartaDeWrap, type CartaDeWrapProps } from '../components/CartaDeWrap';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
 import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, proximoDoDia, emMinutos } from '../lib/linhaDoDia';
@@ -97,6 +98,14 @@ export function DiariaModule() {
   ) || [];
 
   const [fechamentoAberto, setFechamentoAberto] = useState(false);
+  /**
+   * A carta de wrap, com os números do dia que acabou de fechar.
+   *
+   * É um RETRATO tirado no instante do fechamento, e não uma leitura ao vivo:
+   * as consultas continuam correndo por trás e a diária muda de estado no mesmo
+   * gesto. Ler ao vivo faria os números dançarem enquanto a pessoa os olha.
+   */
+  const [carta, setCarta] = useState<CartaDeWrapProps | null>(null);
   const { perfilId: meuPerfilId, canEditProducao: podeAdministrar } = useRole();
 
   const [newTask, setNewTask] = useState('');
@@ -581,7 +590,92 @@ export function DiariaModule() {
 
     if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Fechou a Diária ${diaria.numero}`);
     setFechamentoAberto(false);
-    gerarDPR();
+    setCarta(await montarCarta());
+  };
+
+  /**
+   * O retrato do dia que acabou.
+   *
+   * ⚠️ O RELATÓRIO NÃO ABRE MAIS SOZINHO. Ele abria: fechar a diária disparava
+   * a caixa de impressão do navegador sem aviso, no meio do wrap. Agora ele é o
+   * botão principal da carta — mesma ação, no momento em que a pessoa escolhe.
+   */
+  const montarCarta = async (): Promise<CartaDeWrapProps | null> => {
+    if (!projetoId || !diariaId) return null;
+
+    const [registros, todasAsDiarias] = await Promise.all([
+      db.registros_cena.where('diaria_id').equals(diariaId).toArray(),
+      db.diarias.where('projeto_id').equals(projetoId).toArray(),
+    ]);
+    const r = relatorioDoDia(cenasDaDiaria, registros);
+
+    /*
+      A hora em que o dia acabou de verdade.
+
+      O item de desprodução primeiro; sem ele, a última coisa que alguém marcou.
+      Um dia em que ninguém marcou nada não inventa um horário — a carta
+      simplesmente não mostra essa caixa.
+    */
+    const marcados = dia.itens.filter(i => i.item.hora_real);
+    const wrapReal = marcados.reverse().find(i => i.item.tipo === 'wrap')?.item.hora_real
+      || marcados[0]?.item.hora_real
+      || null;
+
+    const real = emMinutos(wrapReal || undefined);
+    const planejado = emMinutos(atrasoDoDia.wrapPlanejado || undefined);
+    let diferenca: number | null = real !== null && planejado !== null ? real - planejado : null;
+    // Virada de dia, como no radar de atraso: 00:30 contra 23:50 é 40min, não 1400.
+    if (diferenca !== null && diferenca > 720) diferenca -= 1440;
+    if (diferenca !== null && diferenca < -720) diferenca += 1440;
+
+    /*
+      A última diária é a de maior DATA, e não a de maior número.
+
+      Coincidem desde a v4.9.0 (a renumeração é por data), mas continuam sendo
+      perguntas diferentes — e esta carta é a única do app que só aparece uma
+      vez por filme. Errar nela é errar no dia que ninguém repete.
+    */
+    const ultimaData = todasAsDiarias.map(d => d.data).sort().at(-1);
+    const ultima = Boolean(diaria.data && diaria.data === ultimaData && todasAsDiarias.length > 1);
+
+    let totais: CartaDeWrapProps['totaisDoFilme'];
+    if (ultima) {
+      const todosOsRegistros = await db.registros_cena.where('projeto_id').equals(projetoId).toArray();
+      const gravadas = new Set(
+        todosOsRegistros.filter(x => x.status === 'gravada' || x.status === 'parcial').map(x => x.cena_id)
+      );
+      const oitavos = [...gravadas]
+        .map(id => cenasGlobais.find(c => c.id === id))
+        .reduce((s, c) => s + paginasParaOitavos(c?.paginas), 0);
+      totais = {
+        diarias: todasAsDiarias.filter(d => d.estado === 'fechada' || d.fechada).length,
+        cenas: gravadas.size,
+        paginas: oitavosParaPaginas(oitavos),
+      };
+    }
+
+    return {
+      projetoId,
+      numero: diaria.numero,
+      totalDiarias: todasAsDiarias.length,
+      ultimaDoFilme: ultima,
+      dados: {
+        gravadas: r.gravadas.length,
+        parciais: r.parciais.length,
+        naoGravadas: r.naoGravadas.length,
+        oitavosGravados: r.oitavosGravados,
+        setups: r.setups,
+        wrapReal,
+        wrapPlanejado: atrasoDoDia.wrapPlanejado,
+        diferencaMin: diferenca,
+      },
+      totaisDoFilme: totais,
+      frases: projeto?.frases_wrap,
+      gifs: projeto?.gifs_wrap,
+      aoFechar: () => setCarta(null),
+      aoVerRelatorio: gerarDPR,
+      aoEditar: () => navigate(`/projeto/${projetoId}/diarias`),
+    };
   };
 
   /**
@@ -1537,6 +1631,8 @@ export function DiariaModule() {
           aoCancelar={() => setFechamentoAberto(false)}
         />
       )}
+
+      {carta && <CartaDeWrap {...carta} />}
 
       {geradorAberto && projeto && (
         <GeradorODModal

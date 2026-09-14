@@ -52,6 +52,27 @@ export interface Projeto {
    * mesmo — quem digitasse a cada diária acabaria não digitando.
    */
   observacoes_od?: string;
+
+  /**
+   * As frases que aparecem no wrap. **Escritas por quem faz o filme.**
+   *
+   * A lista nasce com um punhado de frases de set, e a tela de edição já vem
+   * preenchida com elas — mas o que toca é exatamente o que está gravado aqui.
+   * Não há mistura entre padrão e personalizado: o que você vê na lista é o que
+   * sai na tela, e tirar uma frase daqui a tira do sorteio de verdade.
+   *
+   * Por PROJETO, e não por conta: a piada interna de uma produção não é a da
+   * outra, e a graça de uma frase de wrap é ela ser daquela equipe.
+   */
+  frases_wrap?: string[];
+  /**
+   * Os GIFs do wrap, como referências de arquivo (`arquivo:<caminho>`).
+   *
+   * Guardados de verdade, e não como link: o wrap acontece no set, que é
+   * justamente onde não há sinal. Um endereço do Giphy daria uma moldura vazia
+   * exatamente no dia em que a comemoração importa.
+   */
+  gifs_wrap?: string[];
   creditos?: Credito[]; // Apoios e extras da Fase 3
   /** Categorias de breakdown criadas pelo usuário, além das padrão da indústria. */
   categorias_extras?: CategoriaCustomizada[];
