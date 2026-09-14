@@ -205,7 +205,14 @@ h1, h2, h3, h4, h5, h6 {
   .cal-semana > * { min-height: 160px; }
 }
 
+/* Próximos 7 dias (DashboardGeral.tsx): a mesma lógica do mês, em uma linha. */
+.semana-frente-dia { min-height: 84px; padding: 8px; }
+.semana-frente-topo { display: flex; justify-content: space-between; align-items: baseline; }
+
 @media (max-width: 599px) {
+  .semana-frente { gap: 4px !important; }
+  .semana-frente-dia { min-height: 60px; padding: 6px 2px; }
+  .semana-frente-topo { flex-direction: column; align-items: center; gap: 1px; }
   .cal-mes { gap: 4px; }
   .cal-mes-dia { min-height: 48px; padding: 5px 4px; }
   .cal-chips { display: none; }

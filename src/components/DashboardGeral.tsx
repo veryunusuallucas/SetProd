@@ -4,7 +4,7 @@ import { db } from '../db/db';
 import { useNavigate } from 'react-router-dom';
 import { Users, DollarSign, MapPin, Calendar, CheckSquare, Clock, Film, FileText, AlertTriangle } from 'lucide-react';
 import { ordenarPorPrazo, urgenciaDe } from '../lib/urgencia';
-import { CalendarioDashboard } from './CalendarioDashboard';
+import { CalendarioDashboard, estiloDoPeso, COR_DE_HOJE, COR_DO_PESO } from './CalendarioDashboard';
 import { FilaRepescagem } from './FilaRepescagem';
 import { AvisoDeRitmo } from './AvisoDeRitmo';
 import { calcularProgresso } from '../lib/registroSet';
@@ -151,13 +151,13 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
       <div style={{ display: 'flex', gap: '8px', padding: '0 4px' }}>
         <button 
           onClick={() => setSubAba('geral')}
-          style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAba === 'geral' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'geral' ? '#fff' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAba === 'geral' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'geral' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
         >
           Visão Geral
         </button>
         <button 
           onClick={() => setSubAba('calendario')}
-          style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAba === 'calendario' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'calendario' ? '#fff' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAba === 'calendario' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'calendario' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
         >
           Calendário
         </button>
@@ -217,55 +217,75 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '8px' }}>
+            {/*
+              No celular cada dia tem ~40px de largura: "Seg" e "14" lado a lado
+              não cabiam, e um passava por cima do outro. Abaixo de 600px o dia
+              da semana sobe para cima do número, e os chips viram pontinhos,
+              como no mês do calendário. As cores são as mesmas de lá: hoje
+              verde, diária amarela, prazo laranja.
+            */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '8px' }} className="semana-frente">
               {semana.map(d => {
                 const temDiaria = d.diarias.length > 0;
+                const peso = temDiaria ? 'diaria' : d.prazos.length > 0 ? 'prazo' : null;
+                const temAlgo = temDiaria || d.prazos.length > 0 || d.eventos.length > 0;
                 return (
                   <div
                     key={d.iso}
+                    className="semana-frente-dia"
                     onClick={() => temDiaria && navigate(`diaria/${d.diarias[0].id}`)}
                     style={{
-                      minHeight: '84px', padding: '8px', borderRadius: '10px',
-                      backgroundColor: d.hoje ? 'var(--bg-surface)' : 'var(--bg-primary)',
-                      // Hoje é verde, como no calendário: amarelo é a cor da diária.
-                      border: d.hoje ? '1px solid var(--color-success)' : '1px solid var(--border-light)',
+                      borderRadius: '10px', minWidth: 0,
+                      border: '1px solid',
+                      ...estiloDoPeso(peso),
+                      outline: d.hoje ? `2px solid ${COR_DE_HOJE}` : 'none',
+                      outlineOffset: '-1px',
                       display: 'flex', flexDirection: 'column', gap: '4px',
                       cursor: temDiaria ? 'pointer' : 'default'
                     }}
                     title={temDiaria ? `Abrir Diária ${d.diarias[0].numero}` : undefined}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <div className="semana-frente-topo">
                       <span className="text-xs text-muted" style={{ textTransform: 'capitalize' }}>{d.rotulo}</span>
-                      <span className="text-sm font-bold" style={{ color: d.hoje ? 'var(--color-success)' : 'inherit' }}>{d.dia}</span>
+                      <span className="text-sm font-bold" style={{ color: d.hoje ? COR_DE_HOJE : 'inherit' }}>{d.dia}</span>
                     </div>
-                    {/* O evento entra na semana à frente porque é justamente
-                        aqui que ele importa: visita de locação marcada para
-                        quinta só serve se aparecer antes de quinta. */}
-                    {d.eventos.map(e => {
-                      const t = tipoDoEvento(e.tipo);
-                      return (
-                        <div
-                          key={e.id}
-                          title={`${t.nome}: ${e.titulo}${e.hora_inicio ? ` · ${e.hora_inicio}` : ''}`}
-                          style={{
-                            fontSize: '10px', backgroundColor: 'var(--bg-surface)',
-                            borderLeft: `3px solid ${t.cor}`, padding: '2px 5px',
-                            borderRadius: '4px', whiteSpace: 'nowrap',
-                            overflow: 'hidden', textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {t.emoji} {e.hora_inicio || e.titulo}
+                    <div className="cal-chips" style={{ flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                      {/* O evento entra na semana à frente porque é justamente
+                          aqui que ele importa: visita de locação marcada para
+                          quinta só serve se aparecer antes de quinta. */}
+                      {d.eventos.map(e => {
+                        const t = tipoDoEvento(e.tipo);
+                        return (
+                          <div
+                            key={e.id}
+                            title={`${t.nome}: ${e.titulo}${e.hora_inicio ? ` · ${e.hora_inicio}` : ''}`}
+                            style={{
+                              fontSize: '10px', backgroundColor: 'var(--bg-surface)',
+                              borderLeft: `3px solid ${t.cor}`, padding: '2px 5px',
+                              borderRadius: '4px', whiteSpace: 'nowrap',
+                              overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {t.emoji} {e.hora_inicio || e.titulo}
+                          </div>
+                        );
+                      })}
+                      {d.diarias.map(x => (
+                        <div key={x.id} style={{ fontSize: '10px', backgroundColor: 'var(--accent)', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          D{String(x.numero).padStart(2, '0')}
                         </div>
-                      );
-                    })}
-                    {d.diarias.map(x => (
-                      <div key={x.id} style={{ fontSize: '10px', backgroundColor: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        D{String(x.numero).padStart(2, '0')}
-                      </div>
-                    ))}
-                    {d.prazos.length > 0 && (
-                      <div className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-warning)' }}>
-                        <CheckSquare size={10} /> {d.prazos.length}
+                      ))}
+                      {d.prazos.length > 0 && (
+                        <div className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-warning)' }}>
+                          <CheckSquare size={10} /> {d.prazos.length}
+                        </div>
+                      )}
+                    </div>
+                    {temAlgo && (
+                      <div className="cal-pontos" aria-hidden>
+                        {temDiaria && <span style={{ backgroundColor: COR_DO_PESO.diaria }} />}
+                        {d.eventos.length > 0 && <span style={{ backgroundColor: tipoDoEvento(d.eventos[0].tipo).cor }} />}
+                        {d.prazos.length > 0 && <span style={{ backgroundColor: COR_DO_PESO.prazo }} />}
                       </div>
                     )}
                   </div>
