@@ -101,6 +101,16 @@ function estiloDoPeso(peso: ConteudoDoDia['peso']): React.CSSProperties {
   return { backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-light)' };
 }
 
+/*
+  HOJE É VERDE.
+
+  Era amarelo, e amarelo é a cor da diária: um hoje que também fosse dia de
+  diária ficava amarelo sobre amarelo, e um hoje comum parecia dia de
+  filmagem. Verde não disputa com nenhum dos dois pesos, e diz "você está
+  aqui" sem dizer "tem set".
+*/
+const COR_DE_HOJE = 'var(--color-success)';
+
 const COR_DO_PESO = { diaria: 'var(--cor-set)', prazo: 'var(--color-warning)' } as const;
 
 export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
@@ -349,7 +359,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                   ...estiloDoPeso(c.peso),
                   // Hoje ganha contorno por FORA da borda: assim ele não apaga a
                   // cor de um hoje que também é dia de diária.
-                  outline: hoje ? '2px solid var(--accent)' : 'none',
+                  outline: hoje ? `2px solid ${COR_DE_HOJE}` : 'none',
                   outlineOffset: '-1px',
                   opacity: isSameMonth(day, monthStart) ? 1 : 0.4,
                   display: 'flex',
@@ -359,7 +369,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: hoje || c.peso ? 700 : 400, color: hoje ? 'var(--accent)' : 'inherit' }}>
+                  <span style={{ fontSize: '14px', fontWeight: hoje || c.peso ? 700 : 400, color: hoje ? COR_DE_HOJE : 'inherit' }}>
                     {format(day, 'd')}
                   </span>
                   <span className="cal-chips">{clima(c.iso)}</span>
@@ -439,6 +449,7 @@ function Legenda() {
   );
   return (
     <div className="text-xs text-muted" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+      {item(COR_DE_HOJE, 'hoje')}
       {item(COR_DO_PESO.diaria, 'dia de diária')}
       {item(COR_DO_PESO.prazo, 'prazo de task')}
     </div>
@@ -511,15 +522,15 @@ function CabecalhoDoDia({ dia, c, clima }: { dia: Date; c: ConteudoDoDia; clima:
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
       <div style={{ minWidth: '34px' }}>
-        <div className="text-xs uppercase tracking-widest font-bold" style={{ color: hoje ? 'var(--accent)' : 'var(--text-muted)' }}>
+        <div className="text-xs uppercase tracking-widest font-bold" style={{ color: hoje ? COR_DE_HOJE : 'var(--text-muted)' }}>
           {format(dia, 'EEE', { locale: ptBR }).replace('.', '')}
         </div>
-        <div style={{ fontSize: '20px', fontWeight: 800, lineHeight: 1.1, color: hoje ? 'var(--accent)' : 'var(--text-primary)' }}>
+        <div style={{ fontSize: '20px', fontWeight: 800, lineHeight: 1.1, color: hoje ? COR_DE_HOJE : 'var(--text-primary)' }}>
           {format(dia, 'd')}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-        {hoje && <span className="text-xs font-bold text-accent">hoje</span>}
+        {hoje && <span className="text-xs font-bold" style={{ color: COR_DE_HOJE }}>hoje</span>}
         {c.peso && (
           <span className="text-xs font-bold" style={{ color: COR_DO_PESO[c.peso] }}>
             {c.peso === 'diaria' ? 'dia de diária' : 'prazo de task'}
@@ -546,7 +557,7 @@ function CartaoDoDia({ dia, c, clima, aoAbrir, aoAbrirDiaria }: {
         border: '1px solid',
         ...estiloDoPeso(c.peso),
         borderLeft: `3px solid ${c.peso ? COR_DO_PESO[c.peso] : 'var(--border-light)'}`,
-        outline: hoje ? '2px solid var(--accent)' : 'none',
+        outline: hoje ? `2px solid ${COR_DE_HOJE}` : 'none',
         outlineOffset: '-1px',
         borderRadius: '10px', padding: '10px', minWidth: 0,
         display: 'flex', flexDirection: 'column', gap: '8px',
@@ -661,7 +672,7 @@ function CartaoFlutuanteDoDia({ dia, c, clima, aoFechar, aoAbrirDiaria, aoVerTas
               {(t => t.charAt(0).toUpperCase() + t.slice(1))(format(dia, "EEEE, d 'de' MMMM", { locale: ptBR }))}
             </h3>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
-              {isToday(dia) && <span className="text-xs font-bold text-accent">hoje</span>}
+              {isToday(dia) && <span className="text-xs font-bold" style={{ color: COR_DE_HOJE }}>hoje</span>}
               {c.peso && <span className="text-xs font-bold" style={{ color: COR_DO_PESO[c.peso] }}>{c.peso === 'diaria' ? 'dia de diária' : 'prazo de task'}</span>}
               {clima}
             </div>
