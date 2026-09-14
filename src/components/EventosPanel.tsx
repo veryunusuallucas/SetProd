@@ -112,10 +112,10 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <p className="text-sm text-secondary" style={{ margin: 0 }}>
-          Visita de locação, teste, reunião — o que está marcado e quem foi chamado.
-        </p>
+      {/* A frase que explicava o painel saiu: ela existia porque isto era uma
+          aba sem cabeçalho. Virou página, e o cabeçalho da página já diz o
+          mesmo — as duas juntas eram a mesma linha lida duas vezes. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <BotaoTatil onClick={() => setCriando(v => !v)} className="btn-primary" style={{ flexShrink: 0 }}>
           <Plus size={16} /> Marcar evento
         </BotaoTatil>

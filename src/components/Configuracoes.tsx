@@ -7,6 +7,8 @@ import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
 import type { Projeto } from '../types';
 import { CampoData } from './ui/CampoData';
+import { PadraoDaOD } from './PadraoDaOD';
+import { ComemoracaoDoWrap } from './ComemoracaoDoWrap';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
@@ -188,6 +190,19 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
           </label>
         </div>
       </div>
+
+      {/*
+        Os ajustes da Ordem do Dia e do fim do dia moram aqui, e não na lista de
+        diárias, onde nasceram.
+
+        Lá eles ficavam ENTRE o cabeçalho e os dias, empurrando para baixo a
+        coisa que a pessoa abriu a tela para ver. São decisões que se tomam uma
+        vez por produção — o logo, os avisos fixos, as frases do wrap — e
+        configuração é o lugar de quem vai mudar algo uma vez, não de quem
+        entra todo dia.
+      */}
+      <PadraoDaOD projetoId={projetoId} />
+      <ComemoracaoDoWrap />
 
       <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Suporte</h3>
