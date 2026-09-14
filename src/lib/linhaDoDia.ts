@@ -297,6 +297,74 @@ export function calcularAtraso(dia: DiaCalculado): Atraso {
   };
 }
 
+/**
+ * O que vem a seguir no dia, e daqui a quanto tempo.
+ *
+ * Pedido de quem estava no set: *"colocar na tela quanto tempo falta pro
+ * próximo item"*. A tela já dizia que horas são e quanto o dia está atrasado —
+ * duas informações sobre o passado. Nenhuma respondia a pergunta que se faz a
+ * cada vinte minutos numa filmagem, que é "quanto tempo eu ainda tenho aqui".
+ *
+ * ⚠️ O PREVISTO SAI DO PLANO **MAIS O ATRASO CORRENTE**, e não do plano puro.
+ *
+ * Um dia atrasado 50min mostraria "o almoço é em 10min" olhando só o papel,
+ * enquanto na prática ele é daqui a uma hora. A conta que serve para decidir
+ * qualquer coisa no set é a do plano deslocado pelo atraso real — é a mesma que
+ * já produz o `wrapPrevisto`.
+ */
+export interface ProximoNoDia {
+  item: ItemCalculado;
+  /** Horário previsto, já deslocado pelo atraso do dia. */
+  previsto: string;
+  /**
+   * Minutos até lá. **Negativo quer dizer que já passou da hora** — e isso
+   * acontece o tempo todo: o item corrente estourou e ninguém marcou ainda.
+   */
+  faltamMinutos: number;
+}
+
+/**
+ * @param agoraMin Minutos desde a meia-noite. Injetável para testar sem relógio.
+ */
+export function proximoDoDia(
+  dia: DiaCalculado,
+  atraso: Atraso,
+  agoraMin: number
+): ProximoNoDia | null {
+  /*
+    O próximo é o item DEPOIS DO ÚLTIMO MARCADO, e não o primeiro sem marca.
+
+    A diferença aparece quando alguém esquece de marcar um item e marca o
+    seguinte — que é comum, e é justamente o outro pedido desta mesma leva. Pelo
+    "primeiro sem marca", a tela ficaria apontando para trás, cobrando um item
+    que já aconteceu, enquanto o set anda.
+  */
+  let ultimoMarcado = -1;
+  for (let i = 0; i < dia.itens.length; i++) {
+    if (emMinutos(dia.itens[i].item.hora_real) !== null) ultimoMarcado = i;
+  }
+
+  const item = dia.itens[ultimoMarcado + 1];
+  if (!item) return null;
+
+  const alvo = item.inicio + atraso.minutos;
+  let faltam = alvo - agoraMin;
+  // Virada de dia, como em `calcularAtraso`: meia noite não é doze horas de espera.
+  if (faltam > 720) faltam -= 1440;
+  if (faltam < -720) faltam += 1440;
+
+  return { item, previsto: emHora(alvo), faltamMinutos: faltam };
+}
+
+/** "em 12min" / "em 1h05" / "há 8min" — a espera, nas duas direções. */
+export function descreverFalta(minutos: number): string {
+  const abs = Math.abs(minutos);
+  if (abs < 1) return 'agora';
+  const h = Math.floor(abs / 60), m = abs % 60;
+  const texto = h ? (m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`) : `${m}min`;
+  return minutos >= 0 ? `em ${texto}` : `há ${texto}`;
+}
+
 /** "+40min de atraso" / "15min adiantado" / "no horário". */
 export function descreverAtraso(minutos: number): string {
   if (Math.abs(minutos) < 5) return 'no horário';

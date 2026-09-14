@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Timer, CalendarClock } from 'lucide-react';
-import { descreverAtraso, type Atraso } from '../lib/linhaDoDia';
+import { Timer, CalendarClock, ArrowRight } from 'lucide-react';
+import {
+  descreverAtraso, descreverFalta, proximoDoDia, ROTULO_TIPO,
+  type Atraso, type DiaCalculado, type ItemCalculado,
+} from '../lib/linhaDoDia';
 import { descreverEspera, type Fase } from '../lib/faseDoDia';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 
@@ -26,11 +29,22 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
 const ATENCAO_MIN = 15;
 const GRAVE_MIN = 45;
 
-export function RelogioDoSet({ fase, atraso, wrap }: {
+/** A partir daqui a contagem vira alerta: o próximo item está em cima. */
+const EM_CIMA_MIN = 10;
+
+export function RelogioDoSet({ fase, atraso, wrap, dia }: {
   fase: Fase;
   atraso: Atraso;
   /** Wrap previsto, já com o atraso corrente aplicado. */
   wrap: string | null;
+  /**
+   * O dia calculado — para a contagem até o próximo item.
+   *
+   * Vem inteiro, e não só o próximo já resolvido, porque a conta depende do
+   * relógio e o relógio bate aqui dentro: resolvida de fora, ela congelaria no
+   * minuto em que a tela foi montada e passaria o dia mentindo devagar.
+   */
+  dia: DiaCalculado;
 }) {
   const reduzido = useMovimentoReduzido();
   const [agora, setAgora] = useState(() => new Date());
@@ -54,6 +68,17 @@ export function RelogioDoSet({ fase, atraso, wrap }: {
   }, []);
 
   const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+
+  /*
+    A contagem para o próximo item (pedido de quem estava no set).
+
+    Só aparece com o dia ATIVO. Antes da chamada, o bloco do meio já conta a
+    espera — e numa diária de depois de amanhã "o próximo item é em 51h" não é
+    resposta para pergunta nenhuma.
+  */
+  const proximo = fase.ativo
+    ? proximoDoDia(dia, atraso, agora.getHours() * 60 + agora.getMinutes())
+    : null;
 
   const marcado = atraso.marcados > 0;
   const abs = Math.abs(atraso.minutos);
@@ -145,6 +170,65 @@ export function RelogioDoSet({ fase, atraso, wrap }: {
           </div>
         )}
       </div>
+
+      {/*
+        ---- O QUE VEM A SEGUIR ----
+
+        A tela dizia que horas são e quanto o dia está atrasado: duas coisas
+        sobre o passado. Faltava a pergunta que se faz a cada vinte minutos numa
+        filmagem — "quanto tempo eu ainda tenho aqui".
+
+        Fica ao lado do atraso e não no lugar dele porque são perguntas
+        diferentes: o atraso diz como o dia está, este diz o que fazer agora.
+      */}
+      {proximo && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            paddingLeft: '18px', borderLeft: '1px solid var(--border-light)',
+            minWidth: '170px',
+          }}
+        >
+          <ArrowRight
+            size={20}
+            style={{ color: proximo.faltamMinutos <= EM_CIMA_MIN ? 'var(--color-warning)' : 'var(--text-muted)', flexShrink: 0 }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div className="text-xs text-muted uppercase tracking-widest">A seguir</div>
+            <div className="font-bold" style={{ fontSize: '15px', lineHeight: 1.25 }}>
+              {rotuloDoItem(proximo.item)}
+            </div>
+            <div
+              className="text-xs"
+              style={{
+                fontVariantNumeric: 'tabular-nums',
+                color: proximo.faltamMinutos < 0
+                  ? 'var(--color-warning)'
+                  : proximo.faltamMinutos <= EM_CIMA_MIN
+                    ? 'var(--color-warning)'
+                    : 'var(--text-secondary)',
+              }}
+            >
+              {/*
+                Contagem negativa vira "era para ter começado", e não "há 8min".
+
+                "há 8min" se lê como se já tivesse acontecido — e o item ainda
+                não foi marcado justamente porque não começou. A frase mais longa
+                é a única que não pode ser lida ao contrário.
+              */}
+              {proximo.faltamMinutos < 0
+                ? `era para ter começado ${descreverFalta(proximo.faltamMinutos)}`
+                : `${descreverFalta(proximo.faltamMinutos)} · previsto ${proximo.previsto}`}
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
+}
+
+/** Como o próximo item se chama numa linha só. */
+function rotuloDoItem(c: ItemCalculado): string {
+  if (c.cena) return `Cena ${c.cena.numero}${c.item.parte || ''}`;
+  return c.item.titulo?.trim() || ROTULO_TIPO[c.item.tipo];
 }
