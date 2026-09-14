@@ -103,7 +103,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Sub Navbar */}
-      <div style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
+      <div className="tab-strip" style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
         <button 
           onClick={() => setAbaAtiva('creditos')}
           style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'creditos' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'creditos' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
@@ -190,18 +190,21 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
 
           <div className="section" style={{ marginTop: '24px' }}>
           <h3 className="text-xs text-secondary font-bold uppercase tracking-widest mb-4">Exportar Dados</h3>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <button 
+          {/* `wrap` e base de 220px: com `flex: 1` (base zero) os dois textos
+              compridos nunca quebravam de linha e empurravam a página 257px
+              num celular. No desktop os dois cabem lado a lado, iguais. */}
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <button
               onClick={exportarEnxuta}
-              className="btn-secondary" 
-              style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              className="btn-secondary"
+              style={{ flex: '1 1 220px',display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
             >
               <Download size={16} /> Exportar Créditos (Txt Enxuto)
             </button>
             <button 
               onClick={exportarCSVCompleto}
-              className="btn-secondary" 
-              style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              className="btn-secondary"
+              style={{ flex: '1 1 220px',display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
             >
               <Download size={16} /> Exportar Equipe (CSV Completo)
             </button>

@@ -544,7 +544,7 @@ export function DecupagemModule() {
 
             {/* Grade: um card por linha deixava a maior parte da largura vazia,
                 porque a cena sem referência ocupa poucas linhas de altura. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '16px', alignItems: 'start' }}>
             {cenasOrdenadas.map(cena => (
               <div key={cena.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
