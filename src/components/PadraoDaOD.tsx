@@ -11,8 +11,11 @@ import { guardarArquivo, resolverArquivo, LIMITE_BYTES } from '../lib/arquivos';
  * fixos por natureza. Perguntá-los a cada diária garantiria que ninguém
  * respondesse — e o modelo do mercado traz os dois em todo papel.
  *
- * Mora aqui, na lista de diárias, e não nas configurações da produção: quem
- * pensa "por que meu logo não sai na OD" está olhando para as ODs.
+ * Mora nas Configurações da produção. Nasceu na lista de diárias, com o
+ * argumento de que quem pensa "por que meu logo não sai na OD" está olhando
+ * para as ODs — e foi tirado de lá porque ficava entre o cabeçalho e os dias,
+ * empurrando para baixo a coisa que a pessoa abriu a tela para ver. Logo e
+ * avisos fixos se decidem uma vez por produção; configuração é o lugar disso.
  */
 export function PadraoDaOD({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);

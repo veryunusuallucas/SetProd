@@ -3,18 +3,15 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle } from 'lucide-react';
+import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle, List, Columns3 } from 'lucide-react';
 import type { Diaria } from '../types';
 import { logAction } from '../lib/audit';
-import { EventosPanel } from '../components/EventosPanel';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
 import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
 import { criarDiaria } from '../lib/criarDiaria';
 import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
-import { PadraoDaOD } from '../components/PadraoDaOD';
-import { ComemoracaoDoWrap } from '../components/ComemoracaoDoWrap';
 import { PlanoDaSemana } from '../components/PlanoDaSemana';
 
 /**
@@ -56,7 +53,7 @@ export function DiariasList() {
    * criação, edição ou exclusão. O número desempata a diária remarcada para o
    * mesmo dia de outra.
    *
-   * Quem procura "onde eu estou" tem a aba Plano da semana, que abre
+   * Quem procura "onde eu estou" tem a visão Detalhada, que abre
    * centralizada no dia de hoje — essa é a pergunta que ela existe para
    * responder, e responder duas vezes de jeitos diferentes era o problema.
    */
@@ -108,20 +105,29 @@ export function DiariasList() {
   };
 
   /*
-    Duas abas, e não duas telas no menu.
+    DUAS FORMAS DE VER AS MESMAS DIÁRIAS — e não abas de assuntos diferentes.
 
-    A pergunta é a mesma — "o que a produção tem marcado" — e separar em dois
-    itens de menu faria a pessoa escolher antes de saber onde a coisa está. Mas
-    o CONTEÚDO é separado de propósito: diária tem número, cenas e relatório;
-    evento tem hora e convidados. Ver os dois numa lista só embaralharia a
-    numeração das diárias, que é a espinha do planejamento.
+    Antes eram três abas: "Diárias", "Plano da semana" e "Eventos". As duas
+    primeiras mostravam a MESMA coisa em densidades diferentes, e a terceira
+    era outro assunto. Pô-las lado a lado sugeria que eram três coisas do mesmo
+    tamanho. Eventos virou página própria, e o que sobrou aqui virou o que é:
+    um seletor de densidade.
+
+      simplificada — um cartão por dia: número, data, estado, equipe, gasto.
+      detalhada    — os dias em colunas, com a linha do dia inteira de cada um.
+
+    A escolha fica lembrada NESTE aparelho. É preferência de quem olha, não dado
+    da produção: o AD que vive na detalhada não pode trocar a tela do produtor
+    que só quer ver os gastos.
   */
-  const [aba, setAba] = useState<'diarias' | 'semana' | 'eventos'>('diarias');
-  const eventosFuturos = useLiveQuery(async () => {
-    const hoje = new Date().toISOString().slice(0, 10);
-    const todos = await db.eventos.where('projeto_id').equals(projetoId!).toArray();
-    return todos.filter(e => e.data >= hoje).length;
-  }, [projetoId]) || 0;
+  const [modo, setModoEstado] = useState<'simplificada' | 'detalhada'>(() => {
+    try { return localStorage.getItem('setprod:diarias:modo') === 'detalhada' ? 'detalhada' : 'simplificada'; }
+    catch { return 'simplificada'; }
+  });
+  const setModo = (m: 'simplificada' | 'detalhada') => {
+    setModoEstado(m);
+    try { localStorage.setItem('setprod:diarias:modo', m); } catch { /* modo privado */ }
+  };
 
   const abrirFormulario = () => {
     setData('');
@@ -244,54 +250,54 @@ export function DiariasList() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={24} color="var(--accent)" /> Diárias & Eventos
+            <Calendar size={24} color="var(--accent)" /> Diárias
           </h1>
-          <p className="text-sm text-secondary">A Ordem do Dia e o que mais a produção tem marcado</p>
+          <p className="text-sm text-secondary">Os dias de filmagem e a Ordem do Dia de cada um</p>
         </div>
-        {aba === 'diarias' && (
-          <button
-            onClick={() => (showForm ? fecharFormulario() : abrirFormulario())}
-            className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Plus size={16} /> Criar Diária
-          </button>
-        )}
+        <button
+          onClick={() => (showForm ? fecharFormulario() : abrirFormulario())}
+          className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <Plus size={16} /> Criar Diária
+        </button>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
-        {([
-          { id: 'diarias' as const, nome: 'Diárias', contagem: diarias.length },
-          { id: 'semana' as const, nome: 'Plano da semana', contagem: 0 },
-          { id: 'eventos' as const, nome: 'Eventos', contagem: eventosFuturos },
-        ]).map(t => (
-          <button
-            key={t.id}
-            onClick={() => setAba(t.id)}
-            style={{
-              flex: 1, padding: '12px', border: 'none', background: 'none',
-              color: aba === t.id ? 'var(--accent)' : 'var(--text-muted)',
-              borderBottom: aba === t.id ? '2px solid var(--accent)' : '2px solid transparent',
-              fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            }}
-          >
-            {t.nome}
-            {t.contagem > 0 && (
-              <span
-                className="text-xs"
+      {diarias.length > 0 && (
+        <div
+          role="radiogroup"
+          aria-label="Como ver as diárias"
+          style={{
+            display: 'inline-flex', alignSelf: 'flex-start', padding: '4px', gap: '4px',
+            backgroundColor: 'var(--bg-surface)', borderRadius: '10px', border: '1px solid var(--border-light)',
+          }}
+        >
+          {([
+            { id: 'simplificada' as const, nome: 'Simplificada', icone: List },
+            { id: 'detalhada' as const, nome: 'Detalhada', icone: Columns3 },
+          ]).map(m => {
+            const ativo = modo === m.id;
+            const Icone = m.icone;
+            return (
+              <button
+                key={m.id}
+                role="radio"
+                aria-checked={ativo}
+                onClick={() => setModo(m.id)}
                 style={{
-                  backgroundColor: aba === t.id ? 'var(--accent)' : 'var(--bg-surface)',
-                  color: aba === t.id ? '#000' : 'var(--text-muted)',
-                  borderRadius: '20px', padding: '1px 8px', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                  padding: '8px 14px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: '13px',
+                  backgroundColor: ativo ? 'var(--bg-active)' : 'transparent',
+                  color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
                 }}
               >
-                {t.contagem}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+                <Icone size={15} style={{ color: ativo ? 'var(--accent)' : 'inherit' }} /> {m.nome}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/*
         As diárias que JÁ TINHAM SAÍDO e mudaram de número.
@@ -322,9 +328,7 @@ export function DiariasList() {
         </div>
       )}
 
-      {aba === 'eventos' && <EventosPanel projetoId={projetoId!} />}
-
-      {aba === 'diarias' && showForm && (
+      {showForm && (
         <>
         <form onSubmit={criarNovaDiaria} className="card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '170px' }}>
@@ -362,26 +366,26 @@ export function DiariasList() {
         </>
       )}
 
-      {aba === 'diarias' && diarias.length === 0 && !showForm && (
+      {diarias.length === 0 && !showForm && (
         <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
           Nenhuma diária cadastrada. Comece o seu plano de filmagem criando a Diária 01.
         </div>
       )}
 
-      {/* `display: none` e não `&&`: desmontar a grade a cada troca de aba
-          descartaria o estado interno dos cards e faria a lista piscar na
-          volta. Escondida, ela continua montada e reaparece pronta. */}
-      {/* O plano da semana e a lista respondem a perguntas diferentes: a lista
-          diz "o que existe", a semana diz "como o mês está montado". Por isso
-          duas abas, e não um botão que troca a forma da mesma coisa. */}
-      {aba === 'semana' && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} />}
+      {/*
+        A DETALHADA é o antigo "Plano da semana": os dias em colunas, com a
+        linha do dia inteira. A SIMPLIFICADA é a lista de cartões.
 
-      {/* O logo e os avisos que se repetem em toda OD. Fechado: nenhum dos
-          dois é obrigatório, e a lista de diárias é sobre os dias. */}
-      {aba === 'diarias' && diarias.length > 0 && <PadraoDaOD projetoId={projetoId!} />}
-      {aba === 'diarias' && diarias.length > 0 && <ComemoracaoDoWrap />}
+        `display: none` e não `&&` na simplificada: desmontar a grade a cada
+        troca descartaria o estado interno dos cartões e faria a lista piscar na
+        volta. Escondida, ela continua montada e reaparece pronta.
 
-      <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
+        O padrão da Ordem do Dia e a comemoração do wrap saíram daqui para as
+        Configurações: são ajustes da produção, e esta tela é sobre os dias.
+      */}
+      {modo === 'detalhada' && diarias.length > 0 && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} />}
+
+      <div style={{ display: modo === 'simplificada' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {
           const totalDespesas = totalDaDiaria(despesas, d.id);
 

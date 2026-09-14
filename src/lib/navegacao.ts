@@ -42,7 +42,7 @@ export function voltarDe(pathname: string, projetoId: string): Destino {
     ter que reentrar na lista toda vez.
   */
   if (partes[0] === 'diaria' && partes.length > 1) {
-    return { caminho: `${raiz}/diarias`, rotulo: 'Voltar para Diárias e Eventos' };
+    return { caminho: `${raiz}/diarias`, rotulo: 'Voltar para Diárias' };
   }
 
   return { caminho: raiz, rotulo: 'Voltar para o painel do projeto' };

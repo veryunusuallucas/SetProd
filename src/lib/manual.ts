@@ -192,11 +192,13 @@ export const MANUAL: SecaoManual[] = [
   },
   {
     id: 'diarias',
-    titulo: '📅 Diárias e Eventos',
+    titulo: '📅 Diárias',
     rotas: ['diarias', 'diaria/'],
     texto:
       'Cada diária é um dia de filmagem: a linha do tempo do dia, a equipe escalada, as locações, o transporte, a checklist e os anexos. ' +
-      'A aba Eventos, ao lado, guarda o que não é filmagem — visita de locação, teste de elenco, reunião.',
+      'A lista tem duas formas de ver: SIMPLIFICADA, um cartão por dia com data, estado, equipe e gastos; e DETALHADA, os dias lado a lado em colunas, com a linha do dia inteira de cada um. A escolha fica lembrada no seu aparelho. ' +
+      'O que não é filmagem — visita de locação, teste, reunião — fica em Eventos, que é outra página do menu. ' +
+      'O logo da produtora, os avisos fixos da OD e a comemoração do wrap ficam em Configurações.',
     topicos: [
       {
         titulo: 'O número vem da data',
@@ -333,14 +335,14 @@ export const MANUAL: SecaoManual[] = [
     id: 'eventos',
     titulo: '📍 Eventos',
     /*
-      SEM `rotas`, de propósito. Eventos é uma aba DENTRO da tela de diárias, e
-      as duas dividiriam a rota `diarias` — a ajuda contextual escolheria uma
-      das duas pelo desempate da ordenação, ou seja, por acaso. Quem abre a
-      ajuda ali está quase sempre na aba de diárias, que é a padrão; esta seção
-      continua no manual, logo abaixo, e a IA a lê para responder perguntas.
+      Agora COM rota própria. Enquanto Eventos era uma aba dentro de Diárias, as
+      duas dividiam a rota `diarias` e a ajuda contextual escolhia entre elas
+      por acaso — por isso esta seção não tinha rota. Virou página, e a ajuda
+      aberta ali passa a mostrar a seção certa.
     */
+    rotas: ['eventos'],
     texto:
-      'Na tela de Ordem do Dia há duas abas: DIÁRIAS e EVENTOS. ' +
+      'Eventos tem página própria no menu, separada das Diárias. ' +
       'Evento é o compromisso que não é diária — visita de locação, teste de elenco, reunião, leitura de mesa. ' +
       'Cada um tem data, hora, locação e QUEM VAI: você marca as pessoas da equipe, e assim a pergunta "fui chamado?" deixa de depender de rolar o grupo do WhatsApp. ' +
       'O evento aparece no calendário e na semana à frente do painel, junto das diárias, com a cor do tipo. ' +

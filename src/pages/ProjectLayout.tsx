@@ -8,7 +8,7 @@ import { useOcuparRodape } from '../components/ui/slotFlutuante';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
-  ChevronLeft, MapPin, Camera, CheckSquare, CalendarDays, Search,
+  ChevronLeft, MapPin, Camera, CheckSquare, CalendarDays, CalendarClock, Search,
   LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
@@ -135,7 +135,8 @@ export function ProjectLayout() {
       title: 'SET',
       items: [
         { name: 'Dashboard', path: `/projeto/${id}`, icon: LayoutDashboard, exact: true },
-        { name: 'Diárias e Eventos', path: `/projeto/${id}/diarias`, icon: CalendarDays, exact: false },
+        { name: 'Diárias', path: `/projeto/${id}/diarias`, icon: CalendarDays, exact: false },
+        { name: 'Eventos', path: `/projeto/${id}/eventos`, icon: CalendarClock, exact: false },
         { name: 'Tasks', path: `/projeto/${id}/tasks`, icon: CheckSquare, exact: false },
       ]
     },
@@ -351,9 +352,9 @@ export function ProjectLayout() {
 
         <NavLink to={`/projeto/${id}/diarias`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <CalendarDays size={20} />
-          {/* No celular são cinco itens dividindo a largura da tela, então o
-              rótulo tem que caber em uma palavra. "Diárias" é o que a pessoa
-              procura; os eventos moram lá dentro e aparecem na aba. */}
+          {/* No celular são cinco itens dividindo a largura da tela, e não
+              cabe um sexto. Eventos virou página própria e fica a um toque,
+              no "Mais" — é consultado bem menos que as diárias. */}
           <span style={{ fontSize: '10px', fontWeight: 600 }}>Diárias</span>
         </NavLink>
 

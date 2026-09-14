@@ -37,6 +37,7 @@ const ResponderPesquisa = lazy(() => import('./pages/ResponderPesquisa').then(m 
 const AceitarConvite = lazy(() => import('./pages/AceitarConvite').then(m => ({ default: m.AceitarConvite })));
 const LocacoesModule = lazy(() => import('./pages/LocacoesModule').then(m => ({ default: m.LocacoesModule })));
 const DiariasList = lazy(() => import('./pages/DiariasList').then(m => ({ default: m.DiariasList })));
+const EventosPage = lazy(() => import('./pages/EventosPage'));
 const DiariaModule = lazy(() => import('./pages/DiariaModule').then(m => ({ default: m.DiariaModule })));
 const FinanceiroModule = lazy(() => import('./pages/FinanceiroModule').then(m => ({ default: m.FinanceiroModule })));
 const TasksModule = lazy(() => import('./pages/TasksModule').then(m => ({ default: m.TasksModule })));
@@ -109,6 +110,7 @@ function App() {
               
               {/* New v3 Routes */}
               <Route path="diarias" element={<DiariasList />} />
+              <Route path="eventos" element={<EventosPage />} />
               <Route path="diaria/:diariaId" element={<DiariaModule />} />
               <Route path="locacoes" element={<LocacoesModule />} />
               <Route path="equipamentos" element={<EquipamentosModule />} />
