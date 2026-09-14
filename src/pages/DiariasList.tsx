@@ -106,6 +106,14 @@ export function DiariasList() {
   const [apagando, setApagando] = useState(false);
   const [erroAoApagar, setErroAoApagar] = useState<string | null>(null);
 
+  /** Abre o modal de edição. As duas visões chamam daqui — é um modal só. */
+  const abrirEdicao = (d: Diaria) => {
+    setConfirmandoExclusao(false);
+    setErroAoApagar(null);
+    setDataDaCopia(null);
+    setEditModal({ open: true, diaria: d, date: d.data });
+  };
+
   const fecharEdicao = () => {
     setEditModal({ open: false, diaria: null, date: '' });
     setConfirmandoExclusao(false);
@@ -418,7 +426,7 @@ export function DiariasList() {
         O padrão da Ordem do Dia e a comemoração do wrap saíram daqui para as
         Configurações: são ajustes da produção, e esta tela é sobre os dias.
       */}
-      {modo === 'detalhada' && diarias.length > 0 && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} />}
+      {modo === 'detalhada' && diarias.length > 0 && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} aoEditar={abrirEdicao} />}
 
       <div style={{ display: modo === 'simplificada' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {
@@ -480,9 +488,7 @@ export function DiariasList() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setConfirmandoExclusao(false);
-                      setErroAoApagar(null);
-                      setEditModal({ open: true, diaria: d, date: d.data });
+                      abrirEdicao(d);
                     }} 
                     className="btn-icon"
                   >
