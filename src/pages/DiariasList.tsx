@@ -14,6 +14,7 @@ import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
 import { PadraoDaOD } from '../components/PadraoDaOD';
+import { ComemoracaoDoWrap } from '../components/ComemoracaoDoWrap';
 import { PlanoDaSemana } from '../components/PlanoDaSemana';
 
 /**
@@ -378,6 +379,7 @@ export function DiariasList() {
       {/* O logo e os avisos que se repetem em toda OD. Fechado: nenhum dos
           dois é obrigatório, e a lista de diárias é sobre os dias. */}
       {aba === 'diarias' && diarias.length > 0 && <PadraoDaOD projetoId={projetoId!} />}
+      {aba === 'diarias' && diarias.length > 0 && <ComemoracaoDoWrap projetoId={projetoId!} />}
 
       <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {

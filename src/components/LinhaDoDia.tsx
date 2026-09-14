@@ -17,6 +17,7 @@ import { linkMapa } from '../lib/osm';
 import { formatarDuracao } from '../lib/stripboard';
 import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO } from '../lib/registroSet';
 import { faiscar } from './ui/Faisca';
+import { Fogos } from './ui/Fogos';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { CampoTexto } from './ui/CampoTexto';
 import { partirItemDeCena, juntarTrechos, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
@@ -178,6 +179,8 @@ export function LinhaDoDia({
   const [partindo, setPartindo] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<number | null>(null);
   const [adicionando, setAdicionando] = useState(false);
+  /** Fogos curtos: a desprodução acabou de ser marcada. */
+  const [festejando, setFestejando] = useState(false);
   /** Qual cena está escolhida no seletor do "acrescentar cena". */
   const [cenaEscolhida, setCenaEscolhida] = useState('');
 
@@ -265,11 +268,25 @@ export function LinhaDoDia({
 
   const marcarAgora = (item: ItemDoDia) => {
     const agora = new Date();
+    const marcando = !item.hora_real;
     mudarItem(item.id, {
-      hora_real: item.hora_real
-        ? undefined
-        : emHora(agora.getHours() * 60 + agora.getMinutes()),
+      hora_real: marcando ? emHora(agora.getHours() * 60 + agora.getMinutes()) : undefined,
     });
+
+    /*
+      FOGOS AO MARCAR A DESPRODUÇÃO — o primeiro dos dois momentos.
+
+      Curtos e por cima de tudo, sem travar nada: a equipe ainda está
+      desmontando o set e ninguém vai parar para ler uma tela. A comemoração
+      grande é a outra, no fechamento, quando o relatório está feito.
+
+      Só ao MARCAR. Desmarcar por engano e receber fogos seria o app
+      comemorando o próprio erro.
+    */
+    if (marcando && item.tipo === 'wrap') {
+      setFestejando(true);
+      setTimeout(() => setFestejando(false), 3200);
+    }
   };
 
   const alternarStatus = async (cenaId: string, e: React.MouseEvent) => {
@@ -293,6 +310,8 @@ export function LinhaDoDia({
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+      {festejando && <Fogos duracaoMs={1800} quantidade={3} />}
 
       {/* ---- Cabeçalho: chamada, wrap e o radar de atraso ---- */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
