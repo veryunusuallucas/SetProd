@@ -428,7 +428,7 @@ export function DiariasList() {
       */}
       {modo === 'detalhada' && diarias.length > 0 && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} aoEditar={abrirEdicao} />}
 
-      <div style={{ display: modo === 'simplificada' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
+      <div style={{ display: modo === 'simplificada' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(min(380px, 100%), 1fr))', gap: '16px' }}>
         {diarias.map(d => {
           const totalDespesas = totalDaDiaria(despesas, d.id);
 
@@ -460,7 +460,7 @@ export function DiariasList() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '24px', rowGap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     <Users size={14} /> {d.equipe_escalada?.length || 0} na equipe

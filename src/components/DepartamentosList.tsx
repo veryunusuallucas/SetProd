@@ -289,7 +289,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
       )}
 
       {abaAtiva === 'depto' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '24px' }}>
           {departamentos?.length === 0 && (
             <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum departamento criado.</div>
           )}
@@ -398,7 +398,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
       )}
 
       {abaAtiva === 'grupos' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '24px' }}>
           {(projeto?.grupos || []).length === 0 && (
             <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum grupo criado. Crie grupos para escalar várias pessoas de uma vez.</div>
           )}

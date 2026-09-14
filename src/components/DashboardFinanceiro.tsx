@@ -90,7 +90,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
       </div>
 
       {/* Gráficos */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
         
         {/* Despesas por Categoria */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '350px' }}>

@@ -632,7 +632,10 @@ export function LinhaDoDia({
 
                   {/* ---- Modo no set ---- */}
                   {modo === 'interativo' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    // `wrap` e `maxWidth`: em 320px o par "começou" + "Gravada"
+                    // é mais largo que o corpo do item, e sem poder quebrar ele
+                    // empurrava a página inteira para o lado.
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap', maxWidth: '100%' }}>
                       <button
                         onClick={() => marcarAgora(c.item)}
                         disabled={!podeMarcar}

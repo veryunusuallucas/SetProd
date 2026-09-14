@@ -351,9 +351,11 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                 return (
                   <div
                     key={linha.chave}
+                    // As colunas moram na classe (index.css), e não aqui: no
+                    // celular a linha empilha, e estilo inline não obedece a
+                    // media query.
+                    className="linha-credito"
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(150px, 1fr) minmax(180px, 1.3fr) auto',
                       gap: '10px',
                       alignItems: 'center',
                       padding: '9px 12px',

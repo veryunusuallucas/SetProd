@@ -15,6 +15,14 @@ interface WeatherData {
   temperature_2m_min: number[];
 }
 
+/*
+  O texto do chip vai num span próprio porque o chip é flex (ícone + hora +
+  título). Num flex, o texto solto vira item anônimo e o `textOverflow` do chip
+  não chega nele: o título era cortado seco no meio da letra, sem as
+  reticências que avisam que tem mais.
+*/
+const TEXTO_DO_CHIP: React.CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' };
+
 export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -145,7 +153,15 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
         <button onClick={nextMonth} className="btn-icon"><ChevronRight size={20} /></button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+      {/*
+        `minmax(0, 1fr)`, e não `1fr` puro. `1fr` quer dizer `minmax(auto, 1fr)`,
+        e o `auto` não deixa a coluna ficar mais estreita que o item mais largo
+        dela: o chip "Conferir e Alinhar – Logline e Conceito Geral" esticava a
+        quarta-feira sozinho, e o mês passava da tela até em 1400px, com a
+        página inteira rolando de lado. Com mínimo zero, as sete colunas ficam
+        iguais e o texto comprido vira reticências, que os chips já têm.
+      */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '8px' }}>
         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(dia => (
           <div key={dia} style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
             {dia}
@@ -180,7 +196,8 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
               key={idx} 
               style={{ 
                 minHeight: '80px',
-                padding: '8px', 
+                minWidth: 0,
+                padding: '8px',
                 backgroundColor: isDiaHoje ? 'rgba(var(--accent-rgb), 0.1)' : 'var(--bg-primary)',
                 border: isDiaHoje ? '1px solid var(--accent)' : '1px solid var(--border-light)',
                 borderRadius: '8px',
@@ -232,7 +249,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                     >
                       <span>{t.emoji}</span>
                       {e.hora_inicio && <strong>{e.hora_inicio}</strong>}
-                      {e.titulo}
+                      <span style={TEXTO_DO_CHIP}>{e.titulo}</span>
                     </div>
                   );
                 })}
@@ -240,7 +257,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                 {tasksNoDia.map(t => (
                   <div key={t.id} style={{ fontSize: '10px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <CheckSquare size={10} className={t.status === 'done' ? 'text-success' : 'text-warning'} />
-                    {t.titulo}
+                    <span style={TEXTO_DO_CHIP}>{t.titulo}</span>
                   </div>
                 ))}
               </div>

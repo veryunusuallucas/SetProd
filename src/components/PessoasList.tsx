@@ -531,7 +531,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
         {/* Main Content (Lista e Filtros) */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '24px' }}>
             {perfis?.filter(p => p.id !== 'caixa_central').length === 0 && (
               <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum membro cadastrado.</div>
             )}

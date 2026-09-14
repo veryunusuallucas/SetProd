@@ -127,6 +127,49 @@ h1, h2, h3, h4, h5, h6 {
   scrollbar-width: none;
 }
 
+/* Barra de sub-abas (Financeiro, Produção).
+ *
+ * Os botões são `flex: 1` e não encolhem abaixo do próprio texto. Sem rolagem
+ * própria, seis abas num celular empurravam a LARGURA DA PÁGINA: 284px além da
+ * tela no Financeiro em 360px, e o app inteiro rolando de lado.
+ *
+ * Com a rolagem aqui, quem rola é só a barra. No desktop cabe tudo e nada muda.
+ */
+.tab-strip {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.tab-strip > * {
+  scroll-snap-align: start;
+}
+
+/* Linha de crédito da Produção: função | pessoa | ações.
+ *
+ * 150px + 180px + ações + folgas passam de 400px, e um celular tem ~312px de
+ * conteúdo. A linha empurrava a página 217px para o lado. Abaixo de 600px ela
+ * empilha: função e ações em cima, a pessoa (o select) com a largura toda
+ * embaixo, que é também o alvo de toque que o select merece.
+ */
+.linha-credito {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.3fr) auto;
+}
+@media (max-width: 599px) {
+  .linha-credito {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .linha-credito > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 /* Components */
 .card {
   background-color: var(--bg-surface);
