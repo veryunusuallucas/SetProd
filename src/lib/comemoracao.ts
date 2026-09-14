@@ -19,32 +19,111 @@
 
 import { oitavosParaPaginas } from './decupagem';
 
+/*
+  ---- DE ONDE VEM O CONTEÚDO ----
+
+  ⚠️ AS FRASES E OS GIFS NÃO MORAM NO BANCO. Moram em arquivos do repositório:
+
+      src/conteudo/wrap/frases.md     uma frase por linha
+      src/conteudo/wrap/gifs/         jogue os arquivos aqui
+
+  Foi um pedido, e é melhor mesmo: escrever vinte frases num formulário do app,
+  uma caixinha por vez, é trabalho; num arquivo de texto é escrever. E arrastar
+  cinco gifs para uma pasta é um gesto, contra cinco uploads.
+
+  O PREÇO, QUE É REAL: navegador não lê pasta do computador. A leitura acontece
+  na hora de MONTAR o app — então mexer no arquivo só aparece na tela depois do
+  push. E tudo o que está na pasta viaja dentro do pacote, o que é bom (funciona
+  no set, sem sinal) e tem conta: cada megabyte ali é um megabyte que todo mundo
+  baixa na atualização.
+*/
+
+import textoDasFrases from '../conteudo/wrap/frases.md?raw';
+
 /**
- * As frases que a produção encontra no primeiro wrap.
+ * Os arquivos da pasta, resolvidos na build.
  *
- * São um PONTO DE PARTIDA, não um padrão permanente: a tela de edição já abre
- * com elas na lista, e a partir do primeiro toque quem manda é o Lucas. Uma
- * frase de wrap é da equipe que a diz.
+ * `import.meta.glob` é o que permite uma PASTA funcionar como lista: o Vite
+ * varre o diretório ao montar e transforma cada arquivo num endereço com hash,
+ * que o service worker guarda para o modo offline. Não há como listar um
+ * diretório pelo HTTP em tempo de execução — é por isso que a leitura é na
+ * build, e é por isso que só aparece depois do push.
  */
-export const FRASES_WRAP_PADRAO: readonly string[] = [
-  'É isso. Bom wrap.',
-  'Acabou o dia. Amanhã tem mais.',
-  'Está no lata.',
-  'Corta. Foi bom.',
-  'Wrap. Vão com cuidado na estrada.',
-  'Mais um dia que virou filme.',
-  'Desprodução, pessoal. Obrigado.',
-  'O dia acabou e ninguém se machucou. Isso também é resultado.',
-  'Guarda tudo com carinho, amanhã abre de novo.',
-  'Bom trabalho. Sério.',
-];
+const ARQUIVOS = import.meta.glob(
+  '../conteudo/wrap/gifs/*.{gif,GIF,webp,WEBP,png,PNG,jpg,JPG,jpeg,JPEG,mp4,MP4}',
+  { eager: true, query: '?url', import: 'default' }
+) as Record<string, string>;
+
+export interface MidiaDoWrap {
+  url: string;
+  /**
+   * É vídeo, e vai num `<video>` mudo em laço em vez de num `<img>`.
+   *
+   * Existe porque um mp4 de três segundos pesa cerca de um décimo do mesmo
+   * trecho em gif — e o que está na pasta viaja no pacote de todo mundo.
+   */
+  video: boolean;
+}
+
+export const MIDIAS_WRAP: MidiaDoWrap[] = Object.keys(ARQUIVOS)
+  .sort()
+  .map(caminho => ({ url: ARQUIVOS[caminho], video: /\.mp4$/i.test(caminho) }));
+
+/**
+ * Lê o `.md` como duas listas.
+ *
+ * O formato é frouxo de propósito: o arquivo precisa continuar sendo agradável
+ * de abrir e editar num editor de texto qualquer. Tracinho de lista é opcional,
+ * linha em branco não conta, `>` é comentário — e o título com `#` decide em
+ * qual das duas listas a frase entra.
+ */
+export function lerFrases(markdown: string): { dia: string[]; fim: string[] } {
+  const dia: string[] = [];
+  const fim: string[] = [];
+  let atual: string[] | null = null;
+
+  for (const bruta of markdown.split(/\r?\n/)) {
+    const linha = bruta.trim();
+    if (!linha) continue;
+    // Comentário: fica no arquivo, não vai para a tela.
+    if (linha.startsWith('>')) continue;
+
+    if (linha.startsWith('#')) {
+      const titulo = linha.replace(/^#+\s*/, '').toLowerCase();
+      /*
+        "fim do filme" e "fim de cada diária" começam igual — a palavra que
+        separa as duas é FILME. Testar só por "fim" jogaria as frases do dia a
+        dia na lista que toca uma vez por produção.
+      */
+      atual = titulo.includes('filme') ? fim
+        : titulo.includes('diária') || titulo.includes('diaria') ? dia
+        /*
+          Título que não é nenhum dos dois MANTÉM a lista corrente.
+
+          É o que faz um subtítulo (`### as engraçadas`) se comportar como
+          subtítulo em vez de engolir tudo o que vem abaixo dele. Zerar aqui
+          faria as frases sumirem em silêncio — e sumir em silêncio é o pior
+          jeito de um arquivo de texto errar.
+        */
+        : atual;
+      continue;
+    }
+
+    // Antes de qualquer título, o texto é a explicação do arquivo — não é frase.
+    if (!atual) continue;
+    atual.push(linha.replace(/^[-*+]\s*/, '').trim());
+  }
+
+  return { dia: dia.filter(Boolean), fim: fim.filter(Boolean) };
+}
+
+const FRASES = lerFrases(textoDasFrases);
+
+/** O que toca no fim de cada diária. Sai de `src/conteudo/wrap/frases.md`. */
+export const FRASES_WRAP: readonly string[] = FRASES.dia;
 
 /** O fecho da última diária. Terminar uma filmagem não é terminar um dia. */
-export const FRASES_FIM_PADRAO: readonly string[] = [
-  'É um filme.',
-  'Acabou. Vocês fizeram um filme.',
-  'Último wrap. Esse a gente lembra.',
-];
+export const FRASES_FIM: readonly string[] = FRASES.fim;
 
 /**
  * Sorteia sem repetir a anterior.
