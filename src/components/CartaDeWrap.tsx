@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, FileText, Settings2 } from 'lucide-react';
 import { Fogos } from './ui/Fogos';
-import { resolverArquivo } from '../lib/arquivos';
 import {
-  FRASES_FIM_PADRAO, FRASES_WRAP_PADRAO, lembrar, numerosDoWrap, ondeEstamos, sortear, ultima,
-  type DadosDoWrap,
+  FRASES_FIM, FRASES_WRAP, MIDIAS_WRAP, lembrar, numerosDoWrap, ondeEstamos, sortear, ultima,
+  type DadosDoWrap, type MidiaDoWrap,
 } from '../lib/comemoracao';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 
@@ -23,6 +22,11 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
  * produção inteira e fica mais tempo na tela.
  */
 
+const ESTILO_MIDIA: React.CSSProperties = {
+  maxWidth: '100%', maxHeight: '200px', objectFit: 'contain',
+  borderRadius: '10px', margin: '16px auto 0', display: 'block',
+};
+
 export interface CartaDeWrapProps {
   projetoId: string;
   numero: number;
@@ -33,10 +37,6 @@ export interface CartaDeWrapProps {
   dados: DadosDoWrap;
   /** Total da produção inteira, só na última diária. */
   totaisDoFilme?: { diarias: number; cenas: number; paginas: string };
-  /** As frases desta produção. Vazio = usa as de partida. */
-  frases?: string[];
-  /** Os gifs desta produção, como referências de arquivo. */
-  gifs?: string[];
   aoFechar: () => void;
   /** Abre o relatório do dia. É a ação seguinte natural do wrap. */
   aoVerRelatorio?: () => void;
@@ -46,10 +46,9 @@ export interface CartaDeWrapProps {
 
 export function CartaDeWrap({
   projetoId, numero, totalDiarias, ultimaDoFilme, dados, totaisDoFilme,
-  frases, gifs, aoFechar, aoVerRelatorio, aoEditar,
+  aoFechar, aoVerRelatorio, aoEditar,
 }: CartaDeWrapProps) {
   const reduzido = useMovimentoReduzido();
-  const [gif, setGif] = useState<string | null>(null);
 
   /*
     Frase e gif são sorteados UMA vez, na montagem.
@@ -58,37 +57,24 @@ export function CartaDeWrap({
     re-renderiza quando o gif termina de carregar, e sortear de novo ali trocaria
     a frase debaixo dos olhos de quem está lendo.
   */
-  const { frase, refDoGif } = useMemo(() => {
+  const { frase, midia } = useMemo(() => {
     /*
-      ⚠️ LISTA VAZIA NÃO É LISTA AUSENTE.
-
-      `undefined` é a produção que nunca mexeu: entram as frases de partida.
-      `[]` é a produção que apagou todas — e aí a carta sai só com os números,
-      que é o que a pessoa pediu ao apagar. Tratar as duas igual faria as frases
-      de fábrica voltarem depois de apagadas, e nada faz desistir mais rápido
-      de uma lista do que ela se recusar a ficar vazia.
+      As listas saem de `src/conteudo/wrap/` — o arquivo e a pasta que o Lucas
+      edita. Aqui só se sorteia. Lista vazia é resposta legítima: sem frase a
+      carta sai com os números, sem gif ela sai sem gif.
     */
-    const lista = (ultimaDoFilme
-      ? [...FRASES_FIM_PADRAO, ...(frases || [])]
-      : (frases ?? [...FRASES_WRAP_PADRAO])
-    // Linha em branco na lista de edição não vira frase em branco na tela.
-    ).filter(f => f.trim());
+    const lista = ultimaDoFilme && FRASES_FIM.length > 0 ? FRASES_FIM : FRASES_WRAP;
 
     const escolhida = sortear(lista, ultima(projetoId, 'frase')) || '';
     if (escolhida) lembrar(projetoId, 'frase', escolhida);
 
-    const escolhidoGif = sortear(gifs || [], ultima(projetoId, 'gif'));
-    if (escolhidoGif) lembrar(projetoId, 'gif', escolhidoGif);
+    const url = sortear(MIDIAS_WRAP.map(m => m.url), ultima(projetoId, 'gif'));
+    if (url) lembrar(projetoId, 'gif', url);
+    const m: MidiaDoWrap | null = MIDIAS_WRAP.find(x => x.url === url) || null;
 
-    return { frase: escolhida, refDoGif: escolhidoGif };
+    return { frase: escolhida, midia: m };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    let vivo = true;
-    resolverArquivo(refDoGif).then(url => { if (vivo) setGif(url); });
-    return () => { vivo = false; };
-  }, [refDoGif]);
 
   const numeros = numerosDoWrap(dados);
 
@@ -157,15 +143,11 @@ export function CartaDeWrap({
           {/* O gif entra DEPOIS do texto e com altura limitada. Ele é o tempero,
               e um gif de tela cheia empurraria os números para fora da vista —
               que são a parte que a pessoa vai querer ler. */}
-          {gif && (
-            <img
-              src={gif}
-              alt=""
-              style={{
-                maxWidth: '100%', maxHeight: '200px', objectFit: 'contain',
-                borderRadius: '10px', margin: '16px auto 0', display: 'block',
-              }}
-            />
+          {midia && (
+            midia.video
+              /* mp4 entra como vídeo mudo em laço — um gif que pesa um décimo. */
+              ? <video src={midia.url} autoPlay loop muted playsInline style={ESTILO_MIDIA} />
+              : <img src={midia.url} alt="" style={ESTILO_MIDIA} />
           )}
 
           {numeros.length > 0 && (
@@ -251,7 +233,7 @@ export function CartaDeWrap({
                 background: 'none', border: 'none', cursor: 'pointer',
               }}
             >
-              <Settings2 size={12} /> escrever as frases e escolher os gifs desta produção
+              <Settings2 size={12} /> de onde vêm estas frases e estes gifs
             </button>
           )}
         </motion.div>

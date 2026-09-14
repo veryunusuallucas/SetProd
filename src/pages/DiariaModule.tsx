@@ -670,8 +670,6 @@ export function DiariaModule() {
         diferencaMin: diferenca,
       },
       totaisDoFilme: totais,
-      frases: projeto?.frases_wrap,
-      gifs: projeto?.gifs_wrap,
       aoFechar: () => setCarta(null),
       aoVerRelatorio: gerarDPR,
       aoEditar: () => navigate(`/projeto/${projetoId}/diarias`),

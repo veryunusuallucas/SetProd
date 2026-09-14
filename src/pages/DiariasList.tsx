@@ -379,7 +379,7 @@ export function DiariasList() {
       {/* O logo e os avisos que se repetem em toda OD. Fechado: nenhum dos
           dois é obrigatório, e a lista de diárias é sobre os dias. */}
       {aba === 'diarias' && diarias.length > 0 && <PadraoDaOD projetoId={projetoId!} />}
-      {aba === 'diarias' && diarias.length > 0 && <ComemoracaoDoWrap projetoId={projetoId!} />}
+      {aba === 'diarias' && diarias.length > 0 && <ComemoracaoDoWrap />}
 
       <div style={{ display: aba === 'diarias' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px' }}>
         {diarias.map(d => {

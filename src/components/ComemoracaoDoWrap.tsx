@@ -1,89 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronDown, ImagePlus, PartyPopper, Plus, Trash2, Eye } from 'lucide-react';
-import { db } from '../db/db';
-import { guardarArquivo, resolverArquivo } from '../lib/arquivos';
-import { FRASES_WRAP_PADRAO } from '../lib/comemoracao';
+import { useState } from 'react';
+import { ChevronDown, Eye, PartyPopper } from 'lucide-react';
+import { FRASES_FIM, FRASES_WRAP, MIDIAS_WRAP } from '../lib/comemoracao';
 import { CartaDeWrap } from './CartaDeWrap';
-import { CampoTexto } from './ui/CampoTexto';
 
 /**
- * As frases e os gifs do wrap — escritos por quem faz o filme.
+ * O que a equipe vê no wrap — e de onde isso vem.
  *
- * ⚠️ NÃO EXISTE MISTURA ENTRE PADRÃO E PERSONALIZADO. A lista abre preenchida
- * com as frases de partida, e a partir do primeiro toque o que toca na tela é
- * exatamente o que está aqui. É a única forma de "tirar uma frase" significar
- * tirar de verdade — com uma lista de fábrica escondida por baixo, apagar a
- * frase de que você não gosta não a faria sumir, e isso é o tipo de coisa que
- * faz a pessoa desistir de mexer.
+ * ⚠️ ESTE CARD NÃO EDITA NADA, E ISSO É A MUDANÇA.
  *
- * O GIF É GUARDADO, NUNCA LINKADO. O wrap acontece no set, que é justamente
- * onde não há sinal: um endereço do Giphy daria uma moldura vazia exatamente no
- * dia em que a comemoração importa.
+ * Ele era um formulário: uma caixinha por frase, um upload por gif, tudo
+ * gravado no projeto. Virou isto a pedido do Lucas, e a troca é boa — escrever
+ * vinte frases num formulário é trabalho, num arquivo de texto é escrever; e
+ * arrastar cinco gifs para uma pasta é um gesto, contra cinco uploads.
+ *
+ * A lista de verdade agora são dois lugares no repositório:
+ *
+ *     src/conteudo/wrap/frases.md
+ *     src/conteudo/wrap/gifs/
+ *
+ * UMA FONTE SÓ. Não existe lista no banco por baixo — se existisse, apagar uma
+ * frase do arquivo não a faria sumir da tela, e nada faz desistir mais rápido
+ * de um arquivo do que ele se recusar a obedecer.
+ *
+ * O que sobrou aqui é o que o formulário tinha de melhor: **ver como fica**.
+ * Ninguém escreve dez frases sem conferir como a primeira aparece na tela.
  */
-
-/** Acima disso o gif trava o celular de quem está no set. */
-const LIMITE_GIF = 6 * 1024 * 1024;
-
-export function ComemoracaoDoWrap({ projetoId }: { projetoId: string }) {
-  const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
+export function ComemoracaoDoWrap() {
   const [aberto, setAberto] = useState(false);
-  const [nova, setNova] = useState('');
-  const [erro, setErro] = useState('');
-  const [previas, setPrevias] = useState<Record<string, string>>({});
   const [ensaiando, setEnsaiando] = useState(false);
-  const arquivoRef = useRef<HTMLInputElement>(null);
 
-  const frases = projeto?.frases_wrap ?? [...FRASES_WRAP_PADRAO];
-  /** Linha em branco existe na edição, mas não conta nem entra no sorteio. */
-  const valendo = frases.filter(f => f.trim()).length;
-  const gifs = projeto?.gifs_wrap ?? [];
-
-  useEffect(() => {
-    let vivo = true;
-    Promise.all(gifs.map(async ref => [ref, await resolverArquivo(ref)] as const))
-      .then(pares => {
-        if (!vivo) return;
-        setPrevias(Object.fromEntries(pares.filter(p => p[1]) as [string, string][]));
-      });
-    return () => { vivo = false; };
-  }, [gifs.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!projeto) return null;
-
-  const gravarFrases = (lista: string[]) => db.projetos.update(projetoId, { frases_wrap: lista });
-
-  const acrescentar = () => {
-    const texto = nova.trim();
-    if (!texto) return;
-    void gravarFrases([...frases, texto]);
-    setNova('');
-  };
-
-  const subirGif = async (arquivo: File) => {
-    setErro('');
-    if (!arquivo.type.startsWith('image/')) { setErro('Escolha uma imagem ou um gif.'); return; }
-    if (arquivo.size > LIMITE_GIF) {
-      setErro(`Esse arquivo tem ${(arquivo.size / 1024 / 1024).toFixed(1)}MB. O limite é 6MB — gif grande trava o celular no set.`);
-      return;
-    }
-    try {
-      const ref = await guardarArquivo(projetoId, arquivo, arquivo.name, arquivo.type);
-      await db.projetos.update(projetoId, { gifs_wrap: [...gifs, ref] });
-    } catch (e: any) {
-      setErro(e?.message || 'Não consegui guardar o arquivo.');
-    }
-  };
-
-  const campo = {
-    padding: '7px 9px', fontSize: '13px', width: '100%',
-    backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)',
-    borderRadius: '6px', color: 'var(--text-primary)',
-  } as const;
+  const total = FRASES_WRAP.length + FRASES_FIM.length;
 
   return (
     <>
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: aberto ? '18px' : 0 }}>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: aberto ? '14px' : 0 }}>
         <button
           onClick={() => setAberto(a => !a)}
           style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', textAlign: 'left' }}
@@ -93,8 +43,8 @@ export function ComemoracaoDoWrap({ projetoId }: { projetoId: string }) {
           </h2>
           {!aberto && (
             <span className="text-xs text-muted">
-              {valendo} {valendo === 1 ? 'frase' : 'frases'}
-              {gifs.length > 0 ? ` · ${gifs.length} ${gifs.length === 1 ? 'gif' : 'gifs'}` : ''}
+              {total} {total === 1 ? 'frase' : 'frases'}
+              {MIDIAS_WRAP.length > 0 ? ` · ${MIDIAS_WRAP.length} ${MIDIAS_WRAP.length === 1 ? 'gif' : 'gifs'}` : ''}
             </span>
           )}
           <ChevronDown size={16} className="text-muted" style={{ transform: aberto ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
@@ -102,128 +52,43 @@ export function ComemoracaoDoWrap({ projetoId }: { projetoId: string }) {
 
         {aberto && (
           <>
-            <div className="text-xs text-muted" style={{ lineHeight: 1.6, marginTop: '-6px' }}>
-              No fim de cada diária o app sorteia uma frase e um gif desta lista — sem repetir
-              o do dia anterior — e mostra junto com os números do dia. <b>A lista é sua</b>:
-              o que estiver aqui é o que aparece, e o que você tirar some de verdade.
+            <div className="text-xs text-secondary" style={{ lineHeight: 1.7 }}>
+              No fim de cada diária o app mostra os números do dia com uma frase sorteada —
+              sem repetir a do dia anterior — e um gif, quando há algum. No <b>último dia da
+              filmagem</b> a carta é outra, com o total da produção inteira.
             </div>
 
-            {/* ---- Frases ---- */}
-            <div>
-              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>
-                Frases ({valendo})
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
-                {/*
-                  ⚠️ `CampoTexto`, E NÃO UM `<input defaultValue>`.
-
-                  Com `defaultValue` o campo não acompanha a lista: apagar a
-                  terceira frase encolhia a lista e deixava os campos exibindo os
-                  textos antigos, deslocados em um. Quem apagasse "Corta. Foi
-                  bom." veria "Wrap. Vão com cuidado" sumir da tela.
-
-                  `CampoTexto` é o componente da casa para isto: acompanha
-                  mudança de fora, grava depois de uma pausa e não empurra o
-                  cursor nem come acento enquanto se digita.
-                */}
-                {frases.map((f, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <CampoTexto
-                      value={f}
-                      aoGravar={texto => {
-                        if (texto === f) return;
-                        gravarFrases(frases.map((x, n) => (n === i ? texto : x)));
-                      }}
-                      placeholder="frase vazia — use a lixeira para tirar"
-                      style={campo}
-                    />
-                    <button
-                      onClick={() => gravarFrases(frases.filter((_, n) => n !== i))}
-                      className="btn-icon"
-                      aria-label="Tirar esta frase"
-                      style={{ flexShrink: 0, width: 'auto', padding: '6px' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-                {frases.length === 0 && (
-                  <div className="text-xs text-muted" style={{ lineHeight: 1.6 }}>
-                    Sem frase nenhuma, a carta de wrap mostra só os números — e isso também
-                    funciona.
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                <input
-                  value={nova}
-                  onChange={e => setNova(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); acrescentar(); } }}
-                  placeholder="Escreva uma frase de wrap e aperte Enter"
-                  style={campo}
-                />
-                <button
-                  onClick={acrescentar}
-                  className="btn-icon"
-                  style={{ flexShrink: 0, width: 'auto', padding: '7px 12px', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Plus size={14} /> Pôr
-                </button>
-              </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <Contagem valor={FRASES_WRAP.length} rotulo="frases de fim de dia" />
+              <Contagem valor={FRASES_FIM.length} rotulo="frases de fim de filme" />
+              <Contagem valor={MIDIAS_WRAP.length} rotulo={MIDIAS_WRAP.length === 1 ? 'gif' : 'gifs'} />
             </div>
 
-            {/* ---- Gifs ---- */}
-            <div>
-              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>
-                Gifs ({gifs.length})
+            {/*
+              O caminho do arquivo aparece porque quem lê este card é quem mexe
+              no app. Numa tela que a equipe inteira vê, dizer "fale com a
+              produção" seria mais educado e menos útil: quem quer trocar a
+              frase é justamente quem tem o repositório aberto.
+            */}
+            <div
+              className="text-xs"
+              style={{
+                lineHeight: 1.8, padding: '12px', borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              As frases e os gifs moram no código, e não aqui:
+              <div style={{ margin: '6px 0', fontFamily: 'ui-monospace, monospace', color: 'var(--text-primary)' }}>
+                src/conteudo/wrap/frases.md<br />
+                src/conteudo/wrap/gifs/
               </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {gifs.map(ref => (
-                  <div key={ref} style={{ position: 'relative' }}>
-                    <div style={{ width: '112px', height: '84px', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {previas[ref]
-                        ? <img src={previas[ref]} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                        : <span className="text-xs text-muted">carregando</span>}
-                    </div>
-                    <button
-                      onClick={() => db.projetos.update(projetoId, { gifs_wrap: gifs.filter(g => g !== ref) })}
-                      className="btn-icon"
-                      aria-label="Tirar este gif"
-                      style={{ position: 'absolute', top: '4px', right: '4px', width: 'auto', padding: '4px', backgroundColor: 'rgba(0,0,0,0.65)' }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => arquivoRef.current?.click()}
-                  className="btn-icon"
-                  style={{ width: '112px', height: '84px', border: '1px dashed var(--border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '12px' }}
-                >
-                  <ImagePlus size={17} /> pôr um gif
-                </button>
-              </div>
-
-              <input
-                ref={arquivoRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) void subirGif(f); e.target.value = ''; }}
-              />
-              {erro && <div className="text-danger text-xs" style={{ marginTop: '6px' }}>{erro}</div>}
-              <div className="text-xs text-muted" style={{ marginTop: '6px', lineHeight: 1.6 }}>
-                Guardados no projeto, não linkados de fora — o wrap acontece no set, onde
-                costuma não ter sinal. Até 6MB cada.
-              </div>
+              Escreva as frases no arquivo, jogue os arquivos na pasta — aceita <b>gif</b>,
+              webp, png, jpg e <b>mp4</b> (que pesa bem menos). <b>Só aparece depois de
+              publicar</b>: a leitura acontece quando o app é montado, não quando ele é
+              aberto. Em troca, tudo funciona no set sem sinal.
             </div>
 
-            {/* Ver antes é o que dá coragem de mexer: ninguém escreve dez frases
-                sem saber como a primeira fica na tela. */}
             <button
               onClick={() => setEnsaiando(true)}
               className="btn-icon"
@@ -244,11 +109,9 @@ export function ComemoracaoDoWrap({ projetoId }: { projetoId: string }) {
       */}
       {ensaiando && (
         <CartaDeWrap
-          projetoId={projetoId}
+          projetoId="ensaio"
           numero={3}
           totalDiarias={12}
-          frases={frases}
-          gifs={gifs}
           dados={{
             gravadas: 6, parciais: 1, naoGravadas: 0,
             oitavosGravados: 35, setups: 14,
@@ -258,5 +121,22 @@ export function ComemoracaoDoWrap({ projetoId }: { projetoId: string }) {
         />
       )}
     </>
+  );
+}
+
+function Contagem({ valor, rotulo }: { valor: number; rotulo: string }) {
+  return (
+    <div
+      style={{
+        flex: '1 1 110px', minWidth: '100px', padding: '10px',
+        borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-primary)',
+        border: '1px solid var(--border-light)',
+      }}
+    >
+      <div className="font-bold" style={{ fontSize: '20px', lineHeight: 1.1, color: valor === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+        {valor}
+      </div>
+      <div className="text-xs text-muted" style={{ marginTop: '2px', lineHeight: 1.3 }}>{rotulo}</div>
+    </div>
   );
 }
