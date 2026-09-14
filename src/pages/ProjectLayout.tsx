@@ -3,7 +3,6 @@ import { useParams, useNavigate, Outlet, useLocation, Link, NavLink } from 'reac
 import { voltarDe } from '../lib/navegacao';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { HelpButton } from '../components/HelpButton';
 import { useOcuparRodape } from '../components/ui/slotFlutuante';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
@@ -304,7 +303,9 @@ export function ProjectLayout() {
             <Search size={20} />
           </button>
           <NotificacoesBell projetoId={id} />
-          <HelpButton />
+          {/* Aqui havia um segundo "?". O menu flutuante do canto já abre a
+              ajuda em toda tela, e os dois lado a lado espremiam o nome da
+              produção em duas linhas. */}
         </header>
 
         <div className="screen-padding" style={{ paddingTop: '24px' }}>
