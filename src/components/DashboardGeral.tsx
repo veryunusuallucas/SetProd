@@ -225,7 +225,8 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                     style={{
                       minHeight: '84px', padding: '8px', borderRadius: '10px',
                       backgroundColor: d.hoje ? 'var(--bg-surface)' : 'var(--bg-primary)',
-                      border: d.hoje ? '1px solid var(--accent)' : '1px solid var(--border-light)',
+                      // Hoje é verde, como no calendário: amarelo é a cor da diária.
+                      border: d.hoje ? '1px solid var(--color-success)' : '1px solid var(--border-light)',
                       display: 'flex', flexDirection: 'column', gap: '4px',
                       cursor: temDiaria ? 'pointer' : 'default'
                     }}
@@ -233,7 +234,7 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                       <span className="text-xs text-muted" style={{ textTransform: 'capitalize' }}>{d.rotulo}</span>
-                      <span className="text-sm font-bold" style={{ color: d.hoje ? 'var(--accent)' : 'inherit' }}>{d.dia}</span>
+                      <span className="text-sm font-bold" style={{ color: d.hoje ? 'var(--color-success)' : 'inherit' }}>{d.dia}</span>
                     </div>
                     {/* O evento entra na semana à frente porque é justamente
                         aqui que ele importa: visita de locação marcada para
