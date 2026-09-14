@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle, List, Columns3 } from 'lucide-react';
+import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle, List, Columns3, Copy } from 'lucide-react';
 import type { Diaria } from '../types';
 import { logAction } from '../lib/audit';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
 import { numeroPrevisto, renumerarPorData } from '../lib/numeracao';
-import { criarDiaria } from '../lib/criarDiaria';
+import { criarDiaria, dataSugerida } from '../lib/criarDiaria';
+import { duplicarDiaria } from '../lib/duplicarDiaria';
 import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
@@ -95,12 +96,20 @@ export function DiariasList() {
   /** Diárias já publicadas que mudaram de número na última renumeração. */
   const [renumeradas, setRenumeradas] = useState<{ de: number; para: number }[]>([]);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  /**
+   * A data da cópia, enquanto o painel de duplicar está aberto.
+   * `null` = painel fechado. É o mesmo desenho da exclusão: a decisão acontece
+   * dentro do modal, sem caixa do navegador.
+   */
+  const [dataDaCopia, setDataDaCopia] = useState<string | null>(null);
+  const [duplicando, setDuplicando] = useState(false);
   const [apagando, setApagando] = useState(false);
   const [erroAoApagar, setErroAoApagar] = useState<string | null>(null);
 
   const fecharEdicao = () => {
     setEditModal({ open: false, diaria: null, date: '' });
     setConfirmandoExclusao(false);
+    setDataDaCopia(null);
     setErroAoApagar(null);
   };
 
@@ -177,6 +186,32 @@ export function DiariasList() {
     await db.diarias.update(editModal.diaria.id, { data: editModal.date });
     await renumerar();
     fecharEdicao();
+  };
+
+  /**
+   * Duplica a diária e abre a cópia.
+   *
+   * Abre a cópia, e não fica na lista: ninguém duplica um dia para deixá-lo
+   * igual. O próximo gesto é sempre mexer nela — trocar as cenas, a data da
+   * chamada, a locação —, e voltar para a lista obrigaria a procurar o dia que
+   * acabou de nascer.
+   */
+  const confirmarDuplicacao = async () => {
+    if (!editModal.diaria || !dataDaCopia) return;
+    setDuplicando(true);
+    setErroAoApagar(null);
+    try {
+      const { diaria: copia, renumeracao } = await duplicarDiaria(editModal.diaria.id, dataDaCopia);
+      if (renumeracao.jaCirculavam.length) {
+        setRenumeradas(renumeracao.jaCirculavam.map(x => ({ de: x.de, para: x.para })));
+      }
+      fecharEdicao();
+      navigate(`/projeto/${projetoId}/diaria/${copia.id}`);
+    } catch (e) {
+      setErroAoApagar(e instanceof Error ? e.message : 'Não consegui duplicar a diária.');
+    } finally {
+      setDuplicando(false);
+    }
   };
 
   /**
@@ -489,7 +524,53 @@ export function DiariasList() {
               <div className="text-xs" style={{ color: 'var(--color-danger)', lineHeight: 1.5 }}>{erroAoApagar}</div>
             )}
 
-            {confirmandoExclusao ? (
+            {dataDaCopia !== null ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--accent)', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="text-sm font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Copy size={15} style={{ color: 'var(--accent)' }} />
+                  Duplicar a Diária {String(editModal.diaria.numero).padStart(2, '0')}
+                </div>
+
+                <div>
+                  <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Data da cópia</label>
+                  <CampoData value={dataDaCopia} onChange={d => setDataDaCopia(d)} style={{ width: '100%' }} />
+                  {dataDaCopia && (
+                    <div className="text-xs text-muted" style={{ marginTop: '6px' }}>
+                      Vai ser a <b>Diária {String(numeroPrevisto(diarias, dataDaCopia)).padStart(2, '0')}</b>.
+                    </div>
+                  )}
+                </div>
+
+                {/*
+                  O que vem e o que não vem, dito ANTES de clicar.
+
+                  A pergunta de quem duplica é "vai vir tudo?", e a resposta
+                  honesta é "o plano sim, o registro não". Descobrir depois que a
+                  presença não veio parece bug; saber antes é a regra.
+                */}
+                <div className="text-xs text-secondary" style={{ lineHeight: 1.6 }}>
+                  <b>Vem junto:</b> linha do dia, cenas, equipe escalada, locações, transporte,
+                  base, horários do elenco e a checklist (toda desmarcada).
+                  <br />
+                  <b>Não vem:</b> presença, confirmações, cenas gravadas, gastos e a OD
+                  publicada — a cópia nasce como <b>rascunho</b>, e solta do stripboard.
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setDataDaCopia(null)} className="btn-secondary" style={{ flex: 1, backgroundColor: 'var(--bg-primary)' }}>
+                    Voltar
+                  </button>
+                  <button
+                    onClick={confirmarDuplicacao}
+                    disabled={duplicando || !dataDaCopia}
+                    className="btn-primary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+                  >
+                    <Copy size={14} /> {duplicando ? 'Duplicando…' : 'Duplicar e abrir'}
+                  </button>
+                </div>
+              </div>
+            ) : confirmandoExclusao ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', backgroundColor: 'var(--color-danger-bg)' }}>
                 <div className="text-sm font-bold" style={{ color: 'var(--color-danger)' }}>
                   Apagar a Diária {String(editModal.diaria.numero).padStart(2, '0')}?
@@ -517,6 +598,22 @@ export function DiariasList() {
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <button onClick={fecharEdicao} className="btn-secondary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)' }}>Cancelar</button>
                 <button onClick={salvarEdicao} className="btn-primary" style={{ flex: 1 }}>Salvar</button>
+                {/*
+                  A data sugerida é o dia seguinte ao ÚLTIMO dia da produção, e
+                  não ao dia duplicado. Enfiar a cópia logo depois da original
+                  renumeraria todos os dias seguintes — e as ODs que já saíram
+                  passariam a dizer o número errado. Quem quer a cópia no meio
+                  escolhe a data, e o número aparece antes de confirmar.
+                */}
+                <button
+                  onClick={() => { setConfirmandoExclusao(false); setDataDaCopia(dataSugerida(diarias)); }}
+                  className="btn-secondary"
+                  style={{ backgroundColor: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Duplicar esta diária"
+                  aria-label="Duplicar esta diária"
+                >
+                  <Copy size={16} />
+                </button>
                 <button
                   onClick={() => setConfirmandoExclusao(true)}
                   className="btn-primary"
