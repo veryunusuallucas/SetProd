@@ -14,7 +14,7 @@ import {
   X, Clapperboard, ListTodo, Rows3, CalendarRange, CalendarDays,
 } from 'lucide-react';
 import { parseCoords } from '../lib/clima';
-import { MOLA } from './ui/movimento';
+import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { useOrigemAncorada } from './ui/origemAncorada';
 import type { Diaria, Evento, Task } from '../types';
 
@@ -217,6 +217,31 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
   };
 
   const abrirDiaria = (d: Diaria) => navigate(`/projeto/${projetoId}/diaria/${d.id}`);
+  const reduzido = useMovimentoReduzido();
+
+  /*
+    Tocar num dia da faixa rola a agenda até o bloco que contém aquele dia, e o
+    bloco pisca de leve, porque numa lista longa o olho precisa de ajuda para
+    achar onde parou. Com movimento reduzido: pula direto, sem piscar.
+
+    A comparação é de texto, e funciona porque `YYYY-MM-DD` ordena igual a data.
+  */
+  const irParaDia = (iso: string) => {
+    const alvos = [...document.querySelectorAll<HTMLElement>('.cal-alvo')];
+    const alvo = alvos.find(el => (el.dataset.de || '') <= iso && iso <= (el.dataset.ate || ''));
+    if (!alvo) return;
+    alvo.scrollIntoView({ behavior: reduzido ? 'auto' : 'smooth', block: 'start' });
+    if (!reduzido) {
+      // Depois da rolagem, e não junto: começar a animação no mesmo instante
+      // pode interromper a rolagem suave em alguns navegadores.
+      window.setTimeout(() => {
+        alvo.animate(
+          [{ boxShadow: '0 0 0 2px var(--color-success)', borderRadius: '10px' }, { boxShadow: '0 0 0 2px transparent', borderRadius: '10px' }],
+          { duration: 1400, easing: 'ease-out' },
+        );
+      }, 450);
+    }
+  };
 
   return (
     <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -417,6 +442,15 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
           ela anunciava "13 dias sem nada" por meio segundo, e mentir sobre um
           mês cheio é pior que não mostrar o mês ainda. */}
       {modo === 'dias' && diarias && tasks && eventos && (
+        <FaixaDoMes
+          dias={days}
+          mes={monthStart}
+          conteudo={conteudo}
+          aoEscolher={irParaDia}
+        />
+      )}
+
+      {modo === 'dias' && diarias && tasks && eventos && (
         <AgendaDoMes
           dias={eachDayOfInterval({ start: monthStart, end: monthEnd })}
           conteudo={conteudo}
@@ -575,6 +609,54 @@ function CartaoDoDia({ dia, c, clima, aoAbrir, aoAbrirDiaria }: {
 }
 
 /**
+ * O mês inteiro em miniatura, em cima da agenda.
+ *
+ * A agenda omite os dias vazios, e com isso perde a FORMA do mês: não dá para
+ * ver de relance que as diárias caem todas na segunda quinzena, ou que a
+ * próxima semana está livre. A faixa devolve isso sem gastar tela: só o número
+ * e um ponto na cor do que tem no dia (verde hoje, amarelo diária, laranja
+ * prazo, cinza o resto). Não tem texto, e por isso cabe em 320px.
+ *
+ * Tocar num dia rola a agenda até ele.
+ */
+function FaixaDoMes({ dias, mes, conteudo, aoEscolher }: {
+  dias: Date[];
+  mes: Date;
+  conteudo: (d: Date) => ConteudoDoDia;
+  aoEscolher: (iso: string) => void;
+}) {
+  return (
+    <div className="faixa-mes" role="group" aria-label="Ir para um dia do mês">
+      {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((l, i) => (
+        <span key={`l${i}`} className="faixa-mes-letra" aria-hidden>{l}</span>
+      ))}
+      {dias.map(dia => {
+        if (!isSameMonth(dia, mes)) return <span key={format(dia, 'yyyy-MM-dd')} aria-hidden />;
+        const c = conteudo(dia);
+        const hoje = isToday(dia);
+        const corDoPonto = c.peso ? COR_DO_PESO[c.peso] : c.vazio ? null : 'var(--text-muted)';
+        return (
+          <button
+            key={c.iso}
+            className="faixa-mes-dia"
+            onClick={() => aoEscolher(c.iso)}
+            aria-label={format(dia, "d 'de' MMMM", { locale: ptBR }) + (c.vazio ? ', nada marcado' : '')}
+            style={{
+              color: hoje ? COR_DE_HOJE : c.vazio ? 'var(--text-muted)' : 'var(--text-primary)',
+              fontWeight: hoje || !c.vazio ? 700 : 400,
+              outline: hoje ? `1.5px solid ${COR_DE_HOJE}` : 'none',
+            }}
+          >
+            {format(dia, 'd')}
+            <span className="faixa-mes-ponto" style={{ backgroundColor: corDoPonto || 'transparent' }} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Os dias do mês que têm alguma coisa, em lista.
  *
  * Os dias vazios somem, mas o intervalo não: "· 4 dias sem nada" entre dois
@@ -592,10 +674,18 @@ function AgendaDoMes({ dias, conteudo, clima, aoAbrir, aoAbrirDiaria }: {
 }) {
   const blocos: React.ReactNode[] = [];
   let vazios = 0;
+  let primeiroVazio = '';
+  let ultimoVazio = '';
+  /*
+    Cada bloco diz quais dias ele representa (`data-de` / `data-ate`), para a
+    faixa do mês achar onde rolar. Um dia vazio não tem cartão, mas tem a linha
+    "· 4 dias sem nada" que o contém: tocar no dia 16 leva até ela, e a pessoa
+    vê que ali não há nada, em vez de o toque não fazer coisa nenhuma.
+  */
   const fecharVazios = (chave: string) => {
     if (vazios > 0) {
       blocos.push(
-        <div key={`vazio-${chave}`} className="text-xs text-muted" style={{ padding: '0 12px' }}>
+        <div key={`vazio-${chave}`} data-de={primeiroVazio} data-ate={ultimoVazio} className="text-xs text-muted cal-alvo" style={{ padding: '0 12px' }}>
           · {vazios === 1 ? '1 dia sem nada' : `${vazios} dias sem nada`}
         </div>
       );
@@ -605,10 +695,17 @@ function AgendaDoMes({ dias, conteudo, clima, aoAbrir, aoAbrirDiaria }: {
 
   for (const dia of dias) {
     const c = conteudo(dia);
-    if (c.vazio && !isToday(dia)) { vazios++; continue; }
+    if (c.vazio && !isToday(dia)) {
+      if (vazios === 0) primeiroVazio = c.iso;
+      ultimoVazio = c.iso;
+      vazios++;
+      continue;
+    }
     fecharVazios(c.iso);
     blocos.push(
-      <CartaoDoDia key={c.iso} dia={dia} c={c} clima={clima(c.iso)} aoAbrir={() => aoAbrir(c.iso)} aoAbrirDiaria={aoAbrirDiaria} />
+      <div key={c.iso} data-de={c.iso} data-ate={c.iso} className="cal-alvo">
+        <CartaoDoDia dia={dia} c={c} clima={clima(c.iso)} aoAbrir={() => aoAbrir(c.iso)} aoAbrirDiaria={aoAbrirDiaria} />
+      </div>
     );
   }
   const temAlgo = blocos.length > 0;

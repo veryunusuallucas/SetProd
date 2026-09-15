@@ -216,6 +216,43 @@ h1, h2, h3, h4, h5, h6 {
   .cal-semana > * { min-height: 160px; }
 }
 
+/* Faixa do mês, em cima da agenda (modo Dias). Largura contida: no computador
+   ela esticada viraria um segundo calendário, e o papel dela é ser um índice. */
+.faixa-mes {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+.faixa-mes-letra {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-bottom: 2px;
+}
+.faixa-mes-dia {
+  height: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 12px;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  outline-offset: -1.5px;
+  cursor: pointer;
+}
+.faixa-mes-dia:active { background-color: var(--bg-active); }
+.faixa-mes-ponto { width: 5px; height: 5px; border-radius: 50%; }
+/* O cabeçalho fixo do celular cobriria o dia de destino. */
+.cal-alvo { scroll-margin-top: 80px; }
+
 /* Próximos 7 dias (DashboardGeral.tsx): a mesma lógica do mês, em uma linha. */
 .semana-frente-dia { min-height: 84px; padding: 8px; }
 .semana-frente-topo { display: flex; justify-content: space-between; align-items: baseline; }
