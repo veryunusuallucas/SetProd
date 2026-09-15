@@ -5,8 +5,8 @@ import { Minus, Plus, FileVideo, SlidersHorizontal, Tag } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, NomenclaturaArquivo } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
-import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
+import { BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { OPCOES } from '../../lib/logagem/opcoes';
@@ -76,19 +76,33 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   const campos = camposDaNomenclatura(estado.nomenclatura);
   const clipe = Number(estado.proximo_clipe) || 0;
 
+  /*
+    O − e o + somam em cima do que está GRAVADO, e não do que está na tela.
+    O campo grava depois de uma pausa (`CampoTexto`), então quem digita 148 e
+    aperta o + em seguida veria 2 em vez de 149. Ler no clique resolve.
+  */
+  const passo = (direcao: 1 | -1) => {
+    if (bloqueado) return;
+    void (async () => {
+      const atual = await db.log_estado.get(estado.id);
+      const de = Number(atual?.proximo_clipe ?? clipe) || 0;
+      aoMudar({ proximo_clipe: Math.max(0, de + direcao) });
+    })();
+  };
+
   return (
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '22px' }}>
       <Rotulo icone={<FileVideo size={14} />}>Próximo arquivo</Rotulo>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-        <NomeQueTroca texto={nome} />
+        <ValorQueTroca texto={nome} rotuloDeLeitura="Próximo arquivo" tamanho="clamp(30px, 8vw, 44px)" />
 
         {/* O clipe é o contador que mais se corrige à mão: a câmera gravou um
             clipe de teste, alguém formatou fora de hora. Por isso ele tem botões
             grandes, e não só um campo. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ marginRight: '4px' }}>Clipe</span>
-          <BotaoContador rotulo="Clipe anterior" disabled={bloqueado || clipe <= 0} onClick={() => aoMudar({ proximo_clipe: Math.max(0, clipe - 1) })}>
+          <BotaoContador rotulo="Clipe anterior" disabled={bloqueado || clipe <= 0} onClick={() => passo(-1)}>
             <Minus size={18} />
           </BotaoContador>
           <CampoTexto
@@ -102,7 +116,7 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
             }}
             style={{ ...estiloCampo, width: '72px', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}
           />
-          <BotaoContador rotulo="Próximo clipe" disabled={bloqueado} onClick={() => aoMudar({ proximo_clipe: clipe + 1 })}>
+          <BotaoContador rotulo="Próximo clipe" disabled={bloqueado} onClick={() => passo(1)}>
             <Plus size={18} />
           </BotaoContador>
         </div>
@@ -156,53 +170,11 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
             aoGravar={v => aoMudar({ template: v })}
             disabled={bloqueado}
             placeholder="{CAM}_{CARD}_{CLIP}"
-            style={{ ...estiloCampo, fontFamily: 'ui-monospace, "Cascadia Code", monospace' }}
+            style={{ ...estiloCampo, fontFamily: MONO }}
           />
         </Campo>
       )}
     </section>
-  );
-}
-
-/**
- * O nome do arquivo, com cada caractere que MUDA descendo para o lugar.
- *
- * Quando o clipe vira de C0148 para C0149, só o último dígito anda. É o que um
- * contador mecânico faz, e é o que diz "mudou, e mudou AQUI" sem o olho precisar
- * comparar os dois nomes. Os caracteres que ficaram iguais não se mexem.
- *
- * O caractere antigo sai na hora (sem animação de saída), pelo mesmo motivo das
- * abas: nada na tela pode depender de uma animação terminar.
- *
- * `tabular-nums` e fonte monoespaçada para o nome não "respirar" de largura a
- * cada troca: um 1 estreito ao lado de um 8 largo faria o nome inteiro pular.
- */
-function NomeQueTroca({ texto }: { texto: string }) {
-  const reduzido = useMovimentoReduzido();
-  return (
-    <div
-      aria-live="polite"
-      aria-label={`Próximo arquivo: ${texto}`}
-      style={{
-        fontFamily: 'ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace',
-        fontSize: 'clamp(30px, 8vw, 44px)', fontWeight: 700, letterSpacing: '0.02em',
-        fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: 'var(--text-primary)',
-        display: 'flex', overflow: 'hidden', minWidth: 0, flexWrap: 'wrap',
-      }}
-    >
-      {texto.split('').map((c, i) => (
-        <motion.span
-          key={`${i}-${c}`}
-          aria-hidden
-          initial={reduzido ? false : { y: '-0.45em', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={MOLA}
-          style={{ display: 'inline-block', whiteSpace: 'pre' }}
-        >
-          {c}
-        </motion.span>
-      ))}
-    </div>
   );
 }
 
@@ -273,7 +245,7 @@ function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
               )}
               <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <span className="text-sm font-bold">{n.nome}</span>
-                <span style={{ fontFamily: 'ui-monospace, "Cascadia Code", monospace', fontSize: '13px', color: ativa ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                <span style={{ fontFamily: MONO, fontSize: '13px', color: ativa ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                   {n.exemplo}
                 </span>
                 <span className="text-xs text-muted">{n.explicacao}</span>
@@ -305,150 +277,5 @@ function Setup({ estado, bloqueado, aoMudar }: PropsDeSecao) {
         </Campo>
       </div>
     </section>
-  );
-}
-
-const OUTRO = '__outro__';
-
-/**
- * Um seletor com a lista do Lumavi e uma saída: "outro valor".
- *
- * A lista cobre a câmera que se espera; o set sempre tem a que ninguém previu
- * (o drone de 29.97, a câmera alugada em ProRes RAW). Travar numa lista
- * obrigaria a pessoa a mentir no boletim — e boletim com mentira é pior que
- * boletim em branco.
- */
-function SeletorComOutro({ opcoes, valor, bloqueado, aoMudar }: {
-  opcoes: readonly string[];
-  valor?: string;
-  bloqueado: boolean;
-  aoMudar: (v: string) => void;
-}) {
-  const foraDaLista = Boolean(valor) && !opcoes.includes(valor!);
-  const [digitando, setDigitando] = useState(false);
-
-  if (digitando) {
-    return (
-      <CampoTexto
-        value={foraDaLista ? valor! : ''}
-        aoGravar={v => { if (v.trim()) aoMudar(v.trim()); }}
-        placeholder="Digite o valor"
-        autoFocus
-        style={estiloCampo}
-      />
-    );
-  }
-
-  return (
-    <select
-      value={valor || ''}
-      disabled={bloqueado}
-      onChange={e => {
-        if (e.target.value === OUTRO) { setDigitando(true); return; }
-        aoMudar(e.target.value);
-      }}
-      style={{ ...estiloCampo, cursor: bloqueado ? 'default' : 'pointer' }}
-    >
-      {foraDaLista && <option value={valor}>{valor}</option>}
-      {opcoes.map(o => <option key={o} value={o}>{o}</option>)}
-      <option value={OUTRO}>Outro valor…</option>
-    </select>
-  );
-}
-
-/* ───────────────────────── Peças ───────────────────────── */
-
-const estiloCampo: React.CSSProperties = {
-  width: '100%', minHeight: '44px', padding: '10px 12px', fontSize: '15px',
-  borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)',
-  backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)',
-};
-
-function Rotulo({ icone, children }: { icone: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <h2 className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span style={{ color: 'var(--cor-criativo)', display: 'flex' }}>{icone}</span>
-      {children}
-    </h2>
-  );
-}
-
-/*
-  `div` e não `label`: um rótulo em volta de um grupo de botões (posição,
-  dígitos) faria o toque em qualquer canto do rótulo apertar o PRIMEIRO botão,
-  porque o navegador encaminha o clique do label para o primeiro elemento de
-  dentro.
-*/
-function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
-  return (
-    <div role="group" aria-label={rotulo} style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
-      <span className="text-xs font-bold text-secondary">{rotulo}</span>
-      {children}
-    </div>
-  );
-}
-
-function BotaoContador({ rotulo, disabled, onClick, children }: { rotulo: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <BotaoTatil
-      aria-label={rotulo}
-      title={rotulo}
-      disabled={disabled}
-      onClick={onClick}
-      escala={0.9}
-      style={{
-        width: '44px', height: '44px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)',
-        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1,
-      }}
-    >
-      {children}
-    </BotaoTatil>
-  );
-}
-
-/**
- * Um grupo de botões com a escolha marcada por um fundo que desliza.
- * `nome` separa os marcadores: dois grupos na mesma tela não podem dividir o
- * mesmo `layoutId`, senão o marcador de um voaria até o outro.
- */
-function Segmentado({ nome, opcoes, valor, bloqueado, aoMudar }: {
-  nome: string;
-  opcoes: { id: string; nome: string }[];
-  valor: string;
-  bloqueado: boolean;
-  aoMudar: (v: string) => void;
-}) {
-  const reduzido = useMovimentoReduzido();
-  return (
-    <div role="radiogroup" style={{ display: 'flex', gap: '4px', padding: '4px', minHeight: '54px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-      {opcoes.map(o => {
-        const ativa = o.id === valor;
-        return (
-          <button
-            key={o.id}
-            type="button"
-            role="radio"
-            aria-checked={ativa}
-            disabled={bloqueado}
-            onClick={() => aoMudar(o.id)}
-            style={{
-              position: 'relative', flex: 1, minHeight: '38px', border: 'none', borderRadius: '6px', background: 'none',
-              color: ativa ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: '14px',
-              cursor: bloqueado ? 'default' : 'pointer',
-            }}
-          >
-            {ativa && (
-              <motion.span
-                layoutId={nome}
-                transition={reduzido ? { duration: 0 } : MOLA}
-                style={{ position: 'absolute', inset: 0, borderRadius: '6px', backgroundColor: 'var(--bg-active)' }}
-              />
-            )}
-            <span style={{ position: 'relative' }}>{o.nome}</span>
-          </button>
-        );
-      })}
-    </div>
   );
 }
