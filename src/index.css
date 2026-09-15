@@ -119,13 +119,13 @@ h1, h2, h3, h4, h5, h6 {
   padding: 24px;
 }
 
-/* Etapa 2 do UI-MOBILE: o respiro vertical. Tudo abaixo de 900px, onde o app
+/* Etapa 2 do UI-MOBILE: o respiro vertical. Tudo abaixo de 1024px, onde o app
  * tem barra de baixo e cabeçalho fixo; o computador fica como estava. */
 .main-content { padding-bottom: 90px; }
 .mobile-header { padding: 16px 24px; }
 .dashboard-geral { padding: 16px; }
 
-@media (max-width: 899px) {
+@media (max-width: 1023px) {
   /* O fim da página passava atrás da barra de baixo: 90px fixos não contavam a
      faixa de gestos do Android nem a do iPhone. Altura da barra + a faixa +
      um respiro de verdade. */
@@ -139,6 +139,17 @@ h1, h2, h3, h4, h5, h6 {
 
   /* O painel geral tinha o mesmo acúmulo, com 16px próprios. */
   .dashboard-geral { padding: 0; }
+}
+
+/* Etapa 4: o tablet (600–1023px).
+ *
+ * Até aqui um iPad em pé recebia o layout do celular: uma coluna só, com
+ * metade da tela vazia. As grades de cartões (Diárias, Locações) pedem
+ * 350–380px por cartão, e em 720px de conteúdo isso dava uma coluna. Aqui
+ * são duas. `!important` porque a grade é inline no componente, e o
+ * desktop continua com o `auto-fill` de lá. */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .grade-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 @media (max-width: 599px) {
@@ -445,7 +456,7 @@ button {
   z-index: 50;
 }
 
-@media (max-width: 899px) {
+@media (max-width: 1023px) {
   .glass-nav {
     /* 88%, e não os 72% de quando ela virou vidro: com 72% o texto que passava
        por baixo competia com os rótulos da barra. Continua vidro, com o
@@ -639,7 +650,7 @@ input[type="radio"]:checked::before {
 }
 
 /* ===================== RESPONSIVO / WEB (desktop) ===================== */
-@media (min-width: 900px) {
+@media (min-width: 1024px) {
   .app-container {
     padding-bottom: 0;
   }
