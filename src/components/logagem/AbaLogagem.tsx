@@ -9,14 +9,19 @@ import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logag
 import { digitarNaClaquete, passoNaClaquete, trocarModoDoPlano } from '../../lib/logagem/claquete';
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
+import { RegistroDeTake } from './RegistroDeTake';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Aba Logagem: a claquete do momento.
  *
  * Primeiro pedaço (15/09/2026): cena, plano e take com a cascata, o modo do
- * plano, o contexto do take (ambiente, luz, áudio, ND) e a observação. O
- * REGISTRO do take — os botões de status, a lista e o anti-duplicado — é o
- * pedaço seguinte.
+ * plano, o contexto do take (ambiente, luz, áudio, ND) e a observação. Segundo
+ * pedaço (15/09/2026): o registro do take, em `RegistroDeTake.tsx`.
+ *
+ * A ORDEM DA TELA É A ORDEM DO SET: monta a claquete, diz como está a cena,
+ * anota o que precisar, e só então aperta o status. A observação vem ANTES dos
+ * botões porque ela é do take que está sendo registrado, e some com ele.
  *
  * A claquete vem gigante porque esta tela é lida de longe, com o aparelho na
  * mão e o set andando. Quem está logando não vai procurar um número de 14px no
@@ -29,6 +34,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
   departamentoId?: string;
 }) {
   const estadoSalvo = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (podeEditar && estadoSalvo === undefined) {
@@ -157,12 +163,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
         </p>
       </section>
 
-      {podeEditar && (
-        <p className="text-sm text-secondary">
-          Os botões de <strong>OK, NG, HERO e REC invertido</strong>, a lista de takes e o aviso de claquete
-          repetida chegam no próximo pedaço. Até lá, a claquete já fica guardada e sincronizada.
-        </p>
-      )}
+      <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={user?.id} />
     </div>
   );
 }
