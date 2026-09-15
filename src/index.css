@@ -299,6 +299,25 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Etapa 7: polimento por página, só no celular. */
+@media (max-width: 599px) {
+  /* Título + subtítulo + botão (Diárias, Locações). O botão espremido ao lado
+     do título quebrava "Criar Diária" em duas linhas. Agora o botão fica
+     inteiro e, se não couber ao lado, desce para a linha de baixo. */
+  .cabecalho-pagina { flex-wrap: wrap; gap: 12px; }
+  .cabecalho-pagina > button { white-space: nowrap; }
+
+  /* Os três números do Financeiro eram três cartões altos, e ocupavam a
+     primeira tela inteira. Agora são três linhas de um cartão só: as bordas
+     de dentro somem, e os cantos arredondados ficam só nas pontas. */
+  .kpis { gap: 0 !important; }
+  .kpis > .kpi { border-radius: 0; padding: 12px 16px; }
+  .kpis > .kpi + .kpi { border-top: none; }
+  .kpis > .kpi:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .kpis > .kpi:last-child { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .kpis > .kpi > div:first-child { padding: 8px !important; }
+}
+
 /* Atalhos do Dashboard (DashboardGeral.tsx). Ver o comentário de lá.
  * Duas classes (`.btn-primary.atalho`) para vencer o `.btn-primary`, que
  * vem depois no arquivo. */
@@ -841,4 +860,22 @@ input[type="radio"]:checked::before {
    locação, e o dia empilha: contexto, cronograma, apoio (spec §12.2). */
 @media (max-width: 1100px) {
   .diaria-grade { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Alvo de toque de 44px onde o dedo é o ponteiro (§7). O `.btn-icon` tem 40px,
+   abaixo do mínimo que as diretrizes de toque pedem. Com mouse fica como está,
+   então o computador não muda. */
+@media (pointer: coarse) {
+  .btn-icon { width: 44px; height: 44px; }
+}
+
+/* Celular deitado (~740×360). O cabeçalho fixo (77px) e a barra de baixo (64px)
+   deixavam 219px de página: menos que um cartão de diária. Em tela baixa, o
+   cabeçalho rola junto com a página, e a barra fica só com os ícones.
+   `!important` porque o `position: sticky` do cabeçalho é inline. */
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 1023px) {
+  .mobile-header { position: relative !important; padding: 8px 16px; }
+  .glass-nav { height: calc(48px + env(safe-area-inset-bottom, 0px)); }
+  .glass-nav .nav-item span { display: none; }
+  .main-content { padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px) + 16px); }
 }

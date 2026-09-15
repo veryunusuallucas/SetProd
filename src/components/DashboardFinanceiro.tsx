@@ -57,8 +57,8 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className="kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+        <div className="card kpi" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px' }}>
             <Wallet size={24} className="text-secondary" />
           </div>
@@ -68,7 +68,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
           </div>
         </div>
         
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="card kpi" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px' }}>
             <TrendingUp size={24} className="text-danger" />
           </div>
@@ -78,7 +78,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
           </div>
         </div>
 
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="card kpi" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px' }}>
             <HandCoins size={24} className={saldoAtual >= 0 ? "text-accent" : "text-danger"} />
           </div>

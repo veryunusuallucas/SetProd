@@ -213,7 +213,7 @@ export function LocacoesModule() {
   return (
     <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="cabecalho-pagina" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MapPin size={24} color="var(--accent)" /> Locações
