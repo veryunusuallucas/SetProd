@@ -428,7 +428,7 @@ export function DiariasList() {
       */}
       {modo === 'detalhada' && diarias.length > 0 && <PlanoDaSemana projetoId={projetoId!} diarias={diarias} aoEditar={abrirEdicao} />}
 
-      <div style={{ display: modo === 'simplificada' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(min(380px, 100%), 1fr))', gap: '16px' }}>
+      <div className="grade-cartoes" style={{ display: modo === 'simplificada' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fill, minmax(min(380px, 100%), 1fr))', gap: '16px' }}>
         {diarias.map(d => {
           const totalDespesas = totalDaDiaria(despesas, d.id);
 
