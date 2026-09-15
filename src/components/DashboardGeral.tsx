@@ -174,36 +174,31 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
             <span className="text-xs text-muted"><strong>Colaboradores:</strong> {perfis?.length || 0} pessoas</span>
           </div>
 
-          {/* ATALHOS RÁPIDOS */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px' }}>
-            <button onClick={() => navigate('producao')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <Users size={24} className="text-accent" />
-              <span className="text-xs font-bold uppercase tracking-widest">Equipe</span>
-            </button>
-            <button onClick={() => navigate('financeiro')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <DollarSign size={24} className="text-success" />
-              <span className="text-xs font-bold uppercase tracking-widest">Dinheiro</span>
-            </button>
-            <button onClick={() => navigate('diarias')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <Calendar size={24} style={{ color: '#9d4edd' }} />
-              <span className="text-xs font-bold uppercase tracking-widest">Diárias</span>
-            </button>
-            <button onClick={() => navigate('locacoes')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <MapPin size={24} style={{ color: '#ff6b6b' }} />
-              <span className="text-xs font-bold uppercase tracking-widest">Locações</span>
-            </button>
-            <button onClick={() => navigate('tasks')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <CheckSquare size={24} style={{ color: '#4cc9f0' }} />
-              <span className="text-xs font-bold uppercase tracking-widest">Tarefas</span>
-            </button>
-            <button onClick={() => navigate('decupagem')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <Film size={24} style={{ color: '#fca311' }} />
-              <span className="text-xs font-bold uppercase tracking-widest">Decupagem</span>
-            </button>
-            <button onClick={() => navigate('documentos')} className="btn-primary" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
-              <FileText size={24} style={{ color: '#e85d04' }} />
-              <span className="text-xs font-bold uppercase tracking-widest">Documentos</span>
-            </button>
+          {/*
+            ATALHOS RÁPIDOS.
+
+            O arranjo mora no CSS (.atalhos), porque muda com a tela. O que se
+            quer evitar é o mesmo nas três: um atalho sozinho na última linha,
+            que era o "Documentos" de antes.
+            - Computador e tablet: os sete numa linha só.
+            - Celular: duas colunas de botões baixos, com ícone ao lado do
+              nome, e o sétimo ocupando a linha inteira.
+          */}
+          <div className="atalhos">
+            {([
+              { rota: 'producao', nome: 'Equipe', icone: <Users size={24} className="text-accent" /> },
+              { rota: 'financeiro', nome: 'Dinheiro', icone: <DollarSign size={24} className="text-success" /> },
+              { rota: 'diarias', nome: 'Diárias', icone: <Calendar size={24} style={{ color: '#9d4edd' }} /> },
+              { rota: 'locacoes', nome: 'Locações', icone: <MapPin size={24} style={{ color: '#ff6b6b' }} /> },
+              { rota: 'tasks', nome: 'Tarefas', icone: <CheckSquare size={24} style={{ color: '#4cc9f0' }} /> },
+              { rota: 'decupagem', nome: 'Decupagem', icone: <Film size={24} style={{ color: '#fca311' }} /> },
+              { rota: 'documentos', nome: 'Documentos', icone: <FileText size={24} style={{ color: '#e85d04' }} /> },
+            ]).map(a => (
+              <button key={a.rota} onClick={() => navigate(a.rota)} className="btn-primary atalho">
+                {a.icone}
+                <span className="text-xs font-bold uppercase tracking-widest">{a.nome}</span>
+              </button>
+            ))}
           </div>
 
           {/* SEMANA À FRENTE */}

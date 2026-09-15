@@ -262,6 +262,48 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Atalhos do Dashboard (DashboardGeral.tsx). Ver o comentário de lá.
+ * Duas classes (`.btn-primary.atalho`) para vencer o `.btn-primary`, que
+ * vem depois no arquivo. */
+.atalhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
+}
+.btn-primary.atalho {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+}
+/* Tablet: os sete numa linha, apertando só o respiro e o espaçamento das
+   letras. Em 768px cada atalho tem ~92px, e "DOCUMENTOS" cabe. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .atalhos { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+  .btn-primary.atalho { padding: 14px 4px; }
+  .btn-primary.atalho span { letter-spacing: 0.04em; }
+}
+/* Celular: botões baixos, ícone ao lado do nome, duas colunas. Eram três
+   colunas de botões altos, com "Documentos" sozinho numa terceira linha e
+   quase meia tela gasta antes de chegar em qualquer número. */
+@media (max-width: 767px) {
+  .atalhos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .btn-primary.atalho {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    min-height: 48px;
+    border-radius: 12px;
+  }
+  .btn-primary.atalho svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .atalhos > .atalho:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
 /* Components */
 .card {
   background-color: var(--bg-surface);
