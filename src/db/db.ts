@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento } from '../types';
+import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -16,6 +16,7 @@ export const TABELAS_SINCRONIZADAS = [
   'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos',
   'motoristas', 'elementos', 'stripboard_itens', 'logs',
   'registros_cena', 'registros_plano', 'eventos',
+  'log_takes', 'log_estado', 'log_kits', 'log_hds', 'log_backups', 'log_checksums',
 ] as const;
 
 /**
@@ -103,6 +104,14 @@ export class SetMoneyDB extends Dexie {
 
   /** v4.7: compromissos que não são diária — visita de locação, teste, reunião. */
   eventos!: Table<Evento, string>;
+
+  /** Logagem: o boletim de câmera que veio do Lumavi. */
+  log_takes!: Table<Take, string>;
+  log_estado!: Table<EstadoDaLogagem, string>;
+  log_kits!: Table<KitDeLogagem, string>;
+  log_hds!: Table<HdDeBackup, string>;
+  log_backups!: Table<BackupDeCartao, string>;
+  log_checksums!: Table<ChecksumDeCartao, string>;
 
   constructor() {
     super('SetMoneyDB');
@@ -219,6 +228,28 @@ export class SetMoneyDB extends Dexie {
     */
     this.version(18).stores({
       eventos: 'id, projeto_id, data, locacao_id, [projeto_id+data]'
+    });
+
+    /*
+      v19: Logagem. Ver .md/PLANO-logagem.md, §4.
+
+      `[diaria_id+ordem]` porque a tabela de takes é sempre lida NA ORDEM EM QUE
+      FORAM LOGADOS dentro de uma diária — e é essa ordem que diz quais são os
+      takes "seguintes" de uma cascata.
+
+      `log_estado` tem `diaria_id` indexado porque é uma linha por diária, e a
+      tela chega nela pela diária, nunca pelo id.
+
+      `log_backups` indexa `[diaria_id+cartao]`: a pergunta da matriz é "em quais
+      HDs ESTE cartão já está".
+    */
+    this.version(19).stores({
+      log_takes: 'id, projeto_id, diaria_id, [diaria_id+ordem], camera_id',
+      log_estado: 'id, projeto_id, diaria_id',
+      log_kits: 'id, projeto_id, tipo',
+      log_hds: 'id, projeto_id',
+      log_backups: 'id, projeto_id, diaria_id, [diaria_id+cartao]',
+      log_checksums: 'id, projeto_id, diaria_id, cartao'
     });
 
     /**

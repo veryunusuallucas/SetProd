@@ -8,7 +8,7 @@ import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, Camera, CheckSquare, CalendarDays, CalendarClock, Search,
-  LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database
+  LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database, Clapperboard
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
@@ -150,6 +150,7 @@ export function ProjectLayout() {
       title: 'CRIATIVO',
       items: [
         { name: 'Decupagem & Storyboard', path: `/projeto/${id}/decupagem`, icon: Film, exact: false },
+        { name: 'Logagem', path: `/projeto/${id}/logagem`, icon: Clapperboard, exact: false },
         { name: 'Documentos', path: `/projeto/${id}/documentos`, icon: FileText, exact: false },
       ]
     },
