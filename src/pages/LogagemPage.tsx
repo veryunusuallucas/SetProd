@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
 import { podeEditarLogagem, departamentoDaFotografia } from '../lib/logagem/permissao';
 import { AbaCamera } from '../components/logagem/AbaCamera';
+import { AbaLogagem } from '../components/logagem/AbaLogagem';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
 import { diaDaSemana } from '../lib/formato';
@@ -290,6 +291,9 @@ function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, dep
 }) {
   if (aba === 'camera' && diariaId) {
     return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
+  }
+  if (aba === 'logagem' && diariaId) {
+    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
   }
 
   const dia = diariaNumero ? `da Diária ${String(diariaNumero).padStart(2, '0')}` : 'desta diária';
