@@ -9,7 +9,8 @@ import { db } from '../db/db';
 import { useRole } from '../hooks/useRole';
 import { useAuth } from '../hooks/useAuth';
 import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
-import { podeEditarLogagem } from '../lib/logagem/permissao';
+import { podeEditarLogagem, departamentoDaFotografia } from '../lib/logagem/permissao';
+import { AbaCamera } from '../components/logagem/AbaCamera';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
 import { diaDaSemana } from '../lib/formato';
@@ -180,7 +181,7 @@ export default function LogagemPage() {
                   style={{
                     position: 'relative', flex: '1 0 auto',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    padding: '11px 14px', border: 'none', borderRadius: '8px', background: 'none', cursor: 'pointer',
+                    padding: '14px', border: 'none', borderRadius: '8px', background: 'none', cursor: 'pointer',
                     fontWeight: 700, fontSize: '13px',
                     color: ativa ? 'var(--text-primary)' : 'var(--text-muted)',
                   }}
@@ -222,7 +223,7 @@ export default function LogagemPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={reduzido ? { duration: 0.12 } : MOLA}
           >
-            <ConteudoDaAba aba={aba} diariaNumero={diaria?.numero} />
+            <ConteudoDaAba aba={aba} diariaNumero={diaria?.numero} projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoDaFotografia(departamentos)?.id} />
           </motion.div>
         </>
       )}
@@ -243,13 +244,13 @@ function SeletorDeDiaria({ diarias, valor, aoMudar }: {
 }) {
   const hoje = hojeISO();
   return (
-    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 36px 9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', cursor: 'pointer', flexShrink: 0 }}>
+    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0 36px 0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', cursor: 'pointer', flexShrink: 0 }}>
       <CalendarDays size={16} color="var(--cor-set)" />
       <select
         value={valor}
         onChange={e => aoMudar(e.target.value)}
         aria-label="Diária da Logagem"
-        style={{ appearance: 'none', background: 'none', border: 'none', color: 'var(--text-primary)', fontWeight: 700, fontSize: '14px', cursor: 'pointer', outline: 'none', paddingRight: 0 }}
+        style={{ appearance: 'none', background: 'none', border: 'none', color: 'var(--text-primary)', fontWeight: 700, fontSize: '14px', cursor: 'pointer', outline: 'none', paddingRight: 0, minHeight: '44px' }}
       >
         {diarias.map(d => (
           <option key={d.id} value={d.id}>
@@ -279,7 +280,18 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 }
 
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
-function ConteudoDaAba({ aba, diariaNumero }: { aba: Aba; diariaNumero?: number }) {
+function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, departamentoId }: {
+  aba: Aba;
+  diariaNumero?: number;
+  projetoId: string;
+  diariaId: string;
+  podeEditar: boolean;
+  departamentoId?: string;
+}) {
+  if (aba === 'camera' && diariaId) {
+    return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
+  }
+
   const dia = diariaNumero ? `da Diária ${String(diariaNumero).padStart(2, '0')}` : 'desta diária';
 
   if (aba === 'ingest') {
