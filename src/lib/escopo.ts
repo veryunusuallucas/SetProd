@@ -99,6 +99,21 @@ export const ESCOPO: Record<TabelaSincronizada, Escopo> = {
 
   // Auditoria: ninguém edita, todo mundo escreve o próprio. Ver Etapa 7.
   logs: 'comum',
+  /*
+    Logagem: é da Fotografia. O boletim de câmera é o documento de trabalho
+    do DIT e do 2º AC; direção, produção e continuísta leem.
+
+    Cada linha grava `departamento_id` (o da Fotografia da produção), para que
+    a RLS departamental, quando existir, já encontre o dado pronto. Hoje só a
+    tela faz valer isto — e a tela da Logagem tem regra própria, porque "quem
+    edita" ali inclui quem o dono liberou. Ver `lib/logagem/permissao.ts`.
+  */
+  log_takes: 'departamental',
+  log_estado: 'departamental',
+  log_kits: 'departamental',
+  log_hds: 'departamental',
+  log_backups: 'departamental',
+  log_checksums: 'departamental',
 };
 
 export function escopoDe(tabela: string): Escopo {

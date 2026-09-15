@@ -45,6 +45,14 @@ export interface Projeto {
    */
   logo_od?: string;
   /**
+   * Contas (usuario_id) que editam a Logagem sem serem da Fotografia.
+   *
+   * O DIT e o 2º AC muitas vezes entram na produção sem ficha vinculada, e aí o
+   * app não sabe que eles são da Fotografia. Mora no PROJETO, e não na Logagem,
+   * porque liberar alguém é ato de quem administra — e `projetos` é restrito.
+   */
+  logagem_liberados?: string[];
+  /**
    * O que se repete em TODA Ordem do Dia desta produção.
    *
    * "Hidrate-se e encha sua garrafinha", "celulares sempre no silencioso". No
@@ -1174,4 +1182,235 @@ export interface Evento {
   participantes?: string[];
   observacao?: string;
   data_criacao: number;
+}
+
+// ---- Logagem (fusão do Lumavi Camera Log) — ver .md/PLANO-logagem.md ----
+
+/**
+ * O que aconteceu com um take.
+ *
+ * `RECINV` é "REC invertido": a câmera gravou quando devia estar parada, e
+ * parou quando devia gravar. O clipe existe e ocupa o cartão, e é por isso que
+ * ele entra no log com status próprio em vez de sumir.
+ *
+ * `IMPORT` é o take que nasceu do ingest: um clipe que o XML da câmera trouxe e
+ * que ninguém logou no set. Ele não tem claquete confiável, só metadados.
+ */
+export type StatusTake = 'OK' | 'NG' | 'HERO' | 'RECINV' | 'IMPORT';
+
+/** Metadados que só a câmera sabe, trazidos pelo ingest do XML (ou do vídeo). */
+export interface MetadadosDoClipe {
+  modeloLente?: string;
+  modeloCamera?: string;
+  bitDepth?: string;
+  amostragem?: string;
+  gamma?: string;
+  gamut?: string;
+  coding?: string;
+  tcIn?: string;
+  tcOut?: string;
+  tcFps?: string;
+  /** Duração legível, `MM:SS` ou `HH:MM:SS`. */
+  duracao?: string;
+  /** Segundos de conteúdo, para somar horas gravadas e estimar GB. */
+  segundos?: number;
+  /** Quando a câmera criou o clipe (ISO, como veio do XML). */
+  criadoEm?: string;
+  codecAudio?: string;
+  /** De onde veio: nome do XML ou do vídeo lido. */
+  fonte?: string;
+}
+
+/**
+ * Um take logado.
+ *
+ * ⚠️ A CLAQUETE É TEXTO, e o vínculo com a Decupagem é opcional. No set, a
+ * verdade é o que está escrito na claquete — que às vezes é "12A" num plano que
+ * a decupagem chama de "3". Guardar só o `plano_id` perderia o que a câmera
+ * filmou; guardar só o texto perderia a ligação com o roteiro. Ficam os dois.
+ *
+ * ⚠️ `ordem` NÃO É DECORAÇÃO. O Lumavi dependia da posição no array para a
+ * cascata ("os takes SEGUINTES") e para agrupar o PDF. No Dexie não há array, e
+ * a hora não serve: dois takes no mesmo segundo, ou relógios de aparelhos
+ * diferentes, embaralhariam a sequência.
+ */
+export interface Take {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  /** Departamento Fotografia da produção. Pronto para a RLS departamental. */
+  departamento_id?: string;
+  cena_id?: string;
+  plano_id?: string;
+  cena: string;
+  plano: string;
+  take: number;
+  status: StatusTake;
+  /** `HH:MM:SS` local do registro. */
+  hora: string;
+  ordem: number;
+  camera_id: string;
+  cartao: string;
+  posicao?: string;
+  arquivo: string;
+  ambiente?: string;
+  luz?: string;
+  audio?: string;
+  nd?: string;
+  obs?: string;
+  fps?: string;
+  resolucao?: string;
+  codec?: string;
+  wb?: string;
+  shutter?: string;
+  iso?: string;
+  lut?: string;
+  lente?: string;
+  abertura?: string;
+  xml?: MetadadosDoClipe;
+  /** Referência `arquivo:` da foto de referência. Nunca base64 no registro. */
+  foto?: string;
+  logado_por?: string;
+  criado_em: number;
+}
+
+/** Os formatos de nome de arquivo que a Logagem sabe prever. */
+export type NomenclaturaArquivo = 'standard' | 'camid' | 'lumavi' | 'dji' | 'canon' | 'custom';
+
+/**
+ * O "agora" da Logagem numa diária: o que está na claquete e na câmera.
+ *
+ * Uma linha por diária. É o que o Lumavi chamava de `db.scene` + `db.camera`.
+ * Separado dos takes porque muda a cada toque no stepper, e os takes são o que
+ * já aconteceu.
+ */
+export interface EstadoDaLogagem {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  departamento_id?: string;
+  // Claquete
+  cena: string;
+  plano: string;
+  take: number;
+  ambiente?: string;
+  luz?: string;
+  audio?: string;
+  nd?: string;
+  obs?: string;
+  /** true = planos em letras de claquete (A, B, C…); false = números. */
+  plano_letras: boolean;
+  // Câmera ativa
+  kit_camera_id?: string;
+  kit_lente_id?: string;
+  camera_id: string;
+  cartao: string;
+  posicao: string;
+  proximo_clipe: number;
+  nomenclatura: NomenclaturaArquivo;
+  template?: string;
+  zeros_clipe: number;
+  fps?: string;
+  resolucao?: string;
+  codec?: string;
+  wb?: string;
+  shutter?: string;
+  iso?: string;
+  lut?: string;
+  /** Id da lente dentro do kit ativo; vazio = lente digitada à mão. */
+  lente_ref?: string;
+  lente?: string;
+  abertura?: string;
+  // Preferências da diária
+  revisar_antes: boolean;
+  atualizado_em?: number;
+}
+
+export interface CameraDoKit {
+  id: string;
+  modelo: string;
+  reel: string;
+  clipe: number;
+  posicao: string;
+}
+
+export interface LenteDoKit {
+  id: string;
+  nome: string;
+  focal?: string;
+  /** Abre até (o menor número f). */
+  abre: number;
+  /** Fecha até (o maior número f). */
+  fecha: number;
+}
+
+/**
+ * Um kit de câmeras OU de lentes. Por produção (decisão de 15/09/2026), com
+ * importação de outra produção.
+ *
+ * Câmera e lente na mesma tabela porque têm a mesma vida: um nome, uma lista, e
+ * um "ativo". Duas tabelas iguais seriam duas vezes o mesmo código de sync.
+ */
+export interface KitDeLogagem {
+  id: string;
+  projeto_id: string;
+  departamento_id?: string;
+  tipo: 'camera' | 'lente';
+  nome: string;
+  cameras?: CameraDoKit[];
+  lentes?: LenteDoKit[];
+  criado_em: number;
+}
+
+/** Um HD de destino do backup. Por produção. */
+export interface HdDeBackup {
+  id: string;
+  projeto_id: string;
+  departamento_id?: string;
+  nome: string;
+  ordem: number;
+  criado_em: number;
+}
+
+/**
+ * UM cartão copiado em UM HD, numa diária.
+ *
+ * ⚠️ UMA LINHA POR MARCAÇÃO, e não uma matriz dentro de um registro. O DIT
+ * marca o HD A no notebook e o 2º AC marca o HD B no celular, ao mesmo tempo.
+ * Com a matriz num campo só, a última gravação levaria as duas marcações e uma
+ * sumiria. Desmarcar é apagar a linha.
+ */
+export interface BackupDeCartao {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  departamento_id?: string;
+  cartao: string;
+  hd_id: string;
+  marcado_em: number;
+  marcado_por?: string;
+}
+
+/**
+ * O comprovante de verificação de um cartão (log do Clone Tool do DaVinci).
+ *
+ * ⚠️ O CONTEÚDO DO ARQUIVO NÃO MORA AQUI. Um MHL de cartão cheio passa de
+ * centenas de KB, e isto sincroniza a cada mudança. O arquivo vai para o
+ * Storage (`arquivo`); aqui fica só a assinatura, que é o que prova.
+ */
+export interface ChecksumDeCartao {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  departamento_id?: string;
+  cartao: string;
+  nome_arquivo: string;
+  algoritmo: 'SHA-256';
+  digest: string;
+  bytes: number;
+  linhas: number;
+  /** Referência `arquivo:` do comprovante no Storage. */
+  arquivo?: string;
+  anexado_em: number;
+  anexado_por?: string;
 }

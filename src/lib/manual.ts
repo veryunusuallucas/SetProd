@@ -334,6 +334,17 @@ export const MANUAL: SecaoManual[] = [
       'Se um anexo aparecer como "indisponível offline", é porque ele foi enviado por outra pessoa e este aparelho ainda não o baixou: abra uma vez com sinal e ele fica.',
   },
   {
+    id: 'logagem',
+    titulo: '🎬 Logagem',
+    rotas: ['logagem'],
+    texto:
+      'A Logagem é o boletim de câmera: cada take rodado, com claquete, câmera, cartão e lente, e o backup de cada cartão. ' +
+      'Ela sempre acontece dentro de uma diária — o seletor no topo abre na de hoje. ' +
+      'Quem registra é a Fotografia (e quem o dono da produção liberar); o resto da equipe acompanha. ' +
+      'O Ingest, que lê os XML da câmera, é feito no computador. ' +
+      'O módulo está sendo construído aos poucos: as abas que dizem "Em construção" ainda vão chegar.',
+  },
+  {
     id: 'eventos',
     titulo: '📍 Eventos',
     /*

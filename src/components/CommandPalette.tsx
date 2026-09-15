@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, LayoutDashboard, Film, CalendarDays, CalendarClock, Receipt, HandCoins, MapPin, Settings, Home } from 'lucide-react';
+import { Search, X, LayoutDashboard, Film, CalendarDays, CalendarClock, Receipt, HandCoins, MapPin, Settings, Home, Clapperboard } from 'lucide-react';
 
 interface Comando {
   label: string;
@@ -27,6 +27,7 @@ export function CommandPalette({ projetoId }: { projetoId?: string }) {
       { label: 'Nova despesa', atalho: 'Financeiro', icon: Receipt, path: `${p}/despesas` },
       { label: 'Acertos', icon: HandCoins, path: `${p}/acertos` },
       { label: 'Locações', icon: MapPin, path: `${p}/locacoes` },
+      { label: 'Logagem', atalho: 'take claquete câmera cartão backup', icon: Clapperboard, path: `${p}/logagem` },
       { label: 'Configurações', icon: Settings, path: `${p}/config` },
       ...base,
     ];

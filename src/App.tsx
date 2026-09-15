@@ -38,6 +38,7 @@ const AceitarConvite = lazy(() => import('./pages/AceitarConvite').then(m => ({ 
 const LocacoesModule = lazy(() => import('./pages/LocacoesModule').then(m => ({ default: m.LocacoesModule })));
 const DiariasList = lazy(() => import('./pages/DiariasList').then(m => ({ default: m.DiariasList })));
 const EventosPage = lazy(() => import('./pages/EventosPage'));
+const LogagemPage = lazy(() => import('./pages/LogagemPage'));
 const DiariaModule = lazy(() => import('./pages/DiariaModule').then(m => ({ default: m.DiariaModule })));
 const FinanceiroModule = lazy(() => import('./pages/FinanceiroModule').then(m => ({ default: m.FinanceiroModule })));
 const TasksModule = lazy(() => import('./pages/TasksModule').then(m => ({ default: m.TasksModule })));
@@ -99,7 +100,7 @@ function App() {
             {/* Fora do ProtectedRoute: quem chega pelo link de convite pode não
                 ter conta ainda, e a tela explica antes de mandar para o login. */}
             <Route path="/convite/:token" element={<AceitarConvite />} />
-            
+
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             
             <Route path="/projeto/:id" element={<ProtectedRoute><ProjectLayout /></ProtectedRoute>}>
@@ -111,6 +112,7 @@ function App() {
               {/* New v3 Routes */}
               <Route path="diarias" element={<DiariasList />} />
               <Route path="eventos" element={<EventosPage />} />
+              <Route path="logagem" element={<LogagemPage />} />
               <Route path="diaria/:diariaId" element={<DiariaModule />} />
               <Route path="locacoes" element={<LocacoesModule />} />
               <Route path="equipamentos" element={<EquipamentosModule />} />
