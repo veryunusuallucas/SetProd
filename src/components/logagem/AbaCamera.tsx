@@ -10,12 +10,13 @@ import { CampoTexto } from '../ui/CampoTexto';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { OPCOES } from '../../lib/logagem/opcoes';
+import { KitDeCameras, KitDeLentes } from './Kits';
 
 /**
  * Aba Câmera: o que a câmera vai gravar, e com que setup.
  *
  * Primeiro pedaço (15/09/2026): arquivo previsto, nomenclatura, contadores e
- * setup. Os kits de câmera e de lentes chegam no pedaço seguinte.
+ * setup. Segundo pedaço (15/09/2026): kits de câmera e de lentes, em `Kits.tsx`.
  *
  * A ORDEM DA TELA É A ORDEM DA PERGUNTA NO SET. O 2º AC olha para esta aba para
  * responder "qual é o próximo arquivo?" — por isso ele vem primeiro, grande. O
@@ -54,6 +55,8 @@ export function AbaCamera({ projetoId, diariaId, podeEditar, departamentoId }: {
       )}
 
       <ProximoArquivo estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
+      <KitDeCameras projetoId={projetoId} estado={estado} bloqueado={bloqueado} aoMudar={mudar} departamentoId={departamentoId} />
+      <KitDeLentes projetoId={projetoId} estado={estado} bloqueado={bloqueado} aoMudar={mudar} departamentoId={departamentoId} />
       <Nomenclatura estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
       <Setup estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
     </div>
