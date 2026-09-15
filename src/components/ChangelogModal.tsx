@@ -81,9 +81,9 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
 
           {/* Placar: dá a dimensão da versão antes de ler qualquer item. */}
           <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
-            {totalNovo > 0 && <Selo cor={ETIQUETA.novo.cor} fundo={ETIQUETA.novo.fundo} texto={`${totalNovo} novidades`} />}
-            {totalCorrigido > 0 && <Selo cor={ETIQUETA.corrigido.cor} fundo={ETIQUETA.corrigido.fundo} texto={`${totalCorrigido} consertos`} />}
-            {totalMelhor > 0 && <Selo cor={ETIQUETA.melhor.cor} fundo={ETIQUETA.melhor.fundo} texto={`${totalMelhor} melhorias`} />}
+            {totalNovo > 0 && <Selo cor={ETIQUETA.novo.cor} fundo={ETIQUETA.novo.fundo} texto={totalNovo === 1 ? '1 novidade' : `${totalNovo} novidades`} />}
+            {totalCorrigido > 0 && <Selo cor={ETIQUETA.corrigido.cor} fundo={ETIQUETA.corrigido.fundo} texto={totalCorrigido === 1 ? '1 conserto' : `${totalCorrigido} consertos`} />}
+            {totalMelhor > 0 && <Selo cor={ETIQUETA.melhor.cor} fundo={ETIQUETA.melhor.fundo} texto={totalMelhor === 1 ? '1 melhoria' : `${totalMelhor} melhorias`} />}
           </div>
         </div>
 

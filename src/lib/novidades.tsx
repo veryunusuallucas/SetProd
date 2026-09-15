@@ -5,6 +5,7 @@ import {
   RefreshCw, MessageCircleQuestion, Undo2, DollarSign, ListChecks, CalendarDays,
   Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock, CalendarPlus,
   FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
+  Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
 } from 'lucide-react';
 
 /**
@@ -222,6 +223,64 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.11.0',
+    resumo: <>A primeira leva de melhorias de tela: o calendário se lê no celular, e o app inteiro para de escapar pelas bordas.</>,
+    grupos: [
+      {
+        id: 'calendario',
+        titulo: 'Um calendário que se lê',
+        resumo: 'Três jeitos de ver, o dia inteiro num toque, e a cor dizendo o que importa.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Rows3 size={20} />,
+            titulo: 'Dias, Semana e Mês',
+            texto: 'O calendário do Dashboard ganhou três jeitos de ver. Em Dias aparecem só os dias que têm alguma coisa, um cartão por dia com o texto inteiro, e uma faixa com o mês em miniatura em cima: tocar num dia leva até ele. Semana mostra os sete dias com tudo escrito. Mês é a grade de sempre. O app lembra a escolha, e no celular abre em Dias.',
+          },
+          {
+            tipo: 'novo',
+            icone: <MousePointerClick size={20} />,
+            titulo: 'Toque no dia para ver o que tem nele',
+            texto: 'Como no Google Agenda: tocar num dia abre um cartão com a diária (e o botão de abrir), os eventos com hora e observação, e os prazos de tasks. No mês do celular, onde o texto virava "C…", agora há pontinhos coloridos, e o que está escrito fica a um toque.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <CalendarDays size={20} />,
+            titulo: 'A cor diz o que importa, e hoje é verde',
+            texto: 'Dia de diária fica amarelo, e dia com prazo de task ainda em aberto fica laranja. Hoje é verde, no calendário e nos Próximos 7 dias, para não se confundir com o amarelo da diária. As sete colunas do mês ficaram iguais: uma tarefa de nome comprido alargava o dia dela e empurrava o sábado para fora da tela, até no computador.',
+          },
+        ],
+      },
+      {
+        id: 'celular',
+        titulo: 'O celular deixou de ser o computador encolhido',
+        resumo: 'Nada escapa pelas bordas, e sobra mais tela para o que interessa.',
+        cor: '#38bdf8',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <Smartphone size={20} />,
+            titulo: 'Nenhuma tela rola mais de lado',
+            texto: 'Financeiro, Produção, Diárias, Locações e a linha do dia empurravam a página para fora da tela no celular, e o app inteiro deslizava para o lado. As abas do Financeiro e da Produção agora deslizam sozinhas, e na ficha de créditos a pessoa aparece embaixo da função, com a largura toda.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <LayoutGrid size={20} />,
+            titulo: 'Mais tela para o conteúdo',
+            texto: 'As telas da produção tinham margem dobrada dos lados. O nome da produção aparecia duas vezes no Dashboard, e o fim da página ficava atrás da barra de baixo. Os atalhos do Dashboard viraram duas colunas de botões baixos, os três números do Financeiro cabem num cartão só, e os Próximos 7 dias ficaram legíveis. O cabeçalho ficou com um "?" só.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Tablet size={20} />,
+            titulo: 'Tablet, celular deitado e dedo',
+            texto: 'No tablet em pé, Diárias e Locações mostram os cartões em duas colunas, e os atalhos ficam numa linha só. Com o celular deitado, o cabeçalho sai do caminho e a barra de baixo mostra só os ícones. Os botões de ícone ficaram um pouco maiores em tela de toque, e a barra de baixo não espreme mais os ícones em cima da faixa de gestos do iPhone.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.10.0',
     resumo: <>A Ordem do Dia virou papel de verdade, o set ganhou o "a seguir", e o fim do dia agora tem festa.</>,
