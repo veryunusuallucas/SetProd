@@ -86,6 +86,18 @@ export function lerCodec(bruto: string): { codec: string; amostragem?: string; b
   if (/H422/i.test(cru)) { amostragem = amostragem || '4:2:2'; bitDepth = bitDepth || '10'; }
   else if (/H420/i.test(cru)) { amostragem = amostragem || '4:2:0'; bitDepth = bitDepth || '10'; }
 
+  /*
+    O HEVC da Sony escreve o perfil de outro jeito: `HEVC_3840_2160_M42210P` é
+    Main 4:2:2 10 — amostragem 4:2:2, 10 bits. Achado no clipe A003C010
+    (APARTE, 2024), que o leitor deixava sem amostragem nenhuma.
+  */
+  const perfilHevc = cru.match(/_M(4(?:22|20))?(\d{1,2})P\b/i);
+  if (perfilHevc) {
+    const [, crominancia, bits] = perfilHevc;
+    amostragem = amostragem || (crominancia === '422' ? '4:2:2' : '4:2:0');
+    bitDepth = bitDepth || bits;
+  }
+
   return { codec, amostragem, bitDepth, cru };
 }
 
