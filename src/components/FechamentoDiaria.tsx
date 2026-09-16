@@ -7,6 +7,7 @@ import { marcarCena, relatorioDoDia, ROTULO, MOTIVOS } from '../lib/registroSet'
 import { db } from '../db/db';
 import { MOLA } from './ui/ia';
 import type { Cena, RegistroCena, StatusCena } from '../types';
+import { ResumoDaLogagem } from './ResumoDaLogagem';
 
 /**
  * Fechar a diária deixa de ser só arquivar.
@@ -277,6 +278,19 @@ export function FechamentoDiaria({
             </div>
           </section>
         )}
+
+        {/*
+          A câmera entra no relatório como números, logo antes das notas: é o
+          momento de escrever "cartão 002 ainda sem backup" se for o caso. A
+          Logagem não marca cena como gravada — isso continua sendo decisão de
+          quem fecha, acima (PLANO-logagem §1.5).
+        */}
+        <section style={{ marginBottom: '20px' }}>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ marginBottom: '10px' }}>
+            Câmera
+          </h3>
+          <ResumoDaLogagem projetoId={projetoId} diariaId={diariaId} compacto />
+        </section>
 
         <div style={{ marginBottom: '20px' }}>
           <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">
