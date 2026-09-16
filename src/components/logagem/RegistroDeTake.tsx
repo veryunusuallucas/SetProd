@@ -7,6 +7,8 @@ import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
+import { ImagemAnexo } from '../ImagemAnexo';
+import { apagarArquivo } from '../../lib/arquivos';
 import { MONO, Rotulo } from './pecas';
 import {
   COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo,
@@ -233,6 +235,9 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
       perigo: true,
     }))) return;
     await apagarTake(take.id);
+    // A foto era daquele take e de mais ninguém; deixá-la ocuparia o aparelho
+    // e o Storage para sempre, sem nada apontando para ela.
+    if (take.foto) void apagarArquivo(take.foto);
   };
 
   return (
@@ -257,6 +262,15 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
       >
         {ROTULO_DO_STATUS[take.status]}
       </span>
+
+      {take.foto && (
+        <ImagemAnexo
+          valor={take.foto}
+          alt={`Referência do take ${take.cena}/${take.plano}/${take.take}`}
+          estiloLink={{ display: 'block', width: '56px', height: '38px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-light)', flexShrink: 0 }}
+          estiloImagem={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
 
       <span className="text-sm font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
         {take.cena} · {take.plano} · take {take.take}

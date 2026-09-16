@@ -10,6 +10,7 @@ import { digitarNaClaquete, passoNaClaquete, trocarModoDoPlano } from '../../lib
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { RegistroDeTake } from './RegistroDeTake';
+import { FotoDeReferencia } from './FotoDeReferencia';
 import { useAuth } from '../../hooks/useAuth';
 
 /**
@@ -162,6 +163,8 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
           A observação é do take que vem, e se apaga quando ele for registrado.
         </p>
       </section>
+
+      <FotoDeReferencia estado={estado} podeEditar={podeEditar} />
 
       <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={user?.id} />
     </div>

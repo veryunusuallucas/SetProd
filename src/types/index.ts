@@ -1321,6 +1321,14 @@ export interface EstadoDaLogagem {
   lente_ref?: string;
   lente?: string;
   abertura?: string;
+  /**
+   * A foto de referência esperando o próximo take (referência `arquivo:`).
+   *
+   * Fica no estado, e não na memória da tela, para sobreviver a um refresh no
+   * meio do set e para a outra pessoa da equipe ver que a foto já foi tirada.
+   * Some quando o take é registrado — ela é DAQUELE take.
+   */
+  foto?: string;
   // Preferências da diária
   revisar_antes: boolean;
   atualizado_em?: number;
