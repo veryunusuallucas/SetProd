@@ -3,7 +3,7 @@ import type {
   MetadadosDoClipe, StatusTake, Take,
 } from '../../types';
 import { NOMENCLATURAS } from './nomenclatura';
-import { formatarF } from './kits';
+import { faixaDaLente } from './kits';
 import { cartaoSeguro, cartoesConhecidos } from './backup';
 import { ordenarTakes, type EquipeDoReport } from './relatorio';
 
@@ -119,7 +119,7 @@ export function montarCopia(d: {
     })),
     kitsLente: d.kits.filter(k => k.tipo === 'lente').map(k => ({
       nome: k.nome,
-      lentes: (k.lentes || []).map(l => `${l.nome} (f${formatarF(l.abre)}-f${formatarF(l.fecha)})`),
+      lentes: (k.lentes || []).map(l => `${l.nome} (${faixaDaLente(l)})`),
     })),
     fotos: Object.keys(d.fotos).length,
   };

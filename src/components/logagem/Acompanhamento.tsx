@@ -7,6 +7,7 @@ import { MONO, Rotulo, ValorQueTroca } from './pecas';
 import { ListaDeTakes } from './RegistroDeTake';
 import { COR_DO_STATUS, ROTULO_DO_STATUS, claqueteLegivel } from '../../lib/logagem/takes';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
+import { aberturaLegivel } from '../../lib/logagem/relatorio';
 
 /**
  * O que está rolando agora, para quem não loga.
@@ -28,20 +29,25 @@ export function Acompanhamento({ estado }: { estado: EstadoDaLogagem }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '22px' }}>
+      <section className="card painel-take" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: 'clamp(14px, 3vw, 22px)' }}>
         <Rotulo icone={<Radio size={14} />}>Agora</Rotulo>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '16px' }}>
+        {/* As mesmas caixas do painel de quem loga: as duas visões se leem igual. */}
+        <div className="claquete-grade">
           <Pedaco rotulo="Cena" valor={String(estado.cena)} />
           <Pedaco rotulo="Plano" valor={String(estado.plano)} />
           <Pedaco rotulo="Take" valor={String(estado.take)} cor="var(--cor-criativo)" />
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }} className="text-xs text-secondary">
-          <span>câmera <strong>{estado.camera_id}</strong> · cartão <strong>{estado.cartao}</strong></span>
-          {estado.lente && <span>{estado.lente}{estado.abertura ? ` · ${estado.abertura}` : ''}</span>}
-          {estado.ambiente && <span>{estado.ambiente} · {estado.luz}</span>}
-          <span style={{ fontFamily: MONO }}>próximo · {nomeArquivoPrevisto(estado)}</span>
+        <span className="arquivo-previsto" style={{ fontFamily: MONO, fontWeight: 800, fontSize: 'clamp(22px, 6cqi, 36px)' }}>
+          {nomeArquivoPrevisto(estado)}
+        </span>
+
+        <div className="hud-logagem">
+          <span><i>Câmera</i>{estado.camera_id || '—'}</span>
+          <span><i>Cartão</i>{estado.cartao || '—'}</span>
+          {estado.lente && <span><i>Lente</i>{[estado.lente, aberturaLegivel(estado.abertura)].filter(Boolean).join(' ')}</span>}
+          {estado.ambiente && <span><i>Cena</i>{[estado.ambiente, estado.luz].filter(Boolean).join(' · ')}</span>}
         </div>
       </section>
 
@@ -62,7 +68,7 @@ export function Acompanhamento({ estado }: { estado: EstadoDaLogagem }) {
             <span
               style={{
                 padding: '6px 12px', borderRadius: 'var(--radius-sm)',
-                border: `1px solid ${COR_DO_STATUS[ultimo.status]}`, color: COR_DO_STATUS[ultimo.status],
+                backgroundColor: COR_DO_STATUS[ultimo.status], color: '#0b0b0b',
                 fontSize: '13px', fontWeight: 800,
               }}
             >
@@ -85,8 +91,10 @@ export function Acompanhamento({ estado }: { estado: EstadoDaLogagem }) {
 function Pedaco({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
-      <span className="text-xs font-bold uppercase tracking-widest text-secondary">{rotulo}</span>
-      <ValorQueTroca texto={valor || '—'} rotuloDeLeitura={rotulo} tamanho="clamp(34px, 10vw, 48px)" cor={cor} />
+      <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ textAlign: 'center' }}>{rotulo}</span>
+      <div className="contador-valor" style={{ color: cor || 'var(--text-primary)' }}>
+        <ValorQueTroca texto={valor || '—'} rotuloDeLeitura={rotulo} tamanho="inherit" cor={cor} />
+      </div>
     </div>
   );
 }

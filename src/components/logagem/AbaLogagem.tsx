@@ -124,9 +124,10 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
   if (densidade === 'acompanhamento') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {seletorDeVisao}
+        <ODiaNaLogagem estado={estado} bloqueado aoEscolher={() => {}} />
         <Acompanhamento estado={estado} />
         <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
+        {seletorDeVisao}
       </div>
     );
   }
