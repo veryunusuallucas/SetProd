@@ -33,13 +33,25 @@ const BOTOES: { status: StatusTake; icone: typeof Check; atalho?: string }[] = [
   { status: 'RECINV', icone: RefreshCw },
 ];
 
-export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
-  estado: EstadoDaLogagem;
-  podeEditar: boolean;
-  quem?: string;
-  /** Quantos takes mostrar na lista. Sem limite, mostra a diária inteira. */
-  limite?: number;
-}) {
+export interface Registro {
+  takes: Take[];
+  /** O último take registrado nesta tela, para a lista dar o pulso nele. */
+  ultimo: string;
+  tentar: (status: StatusTake) => void;
+  decisoes: React.ReactNode;
+  /** Há uma pergunta aberta: os botões continuam no lugar, mas esperam. */
+  decidindo: boolean;
+}
+
+/**
+ * O registro do take, sem desenho: quem o chama decide onde ficam os botões.
+ *
+ * Saiu do componente que desenhava tudo junto porque a leva de UI pôs a
+ * claquete e os botões num bloco só, e a lista lá embaixo. Os dois precisam da
+ * mesma verdade — o último take, a pergunta aberta —, e duas cópias dela
+ * seriam duas telas discordando.
+ */
+export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, quem?: string): Registro {
   const takes = useLiveQuery(
     () => db.log_takes.where('diaria_id').equals(estado.diaria_id).toArray(),
     [estado.diaria_id]
@@ -73,9 +85,9 @@ export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
   /*
     Espaço = OK, Shift+Espaço = NG.
 
-    Só valem aqui dentro, e só quando ninguém está digitando e nenhuma decisão
-    está aberta na tela. O Lumavi registrava de qualquer aba, e isso é um jeito
-    de logar um take sem estar olhando para a claquete.
+    Só valem na aba Logagem, e só quando ninguém está digitando e nenhuma
+    decisão está aberta na tela. O Lumavi registrava de qualquer aba, e isso é
+    um jeito de logar um take sem estar olhando para a claquete.
   */
   useEffect(() => {
     if (!podeEditar) return;
@@ -92,102 +104,84 @@ export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
     return () => window.removeEventListener('keydown', aoTeclar);
   });
 
+  const decisoes = (
+    <>
+      <Abre aberto={Boolean(revisando)}>
+        {revisando && (
+          <Caixa
+            titulo={`Registrar este take como ${ROTULO_DO_STATUS[revisando]}?`}
+            detalhe={`Cena ${estado.cena} · Plano ${estado.plano} · Take ${estado.take}`}
+            acoes={[
+              { rotulo: 'Registrar', principal: true, aoClicar: () => seguir(revisando) },
+              { rotulo: 'Agora não', aoClicar: () => setRevisando(null) },
+            ]}
+          />
+        )}
+      </Abre>
+
+      <Abre aberto={Boolean(repetido)}>
+        {repetido && (
+          <Caixa
+            alerta
+            titulo={`Já existe Cena ${estado.cena} · Plano ${estado.plano} · Take ${estado.take}.`}
+            detalhe={`Registrado às ${repetido.take.hora} como ${ROTULO_DO_STATUS[repetido.take.status]}, no arquivo ${repetido.take.arquivo}.`}
+            acoes={[
+              {
+                rotulo: `Outro setup — plano ${claqueteDoAcrescimo(takes, estado).plano}`,
+                principal: true,
+                aoClicar: () => {
+                  // Setup novo da mesma cena: o plano pula para a letra livre e
+                  // o take volta para 1. É a convenção 1, 1A, 1B.
+                  const mudanca = claqueteDoAcrescimo(takes, estado);
+                  void mudarEstado(estado.diaria_id, mudanca).then(() =>
+                    gravar(repetido.status, { ...estado, ...mudanca })
+                  );
+                },
+              },
+              {
+                rotulo: 'Substituir o que está lá',
+                aoClicar: () => {
+                  void substituirTake(repetido.take.id, estado, repetido.status).then(() => {
+                    void mudarEstado(estado.diaria_id, { obs: '' });
+                    setUltimo(repetido.take.id);
+                    setRepetido(null);
+                  });
+                },
+              },
+              { rotulo: 'Cancelar', aoClicar: () => setRepetido(null) },
+            ]}
+          />
+        )}
+      </Abre>
+    </>
+  );
+
+  return { takes, ultimo, tentar, decisoes, decidindo: Boolean(repetido || revisando) };
+}
+
+/**
+ * Os quatro botões. Grandes, de cor cheia, e SEMPRE no mesmo lugar e na mesma
+ * ordem: quem loga aperta olhando para o set, não para a tela — um botão que
+ * muda de lugar vira take com status errado, e status errado é pior que take
+ * faltando, porque ninguém vai conferir.
+ */
+export function BotoesDeStatus({ registro, podeEditar }: { registro: Registro; podeEditar: boolean }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <Rotulo icone={<ListVideo size={14} />}>Registrar</Rotulo>
-          {podeEditar && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={Boolean(estado.revisar_antes)}
-                onChange={e => void mudarEstado(estado.diaria_id, { revisar_antes: e.target.checked })}
-                style={{ width: '18px', height: '18px', accentColor: 'var(--cor-criativo)' }}
-              />
-              <span className="text-xs text-secondary">Perguntar antes de registrar</span>
-            </label>
-          )}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '10px' }}>
-          {BOTOES.map(({ status, icone: Icone, atalho }) => (
-            <BotaoTatil
-              key={status}
-              disabled={!podeEditar}
-              onClick={() => tentar(status)}
-              escala={0.96}
-              title={atalho ? `${ROTULO_DO_STATUS[status]} · ${atalho}` : ROTULO_DO_STATUS[status]}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                minHeight: '64px', borderRadius: 'var(--radius-md)',
-                border: `1.5px solid ${COR_DO_STATUS[status]}`,
-                backgroundColor: `color-mix(in srgb, ${COR_DO_STATUS[status]} 12%, transparent)`,
-                color: COR_DO_STATUS[status], fontWeight: 800, fontSize: '16px',
-                cursor: podeEditar ? 'pointer' : 'default', opacity: podeEditar ? 1 : 0.45,
-              }}
-            >
-              <Icone size={20} />
-              {ROTULO_DO_STATUS[status]}
-            </BotaoTatil>
-          ))}
-        </div>
-
-        <p className="text-xs text-muted" style={{ margin: 0 }}>
-          Registrar guarda a claquete e o setup de agora, soma 1 no take e 1 no clipe, e limpa a observação.
-          No computador: <strong>Espaço</strong> para OK, <strong>Shift+Espaço</strong> para NG.
-        </p>
-
-        <Abre aberto={Boolean(revisando)}>
-          {revisando && (
-            <Caixa
-              titulo={`Registrar este take como ${ROTULO_DO_STATUS[revisando]}?`}
-              detalhe={`Cena ${estado.cena} · Plano ${estado.plano} · Take ${estado.take}`}
-              acoes={[
-                { rotulo: 'Registrar', principal: true, aoClicar: () => seguir(revisando) },
-                { rotulo: 'Agora não', aoClicar: () => setRevisando(null) },
-              ]}
-            />
-          )}
-        </Abre>
-
-        <Abre aberto={Boolean(repetido)}>
-          {repetido && (
-            <Caixa
-              alerta
-              titulo={`Já existe Cena ${estado.cena} · Plano ${estado.plano} · Take ${estado.take}.`}
-              detalhe={`Registrado às ${repetido.take.hora} como ${ROTULO_DO_STATUS[repetido.take.status]}, no arquivo ${repetido.take.arquivo}.`}
-              acoes={[
-                {
-                  rotulo: `Outro setup — plano ${claqueteDoAcrescimo(takes, estado).plano}`,
-                  principal: true,
-                  aoClicar: () => {
-                    // Setup novo da mesma cena: o plano pula para a letra livre e
-                    // o take volta para 1. É a convenção 1, 1A, 1B.
-                    const mudanca = claqueteDoAcrescimo(takes, estado);
-                    void mudarEstado(estado.diaria_id, mudanca).then(() =>
-                      gravar(repetido.status, { ...estado, ...mudanca })
-                    );
-                  },
-                },
-                {
-                  rotulo: 'Substituir o que está lá',
-                  aoClicar: () => {
-                    void substituirTake(repetido.take.id, estado, repetido.status).then(() => {
-                      void mudarEstado(estado.diaria_id, { obs: '' });
-                      setUltimo(repetido.take.id);
-                      setRepetido(null);
-                    });
-                  },
-                },
-                { rotulo: 'Cancelar', aoClicar: () => setRepetido(null) },
-              ]}
-            />
-          )}
-        </Abre>
-      </section>
-
-      <ListaDeTakes takes={takes} ultimo={ultimo} podeEditar={podeEditar} limite={limite} />
+    <div className="status-grade" role="group" aria-label="Registrar o take">
+      {BOTOES.map(({ status, icone: Icone, atalho }) => (
+        <BotaoTatil
+          key={status}
+          className="botao-status"
+          data-status={status}
+          disabled={!podeEditar}
+          onClick={() => registro.tentar(status)}
+          escala={0.95}
+          title={atalho ? `${ROTULO_DO_STATUS[status]} · ${atalho}` : ROTULO_DO_STATUS[status]}
+        >
+          <Icone size={20} strokeWidth={2.6} aria-hidden />
+          {status === 'RECINV' ? 'REC INV.' : ROTULO_DO_STATUS[status]}
+        </BotaoTatil>
+      ))}
     </div>
   );
 }

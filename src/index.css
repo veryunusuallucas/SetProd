@@ -879,3 +879,156 @@ input[type="radio"]:checked::before {
   .glass-nav .nav-item span { display: none; }
   .main-content { padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px) + 16px); }
 }
+
+/* ============================================================
+   LOGAGEM — o painel do take (leva de UI, 16/09/2026)
+
+   A claquete e os quatro botões num bloco só, na mesma arrumação em qualquer
+   tela: foi o pedido de quem opera câmera. O que muda com a largura é só a
+   geometria de cada peça, e ela responde à largura DO PAINEL (container
+   query), não da janela — o mesmo painel pode estar numa coluna estreita do
+   computador.
+   ============================================================ */
+.painel-take { container-type: inline-size; }
+
+.claquete-grade {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Estreito (celular): o número em cima, − e + lado a lado embaixo. Gasta
+   uma linha de botões em vez de duas, e é o que deixa OK e NG na primeira tela. */
+.contador-corpo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas: 'valor valor' 'menos mais';
+  gap: 6px;
+}
+.contador-corpo .contador-valor { grid-area: valor; }
+.contador-corpo .contador-menos { grid-area: menos; }
+.contador-corpo .contador-mais { grid-area: mais; }
+.contador-corpo .contador-botao { width: 100%; height: 44px; }
+
+/* Estreitíssimo (320px): as colunas ficam com ~80px, e dois botões lado a lado
+   passariam a ter menos de 44px. Aí vira a roda: + em cima, − embaixo. */
+@container (max-width: 289px) {
+  .contador-corpo {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'mais' 'valor' 'menos';
+  }
+}
+
+/* Largo: − número +, lado a lado, como no Lumavi. */
+@container (min-width: 560px) {
+  .claquete-grade { gap: 12px; }
+  .contador-corpo {
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    grid-template-areas: 'menos valor mais';
+    align-items: stretch;
+  }
+  .contador-corpo .contador-botao { width: 48px; height: auto; }
+}
+
+.contador-valor {
+  flex: 1;
+  min-width: 0;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  font-size: clamp(34px, 9cqi, 64px);
+}
+@container (min-width: 560px) {
+  .contador-valor { min-height: 96px; }
+}
+
+.arquivo-previsto {
+  font-size: clamp(28px, 9cqi, 60px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+
+.status-grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@container (min-width: 560px) {
+  .status-grade { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* Cor cheia, como no Lumavi: o botão se acha pela cor com o olho no set.
+   Texto escuro nos quatro — o tema do app é escuro e as quatro cores são
+   claras o bastante para passar de 7:1 com ele. */
+.botao-status {
+  min-height: 76px;
+  border: none;
+  border-radius: var(--radius-md);
+  color: #0b0b0b;
+  font-weight: 900;
+  font-size: clamp(16px, 4.2cqi, 24px);
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.botao-status[data-status="OK"] { background-color: var(--color-success); }
+.botao-status[data-status="NG"] { background-color: var(--color-danger); }
+.botao-status[data-status="HERO"] { background-color: var(--accent); }
+.botao-status[data-status="RECINV"] { background-color: var(--color-warning); }
+.botao-status:disabled { opacity: 0.35; cursor: default; }
+.botao-status:focus-visible { outline: 3px solid var(--text-primary); outline-offset: 2px; }
+@container (min-width: 560px) {
+  .botao-status { min-height: 88px; }
+}
+
+/* Uma linha só, que rola de lado: em três linhas, o HUD empurrava a claquete. */
+.hud-logagem {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hud-logagem::-webkit-scrollbar { display: none; }
+.hud-logagem > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hud-logagem > span > i {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* A faixa "o dia": em cima, o que vem a seguir. Rola de lado no celular em vez
+   de empilhar — são três itens curtos, e empilhados empurrariam a claquete
+   para fora da primeira tela. */
+.dia-logagem-itens {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -2px;
+  padding: 2px;
+}
+.dia-logagem-itens::-webkit-scrollbar { display: none; }

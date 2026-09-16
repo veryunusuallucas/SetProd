@@ -152,7 +152,12 @@ export default function LogagemPage() {
   return (
     <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="cabecalho-pagina" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-        <div style={{ minWidth: 0 }}>
+        {/*
+          No celular o título sai: as abas logo abaixo já dizem onde se está, e
+          cada linha a menos aqui é a claquete e os botões mais perto da primeira
+          tela (pedido de quem opera câmera, 16/09/2026).
+        */}
+        <div className="desktop-only" style={{ minWidth: 0 }}>
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Clapperboard size={24} color="var(--cor-criativo)" /> Logagem
           </h1>
