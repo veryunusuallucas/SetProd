@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Aperture, Camera, Plus, Pencil, Trash2, Download, X, Check } from 'lucide-react';
 import { db } from '../../db/db';
 import type { CameraDoKit, EstadoDaLogagem, KitDeLogagem, LenteDoKit } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
+import { Abre } from './pecas';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
 import {
@@ -537,32 +538,6 @@ function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar
         {erro && <p className="text-xs" style={{ color: 'var(--color-danger)', width: '100%', margin: 0 }}>{erro}</p>}
       </div>
     </Abre>
-  );
-}
-
-/**
- * Abre e fecha para baixo, com o conteúdo aparecendo junto.
- *
- * `height: auto` no framer mede o filho, então o formulário pode ter uma ou
- * quatro linhas sem ninguém escrever altura nenhuma. `overflow: hidden` durante
- * o caminho para o conteúdo não vazar por cima do que vem embaixo.
- */
-function Abre({ aberto, children }: { aberto: boolean; children: React.ReactNode }) {
-  const reduzido = useMovimentoReduzido();
-  return (
-    <AnimatePresence initial={false}>
-      {aberto && (
-        <motion.div
-          initial={reduzido ? false : { height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={reduzido ? { opacity: 0 } : { height: 0, opacity: 0 }}
-          transition={reduzido ? { duration: 0 } : { ...MOLA, opacity: { duration: 0.15 } }}
-          style={{ overflow: 'hidden' }}
-        >
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 
