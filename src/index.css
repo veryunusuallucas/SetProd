@@ -1032,3 +1032,16 @@ input[type="radio"]:checked::before {
   padding: 2px;
 }
 .dia-logagem-itens::-webkit-scrollbar { display: none; }
+
+/* Texto só para leitor de tela: o ✓ do passo diz "feito" para quem não vê. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
