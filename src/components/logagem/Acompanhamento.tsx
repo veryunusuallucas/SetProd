@@ -5,7 +5,7 @@ import type { EstadoDaLogagem } from '../../types';
 import { ImagemAnexo } from '../ImagemAnexo';
 import { MONO, Rotulo, ValorQueTroca } from './pecas';
 import { ListaDeTakes } from './RegistroDeTake';
-import { COR_DO_STATUS, ROTULO_DO_STATUS } from '../../lib/logagem/takes';
+import { COR_DO_STATUS, ROTULO_DO_STATUS, claqueteLegivel } from '../../lib/logagem/takes';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 
 /**
@@ -69,7 +69,7 @@ export function Acompanhamento({ estado }: { estado: EstadoDaLogagem }) {
               {ROTULO_DO_STATUS[ultimo.status]}
             </span>
             <span className="text-lg font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {ultimo.cena} · {ultimo.plano} · take {ultimo.take}
+              {claqueteLegivel(ultimo)}
             </span>
             <span className="text-xs text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>às {ultimo.hora}</span>
             {ultimo.obs && <span className="text-xs text-secondary" style={{ flex: '1 1 100%' }}>{ultimo.obs}</span>}
