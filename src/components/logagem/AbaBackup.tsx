@@ -1,19 +1,22 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { HardDrive, ShieldCheck, ShieldAlert, FileCheck2, Plus, Trash2, X, Check } from 'lucide-react';
+import {
+  HardDrive, ShieldCheck, ShieldAlert, FileCheck2, Plus, Trash2, X, Check, Files, Camera,
+} from 'lucide-react';
 import { db } from '../../db/db';
 import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, Take } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
 import { Rotulo, estiloCampo } from './pecas';
+import { Guia } from './Guia';
 import { idDoEstado } from '../../lib/logagem/estado';
 import { guardarArquivo, apagarArquivo } from '../../lib/arquivos';
-import { dataHora } from '../../lib/formato';
+import { dataHora, numero } from '../../lib/formato';
 import {
   anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos,
-  criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta, temChecksum,
+  criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta,
 } from '../../lib/logagem/backup';
 import { ExportarRelatorios } from './ExportarRelatorios';
 
@@ -27,6 +30,12 @@ import { ExportarRelatorios } from './ExportarRelatorios';
  * Verde só com cópia em TODOS os HDs cadastrados e com o comprovante de
  * verificação anexado. Nada de "quase": um cartão quase copiado se formata do
  * mesmo jeito.
+ *
+ * A TELA SEGUE O CAMINHO DO CARTÃO (leva de design, 16/09/2026). Backup é o que
+ * a Fotografia menos pratica, e a primeira versão mostrava as peças soltas —
+ * HDs, cartões, comprovantes — sem dizer a ordem. Agora: o veredito em cima,
+ * o guia de três passos, e cada cartão como uma lista desses mesmos passos,
+ * com o comprovante DENTRO do cartão a que pertence.
  */
 export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, quem }: {
   projetoId: string;
@@ -43,12 +52,45 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
 
   const emOrdem = [...hds].sort((a, b) => a.ordem - b.ordem || a.criado_em - b.criado_em);
   const cartoes = cartoesConhecidos({ takes, backups, checksums, cartaoAtual: estado?.cartao });
+  const seguros = cartoes.filter(cartao => cartaoSeguro({ hds: emOrdem, backups, checksums, cartao }));
+
+  const anexar = async (arquivo: File, cartao: string) => {
+    const texto = await arquivo.text();
+    const referencia = await guardarArquivo(projetoId, arquivo, arquivo.name, arquivo.type || 'text/plain');
+    await anexarChecksum({
+      projetoId, diariaId, cartao, nomeArquivo: arquivo.name, texto, arquivo: referencia, quem, departamentoId,
+    });
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} />
+      <Veredito cartoes={cartoes} seguros={seguros} semHd={emOrdem.length === 0} />
 
-      <Matriz
+      <Guia
+        id="backup"
+        titulo="Como funciona o backup"
+        passos={[
+          {
+            titulo: 'Copie o cartão para cada HD',
+            texto: <>Com o programa de cópia que verifica o que copiou — o <em>Clone</em> do DaVinci Resolve, o Hedge ou o Silverstack. Copiar arrastando pasta não verifica nada.</>,
+          },
+          {
+            titulo: 'Marque aqui em quais HDs ele já está',
+            texto: 'Um toque no nome do HD, dentro do cartão. Quem copia marca — o DIT no computador e o 2º assistente no celular, cada um o seu.',
+          },
+          {
+            titulo: 'Anexe o comprovante daquele cartão',
+            texto: <>O arquivo que o programa gera ao terminar a verificação: <code>.mhl</code> no DaVinci, <code>md5sums.txt</code> em outros. Ele prova que a cópia bate com o original, arquivo por arquivo.</>,
+          },
+        ]}
+        fecho={<>Com os três, o cartão fica <strong style={{ color: 'var(--color-success)' }}>Safe to Format</strong> e pode voltar para a câmera. Antes disso, não formate — nem que falte um HD só.</>}
+      />
+
+      {emOrdem.length === 0 && (
+        <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} primeiraVez />
+      )}
+
+      <Cartoes
         cartoes={cartoes}
         hds={emOrdem}
         takes={takes}
@@ -58,30 +100,74 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
         podeEditar={podeEditar}
         aoMarcar={(cartao, hdId) => void marcarBackup({ projetoId, diariaId, cartao, hdId, quem, departamentoId })}
         aoDesmarcar={id => void desmarcarBackup(id)}
+        aoAnexar={anexar}
       />
 
-      <Comprovantes
-        cartoes={cartoes}
-        checksums={checksums}
-        podeEditar={podeEditar}
-        projetoId={projetoId}
-        diariaId={diariaId}
-        departamentoId={departamentoId}
-        quem={quem}
-      />
+      {emOrdem.length > 0 && (
+        <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} />
+      )}
 
       <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
     </div>
   );
 }
 
+/* ───────────────────────── Veredito ───────────────────────── */
+
+/** A resposta em uma linha, antes de qualquer detalhe: pode formatar? */
+function Veredito({ cartoes, seguros, semHd }: { cartoes: string[]; seguros: string[]; semHd: boolean }) {
+  if (cartoes.length === 0) return null;
+  const todos = seguros.length === cartoes.length;
+  const cor = todos ? 'var(--color-success)' : 'var(--color-warning)';
+  const titulo = todos
+    ? (cartoes.length === 1 ? 'O cartão pode ser formatado' : 'Todos os cartões podem ser formatados')
+    : seguros.length === 0
+      ? (cartoes.length === 1 ? 'O cartão ainda não pode ser formatado' : 'Nenhum cartão pode ser formatado ainda')
+      : `${seguros.length} de ${cartoes.length} cartões podem ser formatados`;
+
+  return (
+    <section
+      className="card"
+      aria-live="polite"
+      style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px', borderLeft: `4px solid ${cor}` }}
+    >
+      {todos ? <ShieldCheck size={28} style={{ color: cor, flexShrink: 0 }} /> : <ShieldAlert size={28} style={{ color: cor, flexShrink: 0 }} />}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0, flex: 1 }}>
+        <span className="font-bold" style={{ fontSize: '17px' }}>{titulo}</span>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {cartoes.map(c => {
+            const ok = seguros.includes(c);
+            return (
+              <span
+                key={c}
+                className="text-xs font-bold"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '999px',
+                  fontVariantNumeric: 'tabular-nums',
+                  color: ok ? 'var(--color-success)' : 'var(--color-warning)',
+                  backgroundColor: ok ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
+                }}
+              >
+                {ok ? <Check size={12} /> : null}{c}
+              </span>
+            );
+          })}
+        </div>
+        {semHd && <span className="text-xs text-muted">Comece cadastrando os HDs para onde o material vai.</span>}
+      </div>
+    </section>
+  );
+}
+
 /* ───────────────────────── HDs ───────────────────────── */
 
-function Hds({ hds, projetoId, departamentoId, podeEditar }: {
+function Hds({ hds, projetoId, departamentoId, podeEditar, primeiraVez }: {
   hds: HdDeBackup[];
   projetoId: string;
   departamentoId?: string;
   podeEditar: boolean;
+  /** Sem HD nenhum: o bloco sobe para o topo e fala como primeiro passo. */
+  primeiraVez?: boolean;
 }) {
   const [nome, setNome] = useState('');
 
@@ -103,23 +189,27 @@ function Hds({ hds, projetoId, departamentoId, podeEditar }: {
   };
 
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
-      <Rotulo icone={<HardDrive size={14} />}>HDs de destino</Rotulo>
-      <p className="text-xs text-muted" style={{ marginTop: '-8px' }}>
-        Para onde o material desta produção é copiado. O cartão só fica liberado quando está em todos eles.
+    <section
+      className="card"
+      style={{
+        display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px',
+        ...(primeiraVez ? { border: '1.5px solid var(--cor-criativo)' } : {}),
+      }}
+    >
+      <Rotulo icone={<HardDrive size={14} />}>{primeiraVez ? 'Primeiro: os HDs de destino' : 'HDs desta produção'}</Rotulo>
+      <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
+        {primeiraVez
+          ? 'Para onde o material é copiado — normalmente dois, em lugares diferentes. Cadastra uma vez e vale para a produção inteira.'
+          : 'Valem para todas as diárias. O cartão só fica liberado quando está em todos eles.'}
       </p>
 
-      {hds.length === 0 ? (
-        <p className="text-sm text-secondary" style={{ margin: 0 }}>
-          Nenhum HD ainda. Sem HD cadastrado, nenhum cartão fica liberado — o que é o certo: não há para onde ter copiado.
-        </p>
-      ) : (
+      {hds.length > 0 && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {hds.map(h => (
             <span
               key={h.id}
               style={{
-                display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 8px 0 14px',
+                display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: `0 ${podeEditar ? 0 : 14}px 0 14px`,
                 borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)',
                 backgroundColor: 'var(--bg-primary)', fontSize: '14px', fontWeight: 600,
               }}
@@ -147,34 +237,29 @@ function Hds({ hds, projetoId, departamentoId, podeEditar }: {
         </div>
       )}
 
-      {podeEditar && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {podeEditar ? (
+        <form onSubmit={e => { e.preventDefault(); void acrescentar(); }} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <input
             value={nome}
             onChange={e => setNome(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') void acrescentar(); }}
             placeholder="HD Preto, Shuttle 01, RAID da ilha…"
+            aria-label="Nome do HD"
             style={{ ...estiloCampo, flex: '1 1 200px', width: 'auto' }}
           />
-          <BotaoTatil
-            onClick={() => void acrescentar()}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 16px',
-              borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: 'var(--cor-criativo)',
-              color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            <Plus size={16} /> Cadastrar
+          <BotaoTatil type="submit" disabled={!nome.trim()} className="btn-primary" style={{ minHeight: '44px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={16} /> Cadastrar HD
           </BotaoTatil>
-        </div>
+        </form>
+      ) : hds.length === 0 && (
+        <p className="text-sm text-muted" style={{ margin: 0 }}>Nenhum HD cadastrado ainda.</p>
       )}
     </section>
   );
 }
 
-/* ───────────────────────── Matriz cartão × HD ───────────────────────── */
+/* ───────────────────────── Cartões ───────────────────────── */
 
-function Matriz({ cartoes, hds, takes, backups, checksums, cartaoAtual, podeEditar, aoMarcar, aoDesmarcar }: {
+function Cartoes({ cartoes, hds, takes, backups, checksums, cartaoAtual, podeEditar, aoMarcar, aoDesmarcar, aoAnexar }: {
   cartoes: string[];
   hds: HdDeBackup[];
   takes: Take[];
@@ -184,37 +269,97 @@ function Matriz({ cartoes, hds, takes, backups, checksums, cartaoAtual, podeEdit
   podeEditar: boolean;
   aoMarcar: (cartao: string, hdId: string) => void;
   aoDesmarcar: (id: string) => void;
+  aoAnexar: (arquivo: File, cartao: string) => Promise<void>;
 }) {
+  const varios = useRef<HTMLInputElement>(null);
+  const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+
+  /*
+    Vários comprovantes de uma vez (o DIT que copiou três cartões seguidos):
+    cada arquivo descobre o seu cartão pelo nome ou pelo conteúdo. O que não
+    se descobre NÃO é anexado a um cartão qualquer — fica listado, para a
+    pessoa anexar pelo botão do cartão certo.
+  */
+  const anexarVarios = async (lista: FileList | null) => {
+    if (!lista?.length) return;
+    const feitos: string[] = [];
+    const sobras: string[] = [];
+    for (const arquivo of [...lista]) {
+      try {
+        const cartao = detectarCartao(arquivo.name, await arquivo.text(), cartoes);
+        if (!cartao) { sobras.push(arquivo.name); continue; }
+        await aoAnexar(arquivo, cartao);
+        feitos.push(`${arquivo.name} → ${cartao}`);
+      } catch {
+        sobras.push(arquivo.name);
+      }
+    }
+    setAviso(sobras.length
+      ? { tipo: 'erro', texto: `${feitos.length ? `Anexados: ${feitos.join(', ')}. ` : ''}Não deu para saber o cartão de: ${sobras.join(', ')}. Anexe pelo botão do cartão certo.` }
+      : { tipo: 'ok', texto: `Anexados: ${feitos.join(', ')}.` });
+  };
+
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
-      <Rotulo icone={<ShieldCheck size={14} />}>Cartões desta diária</Rotulo>
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px 12px', flexWrap: 'wrap' }}>
+        <Rotulo icone={<ShieldCheck size={14} />}>Cartões desta diária</Rotulo>
+        {podeEditar && cartoes.length > 1 && (
+          <>
+            <BotaoTatil
+              onClick={() => varios.current?.click()}
+              title="Cada arquivo descobre o seu cartão pelo nome ou pelo conteúdo"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px', minHeight: '44px', padding: '0 12px',
+                borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', background: 'none',
+                color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              <Files size={14} /> Anexar vários comprovantes
+            </BotaoTatil>
+            <input
+              ref={varios}
+              type="file"
+              multiple
+              hidden
+              accept=".txt,.mhl,.md5,.xml,.csv,text/*"
+              onChange={e => { void anexarVarios(e.target.files); e.target.value = ''; }}
+            />
+          </>
+        )}
+      </div>
+
+      {aviso && (
+        <p className="text-xs" role="status" style={{ margin: 0, color: aviso.tipo === 'ok' ? 'var(--color-success)' : 'var(--color-warning)' }}>
+          {aviso.texto}
+        </p>
+      )}
 
       {cartoes.length === 0 ? (
-        <p className="text-sm text-secondary" style={{ margin: 0 }}>
-          Nenhum cartão ainda. Eles aparecem sozinhos quando um take é registrado ou quando o cartão da câmera muda.
+        <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
+          Nenhum cartão ainda. Ele aparece aqui sozinho quando o primeiro take é registrado, ou quando o cartão da câmera
+          muda na aba Câmera.
         </p>
       ) : (
         /*
-          Um cartão por CARTÃO, e não uma tabela de verdade.
-
-          Uma tabela com uma coluna por HD não cabe num celular de 360px, e a
-          coluna que interessa — "pode formatar?" — é a última, justamente a que
-          sairia da tela. Aqui cada cartão é um bloco, com o veredito em cima e
-          os HDs como botões grandes embaixo.
+          Um bloco por CARTÃO, e não uma tabela: uma coluna por HD não cabe
+          num celular de 360px, e a coluna que interessa — "pode formatar?" —
+          seria a última, justamente a que sairia da tela.
         */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {cartoes.map(cartao => (
-            <CartaoDaMatriz
+            <Cartao
               key={cartao}
               cartao={cartao}
+              cartoes={cartoes}
               hds={hds}
               takes={takes}
               backups={backups}
               checksums={checksums}
-              ehOAtual={String(cartaoAtual || '').trim() === cartao}
+              naCamera={String(cartaoAtual || '').trim() === cartao}
               podeEditar={podeEditar}
               aoMarcar={aoMarcar}
               aoDesmarcar={aoDesmarcar}
+              aoAnexar={aoAnexar}
             />
           ))}
         </div>
@@ -223,153 +368,56 @@ function Matriz({ cartoes, hds, takes, backups, checksums, cartaoAtual, podeEdit
   );
 }
 
-function CartaoDaMatriz({ cartao, hds, takes, backups, checksums, ehOAtual, podeEditar, aoMarcar, aoDesmarcar }: {
+function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, podeEditar, aoMarcar, aoDesmarcar, aoAnexar }: {
   cartao: string;
+  cartoes: string[];
   hds: HdDeBackup[];
   takes: Take[];
   backups: BackupDeCartao[];
   checksums: ChecksumDeCartao[];
-  ehOAtual: boolean;
+  naCamera: boolean;
   podeEditar: boolean;
   aoMarcar: (cartao: string, hdId: string) => void;
   aoDesmarcar: (id: string) => void;
+  aoAnexar: (arquivo: File, cartao: string) => Promise<void>;
 }) {
   const reduzido = useMovimentoReduzido();
+  const entrada = useRef<HTMLInputElement>(null);
+  const [lendo, setLendo] = useState(false);
+  const [erro, setErro] = useState('');
+
   const seguro = cartaoSeguro({ hds, backups, checksums, cartao });
   const falta = oQueFalta({ hds, backups, checksums, cartao });
   const gb = estimativaDoCartaoGB(takes, cartao);
+  const nTakes = takes.filter(t => String(t.cartao).trim() === cartao).length;
   const cor = seguro ? 'var(--color-success)' : 'var(--color-warning)';
-
-  return (
-    <div
-      style={{
-        display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px',
-        borderRadius: 'var(--radius-md)', border: `1px solid ${seguro ? cor : 'var(--border-light)'}`,
-        backgroundColor: 'var(--bg-primary)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        <span className="text-lg font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{cartao}</span>
-        {ehOAtual && (
-          <span className="text-xs" style={{ padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
-            na câmera agora
-          </span>
-        )}
-        {gb > 0 && <span className="text-xs text-muted">~{gb.toFixed(0)} GB estimados</span>}
-        {temChecksum(checksums, cartao) && (
-          <span className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)' }}>
-            <FileCheck2 size={13} /> comprovante
-          </span>
-        )}
-
-        <motion.span
-          layout={!reduzido}
-          transition={MOLA}
-          style={{
-            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '6px 12px', borderRadius: 'var(--radius-sm)',
-            border: `1px solid ${cor}`, color: cor, fontSize: '12px', fontWeight: 800,
-          }}
-        >
-          {seguro ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
-          {seguro ? 'Safe to Format' : 'Ainda não'}
-        </motion.span>
-      </div>
-
-      {hds.length > 0 && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {hds.map(h => {
-            const linha = backups.find(b => b.hd_id === h.id && String(b.cartao).trim() === cartao);
-            const marcado = Boolean(linha);
-            return (
-              <BotaoTatil
-                key={h.id}
-                role="checkbox"
-                aria-checked={marcado}
-                disabled={!podeEditar}
-                escala={0.97}
-                onClick={() => (marcado ? aoDesmarcar(linha!.id) : aoMarcar(cartao, h.id))}
-                title={marcado ? `Copiado para ${h.nome} — tocar desmarca` : `Marcar como copiado para ${h.nome}`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `1px solid ${marcado ? 'var(--color-success)' : 'var(--border-color)'}`,
-                  backgroundColor: marcado ? 'color-mix(in srgb, var(--color-success) 12%, transparent)' : 'transparent',
-                  color: marcado ? 'var(--color-success)' : 'var(--text-secondary)',
-                  fontSize: '14px', fontWeight: 700,
-                  cursor: podeEditar ? 'pointer' : 'default', opacity: podeEditar || marcado ? 1 : 0.5,
-                }}
-              >
-                {marcado ? <Check size={15} /> : <HardDrive size={15} />}
-                {h.nome}
-              </BotaoTatil>
-            );
-          })}
-        </div>
-      )}
-
-      {/* O que falta, em palavras. "Não liberado" sozinho manda procurar. */}
-      {falta.length > 0 && (
-        <p className="text-xs text-muted" style={{ margin: 0 }}>
-          Falta {falta.join(' e ')}.
-        </p>
-      )}
-    </div>
-  );
-}
-
-/* ───────────────────────── Comprovantes ───────────────────────── */
-
-/**
- * O comprovante de verificação — o arquivo que o DaVinci (ou o Silverstack, ou
- * o Hedge) cospe depois de copiar e conferir.
- *
- * O app não refaz a verificação: ele guarda o comprovante, calcula uma
- * impressão digital dele e diz de qual cartão é. Quem copiou é que verificou; o
- * que faltava era o registro de que isso aconteceu.
- */
-function Comprovantes({ cartoes, checksums, podeEditar, projetoId, diariaId, departamentoId, quem }: {
-  cartoes: string[];
-  checksums: ChecksumDeCartao[];
-  podeEditar: boolean;
-  projetoId: string;
-  diariaId: string;
-  departamentoId?: string;
-  quem?: string;
-}) {
-  const entrada = useRef<HTMLInputElement>(null);
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
-  const [escolhido, setEscolhido] = useState('');
+  const copiados = hds.filter(h => backups.some(b => b.hd_id === h.id && String(b.cartao).trim() === cartao)).length;
+  const comprovantes = checksums
+    .filter(c => String(c.cartao).trim() === cartao)
+    .sort((a, b) => b.anexado_em - a.anexado_em);
 
   const ler = async (arquivo?: File) => {
     if (!arquivo) return;
-    setOcupado(true);
     setErro('');
-    setAviso('');
+    setLendo(true);
     try {
-      const texto = await arquivo.text();
-      const achado = detectarCartao(arquivo.name, texto, cartoes);
-      const cartao = achado || escolhido || cartoes[0];
-      if (!cartao) {
-        setErro('Não há cartão nesta diária para ligar o comprovante. Registre um take ou troque o cartão na aba Câmera.');
-        return;
+      // A detecção vira conferência: anexar no cartão errado é o engano mais
+      // fácil desta tela, e o arquivo quase sempre diz de quem ele é.
+      const outro = detectarCartao(arquivo.name, await arquivo.text(), cartoes);
+      if (outro && outro !== cartao) {
+        const mesmo = await confirmar({
+          titulo: `Este comprovante parece ser do cartão ${outro}`,
+          detalhe: `O nome ou o conteúdo de ${arquivo.name} fala do ${outro}. Anexar no ${cartao} liberaria o cartão errado.`,
+          confirmar: `Anexar no ${cartao} mesmo`,
+          cancelar: 'Cancelar',
+        });
+        if (!mesmo) return;
       }
-      const referencia = await guardarArquivo(projetoId, arquivo, arquivo.name, arquivo.type || 'text/plain');
-      await anexarChecksum({
-        projetoId, diariaId, cartao, nomeArquivo: arquivo.name, texto, arquivo: referencia, quem, departamentoId,
-      });
-      setAviso(
-        achado
-          ? `Comprovante do cartão ${cartao} anexado.`
-          : `Não deu para saber o cartão pelo arquivo — anexei no ${cartao}. Confira, e apague se não for.`
-      );
+      await aoAnexar(arquivo, cartao);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui ler este arquivo.');
     } finally {
-      setOcupado(false);
-      if (entrada.current) entrada.current.value = '';
+      setLendo(false);
     }
   };
 
@@ -385,97 +433,171 @@ function Comprovantes({ cartoes, checksums, podeEditar, projetoId, diariaId, dep
   };
 
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
-      <Rotulo icone={<FileCheck2 size={14} />}>Comprovantes de verificação</Rotulo>
-      <p className="text-xs text-muted" style={{ marginTop: '-8px' }}>
-        O arquivo que o programa de cópia gera ao conferir (.txt, .mhl, .md5, .xml). O app guarda, calcula a impressão
-        digital e descobre de qual cartão é.
-      </p>
+    <div
+      style={{
+        display: 'flex', flexDirection: 'column', gap: '14px', padding: '14px',
+        borderRadius: 'var(--radius-md)', border: `1px solid ${seguro ? cor : 'var(--border-light)'}`,
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      {/* Quem é o cartão, e o veredito */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px 10px', flexWrap: 'wrap' }}>
+        <span className="font-bold" style={{ fontSize: '22px', fontVariantNumeric: 'tabular-nums' }}>{cartao}</span>
+        <span className="text-xs text-muted">
+          {nTakes} take{nTakes === 1 ? '' : 's'}{gb > 0 ? ` · ~${numero(gb, gb < 10 ? 1 : 0)} GB` : ''}
+        </span>
+        {naCamera && (
+          <span className="text-xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
+            <Camera size={12} /> na câmera
+          </span>
+        )}
+        <motion.span
+          layout={!reduzido}
+          transition={MOLA}
+          style={{
+            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '6px 12px', borderRadius: 'var(--radius-sm)',
+            backgroundColor: seguro ? 'var(--color-success)' : 'transparent',
+            border: `1px solid ${cor}`, color: seguro ? '#0b0b0b' : cor, fontSize: '12px', fontWeight: 800,
+          }}
+        >
+          {seguro ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
+          {seguro ? 'Safe to Format' : 'Não formatar'}
+        </motion.span>
+      </div>
 
-      {checksums.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {checksums.map(c => (
-            <div
-              key={c.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-                padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)',
-              }}
-            >
-              <span className="text-sm font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>cartão {c.cartao}</span>
-              <span className="text-xs text-secondary" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{c.nome_arquivo}</span>
-              <span className="text-xs text-muted">{c.linhas} linha{c.linhas === 1 ? '' : 's'}</span>
-              <span className="text-xs text-muted" title={c.digest} style={{ overflowWrap: 'anywhere' }}>
-                {c.algoritmo} · {c.digest.slice(0, 12)}…
-              </span>
-              <span className="text-xs text-muted">{dataHora(c.anexado_em)}</span>
-              {podeEditar && (
-                <button
-                  type="button"
-                  onClick={() => void tirar(c)}
-                  aria-label="Apagar este comprovante"
-                  title="Apagar este comprovante"
+      {naCamera && !seguro && (
+        <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
+          Ainda está gravando. Copie depois de tirar o cartão da câmera.
+        </p>
+      )}
+
+      {/* Passo 1: os HDs */}
+      <Passo numero={1} feito={hds.length > 0 && copiados === hds.length} titulo={
+        hds.length === 0 ? 'Copiar para os HDs' : `Copiado para ${copiados} de ${hds.length} HD${hds.length === 1 ? '' : 's'}`
+      }>
+        {hds.length === 0 ? (
+          <span className="text-xs text-muted">Cadastre os HDs no bloco acima.</span>
+        ) : (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {hds.map(h => {
+              const linha = backups.find(b => b.hd_id === h.id && String(b.cartao).trim() === cartao);
+              const marcado = Boolean(linha);
+              return (
+                <BotaoTatil
+                  key={h.id}
+                  role="checkbox"
+                  aria-checked={marcado}
+                  disabled={!podeEditar}
+                  escala={0.97}
+                  onClick={() => (marcado ? aoDesmarcar(linha!.id) : aoMarcar(cartao, h.id))}
+                  title={marcado ? `Copiado para ${h.nome} — tocar desmarca` : `Marcar como copiado para ${h.nome}`}
                   style={{
-                    marginLeft: 'auto', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: 'none', borderRadius: 'var(--radius-sm)', background: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: `1px ${marcado ? 'solid' : 'dashed'} ${marcado ? 'var(--color-success)' : 'var(--border-color)'}`,
+                    backgroundColor: marcado ? 'color-mix(in srgb, var(--color-success) 12%, transparent)' : 'transparent',
+                    color: marcado ? 'var(--color-success)' : 'var(--text-secondary)',
+                    fontSize: '14px', fontWeight: 700,
+                    cursor: podeEditar ? 'pointer' : 'default', opacity: podeEditar || marcado ? 1 : 0.5,
                   }}
                 >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                  {marcado ? <Check size={15} /> : <HardDrive size={15} />}
+                  {h.nome}
+                </BotaoTatil>
+              );
+            })}
+          </div>
+        )}
+      </Passo>
 
-      {podeEditar && (
-        <>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <BotaoTatil
-              onClick={() => entrada.current?.click()}
-              disabled={ocupado}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 16px',
-                borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)',
-                backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 600,
-                cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.6 : 1,
-              }}
-            >
-              <FileCheck2 size={16} />
-              {ocupado ? 'Lendo…' : 'Anexar comprovante'}
-            </BotaoTatil>
-
-            {/* O seletor é a rede de segurança da detecção, não o caminho normal. */}
-            {cartoes.length > 1 && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="text-xs text-secondary">se não der para saber, é do cartão</span>
-                <select
-                  value={escolhido || cartoes[0]}
-                  onChange={e => setEscolhido(e.target.value)}
-                  style={{ ...estiloCampo, width: 'auto', cursor: 'pointer' }}
-                >
-                  {cartoes.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </label>
+      {/* Passo 2: o comprovante, dentro do cartão a que pertence */}
+      <Passo numero={2} feito={comprovantes.length > 0} titulo={comprovantes.length ? 'Comprovante anexado' : 'Anexar o comprovante da verificação'}>
+        {comprovantes.map(c => (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '4px 10px', flexWrap: 'wrap' }}>
+            <FileCheck2 size={14} style={{ color: 'var(--color-success)' }} aria-hidden />
+            <span className="text-sm" style={{ overflowWrap: 'anywhere', minWidth: 0 }}>{c.nome_arquivo}</span>
+            <span className="text-xs text-muted" title={c.digest}>{c.algoritmo} {c.digest.slice(0, 10)}… · {c.linhas} linha{c.linhas === 1 ? '' : 's'} · {dataHora(c.anexado_em)}</span>
+            {podeEditar && (
+              <button
+                type="button"
+                onClick={() => void tirar(c)}
+                aria-label={`Apagar o comprovante ${c.nome_arquivo}`}
+                title="Apagar este comprovante"
+                style={{
+                  marginLeft: 'auto', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', borderRadius: 'var(--radius-sm)', background: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                }}
+              >
+                <Trash2 size={16} />
+              </button>
             )}
           </div>
+        ))}
+        {podeEditar && (
+          <>
+            <BotaoTatil
+              onClick={() => entrada.current?.click()}
+              disabled={lendo}
+              style={{
+                alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 14px',
+                borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', backgroundColor: 'transparent',
+                color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 600, cursor: lendo ? 'default' : 'pointer',
+              }}
+            >
+              <FileCheck2 size={15} />
+              {lendo ? 'Lendo…' : comprovantes.length ? 'Anexar outro' : `Anexar o .mhl ou md5sums do ${cartao}`}
+            </BotaoTatil>
+            <input
+              ref={entrada}
+              type="file"
+              hidden
+              accept=".txt,.mhl,.md5,.xml,.csv,text/*"
+              onChange={e => { void ler(e.target.files?.[0]); e.target.value = ''; }}
+            />
+          </>
+        )}
+        {!podeEditar && comprovantes.length === 0 && <span className="text-xs text-muted">Nenhum ainda.</span>}
+        {erro && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{erro}</span>}
+      </Passo>
 
-          {aviso && <p className="text-xs" style={{ color: 'var(--color-success)', margin: 0 }}>{aviso}</p>}
-          {erro && <p className="text-xs" style={{ color: 'var(--color-danger)', margin: 0 }}>{erro}</p>}
+      {/* O que falta, em palavras. "Não formatar" sozinho manda procurar. */}
+      <p className="text-sm" style={{ margin: 0, color: seguro ? 'var(--color-success)' : 'var(--text-secondary)' }}>
+        {seguro
+          ? 'Pode formatar e devolver para a câmera.'
+          : <>Para liberar, falta {falta.join(' e ')}.</>}
+      </p>
+    </div>
+  );
+}
 
-          <input
-            ref={entrada}
-            type="file"
-            accept=".txt,.mhl,.md5,.xml,.csv,text/*"
-            hidden
-            onChange={e => void ler(e.target.files?.[0])}
-          />
-        </>
-      )}
-
-      {checksums.length === 0 && !podeEditar && (
-        <p className="text-sm text-secondary" style={{ margin: 0 }}>Nenhum comprovante anexado nesta diária.</p>
-      )}
-    </section>
+/** Um passo do cartão: o número vira um ✓ quando está feito. */
+function Passo({ numero: n, feito, titulo, children }: {
+  numero: number;
+  feito: boolean;
+  titulo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+      <span
+        aria-hidden
+        style={{
+          width: '24px', height: '24px', borderRadius: '999px', flexShrink: 0, marginTop: '1px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800,
+          backgroundColor: feito ? 'var(--color-success)' : 'var(--bg-active)',
+          color: feito ? '#0b0b0b' : 'var(--text-secondary)',
+        }}
+      >
+        {feito ? <Check size={14} strokeWidth={3} /> : n}
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0, flex: 1 }}>
+        <span className="text-sm font-bold">
+          <span className="sr-only">{feito ? 'Feito: ' : 'A fazer: '}</span>
+          {titulo}
+        </span>
+        {children}
+      </div>
+    </div>
   );
 }

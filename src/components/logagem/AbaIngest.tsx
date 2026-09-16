@@ -8,6 +8,7 @@ import { db } from '../../db/db';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { Rotulo, MONO } from './pecas';
+import { Guia } from './Guia';
 import {
   cameraECartaoDoNome, comoClipeDoXml, lerArquivosDoCartao, type ClipeLido, type LeituraDoCartao,
 } from '../../lib/logagem/leitura';
@@ -80,7 +81,30 @@ export function AbaIngest({ projetoId, diariaId, diaDaDiaria, podeEditar, depart
   }
 
   if (!leitura) {
-    return <Escolher progresso={progresso} aoEscolher={ler} />;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <Guia
+          id="ingest"
+          titulo="Para que serve o Ingest"
+          passos={[
+            {
+              titulo: 'Copie o cartão antes',
+              texto: 'O Ingest lê a cópia (ou o cartão ainda espetado) e não substitui o backup — esse é na aba Backup.',
+            },
+            {
+              titulo: 'Escolha a pasta do cartão',
+              texto: 'O app lê os XML que a câmera grava junto de cada clipe, o manifesto do DaVinci (.mhl) e confere se cada vídeo abre. Nada sai deste computador.',
+            },
+            {
+              titulo: 'Revise e aplique',
+              texto: 'Primeiro os avisos — vídeo que não abre, clipe de outro dia. Depois o que a câmera corrige nos takes (timecode, duração, lente) e os clipes que ninguém logou. Nada muda antes do botão de aplicar.',
+            },
+          ]}
+          fecho="Resultado: o boletim com o que a câmera realmente gravou — e o camera report sai com timecode e duração de verdade."
+        />
+        <Escolher progresso={progresso} aoEscolher={ler} />
+      </div>
+    );
   }
 
   return (
