@@ -117,6 +117,10 @@ export function cartaoSeguro(dados: {
  * "Não liberado" sozinho manda a pessoa procurar o motivo numa matriz de
  * checkboxes. Dizer o que falta é a diferença entre um aviso e uma instrução.
  */
+/** 'A', 'A e B', 'A, B e C' */
+const listaNatural = (nomes: string[]) =>
+  nomes.length <= 1 ? nomes.join('') : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`;
+
 export function oQueFalta(dados: {
   hds: HdDeBackup[];
   backups: BackupDeCartao[];
@@ -130,7 +134,7 @@ export function oQueFalta(dados: {
     const semCopia = dados.hds.filter(
       h => !dados.backups.some(b => b.hd_id === h.id && String(b.cartao).trim() === String(dados.cartao).trim())
     );
-    if (semCopia.length) faltas.push(`copiar para ${semCopia.map(h => h.nome).join(', ')}`);
+    if (semCopia.length) faltas.push(`copiar para ${listaNatural(semCopia.map(h => h.nome))}`);
   }
   if (!temChecksum(dados.checksums, dados.cartao)) faltas.push('anexar o comprovante de verificação');
   return faltas;
