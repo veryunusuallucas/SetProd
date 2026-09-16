@@ -9,7 +9,7 @@ import { Abre } from './pecas';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
 import {
-  aberturaQueCabe, aberturasDaLente, escalaDa, criarKitDeCamera, criarKitDeLente, excluirKit,
+  aberturaQueCabe, aberturasDaLente, escalaDa, formatarF, criarKitDeCamera, criarKitDeLente, excluirKit,
   comEscala, faixaDaLente, importarKit, kitsDoProjeto, lerAbertura, renomearKit, salvarCameras, salvarLentes, trocarCamera,
   type EscalaDaAbertura,
 } from '../../lib/logagem/kits';
@@ -38,6 +38,36 @@ export function KitDeCameras({ projetoId, estado, bloqueado, aoMudar, departamen
   const kit = lista.find(k => k.id === estado.kit_camera_id) ?? lista[0];
   const cameras = kit?.cameras ?? [];
   const [abrindo, setAbrindo] = useState(false);
+  /** A câmera em edição (pela letra de antes da edição). */
+  const [editando, setEditando] = useState<string | null>(null);
+  const emEdicao = cameras.find(c => c.id === editando);
+
+  /*
+    Editar a câmera ATIVA mexe só na letra e no modelo. O cartão e o clipe dela
+    são os do "Próximo arquivo", lá em cima — é lá que a troca de cartão passa
+    pela trava do backup, e um segundo caminho para trocar o cartão pularia a
+    trava.
+  */
+  const editar = async (dados: { id: string; modelo: string; reel?: string; clipe?: string }) => {
+    if (!kit || !emEdicao) return;
+    const letra = dados.id.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+    if (!letra) return 'A câmera precisa de uma letra.';
+    if (letra !== emEdicao.id && cameras.some(c => c.id === letra)) return `Já existe a câmera ${letra}.`;
+    const ehAtiva = emEdicao.id === estado.camera_id;
+    const clipe = parseInt(String(dados.clipe ?? '').replace(/\D/g, ''), 10);
+    const nova: CameraDoKit = {
+      ...emEdicao,
+      id: letra,
+      modelo: dados.modelo.trim() || emEdicao.modelo,
+      ...(ehAtiva ? {} : {
+        reel: (dados.reel ?? '').trim() || emEdicao.reel,
+        clipe: Number.isFinite(clipe) && clipe > 0 ? clipe : emEdicao.clipe,
+      }),
+    };
+    await salvarCameras(kit.id, cameras.map(c => (c.id === emEdicao.id ? nova : c)));
+    if (ehAtiva && letra !== estado.camera_id) aoMudar({ camera_id: letra });
+    setEditando(null);
+  };
 
   const ativar = async (id: string) => {
     if (bloqueado || !kit) return;
@@ -110,6 +140,8 @@ export function KitDeCameras({ projetoId, estado, bloqueado, aoMudar, departamen
               titulo={`Ativar a câmera ${c.id}`}
               aoClicar={() => void ativar(c.id)}
               aoRemover={bloqueado ? undefined : () => void remover(c)}
+              aoEditar={bloqueado ? undefined : () => { setAbrindo(false); setEditando(v => (v === c.id ? null : c.id)); }}
+              editando={editando === c.id}
             >
               <span className="text-lg font-bold" style={{ lineHeight: 1 }}>{c.id}</span>
               <span className="text-xs text-secondary">{c.modelo}</span>
@@ -129,7 +161,30 @@ export function KitDeCameras({ projetoId, estado, bloqueado, aoMudar, departamen
 
       {!bloqueado && (
         <>
-          <BotaoDeAbrir aberto={abrindo} aoAlternar={() => setAbrindo(v => !v)}>
+          {emEdicao && (
+            <Formulario
+              key={`editar-${emEdicao.id}`}
+              aberto
+              titulo={`Editar a câmera ${emEdicao.id}`}
+              iniciais={{ id: emEdicao.id, modelo: emEdicao.modelo, reel: emEdicao.reel, clipe: String(emEdicao.clipe) }}
+              campos={[
+                { chave: 'id', rotulo: 'Letra', placeholder: 'A', largura: '80px' },
+                { chave: 'modelo', rotulo: 'Modelo', placeholder: 'FX30' },
+                ...(emEdicao.id === estado.camera_id ? [] : [
+                  { chave: 'reel', rotulo: 'Cartão', placeholder: '001', largura: '90px' },
+                  { chave: 'clipe', rotulo: 'Próximo clipe', placeholder: '1', largura: '110px', numero: true },
+                ]),
+              ]}
+              aoEnviar={editar}
+              aoFechar={() => setEditando(null)}
+            />
+          )}
+          {emEdicao?.id === estado.camera_id && (
+            <p className="text-xs text-muted" style={{ margin: 0 }}>
+              O cartão e o clipe da câmera em uso se mudam no "Próximo arquivo", lá em cima.
+            </p>
+          )}
+          <BotaoDeAbrir aberto={abrindo} aoAlternar={() => { setEditando(null); setAbrindo(v => !v); }}>
             {kit ? 'Acrescentar câmera' : 'Criar kit com a câmera de agora'}
           </BotaoDeAbrir>
           <Formulario
@@ -148,6 +203,14 @@ export function KitDeCameras({ projetoId, estado, bloqueado, aoMudar, departamen
 }
 
 /* ───────────────────────── Lentes ───────────────────────── */
+
+const CAMPOS_DA_LENTE = [
+  { chave: 'nome', rotulo: 'Nome', placeholder: 'Helios 44' },
+  { chave: 'focal', rotulo: 'Focal', placeholder: '58mm', largura: '110px' },
+  { chave: 'escala', rotulo: 'Marcada em', opcoes: [{ id: 'f', nome: 'f-stop' }, { id: 'T', nome: 'T-stop' }] },
+  { chave: 'abre', rotulo: 'Abre até', placeholder: '2 ou 1.5', largura: '100px', numero: true },
+  { chave: 'fecha', rotulo: 'Fecha até', placeholder: '22', largura: '100px', numero: true },
+];
 
 export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departamentoId }: Props) {
   const kits = useLiveQuery(() => kitsDoProjeto(projetoId, 'lente'), [projetoId]);
@@ -204,6 +267,34 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
     await salvarLentes(kit.id, [...lentes, nova]);
   };
 
+  const [editando, setEditando] = useState<string | null>(null);
+  const emEdicao = lentes.find(l => l.id === editando);
+
+  const editar = async (dados: { nome: string; focal: string; abre: string; fecha: string; escala: string }) => {
+    if (!kit || !emEdicao) return;
+    if (!dados.nome.trim()) return 'A lente precisa de um nome.';
+    const abre = lerAbertura(dados.abre)?.numero;
+    const fecha = lerAbertura(dados.fecha)?.numero;
+    if (abre && fecha && abre > fecha) return 'O "abre até" é o número menor (T1.5, f/2); o "fecha até", o maior.';
+    const nova: LenteDoKit = {
+      ...emEdicao,
+      nome: dados.nome.trim(),
+      focal: dados.focal.trim() || undefined,
+      abre: abre || emEdicao.abre,
+      fecha: fecha || emEdicao.fecha,
+      escala: dados.escala === 'T' ? 'T' : 'f',
+    };
+    await salvarLentes(kit.id, lentes.map(l => (l.id === nova.id ? nova : l)));
+    // A lente em uso acompanha: o nome na claquete e a abertura na escala nova.
+    if (estado.lente_ref === nova.id) {
+      aoMudar({
+        lente: `${nova.nome}${nova.focal ? ` ${nova.focal}` : ''}`.trim(),
+        abertura: aberturaQueCabe(estado.abertura, aberturasDaLente(nova)),
+      });
+    }
+    setEditando(null);
+  };
+
   const remover = async (l: LenteDoKit) => {
     if (!kit) return;
     if (!(await confirmar({ titulo: `Tirar a ${l.nome} do kit?`, confirmar: 'Tirar', perigo: true }))) return;
@@ -239,6 +330,8 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
               titulo={`Usar a ${l.nome}`}
               aoClicar={() => escolher(l)}
               aoRemover={bloqueado ? undefined : () => void remover(l)}
+              aoEditar={bloqueado ? undefined : () => { setAbrindo(false); setEditando(v => (v === l.id ? null : l.id)); }}
+              editando={editando === l.id}
             >
               <span className="text-sm font-bold" style={{ lineHeight: 1.2 }}>{l.nome}</span>
               <span className="text-xs text-secondary">{l.focal || '—'}</span>
@@ -301,18 +394,26 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
 
       {!bloqueado && (
         <>
-          <BotaoDeAbrir aberto={abrindo} aoAlternar={() => setAbrindo(v => !v)}>
+          {emEdicao && (
+            <Formulario
+              key={`editar-${emEdicao.id}`}
+              aberto
+              titulo={`Editar a ${emEdicao.nome}`}
+              iniciais={{
+                nome: emEdicao.nome, focal: emEdicao.focal || '', escala: escalaDa(emEdicao),
+                abre: formatarF(emEdicao.abre), fecha: formatarF(emEdicao.fecha),
+              }}
+              campos={CAMPOS_DA_LENTE}
+              aoEnviar={editar}
+              aoFechar={() => setEditando(null)}
+            />
+          )}
+          <BotaoDeAbrir aberto={abrindo} aoAlternar={() => { setEditando(null); setAbrindo(v => !v); }}>
             {kit ? 'Acrescentar lente' : 'Criar kit de lentes'}
           </BotaoDeAbrir>
           <Formulario
             aberto={abrindo}
-            campos={[
-              { chave: 'nome', rotulo: 'Nome', placeholder: 'Helios 44' },
-              { chave: 'focal', rotulo: 'Focal', placeholder: '58mm', largura: '110px' },
-              { chave: 'escala', rotulo: 'Marcada em', opcoes: [{ id: 'f', nome: 'f-stop' }, { id: 'T', nome: 'T-stop' }] },
-              { chave: 'abre', rotulo: 'Abre até', placeholder: '2 ou 1.5', largura: '100px', numero: true },
-              { chave: 'fecha', rotulo: 'Fecha até', placeholder: '22', largura: '100px', numero: true },
-            ]}
+            campos={CAMPOS_DA_LENTE}
             aoEnviar={acrescentar}
             aoFechar={() => setAbrindo(false)}
           />
@@ -472,13 +573,15 @@ function ImportarDeOutraProducao({ aberto, tipo, projetoId, departamentoId, aoIm
  * `marcador` separa os dois grupos: se câmeras e lentes dividissem o mesmo
  * `layoutId`, a moldura voaria de uma seção para a outra atravessando a tela.
  */
-function Chip({ ativo, marcador, bloqueado, titulo, aoClicar, aoRemover, children }: {
+function Chip({ ativo, marcador, bloqueado, titulo, aoClicar, aoRemover, aoEditar, editando, children }: {
   ativo: boolean;
   marcador: string;
   bloqueado: boolean;
   titulo: string;
   aoClicar: () => void;
   aoRemover?: () => void;
+  aoEditar?: () => void;
+  editando?: boolean;
   children: React.ReactNode;
 }) {
   const reduzido = useMovimentoReduzido();
@@ -492,7 +595,8 @@ function Chip({ ativo, marcador, bloqueado, titulo, aoClicar, aoRemover, childre
         onClick={aoClicar}
         style={{
           position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px',
-          minHeight: '76px', minWidth: '140px', padding: '12px 46px 12px 14px', textAlign: 'left',
+          // Com X em cima e lápis embaixo, os dois alvos de 44px pedem 88px de altura.
+          minHeight: aoEditar && aoRemover ? '88px' : '76px', minWidth: '140px', padding: '12px 46px 12px 14px', textAlign: 'left',
           borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)',
           backgroundColor: 'var(--bg-primary)', color: 'inherit',
           cursor: bloqueado ? 'default' : 'pointer', opacity: bloqueado && !ativo ? 0.55 : 1,
@@ -530,18 +634,39 @@ function Chip({ ativo, marcador, bloqueado, titulo, aoClicar, aoRemover, childre
           <X size={14} />
         </button>
       )}
+      {aoEditar && (
+        <button
+          type="button"
+          title="Editar"
+          aria-label="Editar"
+          aria-expanded={editando}
+          onClick={aoEditar}
+          style={{
+            position: 'absolute', bottom: 0, right: 0, width: '44px', height: '44px',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '9px',
+            border: 'none', borderRadius: 'var(--radius-md)', background: 'none', cursor: 'pointer',
+            color: editando ? 'var(--cor-criativo)' : 'var(--text-muted)',
+          }}
+        >
+          <Pencil size={14} />
+        </button>
+      )}
     </div>
   );
 }
 
 /** Um formulário curto que desce de dentro da seção, sem tirar a tela do lugar. */
-function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar, aoFechar }: {
+function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar, aoFechar, iniciais, titulo }: {
   aberto: boolean;
+  /** Para editar: o formulário abre já preenchido. */
+  iniciais?: Record<string, string>;
+  /** Uma linha em cima dizendo o que se edita. */
+  titulo?: string;
   campos: { chave: string; rotulo: string; placeholder?: string; largura?: string; numero?: boolean; opcoes?: { id: string; nome: string }[] }[];
   aoEnviar: (dados: T) => Promise<string | void>;
   aoFechar: () => void;
 }) {
-  const [valores, setValores] = useState<Record<string, string>>({});
+  const [valores, setValores] = useState<Record<string, string>>(iniciais ?? {});
   const [erro, setErro] = useState('');
 
   const enviar = async () => {
@@ -557,6 +682,7 @@ function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar
   return (
     <Abre aberto={aberto}>
       <div style={caixaDeForma}>
+        {titulo && <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ width: '100%' }}>{titulo}</span>}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap', flex: 1 }}>
           {campos.map(c => (
             <div key={c.chave} role="group" style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: c.largura, flex: c.largura ? '0 0 auto' : '1 1 140px', minWidth: 0 }}>

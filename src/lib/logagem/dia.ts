@@ -62,8 +62,17 @@ export function itensAFrente(dia: DiaCalculado, atraso: Atraso, agoraMin: number
       let faltam: number | undefined;
       if (i === 0 && agoraMin !== null) {
         faltam = alvo - agoraMin;
+        /*
+          Só a virada para a frente: o dia calculado não volta a zero depois da
+          meia-noite (00:30 do dia seguinte é 1470), então "muito à frente" é o
+          relógio que já virou. "Muito atrás" é só atraso — somar um dia ali
+          transformava a refeição de 07:00, ainda sem marcar às 19:00, em
+          "em 11h58".
+        */
         if (faltam > 720) faltam -= 1440;
-        if (faltam < -720) faltam += 1440;
+        // Ninguém marcou nada: não há como saber o atraso, e "atrasou 12h" num
+        // dia só não marcado seria alarme falso. Fica o horário, sem contagem.
+        if (atraso.marcados === 0 && faltam < 0) faltam = undefined;
       }
       return {
         id: c.item.id,
