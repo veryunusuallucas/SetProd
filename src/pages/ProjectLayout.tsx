@@ -7,7 +7,7 @@ import { useOcuparRodape } from '../components/ui/slotFlutuante';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
-  ChevronLeft, MapPin, Camera, CheckSquare, CalendarDays, CalendarClock, Search,
+  ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
   LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database, Clapperboard
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
@@ -143,7 +143,6 @@ export function ProjectLayout() {
       title: 'EQUIPE',
       items: [
         { name: 'Produção', path: `/projeto/${id}/producao`, icon: Users, exact: false },
-        { name: 'Equipamentos', path: `/projeto/${id}/equipamentos`, icon: Camera, exact: false },
       ]
     },
     {
@@ -371,8 +370,7 @@ export function ProjectLayout() {
         {/*
           Este slot mudava conforme o papel simulado (fotografia via
           Equipamentos, resto via Tasks). Com A e B no mesmo nível não há mais
-          de onde tirar essa escolha, então fica Tasks, que serve a todo mundo —
-          Equipamentos continua a um toque, pelo "Mais".
+          de onde tirar essa escolha, então fica Tasks, que serve a todo mundo.
         */}
         <NavLink to={`/projeto/${id}/tasks`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <ListTodo size={20} />

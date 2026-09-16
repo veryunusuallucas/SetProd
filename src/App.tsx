@@ -56,8 +56,6 @@ function Carregando() {
   );
 }
 
-// Placeholder components for new v3 modules
-const EquipamentosModule = () => <div className="screen-padding">Módulo de Equipamentos - Em breve</div>;
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -115,7 +113,8 @@ function App() {
               <Route path="logagem" element={<LogagemPage />} />
               <Route path="diaria/:diariaId" element={<DiariaModule />} />
               <Route path="locacoes" element={<LocacoesModule />} />
-              <Route path="equipamentos" element={<EquipamentosModule />} />
+              {/* Equipamentos saiu do menu (não é prioridade agora); link antigo vai ao início */}
+              <Route path="equipamentos" element={<Navigate to=".." replace />} />
               <Route path="tasks" element={<TasksModule />} />
               <Route path="decupagem" element={<DecupagemModule />} />
               {/* Roteiro virou uma aba dentro de Decupagem; link antigo redireciona */}
