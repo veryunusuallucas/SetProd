@@ -186,3 +186,71 @@ export function claqueteLegivel(take: Pick<Take, 'cena' | 'plano' | 'take' | 'st
   if (take.status === 'IMPORT' || vazia) return 'sem claquete';
   return `${take.cena} · ${take.plano} · take ${take.take}`;
 }
+
+/* ───────────────────────── Editar depois ───────────────────────── */
+
+/** O que se corrige num take já registrado. O resto é a fotografia do momento. */
+export type EdicaoDoTake = Partial<Pick<Take, 'status' | 'cena' | 'plano' | 'take' | 'arquivo' | 'obs' | 'lente' | 'abertura' | 'nd'>>;
+
+export type CampoComCascata = 'cena' | 'plano' | 'arquivo';
+
+/**
+ * O próximo nome de arquivo: soma um ao ÚLTIMO grupo de dígitos, com os zeros.
+ *
+ * `A001C009` → `A001C010`; `DJI_0099` → `DJI_0100`; `C0148` → `C0149`. Sem
+ * dígito no nome, não há o que numerar e o nome fica igual.
+ */
+export function proximoArquivo(nome: string): string {
+  const m = /(\d+)(\D*)$/.exec(nome);
+  if (!m || m.index === undefined) return nome;
+  const numero = String(Number(m[1]) + 1).padStart(m[1].length, '0');
+  return nome.slice(0, m.index) + numero + m[2];
+}
+
+/**
+ * Quais takes SEGUINTES a correção deveria alcançar (a cascata do Lumavi).
+ *
+ * O caso real: o cartão foi logado como cena 4 por quinze takes, e a cena era
+ * a 5. Corrigir o primeiro e ter de corrigir os outros catorze à mão é o
+ * trabalho que faz ninguém corrigir. Por isso a pergunta:
+ *
+ * - **cena:** os seguintes que estavam na MESMA cena antiga;
+ * - **plano:** os seguintes com o mesmo plano antigo, na mesma cena;
+ * - **arquivo:** todos os seguintes, renumerados em sequência (o clipe pulou
+ *   um número e tudo depois ficou deslocado).
+ *
+ * Sempre da MESMA câmera: com duas câmeras, o erro nasce no boletim de uma
+ * delas, e a outra não tem nada a ver com a correção.
+ *
+ * "Seguintes" é pela `ordem`. O take importado entra só na cascata de arquivo:
+ * ele não tem claquete para ser "a mesma".
+ */
+export function alvosDaCascata(takes: Take[], editado: Take, campo: CampoComCascata, antigo: string): Take[] {
+  const igual = (a: unknown, b: unknown) => String(a ?? '').trim().toUpperCase() === String(b ?? '').trim().toUpperCase();
+  const seguintes = [...takes]
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+    .filter(t => t.id !== editado.id && (t.ordem ?? 0) > (editado.ordem ?? 0))
+    .filter(t => igual(t.camera_id, editado.camera_id));
+
+  if (campo === 'cena') return seguintes.filter(t => t.status !== 'IMPORT' && igual(t.cena, antigo));
+  if (campo === 'plano') return seguintes.filter(t => t.status !== 'IMPORT' && igual(t.plano, antigo) && igual(t.cena, editado.cena));
+  return seguintes;
+}
+
+/** O que muda em cada alvo. Separado para poder mostrar antes de gravar. */
+export function mudancasDaCascata(campo: CampoComCascata, alvos: Take[], novo: string): { id: string; mudanca: EdicaoDoTake }[] {
+  if (campo !== 'arquivo') return alvos.map(t => ({ id: t.id, mudanca: { [campo]: novo } }));
+  let anterior = novo;
+  return alvos.map(t => {
+    anterior = proximoArquivo(anterior);
+    return { id: t.id, mudanca: { arquivo: anterior } };
+  });
+}
+
+export const editarTake = (id: string, mudanca: EdicaoDoTake) => db.log_takes.update(id, mudanca);
+
+export async function aplicarMudancas(lista: { id: string; mudanca: EdicaoDoTake }[]) {
+  await db.transaction('rw', db.log_takes, async () => {
+    for (const { id, mudanca } of lista) await db.log_takes.update(id, mudanca);
+  });
+}

@@ -14,6 +14,8 @@ import { FotoDeReferencia } from './FotoDeReferencia';
 import { PlanosDaDecupagem } from './PlanosDaDecupagem';
 import { ExportarRelatorios } from './ExportarRelatorios';
 import { Acompanhamento } from './Acompanhamento';
+import { NotasRapidas } from './NotasRapidas';
+import { acrescentarNota } from '../../lib/logagem/notas';
 import {
   NOME_DA_DENSIDADE, densidadeInicial, densidadesPossiveis, lembrarDensidade, lerDensidadeLembrada,
   type Densidade,
@@ -75,6 +77,28 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
   );
   const trocarDensidade = (nova: Densidade) => { setDensidade(nova); lembrarDensidade(nova); };
 
+  /*
+    Enter leva o cursor à observação (§6.4). Mesmas regras do Espaço: não vale
+    quando alguém já está digitando ou com um botão em foco — ali o Enter é do
+    campo, ou é o clique do botão.
+  */
+  useEffect(() => {
+    if (!podeEditar || densidade === 'acompanhamento') return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return;
+      const alvo = e.target as HTMLElement | null;
+      if (alvo && (alvo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(alvo.tagName))) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      const campo = document.querySelector<HTMLTextAreaElement>('[data-logagem-obs] textarea');
+      if (!campo || campo.disabled) return;
+      e.preventDefault();
+      campo.focus();
+      campo.setSelectionRange(campo.value.length, campo.value.length);
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [podeEditar, densidade]);
+
   const seletorDeVisao = (
     <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px' }}>
       <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -104,6 +128,19 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
   }
 
   const detalhada = densidade === 'detalhada';
+
+  /*
+    A pílula lê a observação do BANCO, como os steppers. Tocar nela tira o foco
+    do campo, e sair do campo grava o que foi digitado; a leitura, pedida depois
+    disso, já encontra o texto novo.
+  */
+  const acrescentar = (nota: string) => {
+    if (!podeEditar) return;
+    void (async () => {
+      const atual = (await db.log_estado.get(idDoEstado(diariaId))) ?? estado;
+      await mudarEstado(diariaId, { obs: acrescentarNota(atual.obs || '', nota) });
+    })();
+  };
 
   /*
     O − e o + leem do BANCO, e não do que está na tela.
@@ -246,16 +283,20 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
 
       <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
         <Rotulo icone={<MessageSquare size={14} />}>Observação deste take</Rotulo>
-        <CampoTexto
-          value={estado.obs || ''}
-          aoGravar={v => mudar({ obs: v })}
-          disabled={bloqueado}
-          linhas={3}
-          placeholder="passou avião, o bom é o fim, foco perdido no meio…"
-          style={estiloCampo}
-        />
+        <div data-logagem-obs>
+          <CampoTexto
+            value={estado.obs || ''}
+            aoGravar={v => mudar({ obs: v })}
+            disabled={bloqueado}
+            linhas={3}
+            placeholder="passou avião, o bom é o fim, foco perdido no meio…"
+            style={estiloCampo}
+          />
+        </div>
+        <NotasRapidas bloqueado={bloqueado} aoTocar={acrescentar} />
         <p className="text-xs text-muted" style={{ margin: 0 }}>
           A observação é do take que vem, e se apaga quando ele for registrado.
+          {detalhada && ' Enter leva o cursor para cá.'}
         </p>
       </section>
 
