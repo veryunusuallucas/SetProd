@@ -14,6 +14,7 @@ const PASTAS_POR_ORIGEM: Record<OrigemDocumento, { nome: string; cor: string }> 
   diaria: { nome: 'Diárias', cor: '#fca311' },
   storyboard: { nome: 'Storyboard', cor: '#9d4edd' },
   od: { nome: 'Ordens do Dia', cor: '#fb8500' },
+  camera_report: { nome: 'Camera Reports', cor: '#e63946' },
 };
 
 /**
@@ -99,6 +100,7 @@ export function descreverOrigem(doc: Documento): string | null {
     case 'diaria': return 'o anexo da diária';
     case 'storyboard': return 'a referência de storyboard da cena';
     case 'od': return null;
+    case 'camera_report': return null;
     default: return null;
   }
 }

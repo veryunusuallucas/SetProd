@@ -15,6 +15,7 @@ import {
   anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos,
   criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta, temChecksum,
 } from '../../lib/logagem/backup';
+import { ExportarRelatorios } from './ExportarRelatorios';
 
 /**
  * Aba Backup: o cartão pode ser formatado?
@@ -68,6 +69,8 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
         departamentoId={departamentoId}
         quem={quem}
       />
+
+      <ExportarRelatorios diariaId={diariaId} podeEditar={podeEditar} />
     </div>
   );
 }
