@@ -26,6 +26,7 @@ import { estadoDa, publicarDiaria, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { montarLinha, ordemParaEntrarNoBloco } from '../lib/stripboard';
 import { faseDoDia } from '../lib/faseDoDia';
 import { ResumoEquipamento } from '../components/ResumoEquipamento';
+import { ResumoDaLogagem } from '../components/ResumoDaLogagem';
 import { CardDeLocacao } from '../components/CardDeLocacao';
 import { AvisoDeRitmo } from '../components/AvisoDeRitmo';
 import { EstadoDaDiaria } from '../components/EstadoDaDiaria';
@@ -1386,6 +1387,10 @@ export function DiariaModule() {
           {/* O que a fotografia conferiu. Some sozinho quando não há acervo
               vinculado — ver `ResumoEquipamento`. */}
           <ResumoEquipamento projetoId={projetoId!} diariaId={diariaId!} />
+
+          {/* O que a câmera rodou, em números. Some sozinho quando a diária não
+              tem take — ver `ResumoDaLogagem`. */}
+          <ResumoDaLogagem projetoId={projetoId!} diariaId={diariaId!} />
         </div>
       </div>
 

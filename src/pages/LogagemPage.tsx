@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
@@ -76,7 +76,13 @@ export default function LogagemPage() {
     [diarias]
   );
 
-  const [diariaId, setDiariaId] = useState<string>('');
+  /*
+    O link "Abrir a Logagem" da página da diária traz `?diaria=`. Sem isso, a
+    Logagem abriria na diária de HOJE — e quem veio conferir a de ontem cairia
+    na tela errada sem perceber.
+  */
+  const [parametros] = useSearchParams();
+  const [diariaId, setDiariaId] = useState<string>(() => parametros.get('diaria') || '');
   useEffect(() => {
     // Só escolhe sozinho quando ainda não há escolha (ou a escolhida sumiu).
     if (!diarias) return;
