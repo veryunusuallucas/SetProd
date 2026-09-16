@@ -1,3 +1,4 @@
+import { db } from '../../db/db';
 import type { StatusTake, Take } from '../../types';
 import type { ClipeDoXml } from './nrt';
 
@@ -140,4 +141,30 @@ export function takeImportado(
     xml: clipe.meta,
     criado_em: Date.now(),
   };
+}
+
+/**
+ * Aplica o que a pessoa aprovou na tela: corrige os takes e cria os importados.
+ *
+ * Só recebe o que foi escolhido. A decisão de quais clipes entram (os de outro
+ * dia, os com arquivo estragado) é da tela, à vista de quem está aplicando —
+ * aqui não se decide nada.
+ */
+export async function aplicarIngest(opcoes: {
+  base: { projeto_id: string; diaria_id: string; departamento_id?: string };
+  corrigir: { take: Take; clipe: ClipeDoXml }[];
+  importar: { clipe: ClipeDoXml; camera_id: string; cartao: string }[];
+}): Promise<{ corrigidos: number; importados: number }> {
+  for (const { take, clipe } of opcoes.corrigir) {
+    await db.log_takes.update(take.id, correcaoDoTake(clipe, take.xml));
+  }
+
+  const existentes = await db.log_takes.where('diaria_id').equals(opcoes.base.diaria_id).toArray();
+  let ordem = existentes.reduce((maior, t) => Math.max(maior, t.ordem || 0), 0);
+  for (const { clipe, camera_id, cartao } of opcoes.importar) {
+    ordem += 1;
+    await db.log_takes.add(takeImportado(clipe, { ...opcoes.base, camera_id, cartao }, ordem));
+  }
+
+  return { corrigidos: opcoes.corrigir.length, importados: opcoes.importar.length };
 }

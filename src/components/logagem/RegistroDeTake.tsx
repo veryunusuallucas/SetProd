@@ -11,7 +11,7 @@ import { ImagemAnexo } from '../ImagemAnexo';
 import { apagarArquivo } from '../../lib/arquivos';
 import { MONO, Rotulo } from './pecas';
 import {
-  COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo,
+  COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo, claqueteLegivel,
   registrarTake, substituirTake,
 } from '../../lib/logagem/takes';
 import { mudarEstado } from '../../lib/logagem/estado';
@@ -239,9 +239,18 @@ export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Take
   );
 }
 
+/*
+  OK, NG e HERO são siglas e não variam. "Importado" e "REC invertido" são
+  palavras — "42 Importado" lê como erro de digitação.
+*/
+const NO_PLACAR: Record<StatusTake, string> = { OK: 'OK', NG: 'NG', HERO: 'HERO', RECINV: 'REC invertido', IMPORT: 'importado' };
+const NO_PLACAR_PLURAL: Record<StatusTake, string> = { OK: 'OK', NG: 'NG', HERO: 'HERO', RECINV: 'REC invertidos', IMPORT: 'importados' };
+
 function contar(takes: Take[]) {
   const por = takes.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.status]: (acc[t.status] || 0) + 1 }), {});
-  return Object.entries(por).map(([s, n]) => `${n} ${ROTULO_DO_STATUS[s as StatusTake]}`).join(' · ');
+  return Object.entries(por)
+    .map(([s, n]) => `${n} ${(n === 1 ? NO_PLACAR : NO_PLACAR_PLURAL)[s as StatusTake]}`)
+    .join(' · ');
 }
 
 /**
@@ -307,7 +316,7 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
       )}
 
       <span className="text-sm font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-        {take.cena} · {take.plano} · take {take.take}
+        {claqueteLegivel(take)}
       </span>
 
       <span className="text-xs text-secondary" style={{ fontFamily: MONO }}>{take.arquivo}</span>

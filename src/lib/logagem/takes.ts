@@ -170,3 +170,16 @@ export function claqueteDoAcrescimo(takes: Take[], estado: EstadoDaLogagem) {
 }
 
 export const apagarTake = (id: string) => db.log_takes.delete(id);
+
+/**
+ * A claquete do take, para mostrar.
+ *
+ * O take importado pelo ingest não tem claquete — ninguém bateu uma para ele.
+ * Montar "cena · plano · take" com campos vazios daria ` ·  · take 0`, que
+ * parece defeito e ainda sugere um take zero que não existe.
+ */
+export function claqueteLegivel(take: Pick<Take, 'cena' | 'plano' | 'take' | 'status'>): string {
+  const vazia = !String(take.cena ?? '').trim() && !String(take.plano ?? '').trim();
+  if (take.status === 'IMPORT' || vazia) return 'sem claquete';
+  return `${take.cena} · ${take.plano} · take ${take.take}`;
+}

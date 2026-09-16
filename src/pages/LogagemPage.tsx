@@ -13,6 +13,7 @@ import { podeEditarLogagem, departamentoDaFotografia, visaoPadraoDeQuemVe } from
 import { AbaCamera } from '../components/logagem/AbaCamera';
 import { AbaLogagem } from '../components/logagem/AbaLogagem';
 import { AbaBackup } from '../components/logagem/AbaBackup';
+import { AbaIngest } from '../components/logagem/AbaIngest';
 import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
@@ -229,6 +230,7 @@ export default function LogagemPage() {
             <ConteudoDaAba
               aba={aba}
               diariaNumero={diaria?.numero}
+              diariaData={diaria?.data}
               projetoId={projetoId}
               diariaId={diariaId}
               podeEditar={podeEditar}
@@ -292,9 +294,10 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 }
 
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
-function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe, quem }: {
+function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe, quem }: {
   aba: Aba;
   diariaNumero?: number;
+  diariaData?: string;
   projetoId: string;
   diariaId: string;
   podeEditar: boolean;
@@ -321,9 +324,12 @@ function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, dep
           <AvisoComputador />
         </div>
         <div className="desktop-only">
-          <EmConstrucao
-            titulo="Ingest"
-            texto={`Escolha a pasta do cartão ou do backup, e o app lê os XML da câmera: codec, timecode, lente, ISO. Onde o XML discordar do que foi logado, ele corrige — e mostra tudo antes de aplicar. Os XML não saem do computador.`}
+          <AbaIngest
+            projetoId={projetoId}
+            diariaId={diariaId}
+            diaDaDiaria={diariaData}
+            podeEditar={podeEditar}
+            departamentoId={departamentoId}
           />
         </div>
       </>
