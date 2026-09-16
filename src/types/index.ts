@@ -1413,7 +1413,7 @@ export interface ChecksumDeCartao {
   departamento_id?: string;
   cartao: string;
   nome_arquivo: string;
-  algoritmo: 'SHA-256';
+  algoritmo: 'SHA-256' | 'FNV-1a';
   digest: string;
   bytes: number;
   linhas: number;
