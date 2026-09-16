@@ -11,6 +11,7 @@ import { OPCOES } from '../../lib/logagem/opcoes';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { RegistroDeTake } from './RegistroDeTake';
 import { FotoDeReferencia } from './FotoDeReferencia';
+import { PlanosDaDecupagem } from './PlanosDaDecupagem';
 import { useAuth } from '../../hooks/useAuth';
 import { Acompanhamento } from './Acompanhamento';
 import {
@@ -115,9 +116,17 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
     if (!podeEditar) return;
     void (async () => {
       const atual = (await db.log_estado.get(idDoEstado(diariaId))) ?? estado;
-      await mudarEstado(diariaId, passoNaClaquete(atual, campo, direcao));
+      await mudarEstado(diariaId, { ...passoNaClaquete(atual, campo, direcao), ...soltarDaDecupagem(campo) });
     })();
   };
+
+  /*
+    Mexer à mão na cena ou no plano desfaz o vínculo com a decupagem: a
+    claquete deixou de ser aquele plano, e o take não pode sair dizendo que
+    foi. Mudar só o take mantém o vínculo — é o mesmo plano, rodado de novo.
+  */
+  const soltarDaDecupagem = (campo: 'cena' | 'plano' | 'take'): Partial<EstadoDaLogagem> =>
+    campo === 'take' ? {} : { cena_id: '', plano_id: '' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -140,7 +149,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
             valor={String(estado.cena)}
             bloqueado={bloqueado}
             aoPassar={d => passo('cena', d)}
-            aoDigitar={v => mudar(digitarNaClaquete(estado, 'cena', v))}
+            aoDigitar={v => mudar({ ...digitarNaClaquete(estado, 'cena', v), ...soltarDaDecupagem('cena') })}
           />
           <Contador
             rotulo="Plano"
@@ -148,7 +157,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
             bloqueado={bloqueado}
             maiuscula={letras}
             aoPassar={d => passo('plano', d)}
-            aoDigitar={v => mudar(digitarNaClaquete(estado, 'plano', v))}
+            aoDigitar={v => mudar({ ...digitarNaClaquete(estado, 'plano', v), ...soltarDaDecupagem('plano') })}
           />
           <Contador
             rotulo="Take"
@@ -159,6 +168,8 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
             aoDigitar={v => mudar(digitarNaClaquete(estado, 'take', v))}
           />
         </div>
+
+        <PlanosDaDecupagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} />
 
         {/*
           A cascata é a convenção do set, e ela surpreende quem nunca viu: mexer

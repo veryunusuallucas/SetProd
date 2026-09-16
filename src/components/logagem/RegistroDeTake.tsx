@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
@@ -9,7 +9,7 @@ import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
 import { ImagemAnexo } from '../ImagemAnexo';
 import { apagarArquivo } from '../../lib/arquivos';
-import { MONO, Rotulo } from './pecas';
+import { Abre, MONO, Rotulo } from './pecas';
 import {
   COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo, claqueteLegivel,
   registrarTake, substituirTake,
@@ -137,7 +137,7 @@ export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
           No computador: <strong>Espaço</strong> para OK, <strong>Shift+Espaço</strong> para NG.
         </p>
 
-        <Decisao aberta={Boolean(revisando)}>
+        <Abre aberto={Boolean(revisando)}>
           {revisando && (
             <Caixa
               titulo={`Registrar este take como ${ROTULO_DO_STATUS[revisando]}?`}
@@ -148,9 +148,9 @@ export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
               ]}
             />
           )}
-        </Decisao>
+        </Abre>
 
-        <Decisao aberta={Boolean(repetido)}>
+        <Abre aberto={Boolean(repetido)}>
           {repetido && (
             <Caixa
               alerta
@@ -183,7 +183,7 @@ export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
               ]}
             />
           )}
-        </Decisao>
+        </Abre>
       </section>
 
       <ListaDeTakes takes={takes} ultimo={ultimo} podeEditar={podeEditar} limite={limite} />
@@ -343,26 +343,6 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
         </button>
       )}
     </motion.div>
-  );
-}
-
-/** A decisão aparece embaixo dos botões, onde o dedo já está. */
-function Decisao({ aberta, children }: { aberta: boolean; children: React.ReactNode }) {
-  const reduzido = useMovimentoReduzido();
-  return (
-    <AnimatePresence initial={false}>
-      {aberta && (
-        <motion.div
-          initial={reduzido ? false : { height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={reduzido ? { opacity: 0 } : { height: 0, opacity: 0 }}
-          transition={reduzido ? { duration: 0 } : { ...MOLA, opacity: { duration: 0.15 } }}
-          style={{ overflow: 'hidden' }}
-        >
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 

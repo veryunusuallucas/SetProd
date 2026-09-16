@@ -50,6 +50,9 @@ export function montarTake(
     projeto_id: estado.projeto_id,
     diaria_id: estado.diaria_id,
     departamento_id: estado.departamento_id,
+    // O vínculo com a decupagem, quando a claquete veio de lá.
+    cena_id: estado.cena_id || undefined,
+    plano_id: estado.plano_id || undefined,
     cena: String(estado.cena),
     plano: String(estado.plano),
     take: Number(estado.take) || 1,

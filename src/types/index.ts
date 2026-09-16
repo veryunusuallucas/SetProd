@@ -1300,6 +1300,9 @@ export interface EstadoDaLogagem {
   obs?: string;
   /** true = planos em letras de claquete (A, B, C…); false = números. */
   plano_letras: boolean;
+  /** A cena e o plano da decupagem, quando a claquete veio de lá. */
+  cena_id?: string;
+  plano_id?: string;
   // Câmera ativa
   kit_camera_id?: string;
   kit_lente_id?: string;

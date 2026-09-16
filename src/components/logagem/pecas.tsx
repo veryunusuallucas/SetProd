@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -265,5 +265,34 @@ export function ValorQueTroca({ texto, rotuloDeLeitura, tamanho, cor }: {
         </motion.span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Abre e fecha para baixo, com o conteúdo aparecendo junto.
+ *
+ * `height: auto` no framer mede o filho, então o que está dentro pode ter uma
+ * ou dez linhas sem ninguém escrever altura nenhuma. `overflow: hidden` durante
+ * o caminho para o conteúdo não vazar por cima do que vem embaixo.
+ *
+ * Usado pelos formulários dos kits, pelas decisões do registro de take e pela
+ * lista da decupagem — antes eram duas cópias iguais com nomes diferentes.
+ */
+export function Abre({ aberto, children }: { aberto: boolean; children: React.ReactNode }) {
+  const reduzido = useMovimentoReduzido();
+  return (
+    <AnimatePresence initial={false}>
+      {aberto && (
+        <motion.div
+          initial={reduzido ? false : { height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={reduzido ? { opacity: 0 } : { height: 0, opacity: 0 }}
+          transition={reduzido ? { duration: 0 } : { ...MOLA, opacity: { duration: 0.15 } }}
+          style={{ overflow: 'hidden' }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
