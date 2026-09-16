@@ -7,6 +7,7 @@ import type { EstadoDaLogagem, NomenclaturaArquivo } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { CampoTexto } from '../ui/CampoTexto';
 import { BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
+import { Guia } from './Guia';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { OPCOES } from '../../lib/logagem/opcoes';
@@ -54,6 +55,28 @@ export function AbaCamera({ projetoId, diariaId, podeEditar, departamentoId }: {
         <p className="text-sm text-secondary">
           A Fotografia ainda não configurou a câmera desta diária. Abaixo, o ponto de partida.
         </p>
+      )}
+
+      {podeEditar && (
+        <Guia
+          id="camera"
+          titulo="Preparar a câmera para a diária"
+          passos={[
+            {
+              titulo: 'Cadastre as câmeras',
+              texto: 'Cada câmera do kit guarda o seu cartão e o seu clipe. Trocar de câmera troca os contadores junto — numa diária de duas câmeras, o nome do arquivo não erra.',
+            },
+            {
+              titulo: 'Cadastre as lentes',
+              texto: 'Com a faixa de abertura e a escala: f-stop nas lentes de foto, T-stop nas de cinema. A abertura do take só oferece o que a lente alcança.',
+            },
+            {
+              titulo: 'Escolha o formato do nome e confira',
+              texto: 'O "próximo arquivo" aqui tem que ser igual ao que aparece no visor da câmera. Se não for, ajuste o clipe ou o formato antes do primeiro take.',
+            },
+          ]}
+          fecho="Depois disso, o dia acontece na aba Logagem. Aqui você volta para trocar de cartão."
+        />
       )}
 
       <ProximoArquivo estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
@@ -311,10 +334,17 @@ function Setup({ estado, bloqueado, aoMudar }: PropsDeSecao) {
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
       <Rotulo icone={<SlidersHorizontal size={14} />}>Setup da câmera</Rotulo>
       <p className="text-xs text-muted" style={{ marginTop: '-6px' }}>Vai junto em cada take registrado, até alguém mudar aqui.</p>
+      {/* Dois grupos: o que define o arquivo (e quase nunca muda no dia) e o que
+          se mexe de plano em plano. Misturados, a pessoa procurava o ISO no meio
+          do codec. */}
+      <span className="text-xs font-bold uppercase tracking-widest text-muted">Imagem</span>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(160px, 100%), 1fr))', gap: '12px' }}>
         <Campo rotulo="FPS"><SeletorComOutro opcoes={OPCOES.fps} valor={estado.fps} bloqueado={bloqueado} aoMudar={v => aoMudar({ fps: v })} /></Campo>
         <Campo rotulo="Resolução"><SeletorComOutro opcoes={OPCOES.resolucao} valor={estado.resolucao} bloqueado={bloqueado} aoMudar={v => aoMudar({ resolucao: v })} /></Campo>
         <Campo rotulo="Codec"><SeletorComOutro opcoes={OPCOES.codec} valor={estado.codec} bloqueado={bloqueado} aoMudar={v => aoMudar({ codec: v })} /></Campo>
+      </div>
+      <span className="text-xs font-bold uppercase tracking-widest text-muted" style={{ marginTop: '6px' }}>Exposição e monitor</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(160px, 100%), 1fr))', gap: '12px' }}>
         <Campo rotulo="White balance"><SeletorComOutro opcoes={OPCOES.wb} valor={estado.wb} bloqueado={bloqueado} aoMudar={v => aoMudar({ wb: v })} /></Campo>
         <Campo rotulo="Shutter"><SeletorComOutro opcoes={OPCOES.shutter} valor={estado.shutter} bloqueado={bloqueado} aoMudar={v => aoMudar({ shutter: v })} /></Campo>
         <Campo rotulo="ISO"><SeletorComOutro opcoes={OPCOES.iso} valor={estado.iso} bloqueado={bloqueado} aoMudar={v => aoMudar({ iso: v })} /></Campo>

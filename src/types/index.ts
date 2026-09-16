@@ -1353,6 +1353,11 @@ export interface LenteDoKit {
   abre: number;
   /** Fecha até (o maior número f). */
   fecha: number;
+  /**
+   * `T` para lente de cinema, que é marcada em T-stop (a luz que de fato
+   * passa) e não em f-stop (a conta da geometria). Ausente = f.
+   */
+  escala?: 'f' | 'T';
 }
 
 /**

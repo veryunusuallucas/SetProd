@@ -48,7 +48,7 @@ export const COLUNAS_DO_REPORT: { id: ColunaDoReport; rotulo: string; peso: numb
   { id: 'arquivo', rotulo: 'Arquivo', peso: 13 },
   { id: 'status', rotulo: 'Status', peso: 9 },
   { id: 'claquete', rotulo: 'Claquete', peso: 10 },
-  { id: 'camera', rotulo: 'Lente | ND | f', peso: 17 },
+  { id: 'camera', rotulo: 'Lente | ND | f/T', peso: 17 },
   { id: 'timecode', rotulo: 'Timecode', peso: 13 },
   { id: 'hora', rotulo: 'Hora', peso: 7 },
   { id: 'obs', rotulo: 'OBS', peso: 24 },
@@ -129,10 +129,15 @@ export function claqueteNoFormato(
   return `${cena}-${plano} / Tk${tk}`;
 }
 
-/** `f/2.8`, sem dobrar o `f/` de quem já digitou com ele. */
+/**
+ * `f/2.8` ou `T2.8`, sem dobrar o prefixo de quem já digitou com ele. Sem
+ * prefixo nenhum, é f — o que o boletim sempre foi.
+ */
 export const aberturaLegivel = (abertura?: string) => {
-  const v = vazio(abertura).replace(/^f\/?/i, '');
-  return v ? `f/${v}` : '';
+  const v = vazio(abertura);
+  if (!v) return '';
+  if (/^t\s*\d/i.test(v)) return `T${v.replace(/^t\s*/i, '')}`;
+  return `f/${v.replace(/^f\s*\/?\s*/i, '')}`;
 };
 
 /** O que cada super-coluna diz de um take. `detalhe` sai em cinza, embaixo. */

@@ -9,8 +9,9 @@ import { Abre } from './pecas';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
 import {
-  aberturaQueCabe, aberturasDaLente, criarKitDeCamera, criarKitDeLente, excluirKit,
-  formatarF, importarKit, kitsDoProjeto, renomearKit, salvarCameras, salvarLentes, trocarCamera,
+  aberturaQueCabe, aberturasDaLente, escalaDa, criarKitDeCamera, criarKitDeLente, excluirKit,
+  comEscala, faixaDaLente, importarKit, kitsDoProjeto, lerAbertura, renomearKit, salvarCameras, salvarLentes, trocarCamera,
+  type EscalaDaAbertura,
 } from '../../lib/logagem/kits';
 
 /**
@@ -156,7 +157,18 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
   const [abrindo, setAbrindo] = useState(false);
 
   const ativa = lentes.find(l => l.id === estado.lente_ref);
-  const aberturas = aberturasDaLente(ativa);
+  /*
+    Sem lente do kit, a escala vem do que já está escrito: quem digitou uma
+    lente de cinema à mão e escolheu T continua em T.
+  */
+  const escalaSolta: EscalaDaAbertura = lerAbertura(estado.abertura)?.escala ?? 'f';
+  const aberturas = aberturasDaLente(ativa, escalaSolta);
+
+  const trocarEscalaSolta = () => {
+    const lida = lerAbertura(estado.abertura);
+    const outra: EscalaDaAbertura = escalaSolta === 'T' ? 'f' : 'T';
+    aoMudar({ abertura: comEscala(lida?.numero ?? 2.8, outra) });
+  };
 
   const escolher = (l: LenteDoKit) => {
     const faixa = aberturasDaLente(l);
@@ -169,14 +181,19 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
     });
   };
 
-  const acrescentar = async (dados: { nome: string; focal: string; abre: string; fecha: string }) => {
+  const acrescentar = async (dados: { nome: string; focal: string; abre: string; fecha: string; escala: string }) => {
     if (!dados.nome.trim()) return 'A lente precisa de um nome.';
+    // Aceita "2,8", "T1.5" e "f/2": o que a pessoa lê no anel da lente.
+    const abre = lerAbertura(dados.abre)?.numero;
+    const fecha = lerAbertura(dados.fecha)?.numero;
+    if (abre && fecha && abre > fecha) return 'O "abre até" é o número menor (T1.5, f/2); o "fecha até", o maior.';
     const nova: LenteDoKit = {
       id: crypto.randomUUID(),
       nome: dados.nome.trim(),
       focal: dados.focal.trim() || undefined,
-      abre: Number(dados.abre) || 1.2,
-      fecha: Number(dados.fecha) || 22,
+      abre: abre || 1.2,
+      fecha: fecha || 22,
+      escala: dados.escala === 'T' ? 'T' : 'f',
     };
     if (!kit) {
       const novo = await criarKitDeLente(projetoId, 'Kit de lentes', departamentoId);
@@ -226,7 +243,7 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
               <span className="text-sm font-bold" style={{ lineHeight: 1.2 }}>{l.nome}</span>
               <span className="text-xs text-secondary">{l.focal || '—'}</span>
               <span className="text-xs text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                f/{formatarF(l.abre)}–f/{formatarF(l.fecha)}
+                {faixaDaLente(l)}
               </span>
             </Chip>
           ))}
@@ -248,15 +265,37 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
           />
         </div>
         <div role="group" aria-label="Abertura" style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
-          <span className="text-xs font-bold text-secondary">Abertura</span>
-          <select
-            value={estado.abertura || aberturas[0]}
-            disabled={bloqueado}
-            onChange={e => aoMudar({ abertura: e.target.value })}
-            style={{ ...campo, cursor: bloqueado ? 'default' : 'pointer' }}
-          >
-            {aberturas.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
+          <span className="text-xs font-bold text-secondary">
+            Abertura{ativa ? ` · ${escalaDa(ativa) === 'T' ? 'T-stop' : 'f-stop'}` : ''}
+          </span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <select
+              value={aberturaQueCabe(estado.abertura, aberturas)}
+              disabled={bloqueado}
+              onChange={e => aoMudar({ abertura: e.target.value })}
+              style={{ ...campo, flex: 1, minWidth: 0, cursor: bloqueado ? 'default' : 'pointer' }}
+            >
+              {aberturas.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            {/* Lente solta (fora do kit): a escala se escolhe aqui. Com lente
+                do kit, quem manda é o cadastro dela. */}
+            {!ativa && (
+              <BotaoTatil
+                onClick={trocarEscalaSolta}
+                disabled={bloqueado}
+                title={escalaSolta === 'T' ? 'Usar f-stop' : 'Usar T-stop (lente de cinema)'}
+                aria-label={escalaSolta === 'T' ? 'Trocar para f-stop' : 'Trocar para T-stop'}
+                style={{
+                  minWidth: '52px', minHeight: '44px', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)', fontWeight: 800, fontSize: '14px',
+                  cursor: bloqueado ? 'default' : 'pointer',
+                }}
+              >
+                {escalaSolta === 'T' ? 'T' : 'f/'}
+              </BotaoTatil>
+            )}
+          </div>
         </div>
       </div>
 
@@ -270,7 +309,8 @@ export function KitDeLentes({ projetoId, estado, bloqueado, aoMudar, departament
             campos={[
               { chave: 'nome', rotulo: 'Nome', placeholder: 'Helios 44' },
               { chave: 'focal', rotulo: 'Focal', placeholder: '58mm', largura: '110px' },
-              { chave: 'abre', rotulo: 'Abre até', placeholder: '2', largura: '100px', numero: true },
+              { chave: 'escala', rotulo: 'Marcada em', opcoes: [{ id: 'f', nome: 'f-stop' }, { id: 'T', nome: 'T-stop' }] },
+              { chave: 'abre', rotulo: 'Abre até', placeholder: '2 ou 1.5', largura: '100px', numero: true },
               { chave: 'fecha', rotulo: 'Fecha até', placeholder: '22', largura: '100px', numero: true },
             ]}
             aoEnviar={acrescentar}
@@ -497,7 +537,7 @@ function Chip({ ativo, marcador, bloqueado, titulo, aoClicar, aoRemover, childre
 /** Um formulário curto que desce de dentro da seção, sem tirar a tela do lugar. */
 function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar, aoFechar }: {
   aberto: boolean;
-  campos: { chave: string; rotulo: string; placeholder?: string; largura?: string; numero?: boolean }[];
+  campos: { chave: string; rotulo: string; placeholder?: string; largura?: string; numero?: boolean; opcoes?: { id: string; nome: string }[] }[];
   aoEnviar: (dados: T) => Promise<string | void>;
   aoFechar: () => void;
 }) {
@@ -505,7 +545,8 @@ function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar
   const [erro, setErro] = useState('');
 
   const enviar = async () => {
-    const dados = Object.fromEntries(campos.map(c => [c.chave, valores[c.chave] ?? ''])) as T;
+    // Campo de escolha sem toque vale a primeira opção, que é a que aparece marcada.
+    const dados = Object.fromEntries(campos.map(c => [c.chave, valores[c.chave] ?? c.opcoes?.[0]?.id ?? ''])) as T;
     const problema = await aoEnviar(dados);
     if (problema) { setErro(problema); return; }
     setValores({});
@@ -520,14 +561,40 @@ function Formulario<T extends Record<string, string>>({ aberto, campos, aoEnviar
           {campos.map(c => (
             <div key={c.chave} role="group" style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: c.largura, flex: c.largura ? '0 0 auto' : '1 1 140px', minWidth: 0 }}>
               <span className="text-xs font-bold text-secondary">{c.rotulo}</span>
-              <input
-                value={valores[c.chave] ?? ''}
-                placeholder={c.placeholder}
-                inputMode={c.numero ? 'decimal' : undefined}
-                onChange={e => { setValores(v => ({ ...v, [c.chave]: e.target.value })); setErro(''); }}
-                onKeyDown={e => { if (e.key === 'Enter') void enviar(); }}
-                style={campo}
-              />
+              {c.opcoes ? (
+                <div role="radiogroup" aria-label={c.rotulo} style={{ display: 'flex', gap: '4px' }}>
+                  {c.opcoes.map(o => {
+                    const marcada = (valores[c.chave] ?? c.opcoes![0].id) === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={marcada}
+                        onClick={() => setValores(v => ({ ...v, [c.chave]: o.id }))}
+                        style={{
+                          minHeight: '44px', padding: '0 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap',
+                          border: `1px solid ${marcada ? 'var(--cor-criativo)' : 'var(--border-color)'}`,
+                          backgroundColor: marcada ? 'color-mix(in srgb, var(--cor-criativo) 14%, transparent)' : 'var(--bg-primary)',
+                          color: marcada ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        }}
+                      >
+                        {o.nome}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <input
+                  value={valores[c.chave] ?? ''}
+                  placeholder={c.placeholder}
+                  inputMode={c.numero ? 'decimal' : undefined}
+                  onChange={e => { setValores(v => ({ ...v, [c.chave]: e.target.value })); setErro(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') void enviar(); }}
+                  style={campo}
+                />
+              )}
             </div>
           ))}
           <BotaoTatil onClick={() => void enviar()} style={{ ...botaoDeAcao, backgroundColor: 'var(--cor-criativo)', color: '#fff', border: 'none' }}>

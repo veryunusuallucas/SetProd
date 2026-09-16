@@ -18,27 +18,76 @@ export const ABERTURAS = [1.2, 1.4, 1.8, 2, 2.4, 2.8, 3.5, 4, 4.8, 5.6, 6.7, 8, 
 export const formatarF = (f: number) => (Number.isInteger(f) ? String(f) : f.toFixed(1));
 
 /**
+ * f-stop ou T-stop (pedido do Lucas, 16/09/2026).
+ *
+ * Lente de cinema é marcada em T: o número já desconta a luz que o vidro
+ * perde. Escrever "f/2" no boletim de uma lente T2 é anotar outra coisa. Os
+ * números são os mesmos terços; só muda o que vai na frente.
+ */
+export type EscalaDaAbertura = 'f' | 'T';
+
+export const escalaDa = (lente?: Pick<LenteDoKit, 'escala'> | null): EscalaDaAbertura =>
+  lente?.escala === 'T' ? 'T' : 'f';
+
+/** `f/2.8` ou `T2.8` — a forma em que a abertura é guardada no take. */
+export const comEscala = (numero: number, escala: EscalaDaAbertura) =>
+  escala === 'T' ? `T${formatarF(numero)}` : `f/${formatarF(numero)}`;
+
+/** `f/2–f/22` ou `T1.5–T22` */
+export const faixaDaLente = (l: Pick<LenteDoKit, 'abre' | 'fecha' | 'escala'>) =>
+  `${comEscala(l.abre, escalaDa(l))}–${comEscala(l.fecha, escalaDa(l))}`;
+
+/** Lê o que estiver escrito: `f/2.8`, `T2.8`, `t 2,8`, `2.8`. */
+export function lerAbertura(texto?: string): { numero: number; escala: EscalaDaAbertura } | null {
+  const m = /^\s*(f\s*\/?|t)?\s*(\d+(?:[.,]\d+)?)\s*$/i.exec(texto || '');
+  if (!m) return null;
+  const numero = Number(m[2].replace(',', '.'));
+  if (!Number.isFinite(numero)) return null;
+  return { numero, escala: m[1] && /^t/i.test(m[1]) ? 'T' : 'f' };
+}
+
+/**
  * As aberturas que ESTA lente alcança.
  *
  * Uma Helios 58 abre em f/2 e fecha em f/22; oferecer f/1.2 e f/32 na lista é
  * convidar o boletim a mentir. Sem lente do kit (ou sem faixa anotada), a série
  * inteira vale — é melhor que impedir de registrar.
  */
-export function aberturasDaLente(lente?: LenteDoKit | null): string[] {
-  const serie = ABERTURAS.slice();
-  if (!lente || !Number.isFinite(lente.abre)) return serie.map(f => `f/${formatarF(f)}`);
+export function aberturasDaLente(lente?: LenteDoKit | null, escalaSemLente: EscalaDaAbertura = 'f'): string[] {
+  const serie: number[] = ABERTURAS.slice();
+  if (!lente || !Number.isFinite(lente.abre)) return serie.map(f => comEscala(f, escalaSemLente));
 
+  const escala = escalaDa(lente);
   const min = Number(lente.abre);
   const max = Number(lente.fecha) || 32;
   // A folga de 1e-6 é para 2.8 digitado não sair de fora de uma faixa 2.8–22
   // por causa do arredondamento do ponto flutuante.
   const dentro = serie.filter(f => f >= min - 1e-6 && f <= max + 1e-6);
-  return (dentro.length ? dentro : [min]).map(f => `f/${formatarF(f)}`);
+  /*
+    As pontas da lente entram SEMPRE, mesmo fora da série de terços.
+
+    Uma lente de cinema T1.5 ou uma Helios f/1.7 abrem num número que a série
+    não tem; sem isto, a abertura máxima dela — a mais usada — sumia da lista.
+  */
+  const perto = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+  for (const ponta of [min, max]) if (!dentro.some(f => perto(f, ponta))) dentro.push(ponta);
+  return dentro.sort((a, b) => a - b).map(f => comEscala(f, escala));
 }
 
-/** Mantém a abertura de agora se ela couber na lente nova; senão, a mais aberta. */
+/**
+ * Mantém a abertura de agora se ela couber na lente nova; senão, a mais aberta.
+ *
+ * "Caber" é pelo NÚMERO: trocar uma lente f por uma T (ou o contrário) em 2.8
+ * continua em 2.8, só com a outra escala.
+ */
 export function aberturaQueCabe(atual: string | undefined, lista: string[]): string {
-  return atual && lista.includes(atual) ? atual : (lista[0] || '');
+  if (atual && lista.includes(atual)) return atual;
+  const lida = lerAbertura(atual);
+  const mesma = lida && lista.find(item => {
+    const n = lerAbertura(item)?.numero;
+    return n !== undefined && Math.abs(n - lida.numero) < 1e-6;
+  });
+  return mesma || lista[0] || '';
 }
 
 /* ───────────────────────── Trocar de câmera ───────────────────────── */
