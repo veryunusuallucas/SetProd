@@ -11,6 +11,8 @@ import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logag
 import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { KitDeCameras, KitDeLentes } from './Kits';
+import { confirmar } from '../ui/Confirmacao';
+import { cartaoSeguro, cartaoTemTakes, oQueFalta } from '../../lib/logagem/backup';
 
 /**
  * Aba Câmera: o que a câmera vai gravar, e com que setup.
@@ -76,6 +78,44 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   const campos = camposDaNomenclatura(estado.nomenclatura);
   const clipe = Number(estado.proximo_clipe) || 0;
 
+  /**
+   * A trava da troca de cartão.
+   *
+   * Trocar o cartão na tela é o gesto que acompanha tirar o cartão da câmera —
+   * e o cartão que sai é o que corre risco de ser formatado. Se ele tem take
+   * gravado e ainda não está liberado na aba Backup, a troca para e pergunta,
+   * dizendo o que falta.
+   *
+   * É um aviso, e não uma proibição: às vezes o cartão precisa sair mesmo
+   * (acabou o espaço no meio da cena), e o app não pode ser o motivo de a
+   * filmagem esperar. O que ele não pode é deixar isso passar em silêncio.
+   */
+  const trocarDeCartao = async (novo: string) => {
+    const anterior = String(estado.cartao || '').trim();
+    if (novo === anterior) return;
+
+    const [takes, hds, backups, checksums] = await Promise.all([
+      db.log_takes.where('diaria_id').equals(estado.diaria_id).toArray(),
+      db.log_hds.where('projeto_id').equals(estado.projeto_id).toArray(),
+      db.log_backups.where('diaria_id').equals(estado.diaria_id).toArray(),
+      db.log_checksums.where('diaria_id').equals(estado.diaria_id).toArray(),
+    ]);
+
+    if (cartaoTemTakes(takes, anterior) && !cartaoSeguro({ hds, backups, checksums, cartao: anterior })) {
+      const falta = oQueFalta({ hds, backups, checksums, cartao: anterior });
+      const seguir = await confirmar({
+        titulo: `O cartão ${anterior} ainda não está liberado.`,
+        detalhe: `Falta ${falta.join(' e ')}. Ele tem take gravado — se for formatado agora, o material se perde. Trocar mesmo assim?`,
+        confirmar: 'Trocar assim mesmo',
+        cancelar: 'Continuar no ' + anterior,
+        perigo: true,
+      });
+      if (!seguir) return;
+    }
+
+    aoMudar({ cartao: novo });
+  };
+
   /*
     O − e o + somam em cima do que está GRAVADO, e não do que está na tela.
     O campo grava depois de uma pausa (`CampoTexto`), então quem digita 148 e
@@ -136,7 +176,7 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
         )}
         {campos.usaCartao && (
           <Campo rotulo="Cartão / reel">
-            <CartaoQueConfirma valor={estado.cartao} bloqueado={bloqueado} aoConfirmar={v => aoMudar({ cartao: v })} />
+            <CartaoQueConfirma valor={estado.cartao} bloqueado={bloqueado} aoConfirmar={trocarDeCartao} />
           </Campo>
         )}
         {campos.usaPosicao && (
@@ -189,7 +229,13 @@ function CartaoQueConfirma({ valor, bloqueado, aoConfirmar }: { valor: string; b
   const confirmar = () => {
     const limpo = texto.trim();
     if (!limpo) { setTexto(valor); return; }
-    if (limpo !== valor) aoConfirmar(limpo);
+    if (limpo !== valor) {
+      // Volta ao que estava na tela; se a troca vingar, o banco devolve o novo.
+      // Assim, cancelar a trava não deixa o campo mostrando um cartão que não é
+      // o que está na câmera.
+      setTexto(valor);
+      aoConfirmar(limpo);
+    }
   };
   return (
     <input

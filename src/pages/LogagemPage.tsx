@@ -12,6 +12,7 @@ import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
 import { podeEditarLogagem, departamentoDaFotografia, visaoPadraoDeQuemVe } from '../lib/logagem/permissao';
 import { AbaCamera } from '../components/logagem/AbaCamera';
 import { AbaLogagem } from '../components/logagem/AbaLogagem';
+import { AbaBackup } from '../components/logagem/AbaBackup';
 import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
@@ -233,6 +234,7 @@ export default function LogagemPage() {
               podeEditar={podeEditar}
               departamentoId={departamentoDaFotografia(departamentos)?.id}
               visaoDeQuemVe={visaoPadraoDeQuemVe(perfis.find(p => p.id === perfilId))}
+              quem={user?.id}
             />
           </motion.div>
         </>
@@ -290,7 +292,7 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 }
 
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
-function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe }: {
+function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe, quem }: {
   aba: Aba;
   diariaNumero?: number;
   projetoId: string;
@@ -298,9 +300,13 @@ function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, dep
   podeEditar: boolean;
   departamentoId?: string;
   visaoDeQuemVe?: VisaoDeQuemVe;
+  quem?: string;
 }) {
   if (aba === 'camera' && diariaId) {
     return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
+  }
+  if (aba === 'backup' && diariaId) {
+    return <AbaBackup projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;
   }
   if (aba === 'logagem' && diariaId) {
     return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} visaoDeQuemVe={visaoDeQuemVe} />;
