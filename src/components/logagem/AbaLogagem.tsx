@@ -12,7 +12,7 @@ import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { RegistroDeTake } from './RegistroDeTake';
 import { FotoDeReferencia } from './FotoDeReferencia';
 import { PlanosDaDecupagem } from './PlanosDaDecupagem';
-import { useAuth } from '../../hooks/useAuth';
+import { ExportarRelatorios } from './ExportarRelatorios';
 import { Acompanhamento } from './Acompanhamento';
 import {
   NOME_DA_DENSIDADE, densidadeInicial, densidadesPossiveis, lembrarDensidade, lerDensidadeLembrada,
@@ -35,16 +35,17 @@ import type { VisaoDeQuemVe } from '../../lib/logagem/permissao';
  * mão e o set andando. Quem está logando não vai procurar um número de 14px no
  * meio de um formulário entre um "ação" e um "corta".
  */
-export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe = 'acompanhamento' }: {
+export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe = 'acompanhamento', quem }: {
   projetoId: string;
   diariaId: string;
   podeEditar: boolean;
   departamentoId?: string;
   /** Em que visão quem SÓ VÊ abre — a continuísta vê tudo, o resto acompanha. */
   visaoDeQuemVe?: VisaoDeQuemVe;
+  /** Quem registra: a ficha da pessoa na produção, ou a conta quando não há ficha. */
+  quem?: string;
 }) {
   const estadoSalvo = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
-  const { user } = useAuth();
 
   useEffect(() => {
     if (podeEditar && estadoSalvo === undefined) {
@@ -97,6 +98,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {seletorDeVisao}
         <Acompanhamento estado={estado} />
+        <ExportarRelatorios diariaId={diariaId} podeEditar={podeEditar} />
       </div>
     );
   }
@@ -259,7 +261,10 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
 
       <FotoDeReferencia estado={estado} podeEditar={podeEditar} />
 
-      <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={user?.id} limite={detalhada ? undefined : 3} />
+      <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={quem} limite={detalhada ? undefined : 3} />
+
+      {/* No Foco, o set não exporta nada: o relatório é trabalho do fim do dia. */}
+      {detalhada && <ExportarRelatorios diariaId={diariaId} podeEditar={podeEditar} />}
     </div>
   );
 }

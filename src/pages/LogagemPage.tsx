@@ -242,7 +242,10 @@ export default function LogagemPage() {
               podeEditar={podeEditar}
               departamentoId={departamentoDaFotografia(departamentos)?.id}
               visaoDeQuemVe={visaoPadraoDeQuemVe(perfis.find(p => p.id === perfilId))}
-              quem={user?.id}
+              // A ficha primeiro: é o nome que a equipe conhece, e é o que o
+              // camera report imprime em "logado por". A conta fica para quem
+              // entrou só pelo convite, sem ficha vinculada.
+              quem={perfilId || user?.id}
             />
           </motion.div>
         </>
@@ -318,7 +321,7 @@ function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, pod
     return <AbaBackup projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;
   }
   if (aba === 'logagem' && diariaId) {
-    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} visaoDeQuemVe={visaoDeQuemVe} />;
+    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} visaoDeQuemVe={visaoDeQuemVe} quem={quem} />;
   }
 
   const dia = diariaNumero ? `da Diária ${String(diariaNumero).padStart(2, '0')}` : 'desta diária';
@@ -357,7 +360,7 @@ function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, pod
     },
     config: {
       titulo: 'Config',
-      texto: 'Anotações rápidas, colunas do relatório em PDF e quem, além da Fotografia, pode registrar takes nesta produção.',
+      texto: 'Anotações rápidas e quem, além da Fotografia, pode registrar takes nesta produção.',
     },
   };
 

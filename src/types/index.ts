@@ -1043,7 +1043,7 @@ export interface Pasta {
   data_criacao: number;
 }
 
-export type OrigemDocumento = 'manual' | 'roteiro' | 'comprovante' | 'diaria' | 'storyboard' | 'od';
+export type OrigemDocumento = 'manual' | 'roteiro' | 'comprovante' | 'diaria' | 'storyboard' | 'od' | 'camera_report';
 
 export interface Documento {
   id: string;
