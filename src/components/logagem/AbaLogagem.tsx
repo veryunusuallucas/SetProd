@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Minus, Plus, Clapperboard, Sun, MessageSquare, Layers } from 'lucide-react';
+import { Sun, MessageSquare, Layers } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem } from '../../types';
 import { CampoTexto } from '../ui/CampoTexto';
-import { BotaoContador, Campo, Escolha, Rotulo, Segmentado, ValorQueTroca, estiloCampo } from './pecas';
+import { Campo, Escolha, Rotulo, Segmentado, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { digitarNaClaquete, passoNaClaquete, trocarModoDoPlano } from '../../lib/logagem/claquete';
 import { OPCOES } from '../../lib/logagem/opcoes';
-import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
-import { RegistroDeTake } from './RegistroDeTake';
+import { ListaDeTakes, useRegistroDeTake } from './RegistroDeTake';
+import { PainelDoTake } from './PainelDoTake';
+import { ODiaNaLogagem } from './ODiaNaLogagem';
 import { FotoDeReferencia } from './FotoDeReferencia';
 import { PlanosDaDecupagem } from './PlanosDaDecupagem';
 import { ExportarRelatorios } from './ExportarRelatorios';
@@ -58,7 +59,6 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
   const estado: EstadoDaLogagem = estadoSalvo ?? { ...PADRAO, id: idDoEstado(diariaId), projeto_id: projetoId, diaria_id: diariaId };
   const mudar = (m: Partial<EstadoDaLogagem>) => { if (podeEditar) void mudarEstado(diariaId, m); };
   const bloqueado = !podeEditar;
-  const letras = estado.plano_letras !== false;
 
   /*
     A visão abre pelo aparelho e pelo papel, e depois obedece a pessoa.
@@ -76,6 +76,10 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
     })
   );
   const trocarDensidade = (nova: Densidade) => { setDensidade(nova); lembrarDensidade(nova); };
+
+  // Antes de qualquer retorno, porque é hook. No Acompanhamento não há botões,
+  // então o Espaço também não registra nada ali.
+  const registro = useRegistroDeTake(estado, podeEditar && densidade !== 'acompanhamento', quem);
 
   /*
     Enter leva o cursor à observação (§6.4). Mesmas regras do Espaço: não vale
@@ -167,190 +171,135 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
   const soltarDaDecupagem = (campo: 'cena' | 'plano' | 'take'): Partial<EstadoDaLogagem> =>
     campo === 'take' ? {} : { cena_id: '', plano_id: '' };
 
+  const aoDigitar = (campo: 'cena' | 'plano' | 'take', v: string) =>
+    mudar({ ...digitarNaClaquete(estado, campo, v), ...soltarDaDecupagem(campo) });
+
+  /*
+    A ORDEM DA TELA é a do pedido de quem opera câmera (16/09/2026):
+
+    1. o dia — o que vem a seguir, as pausas, o próximo plano;
+    2. o painel do take — cena, plano, take, o arquivo e os quatro botões,
+       juntos e na mesma arrumação em qualquer tela;
+    3. a observação e a foto, que são do take que vem;
+    4. o resto: a decupagem inteira, o contexto da cena, a lista, os relatórios.
+  */
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {seletorDeVisao}
+      <ODiaNaLogagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} compacto={!detalhada} />
 
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <Rotulo icone={<Clapperboard size={14} />}>Claquete</Rotulo>
-          {/* O arquivo previsto mora na aba Câmera, mas aparece aqui de leve:
-              é o que vai junto com este take, e conferir não pode custar uma
-              troca de aba. */}
-          <span className="text-xs text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            próximo arquivo · {nomeArquivoPrevisto(estado)}
-          </span>
-        </div>
+      <PainelDoTake
+        estado={estado}
+        registro={registro}
+        podeEditar={podeEditar}
+        aoPassar={passo}
+        aoDigitar={aoDigitar}
+        mostrarAtalhos={detalhada}
+      />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '12px' }}>
-          <Contador
-            rotulo="Cena"
-            valor={String(estado.cena)}
-            bloqueado={bloqueado}
-            aoPassar={d => passo('cena', d)}
-            aoDigitar={v => mudar({ ...digitarNaClaquete(estado, 'cena', v), ...soltarDaDecupagem('cena') })}
-          />
-          <Contador
-            rotulo="Plano"
-            valor={String(estado.plano)}
-            bloqueado={bloqueado}
-            maiuscula={letras}
-            aoPassar={d => passo('plano', d)}
-            aoDigitar={v => mudar({ ...digitarNaClaquete(estado, 'plano', v), ...soltarDaDecupagem('plano') })}
-          />
-          <Contador
-            rotulo="Take"
-            valor={String(estado.take)}
-            bloqueado={bloqueado}
-            destaque
-            aoPassar={d => passo('take', d)}
-            aoDigitar={v => mudar(digitarNaClaquete(estado, 'take', v))}
-          />
-        </div>
-
-        <PlanosDaDecupagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} />
-
-        {/*
-          A cascata é a convenção do set, e ela surpreende quem nunca viu: mexer
-          na cena zera plano e take sozinho. Dizer isso aqui, uma linha, evita o
-          "por que ele apagou meu take?".
-        */}
-        <p className="text-xs text-muted" style={{ margin: 0 }}>
-          Trocar a cena devolve o plano para {letras ? 'A' : '1'} e o take para 1. Trocar o plano devolve só o take.
-        </p>
-
-        {detalhada && <Campo rotulo="Planos em">
-          <Segmentado
-            nome="logagem-modo-plano"
-            opcoes={[{ id: 'letras', nome: 'Letras (A, B, C…)' }, { id: 'numeros', nome: 'Números' }]}
-            valor={letras ? 'letras' : 'numeros'}
-            bloqueado={bloqueado}
-            aoMudar={v => {
-              const paraLetras = v === 'letras';
-              mudar({ plano_letras: paraLetras, plano: trocarModoDoPlano(estado.plano, paraLetras) });
-            }}
-          />
-        </Campo>}
-        {detalhada && (
-          <p className="text-xs text-muted" style={{ marginTop: '-8px' }}>
-            O alfabeto de claquete pula I, O, Q, S e Z, que à mão viram 1, 0, 2, 5 e 2. Depois de Y vem AA.
-          </p>
-        )}
-      </section>
-
-      {detalhada ? (
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '22px' }}>
-        <Rotulo icone={<Sun size={14} />}>Como está a cena</Rotulo>
-        <p className="text-xs text-muted" style={{ marginTop: '-10px' }}>
-          Vai junto em cada take, e continua valendo até alguém mudar.
-        </p>
-        <Campo rotulo="Ambiente">
-          <Escolha nome="logagem-ambiente" opcoes={OPCOES.ambiente} valor={estado.ambiente} bloqueado={bloqueado} aoMudar={v => mudar({ ambiente: v })} />
-        </Campo>
-        <Campo rotulo="Luz">
-          <Escolha nome="logagem-luz" opcoes={OPCOES.luz} valor={estado.luz} bloqueado={bloqueado} aoMudar={v => mudar({ luz: v })} />
-        </Campo>
-        <Campo rotulo="Áudio">
-          <Escolha nome="logagem-audio" opcoes={OPCOES.audio} valor={estado.audio} bloqueado={bloqueado} aoMudar={v => mudar({ audio: v })} />
-        </Campo>
-        <Campo rotulo="ND">
-          <Escolha nome="logagem-nd" opcoes={OPCOES.nd} valor={estado.nd} bloqueado={bloqueado} aoMudar={v => mudar({ nd: v })} />
-        </Campo>
-      </section>
-      ) : (
-        /*
-          No Foco o contexto não some: vira uma linha do que está valendo, para
-          conferir sem rolar. Mexer nele é raro no meio do take — quem precisa
-          troca de visão, e o próprio resumo é o botão que leva para lá.
-        */
-        <button
-          type="button"
-          onClick={() => trocarDensidade('detalhada')}
-          className="card"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-            padding: '14px 16px', minHeight: '44px', textAlign: 'left', width: '100%',
-            border: '1px solid var(--border-light)', color: 'var(--text-secondary)', cursor: 'pointer',
-          }}
-        >
-          <Sun size={14} style={{ color: 'var(--cor-criativo)', flexShrink: 0 }} />
-          <span className="text-sm">
-            {[estado.ambiente, estado.luz, estado.audio, estado.nd].filter(Boolean).join(' · ')}
-          </span>
-          <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>mudar na Detalhada</span>
-        </button>
-      )}
-
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
         <Rotulo icone={<MessageSquare size={14} />}>Observação deste take</Rotulo>
         <div data-logagem-obs>
           <CampoTexto
             value={estado.obs || ''}
             aoGravar={v => mudar({ obs: v })}
             disabled={bloqueado}
-            linhas={3}
+            linhas={2}
             placeholder="passou avião, o bom é o fim, foco perdido no meio…"
             style={estiloCampo}
           />
         </div>
         <NotasRapidas bloqueado={bloqueado} aoTocar={acrescentar} />
         <p className="text-xs text-muted" style={{ margin: 0 }}>
-          A observação é do take que vem, e se apaga quando ele for registrado.
-          {detalhada && ' Enter leva o cursor para cá.'}
+          É do take que vem, e se apaga quando ele for registrado.
         </p>
       </section>
 
       <FotoDeReferencia estado={estado} podeEditar={podeEditar} />
 
-      <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={quem} limite={detalhada ? undefined : 3} />
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
+        <PlanosDaDecupagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} />
+        {detalhada ? (
+          <ContextoDaCena estado={estado} bloqueado={bloqueado} mudar={mudar} />
+        ) : (
+          /*
+            No Foco o contexto vira uma linha do que está valendo, para conferir
+            sem rolar. Mexer nele é raro no meio do take — o próprio resumo é o
+            botão que leva para a Detalhada.
+          */
+          <button
+            type="button"
+            onClick={() => trocarDensidade('detalhada')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+              padding: '0 4px', minHeight: '44px', textAlign: 'left', width: '100%',
+              border: 'none', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+            }}
+          >
+            <Sun size={14} style={{ color: 'var(--cor-criativo)', flexShrink: 0 }} />
+            <span className="text-sm">
+              {[estado.ambiente, estado.luz, estado.audio, estado.nd].filter(Boolean).join(' · ') || 'Ambiente, luz, áudio e ND'}
+            </span>
+            <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>mudar na Detalhada</span>
+          </button>
+        )}
+      </section>
+
+      <ListaDeTakes takes={registro.takes} ultimo={registro.ultimo} podeEditar={podeEditar} limite={detalhada ? undefined : 3} />
 
       {/* No Foco, o set não exporta nada: o relatório é trabalho do fim do dia. */}
       {detalhada && <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />}
+
+      {seletorDeVisao}
     </div>
   );
 }
 
 /**
- * Um número grande de claquete, com − e + e o campo para digitar.
- *
- * O valor é o que a pessoa lê de longe; os botões são o que ela aperta sem
- * olhar. O campo existe para o pulo — cena 47 não se alcança no +.
+ * O contexto da cena (Detalhada): ambiente, luz, áudio, ND, e como a claquete
+ * conta os planos. Vai junto em cada take e vale até alguém mudar.
  */
-function Contador({ rotulo, valor, bloqueado, destaque, maiuscula, aoPassar, aoDigitar }: {
-  rotulo: string;
-  valor: string;
+function ContextoDaCena({ estado, bloqueado, mudar }: {
+  estado: EstadoDaLogagem;
   bloqueado: boolean;
-  destaque?: boolean;
-  maiuscula?: boolean;
-  aoPassar: (direcao: 1 | -1) => void;
-  aoDigitar: (valor: string) => void;
+  mudar: (m: Partial<EstadoDaLogagem>) => void;
 }) {
+  const letras = estado.plano_letras !== false;
   return (
-    <div role="group" aria-label={rotulo} style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
-      <span className="text-xs font-bold uppercase tracking-widest text-secondary">{rotulo}</span>
-
-      <ValorQueTroca
-        texto={valor || '—'}
-        rotuloDeLeitura={rotulo}
-        tamanho="clamp(38px, 11vw, 56px)"
-        cor={destaque ? 'var(--cor-criativo)' : undefined}
-      />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <BotaoContador rotulo={`${rotulo} anterior`} disabled={bloqueado} onClick={() => aoPassar(-1)}>
-          <Minus size={18} />
-        </BotaoContador>
-        <CampoTexto
-          value={valor}
-          aoGravar={aoDigitar}
-          disabled={bloqueado}
-          title={rotulo}
-          style={{ ...estiloCampo, flex: 1, minWidth: 0, textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums', textTransform: maiuscula ? 'uppercase' : 'none' }}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
+      <Rotulo icone={<Sun size={14} />}>Como está a cena</Rotulo>
+      <Campo rotulo="Ambiente">
+        <Escolha nome="logagem-ambiente" opcoes={OPCOES.ambiente} valor={estado.ambiente} bloqueado={bloqueado} aoMudar={v => mudar({ ambiente: v })} />
+      </Campo>
+      <Campo rotulo="Luz">
+        <Escolha nome="logagem-luz" opcoes={OPCOES.luz} valor={estado.luz} bloqueado={bloqueado} aoMudar={v => mudar({ luz: v })} />
+      </Campo>
+      <Campo rotulo="Áudio">
+        <Escolha nome="logagem-audio" opcoes={OPCOES.audio} valor={estado.audio} bloqueado={bloqueado} aoMudar={v => mudar({ audio: v })} />
+      </Campo>
+      <Campo rotulo="ND">
+        <Escolha nome="logagem-nd" opcoes={OPCOES.nd} valor={estado.nd} bloqueado={bloqueado} aoMudar={v => mudar({ nd: v })} />
+      </Campo>
+      <Campo rotulo="Planos em">
+        <Segmentado
+          nome="logagem-modo-plano"
+          opcoes={[{ id: 'letras', nome: 'Letras (A, B, C…)' }, { id: 'numeros', nome: 'Números' }]}
+          valor={letras ? 'letras' : 'numeros'}
+          bloqueado={bloqueado}
+          aoMudar={v => {
+            const paraLetras = v === 'letras';
+            mudar({ plano_letras: paraLetras, plano: trocarModoDoPlano(estado.plano, paraLetras) });
+          }}
         />
-        <BotaoContador rotulo={`Próximo ${rotulo.toLowerCase()}`} disabled={bloqueado} onClick={() => aoPassar(1)}>
-          <Plus size={18} />
-        </BotaoContador>
-      </div>
+      </Campo>
+      {/*
+        A cascata é a convenção do set, e ela surpreende quem nunca viu: mexer
+        na cena zera plano e take sozinho. Dizer isso aqui evita o "por que ele
+        apagou meu take?".
+      */}
+      <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
+        Trocar a cena devolve o plano para {letras ? 'A' : '1'} e o take para 1; trocar o plano devolve só o take.
+        {letras && ' O alfabeto da claquete pula I, O, Q, S e Z, que à mão viram 1, 0, 2, 5 e 2. Depois de Y vem AA.'}
+      </p>
     </div>
   );
 }
