@@ -70,7 +70,7 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
         quem={quem}
       />
 
-      <ExportarRelatorios diariaId={diariaId} podeEditar={podeEditar} />
+      <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
     </div>
   );
 }

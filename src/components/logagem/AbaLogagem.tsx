@@ -98,7 +98,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {seletorDeVisao}
         <Acompanhamento estado={estado} />
-        <ExportarRelatorios diariaId={diariaId} podeEditar={podeEditar} />
+        <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
       </div>
     );
   }
@@ -264,7 +264,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
       <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={quem} limite={detalhada ? undefined : 3} />
 
       {/* No Foco, o set não exporta nada: o relatório é trabalho do fim do dia. */}
-      {detalhada && <ExportarRelatorios diariaId={diariaId} podeEditar={podeEditar} />}
+      {detalhada && <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />}
     </div>
   );
 }
