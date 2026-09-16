@@ -162,9 +162,8 @@ function Escolher({ progresso, aoEscolher }: {
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '22px' }}>
       <Rotulo icone={<FolderOpen size={14} />}>Ler o cartão</Rotulo>
       <p className="text-sm text-secondary" style={{ margin: 0, maxWidth: '62ch' }}>
-        Escolha a pasta do cartão ou do backup. O app lê os XML da câmera, confere se cada vídeo abre e usa o
-        manifesto do DaVinci (.mhl ou md5sums) para saber tamanho e data de quem não tem XML. Nada é enviado:
-        os arquivos ficam neste computador.
+        Pode ser a pasta raiz do cartão ou a cópia dele no HD: o app acha os XML, os vídeos e o manifesto
+        dentro das subpastas. Sem pasta à mão, dá para escolher os arquivos soltos.
       </p>
 
       {progresso ? (
