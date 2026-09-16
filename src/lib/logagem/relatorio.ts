@@ -403,9 +403,10 @@ const semAcento = (s: string) =>
   s.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^\w]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
 
 /** `camera-report-meu-curta-d03.pdf` — sem acento, porque o arquivo viaja por e-mail e pendrive. */
-export function nomeDoArquivo(tipo: TipoDeRelatorio | 'csv', projeto: string, diaria: number | undefined): string {
-  const base = tipo === 'csv' ? 'camera-log' : semAcento(TITULO_DO_RELATORIO[tipo]);
+export function nomeDoArquivo(tipo: TipoDeRelatorio | 'csv' | 'json', projeto: string, diaria: number | undefined): string {
+  const base = tipo === 'csv' ? 'camera-log' : tipo === 'json' ? 'copia-da-logagem' : semAcento(TITULO_DO_RELATORIO[tipo]);
   const dia = diaria != null ? `d${String(diaria).padStart(2, '0')}` : 'diaria';
   const prod = semAcento(projeto) || 'producao';
-  return `${base}-${prod}-${dia}.${tipo === 'csv' ? 'csv' : 'pdf'}`;
+  const ext = tipo === 'csv' || tipo === 'json' ? tipo : 'pdf';
+  return `${base}-${prod}-${dia}.${ext}`;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { FileDown, FileText, ShieldCheck, Files, Table, ChevronDown, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { FileDown, FileText, ShieldCheck, Files, Table, ChevronDown, Check, Loader2, AlertTriangle, Archive } from 'lucide-react';
 import { db } from '../../db/db';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
@@ -12,17 +12,19 @@ import {
   type ColunaDoReport, type OpcoesDoReport, type TipoDeRelatorio,
 } from '../../lib/logagem/relatorio';
 import {
-  arquivarRelatorio, coletarRelatorio, csvDaLogagem, gerarPdfDaLogagem, nomeDoRelatorio,
+  arquivarRelatorio, coletarRelatorio, copiaDaLogagem, csvDaLogagem, gerarPdfDaLogagem, nomeDoRelatorio,
 } from '../../lib/logagem/exportar';
+import { RestaurarCopia } from './RestaurarCopia';
 import { baixar } from '../../lib/od/exportar';
 
-type Saida = TipoDeRelatorio | 'csv';
+type Saida = TipoDeRelatorio | 'csv' | 'json';
 
 const SAIDAS: { id: Saida; nome: string; explica: string; icone: typeof FileText }[] = [
   { id: 'camera', nome: 'Camera report', explica: 'PDF com os takes do dia', icone: FileText },
   { id: 'integridade', nome: 'Integridade', explica: 'PDF dos cartões, HDs e checksums', icone: ShieldCheck },
   { id: 'consolidado', nome: 'Os dois juntos', explica: 'um PDF só, para a montagem', icone: Files },
   { id: 'csv', nome: 'Planilha', explica: 'CSV com as 43 colunas do Lumavi', icone: Table },
+  { id: 'json', nome: 'Cópia de segurança', explica: 'JSON com tudo, fotos inclusive, para o HD', icone: Archive },
 ];
 
 /**
@@ -37,7 +39,13 @@ const SAIDAS: { id: Saida; nome: string; explica: string; icone: typeof FileText
  * Fotografia —, mas o arquivo só vai para Documentos quando quem exporta pode
  * escrever na Logagem. Senão cada curioso encheria a pasta de cópias.
  */
-export function ExportarRelatorios({ diariaId, podeEditar }: { diariaId: string; podeEditar: boolean }) {
+export function ExportarRelatorios({ projetoId, diariaId, podeEditar, departamentoId, quem }: {
+  projetoId: string;
+  diariaId: string;
+  podeEditar: boolean;
+  departamentoId?: string;
+  quem?: string;
+}) {
   const reduzido = useMovimentoReduzido();
   const [opcoes, setOpcoes] = useState<OpcoesDoReport>(lerOpcoesDoReport);
   const [ajustes, setAjustes] = useState(false);
@@ -70,19 +78,37 @@ export function ExportarRelatorios({ diariaId, podeEditar }: { diariaId: string;
 
   const semNada = (quantos?.takes ?? 0) === 0 && (quantos?.cartoes ?? 0) === 0;
   const indisponivel = (s: Saida) =>
-    !quantos || (s === 'csv' ? quantos.takes === 0 : s === 'camera' ? quantos.takes === 0 : semNada);
+    !quantos || (s === 'csv' || s === 'camera' ? quantos.takes === 0 : semNada);
 
   const exportar = async (saida: Saida) => {
     if (fazendo) return;
     setFazendo(saida);
     setAviso(null);
     try {
-      const precisaFotos = saida !== 'csv' && saida !== 'integridade' && opcoes.colunas.includes('foto');
+      const precisaFotos = (saida === 'camera' || saida === 'consolidado') && opcoes.colunas.includes('foto');
       const dados = await coletarRelatorio(diariaId, {
         fotos: precisaFotos,
         comprovantes: saida === 'integridade' || saida === 'consolidado',
       });
       if (!dados) throw new Error('A diária não foi encontrada neste aparelho.');
+
+      /*
+        A cópia NÃO vai para Documentos. Ela existe para morar FORA do app — no
+        HD, junto do material — e guardá-la no Storage seria duplicar ali, com
+        as fotos em base64, o que o Storage já tem.
+      */
+      if (saida === 'json') {
+        const { blob, faltaram } = await copiaDaLogagem(dados, __VERSAO_APP__);
+        const nome = nomeDoRelatorio('json', dados);
+        baixar(blob, nome);
+        setAviso({
+          tipo: faltaram ? 'erro' : 'ok',
+          texto: faltaram
+            ? `${nome} baixado, mas ${faltaram} foto${faltaram === 1 ? '' : 's'} de referência não ${faltaram === 1 ? 'estava' : 'estavam'} neste aparelho e ${faltaram === 1 ? 'ficou' : 'ficaram'} de fora. Com internet, exporte de novo.`
+            : `${nome} baixado. Guarde junto do material, no HD.`,
+        });
+        return;
+      }
 
       const blob = saida === 'csv' ? csvDaLogagem(dados) : await gerarPdfDaLogagem(saida, dados, opcoes);
       const nome = nomeDoRelatorio(saida, dados);
@@ -170,6 +196,10 @@ export function ExportarRelatorios({ diariaId, podeEditar }: { diariaId: string;
           {aviso.tipo === 'ok' ? <Check size={16} style={{ flexShrink: 0, marginTop: '2px' }} /> : <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />}
           {aviso.texto}
         </p>
+      )}
+
+      {podeEditar && (
+        <RestaurarCopia projetoId={projetoId} diariaId={diariaId} departamentoId={departamentoId} quem={quem} />
       )}
 
       <BotaoTatil
