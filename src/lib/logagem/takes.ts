@@ -76,6 +76,8 @@ export function montarTake(
     lut: estado.lut,
     lente: estado.lente,
     abertura: estado.abertura,
+    // A foto pendente passa a ser DESTE take, e sai do estado logo depois.
+    foto: estado.foto,
     logado_por: quem,
     criado_em: Date.now(),
   };
@@ -105,6 +107,7 @@ export async function registrarTake(estado: EstadoDaLogagem, status: StatusTake,
     take: (Number(estado.take) || 0) + 1,
     proximo_clipe: (Number(estado.proximo_clipe) || 0) + 1,
     obs: '',
+    foto: '',
   });
   await sincronizarKit(estado, (Number(estado.proximo_clipe) || 0) + 1);
 
