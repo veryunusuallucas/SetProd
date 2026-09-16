@@ -122,10 +122,19 @@ export interface ClipeDoManifesto {
   modificadoEm?: string;
 }
 
+/**
+ * O arquivo "._" que o Mac deixa ao copiar para um disco que não é dele.
+ *
+ * `._A003C010_241019AU.MP4` tem extensão de vídeo e 4 KB de metadados do
+ * Finder. Contado como clipe, viraria um take importado fantasma — e na pasta
+ * do APARTE havia seis deles, ao lado dos clipes de verdade.
+ */
+export const ehLixoDoMac = (nome: string) => /^\._/.test(nome) || nome === '.DS_Store';
+
 /** Só os vídeos do manifesto, com o nome que casa com o boletim. */
 export function clipesDoManifesto(manifesto: Manifesto): ClipeDoManifesto[] {
   return manifesto.arquivos
-    .filter(a => EXTENSOES_DE_VIDEO.includes(a.extensao))
+    .filter(a => EXTENSOES_DE_VIDEO.includes(a.extensao) && !ehLixoDoMac(a.nome))
     .map(a => ({
       nome: nomeDeClipeDoArquivo(a.nome),
       arquivo: a.nome,
