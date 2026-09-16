@@ -101,17 +101,27 @@ export async function guardarArquivo(
   return referenciaPara(caminho);
 }
 
-/** Sobe o que ainda não subiu. Chamado depois de guardar e a cada sincronização. */
-export async function enviarPendentes(projetoId: string): Promise<number> {
+/**
+ * Sobe o que ainda não subiu. Chamado depois de guardar e a cada sincronização.
+ *
+ * Com `orcamentoBytes`, para quando o próximo arquivo passaria do orçamento
+ * (o primeiro sempre vai, para a fila andar). Os menores vão primeiro: com
+ * pouco sinal, dez comprovantes de texto valem mais que uma foto.
+ */
+export async function enviarPendentes(projetoId: string, orcamentoBytes?: number): Promise<number> {
   if (!supabaseConfigurado || !navigator.onLine) return 0;
 
-  const pendentes = await db.arquivos
+  const pendentes = (await db.arquivos
     .where('projeto_id').equals(projetoId)
     .filter(a => !a.enviado)
-    .toArray();
+    .toArray())
+    .sort((a, b) => a.tamanho - b.tamanho);
 
   let enviados = 0;
+  let gastos = 0;
   for (const a of pendentes) {
+    if (orcamentoBytes !== undefined && enviados > 0 && gastos + a.tamanho > orcamentoBytes) break;
+    gastos += a.tamanho;
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(a.caminho, a.blob, { contentType: a.tipo, upsert: true });

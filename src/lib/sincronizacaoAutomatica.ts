@@ -15,6 +15,9 @@ import { supabaseConfigurado } from './supabase';
  * testar o motor é o que impede um bug de vazar para todo mundo.
  */
 
+/** Quanto de anexo sobe antes das linhas, por rodada. ~6 fotos de referência. */
+const ORCAMENTO_ANTES_DAS_LINHAS = 512 * 1024;
+
 export type EstadoSync = 'ocioso' | 'sincronizando' | 'salvo' | 'offline' | 'erro';
 
 interface Situacao {
@@ -68,12 +71,21 @@ export async function rodada(projetoId: string): Promise<void> {
     // verdade. Uma vez por projeto, e só o que faltou — ver migracaoAnexos.
     await migrarAnexosDoProjeto(projetoId);
 
-    // Anexos criados sem sinal sobem agora. Antes do `sincronizar` de propósito:
-    // a linha que aponta para o arquivo não deveria chegar na outra equipe
-    // antes do arquivo em si.
-    await enviarPendentes(projetoId);
+    /*
+      Anexos criados sem sinal sobem em DUAS vezes.
+
+      Antes do `sincronizar`, uma parte pequena: a linha que aponta para o
+      arquivo não deveria chegar na outra equipe antes do arquivo em si. Mas só
+      uma parte — cem fotos de referência da Logagem são ~8 MB, e no 3G do set
+      elas segurariam os takes (texto, poucos KB) por minutos. Com o orçamento,
+      os takes saem nesta rodada; o resto das fotos sobe logo depois deles, e
+      quem abrir a lista antes vê o take sem a miniatura por um instante.
+    */
+    await enviarPendentes(projetoId, ORCAMENTO_ANTES_DAS_LINHAS);
 
     const { enviadas } = await sincronizar(projetoId);
+
+    await enviarPendentes(projetoId);
     anunciar(projetoId, {
       estado: 'salvo',
       pendentes: await pendencias(projetoId),

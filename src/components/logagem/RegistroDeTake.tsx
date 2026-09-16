@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle } from 'lucide-react';
+import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
@@ -15,6 +15,7 @@ import {
   registrarTake, substituirTake,
 } from '../../lib/logagem/takes';
 import { mudarEstado } from '../../lib/logagem/estado';
+import { EditarTake } from './EditarTake';
 
 /**
  * O registro do take: quatro botões, e o que acontece depois deles.
@@ -263,6 +264,7 @@ function contar(takes: Take[]) {
 function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; podeEditar: boolean }) {
   const reduzido = useMovimentoReduzido();
   const cor = COR_DO_STATUS[take.status];
+  const [editando, setEditando] = useState(false);
 
   const apagar = async () => {
     if (!(await confirmar({
@@ -331,16 +333,41 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
       {podeEditar && (
         <button
           type="button"
+          title="Corrigir este take"
+          aria-label="Corrigir este take"
+          aria-expanded={editando}
+          onClick={() => setEditando(v => !v)}
+          style={{
+            marginLeft: 'auto', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: 'none', borderRadius: 'var(--radius-sm)', background: editando ? 'var(--bg-active)' : 'none',
+            color: editando ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer',
+          }}
+        >
+          <Pencil size={16} />
+        </button>
+      )}
+
+      {podeEditar && (
+        <button
+          type="button"
           title="Apagar este take"
           aria-label="Apagar este take"
           onClick={() => void apagar()}
           style={{
-            marginLeft: 'auto', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: 'none', borderRadius: 'var(--radius-sm)', background: 'none', color: 'var(--text-muted)', cursor: 'pointer',
           }}
         >
           <Trash2 size={16} />
         </button>
+      )}
+
+      {podeEditar && (
+        <div style={{ flex: '1 1 100%', minWidth: 0 }}>
+          <Abre aberto={editando}>
+            {editando && <EditarTake take={take} aoFechar={() => setEditando(false)} />}
+          </Abre>
+        </div>
       )}
     </motion.div>
   );

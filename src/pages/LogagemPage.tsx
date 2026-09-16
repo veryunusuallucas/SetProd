@@ -14,6 +14,9 @@ import { AbaCamera } from '../components/logagem/AbaCamera';
 import { AbaLogagem } from '../components/logagem/AbaLogagem';
 import { AbaBackup } from '../components/logagem/AbaBackup';
 import { AbaIngest } from '../components/logagem/AbaIngest';
+import { AbaConfig } from '../components/logagem/AbaConfig';
+import { pedirUmaVez } from '../lib/logagem/aparelho';
+import type { Departamento, Perfil } from '../types';
 import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
@@ -27,8 +30,8 @@ import { diaDaSemana } from '../lib/formato';
  * O plano inteiro, e o porquê de cada decisão, está em `.md/PLANO-logagem.md`
  * (fora do Git, como os outros planos) e resumido no manual.
  *
- * ESTA TELA, POR ENQUANTO, É A CASCA: a diária escolhida e as cinco abas. O
- * conteúdo de cada aba chega em pedaços, um de cada vez.
+ * A página é a casca: a diária escolhida e as cinco abas. Cada aba mora no seu
+ * componente, em `components/logagem/`.
  */
 
 type Aba = 'logagem' | 'camera' | 'backup' | 'ingest' | 'config';
@@ -90,6 +93,16 @@ export default function LogagemPage() {
     setDiariaId(diariaPadrao(diarias, hojeISO())?.id || '');
   }, [diarias, diariaId]);
 
+  /*
+    Na primeira vez que alguém que REGISTRA abre a Logagem, o app pede ao
+    navegador para não apagar os dados deste site (§8). O estado e o botão de
+    pedir de novo ficam na Config.
+  */
+  const registra = Boolean(projeto) && podeEditarLogagem({
+    papel: role, usuarioId: user?.id, perfilId, perfis, departamentos, liberados: projeto?.logagem_liberados,
+  });
+  useEffect(() => { if (registra) void pedirUmaVez(); }, [registra]);
+
   const [aba, setAbaEstado] = useState<Aba>(abaInicial);
   /*
     A direção da troca de aba, para o conteúdo entrar pelo lado certo.
@@ -133,6 +146,7 @@ export default function LogagemPage() {
   });
 
   const diaria = ordenadas.find(d => d.id === diariaId);
+  const administra = role === 'dono' || role === 'admin';
   const deslocamento = reduzido ? 0 : 24;
 
   return (
@@ -235,7 +249,6 @@ export default function LogagemPage() {
           >
             <ConteudoDaAba
               aba={aba}
-              diariaNumero={diaria?.numero}
               diariaData={diaria?.data}
               projetoId={projetoId}
               diariaId={diariaId}
@@ -246,6 +259,11 @@ export default function LogagemPage() {
               // camera report imprime em "logado por". A conta fica para quem
               // entrou só pelo convite, sem ficha vinculada.
               quem={perfilId || user?.id}
+              administra={administra}
+              liberados={projeto?.logagem_liberados || []}
+              perfis={perfis}
+              departamentos={departamentos}
+              usuarioId={user?.id}
             />
           </motion.div>
         </>
@@ -303,9 +321,11 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 }
 
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
-function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe, quem }: {
+function ConteudoDaAba({
+  aba, diariaData, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe, quem,
+  administra, liberados, perfis, departamentos, usuarioId,
+}: {
   aba: Aba;
-  diariaNumero?: number;
   diariaData?: string;
   projetoId: string;
   diariaId: string;
@@ -313,7 +333,26 @@ function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, pod
   departamentoId?: string;
   visaoDeQuemVe?: VisaoDeQuemVe;
   quem?: string;
+  administra: boolean;
+  liberados: string[];
+  perfis: Perfil[];
+  departamentos: Departamento[];
+  usuarioId?: string;
 }) {
+  // A Config não depende de diária: é da produção e do aparelho.
+  if (aba === 'config') {
+    return (
+      <AbaConfig
+        projetoId={projetoId}
+        podeEditar={podeEditar}
+        administra={administra}
+        liberados={liberados}
+        perfis={perfis}
+        departamentos={departamentos}
+        eu={usuarioId}
+      />
+    );
+  }
   if (aba === 'camera' && diariaId) {
     return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
   }
@@ -323,8 +362,6 @@ function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, pod
   if (aba === 'logagem' && diariaId) {
     return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} visaoDeQuemVe={visaoDeQuemVe} quem={quem} />;
   }
-
-  const dia = diariaNumero ? `da Diária ${String(diariaNumero).padStart(2, '0')}` : 'desta diária';
 
   if (aba === 'ingest') {
     return (
@@ -345,35 +382,10 @@ function ConteudoDaAba({ aba, diariaNumero, diariaData, projetoId, diariaId, pod
     );
   }
 
-  const textos: Record<Exclude<Aba, 'ingest'>, { titulo: string; texto: string }> = {
-    logagem: {
-      titulo: 'Logagem',
-      texto: `A claquete, o arquivo que a câmera vai gravar e os botões OK, NG, HERO e REC invertido. Cada take ${dia} entra aqui, na ordem em que foi rodado.`,
-    },
-    camera: {
-      titulo: 'Câmera',
-      texto: 'Os kits de câmera e de lentes desta produção, o cartão no corpo da câmera e o formato do nome do arquivo. O que estiver aqui vai junto em cada take.',
-    },
-    backup: {
-      titulo: 'Backup',
-      texto: `Os HDs de destino, em quais deles cada cartão ${dia} já foi copiado, e o comprovante de checksum. Cartão só fica liberado para formatar com tudo isso em dia.`,
-    },
-    config: {
-      titulo: 'Config',
-      texto: 'Anotações rápidas e quem, além da Fotografia, pode registrar takes nesta produção.',
-    },
-  };
-
-  const t = textos[aba];
-  return <EmConstrucao titulo={t.titulo} texto={t.texto} />;
-}
-
-function EmConstrucao({ titulo, texto }: { titulo: string; texto: string }) {
+  // Só chega aqui no instante em que nenhuma diária está escolhida.
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '24px', borderStyle: 'dashed' }}>
-      <span className="text-xs font-bold uppercase tracking-widest text-muted">Em construção</span>
-      <h2 className="text-lg font-bold">{titulo}</h2>
-      <p className="text-sm text-secondary" style={{ maxWidth: '60ch', lineHeight: 1.6 }}>{texto}</p>
+    <div className="card text-sm text-secondary" style={{ padding: '24px' }}>
+      Escolha uma diária no alto da página para ver {aba === 'logagem' ? 'os takes' : 'esta parte'}.
     </div>
   );
 }
