@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Minus, Plus, Clapperboard, Sun, MessageSquare } from 'lucide-react';
+import { Minus, Plus, Clapperboard, Sun, MessageSquare, Layers } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem } from '../../types';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -12,6 +12,12 @@ import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { RegistroDeTake } from './RegistroDeTake';
 import { FotoDeReferencia } from './FotoDeReferencia';
 import { useAuth } from '../../hooks/useAuth';
+import { Acompanhamento } from './Acompanhamento';
+import {
+  NOME_DA_DENSIDADE, densidadeInicial, densidadesPossiveis, lembrarDensidade, lerDensidadeLembrada,
+  type Densidade,
+} from '../../lib/logagem/densidade';
+import type { VisaoDeQuemVe } from '../../lib/logagem/permissao';
 
 /**
  * Aba Logagem: a claquete do momento.
@@ -28,11 +34,13 @@ import { useAuth } from '../../hooks/useAuth';
  * mão e o set andando. Quem está logando não vai procurar um número de 14px no
  * meio de um formulário entre um "ação" e um "corta".
  */
-export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: {
+export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe = 'acompanhamento' }: {
   projetoId: string;
   diariaId: string;
   podeEditar: boolean;
   departamentoId?: string;
+  /** Em que visão quem SÓ VÊ abre — a continuísta vê tudo, o resto acompanha. */
+  visaoDeQuemVe?: VisaoDeQuemVe;
 }) {
   const estadoSalvo = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
   const { user } = useAuth();
@@ -47,6 +55,52 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
   const mudar = (m: Partial<EstadoDaLogagem>) => { if (podeEditar) void mudarEstado(diariaId, m); };
   const bloqueado = !podeEditar;
   const letras = estado.plano_letras !== false;
+
+  /*
+    A visão abre pelo aparelho e pelo papel, e depois obedece a pessoa.
+
+    `window.matchMedia` e não um hook de largura porque isto se decide UMA vez,
+    na abertura: trocar de visão sozinho porque alguém girou o celular seria a
+    tela mudando de forma no meio do take.
+  */
+  const [densidade, setDensidade] = useState<Densidade>(() =>
+    densidadeInicial({
+      podeEditar,
+      visaoDeQuemVe,
+      ehCelular: typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+      lembrada: lerDensidadeLembrada(),
+    })
+  );
+  const trocarDensidade = (nova: Densidade) => { setDensidade(nova); lembrarDensidade(nova); };
+
+  const seletorDeVisao = (
+    <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px' }}>
+      <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Layers size={14} style={{ color: 'var(--cor-criativo)' }} />
+        Visão
+      </span>
+      <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+        <Segmentado
+          nome="logagem-densidade"
+          opcoes={densidadesPossiveis(podeEditar).map(d => ({ id: d, nome: NOME_DA_DENSIDADE[d] }))}
+          valor={densidade}
+          bloqueado={false}
+          aoMudar={v => trocarDensidade(v as Densidade)}
+        />
+      </div>
+    </div>
+  );
+
+  if (densidade === 'acompanhamento') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {seletorDeVisao}
+        <Acompanhamento estado={estado} />
+      </div>
+    );
+  }
+
+  const detalhada = densidade === 'detalhada';
 
   /*
     O − e o + leem do BANCO, e não do que está na tela.
@@ -67,6 +121,8 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {seletorDeVisao}
+
       <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           <Rotulo icone={<Clapperboard size={14} />}>Claquete</Rotulo>
@@ -113,7 +169,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
           Trocar a cena devolve o plano para {letras ? 'A' : '1'} e o take para 1. Trocar o plano devolve só o take.
         </p>
 
-        <Campo rotulo="Planos em">
+        {detalhada && <Campo rotulo="Planos em">
           <Segmentado
             nome="logagem-modo-plano"
             opcoes={[{ id: 'letras', nome: 'Letras (A, B, C…)' }, { id: 'numeros', nome: 'Números' }]}
@@ -124,12 +180,15 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
               mudar({ plano_letras: paraLetras, plano: trocarModoDoPlano(estado.plano, paraLetras) });
             }}
           />
-        </Campo>
-        <p className="text-xs text-muted" style={{ marginTop: '-8px' }}>
-          O alfabeto de claquete pula I, O, Q, S e Z, que à mão viram 1, 0, 2, 5 e 2. Depois de Y vem AA.
-        </p>
+        </Campo>}
+        {detalhada && (
+          <p className="text-xs text-muted" style={{ marginTop: '-8px' }}>
+            O alfabeto de claquete pula I, O, Q, S e Z, que à mão viram 1, 0, 2, 5 e 2. Depois de Y vem AA.
+          </p>
+        )}
       </section>
 
+      {detalhada ? (
       <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '22px' }}>
         <Rotulo icone={<Sun size={14} />}>Como está a cena</Rotulo>
         <p className="text-xs text-muted" style={{ marginTop: '-10px' }}>
@@ -148,6 +207,29 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
           <Escolha nome="logagem-nd" opcoes={OPCOES.nd} valor={estado.nd} bloqueado={bloqueado} aoMudar={v => mudar({ nd: v })} />
         </Campo>
       </section>
+      ) : (
+        /*
+          No Foco o contexto não some: vira uma linha do que está valendo, para
+          conferir sem rolar. Mexer nele é raro no meio do take — quem precisa
+          troca de visão, e o próprio resumo é o botão que leva para lá.
+        */
+        <button
+          type="button"
+          onClick={() => trocarDensidade('detalhada')}
+          className="card"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+            padding: '14px 16px', minHeight: '44px', textAlign: 'left', width: '100%',
+            border: '1px solid var(--border-light)', color: 'var(--text-secondary)', cursor: 'pointer',
+          }}
+        >
+          <Sun size={14} style={{ color: 'var(--cor-criativo)', flexShrink: 0 }} />
+          <span className="text-sm">
+            {[estado.ambiente, estado.luz, estado.audio, estado.nd].filter(Boolean).join(' · ')}
+          </span>
+          <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>mudar na Detalhada</span>
+        </button>
+      )}
 
       <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
         <Rotulo icone={<MessageSquare size={14} />}>Observação deste take</Rotulo>
@@ -166,7 +248,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId }: 
 
       <FotoDeReferencia estado={estado} podeEditar={podeEditar} />
 
-      <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={user?.id} />
+      <RegistroDeTake estado={estado} podeEditar={podeEditar} quem={user?.id} limite={detalhada ? undefined : 3} />
     </div>
   );
 }

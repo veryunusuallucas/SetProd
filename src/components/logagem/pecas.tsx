@@ -240,15 +240,24 @@ export function ValorQueTroca({ texto, rotuloDeLeitura, tamanho, cor }: {
       style={{
         fontFamily: MONO, fontSize: tamanho, fontWeight: 700, letterSpacing: '0.02em',
         fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: cor || 'var(--text-primary)',
-        display: 'flex', overflow: 'hidden', minWidth: 0, flexWrap: 'wrap',
+        display: 'flex', minWidth: 0, flexWrap: 'wrap',
       }}
     >
       {texto.split('').map((c, i) => (
         <motion.span
           key={`${i}-${c}`}
           aria-hidden
-          initial={reduzido ? false : { y: '-0.45em', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
+          /*
+            O caractere cai de cima, mas NUNCA começa invisível.
+
+            Se os quadros não rodarem — aba em segundo plano, aparelho
+            economizando bateria — um `opacity: 0` inicial deixaria a claquete
+            em branco, e ela é o número que se lê de longe no set. Nascendo
+            deslocado, o pior caso é um dígito um pouco acima do lugar: torto,
+            mas legível. Por isso também não há `overflow: hidden` aqui.
+          */
+          initial={reduzido ? false : { y: '-0.4em' }}
+          animate={{ y: 0 }}
           transition={MOLA}
           style={{ display: 'inline-block', whiteSpace: 'pre' }}
         >

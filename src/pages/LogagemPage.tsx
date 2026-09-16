@@ -9,9 +9,10 @@ import { db } from '../db/db';
 import { useRole } from '../hooks/useRole';
 import { useAuth } from '../hooks/useAuth';
 import { MOLA, useMovimentoReduzido } from '../components/ui/movimento';
-import { podeEditarLogagem, departamentoDaFotografia } from '../lib/logagem/permissao';
+import { podeEditarLogagem, departamentoDaFotografia, visaoPadraoDeQuemVe } from '../lib/logagem/permissao';
 import { AbaCamera } from '../components/logagem/AbaCamera';
 import { AbaLogagem } from '../components/logagem/AbaLogagem';
+import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
 import { diaDaSemana } from '../lib/formato';
@@ -224,7 +225,15 @@ export default function LogagemPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={reduzido ? { duration: 0.12 } : MOLA}
           >
-            <ConteudoDaAba aba={aba} diariaNumero={diaria?.numero} projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoDaFotografia(departamentos)?.id} />
+            <ConteudoDaAba
+              aba={aba}
+              diariaNumero={diaria?.numero}
+              projetoId={projetoId}
+              diariaId={diariaId}
+              podeEditar={podeEditar}
+              departamentoId={departamentoDaFotografia(departamentos)?.id}
+              visaoDeQuemVe={visaoPadraoDeQuemVe(perfis.find(p => p.id === perfilId))}
+            />
           </motion.div>
         </>
       )}
@@ -281,19 +290,20 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 }
 
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
-function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, departamentoId }: {
+function ConteudoDaAba({ aba, diariaNumero, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe }: {
   aba: Aba;
   diariaNumero?: number;
   projetoId: string;
   diariaId: string;
   podeEditar: boolean;
   departamentoId?: string;
+  visaoDeQuemVe?: VisaoDeQuemVe;
 }) {
   if (aba === 'camera' && diariaId) {
     return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
   }
   if (aba === 'logagem' && diariaId) {
-    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
+    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} visaoDeQuemVe={visaoDeQuemVe} />;
   }
 
   const dia = diariaNumero ? `da Diária ${String(diariaNumero).padStart(2, '0')}` : 'desta diária';

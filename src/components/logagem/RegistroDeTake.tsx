@@ -32,16 +32,17 @@ const BOTOES: { status: StatusTake; icone: typeof Check; atalho?: string }[] = [
   { status: 'RECINV', icone: RefreshCw },
 ];
 
-export function RegistroDeTake({ estado, podeEditar, quem }: {
+export function RegistroDeTake({ estado, podeEditar, quem, limite }: {
   estado: EstadoDaLogagem;
   podeEditar: boolean;
   quem?: string;
+  /** Quantos takes mostrar na lista. Sem limite, mostra a diária inteira. */
+  limite?: number;
 }) {
   const takes = useLiveQuery(
     () => db.log_takes.where('diaria_id').equals(estado.diaria_id).toArray(),
     [estado.diaria_id]
   ) ?? [];
-  const emOrdem = [...takes].sort((a, b) => (b.ordem || 0) - (a.ordem || 0));
 
   /** A claquete repetida esperando decisão: substituir, acrescentar ou desistir. */
   const [repetido, setRepetido] = useState<{ status: StatusTake; take: Take } | null>(null);
@@ -89,8 +90,6 @@ export function RegistroDeTake({ estado, podeEditar, quem }: {
     window.addEventListener('keydown', aoTeclar);
     return () => window.removeEventListener('keydown', aoTeclar);
   });
-
-  const placar = contar(takes);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -187,27 +186,56 @@ export function RegistroDeTake({ estado, podeEditar, quem }: {
         </Decisao>
       </section>
 
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <Rotulo icone={<ListVideo size={14} />}>Takes desta diária</Rotulo>
-          <span className="text-xs text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {takes.length === 0 ? 'nenhum ainda' : `${takes.length} take${takes.length > 1 ? 's' : ''} · ${placar}`}
-          </span>
-        </div>
-
-        {emOrdem.length === 0 ? (
-          <p className="text-sm text-secondary" style={{ margin: 0 }}>
-            O primeiro take da diária aparece aqui, e os novos entram por cima.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {emOrdem.map(t => (
-              <LinhaDoTake key={t.id} take={t} novo={t.id === ultimo} podeEditar={podeEditar} />
-            ))}
-          </div>
-        )}
-      </section>
+      <ListaDeTakes takes={takes} ultimo={ultimo} podeEditar={podeEditar} limite={limite} />
     </div>
+  );
+}
+
+/**
+ * A lista do que já foi rodado, do mais novo para o mais velho.
+ *
+ * Com `limite`, mostra só os últimos — é o modo Foco, onde a tela é para
+ * registrar e não para conferir, e uma lista de quarenta takes empurraria os
+ * botões para fora do alcance do polegar.
+ */
+export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Takes desta diária' }: {
+  takes: Take[];
+  ultimo?: string;
+  podeEditar: boolean;
+  limite?: number;
+  titulo?: string;
+}) {
+  const emOrdem = [...takes].sort((a, b) => (b.ordem || 0) - (a.ordem || 0));
+  const mostrados = limite ? emOrdem.slice(0, limite) : emOrdem;
+  const escondidos = emOrdem.length - mostrados.length;
+
+  return (
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+        <Rotulo icone={<ListVideo size={14} />}>{titulo}</Rotulo>
+        <span className="text-xs text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {takes.length === 0 ? 'nenhum ainda' : `${takes.length} take${takes.length > 1 ? 's' : ''} · ${contar(takes)}`}
+        </span>
+      </div>
+
+      {mostrados.length === 0 ? (
+        <p className="text-sm text-secondary" style={{ margin: 0 }}>
+          O primeiro take da diária aparece aqui, e os novos entram por cima.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {mostrados.map(t => (
+            <LinhaDoTake key={t.id} take={t} novo={t.id === ultimo} podeEditar={podeEditar} />
+          ))}
+        </div>
+      )}
+
+      {escondidos > 0 && (
+        <p className="text-xs text-muted" style={{ margin: 0 }}>
+          e mais {escondidos} take{escondidos > 1 ? 's' : ''} nesta diária — a lista inteira está na visão Detalhada.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -242,7 +270,13 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
 
   return (
     <motion.div
-      initial={reduzido ? false : { opacity: 0, y: -10 }}
+      /*
+        Só o take RECÉM-REGISTRADO chega animado. Os que já estavam ali nascem
+        prontos: uma linha que começa invisível some de vez se os quadros não
+        rodarem (aba em segundo plano, aparelho economizando bateria), e a
+        lista do que foi rodado não pode depender de animação para existir.
+      */
+      initial={novo && !reduzido ? { opacity: 0, y: -10 } : false}
       animate={{
         opacity: 1,
         y: 0,
