@@ -294,7 +294,7 @@ export function ProjectLayout() {
       </div>
       
       <div className="sidebar-footer">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}>
+        <div className="sidebar-notificacoes" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}>
           <NotificacoesBell projetoId={id} />
           <span className="text-xs text-muted">Notificações</span>
         </div>
