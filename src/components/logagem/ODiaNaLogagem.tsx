@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { CalendarClock, ArrowRight, Clapperboard, ChevronDown } from 'lucide-react';
+import { CalendarClock, ArrowRight, Clapperboard, ChevronDown, CheckCheck } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { Abre } from './pecas';
 import { db } from '../../db/db';
@@ -84,7 +84,10 @@ export function ODiaNaLogagem({ estado, bloqueado, aoEscolher, compacto }: {
   });
   const proximo = proximoPlano(lista, estado);
 
-  if (aFrente.length === 0 && !rodando && !proximo) return null;
+  /** Toda a decupagem da diária já teve take: no lugar do botão, a linha que diz isso. */
+  const tudoRodou = lista.length > 0 && lista.every(i => i.takes > 0);
+
+  if (aFrente.length === 0 && !rodando && !proximo && !tudoRodou) return null;
 
   const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
   const atrasado = atraso.marcados > 0 && Math.abs(atraso.minutos) >= 5;
@@ -197,6 +200,25 @@ export function ODiaNaLogagem({ estado, bloqueado, aoEscolher, compacto }: {
   // Uma função que devolve o botão, e não um componente: declarado aqui dentro,
   // um componente nasceria de novo a cada renderização e perderia o estado.
   function botaoDoProximo() {
+    if (!proximo && tudoRodou) {
+      return (
+        <div
+          className="text-sm"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px', minHeight: '44px', padding: '6px 12px',
+            borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)',
+            border: '1px solid color-mix(in srgb, var(--color-success) 35%, transparent)',
+            backgroundColor: 'color-mix(in srgb, var(--color-success) 8%, transparent)',
+          }}
+        >
+          <CheckCheck size={16} style={{ color: 'var(--color-success)', flexShrink: 0 }} aria-hidden />
+          <span>
+            <strong style={{ color: 'var(--text-primary)' }}>Todos os planos da diária já rodaram</strong>
+            {expandido && <span className="text-muted"> · {lista.length} plano{lista.length === 1 ? '' : 's'} com take</span>}
+          </span>
+        </div>
+      );
+    }
     if (!proximo || !dados) return null;
     const detalhe = [proximo.plano.descricao, proximo.plano.tamanho, proximo.plano.lente].filter(Boolean).join(' · ');
     /*
