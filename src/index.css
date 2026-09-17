@@ -1055,3 +1055,13 @@ input[type="radio"]:checked::before {
 @media (prefers-reduced-motion: reduce) {
   .pulso-ao-vivo { animation: none; }
 }
+
+/* "Próximo plano" aceso depois do take bom: um brilho que respira, sem piscar. */
+@keyframes setprod-respira {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cor-criativo) 0%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-criativo) 22%, transparent); }
+}
+.proximo-aceso { animation: setprod-respira 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .proximo-aceso { animation: none; }
+}

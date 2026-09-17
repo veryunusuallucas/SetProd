@@ -1,4 +1,4 @@
-import type { EstadoDaLogagem } from '../../types';
+import type { EstadoDaLogagem, Take } from '../../types';
 import {
   descreverFalta, emHora, emMinutos, ROTULO_TIPO,
   type Atraso, type DiaCalculado, type ItemCalculado,
@@ -104,4 +104,23 @@ export function proximoPlano(lista: PlanoDoDia[], estado: Pick<EstadoDaLogagem, 
   const depois = lista.slice(aqui + 1).find(i => i.takes === 0);
   if (depois) return depois;
   return lista.find(i => i.takes === 0 && i.plano.id !== estado.plano_id) ?? null;
+}
+
+/**
+ * O plano da claquete já tem o take bom: é hora de olhar o próximo.
+ *
+ * Vale quando o ÚLTIMO take registrado da diária é OK ou HERO e é do plano que
+ * está na claquete. Só sugere — a claquete não muda sozinha (quem troca de
+ * plano é quem opera; mudar por baixo dela faz take com cena errada).
+ */
+export function planoResolvido(
+  takes: Pick<Take, 'status' | 'ordem' | 'criado_em' | 'plano_id' | 'cena' | 'plano' | 'camera_id'>[],
+  estado: Pick<EstadoDaLogagem, 'plano_id' | 'cena' | 'plano' | 'camera_id'>,
+): boolean {
+  const daCamera = takes.filter(t => t.status !== 'IMPORT' && t.camera_id === estado.camera_id);
+  if (daCamera.length === 0) return false;
+  const ultimo = daCamera.reduce((a, b) => (b.criado_em > a.criado_em || (b.criado_em === a.criado_em && b.ordem > a.ordem) ? b : a));
+  if (ultimo.status !== 'OK' && ultimo.status !== 'HERO') return false;
+  if (estado.plano_id) return ultimo.plano_id === estado.plano_id;
+  return ultimo.cena === estado.cena && ultimo.plano === estado.plano;
 }
