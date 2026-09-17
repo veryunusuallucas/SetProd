@@ -6,11 +6,12 @@ import { db } from '../db/db';
 import { useOcuparRodape } from '../components/ui/slotFlutuante';
 import { DockDoProjeto } from '../components/menu/DockDoProjeto';
 import { FolhaDeModulos } from '../components/menu/FolhaDeModulos';
+import { abrirAjuda, abrirRelatarProblema, useAjudaNoMenu } from '../components/menu/ajudaNoMenu';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
-  LogOut, DollarSign, ListTodo, X, Users, FileText, Truck, Database, Clapperboard
+  LogOut, DollarSign, ListTodo, X, Users, FileText, Truck, Database, Clapperboard, HelpCircle, Bug
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
@@ -105,6 +106,20 @@ export function ProjectLayout() {
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  /*
+    No celular, a ajuda e o "relatar problema" moram no menu do "Mais", e o
+    botão flutuante sai da tela — o canto de baixo é da dock. No computador a
+    barra lateral não tem esse menu, então o botão continua.
+  */
+  const [temDock, setTemDock] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 1023px)');
+    const mudar = () => setTemDock(m.matches);
+    m.addEventListener('change', mudar);
+    return () => m.removeEventListener('change', mudar);
+  }, []);
+  useAjudaNoMenu(temDock);
+
   // `undefined` é o Dexie ainda respondendo; `null` é resposta dada e não achou.
   if (projeto === undefined) return <div className="screen-padding">Carregando...</div>;
 
@@ -130,6 +145,15 @@ export function ProjectLayout() {
       </div>
     );
   }
+
+  /** A cor de cada área. É ela que separa os grupos na folha do celular. */
+  const COR_DO_GRUPO: Record<string, string> = {
+    SET: 'var(--cor-set)',
+    EQUIPE: 'var(--cor-equipe)',
+    CRIATIVO: 'var(--cor-criativo)',
+    'LOGÍSTICA': 'var(--cor-logistica)',
+    FINANCEIRO: 'var(--cor-financeiro)',
+  };
 
   const navGroups = [
     {
@@ -281,6 +305,7 @@ export function ProjectLayout() {
         ativo={currentPath}
         grupos={navGroups.map(g => ({
           titulo: g.title,
+          cor: COR_DO_GRUPO[g.title] || 'var(--text-muted)',
           itens: g.items.map(i => ({ nome: i.name, path: i.path, icone: i.icon, exact: i.exact })),
         }))}
         rodape={
@@ -314,6 +339,20 @@ export function ProjectLayout() {
             >
               <Search size={18} />
               <span>Busca</span>
+            </button>
+            <button
+              className="sidebar-link"
+              onClick={() => { setMobileSidebarOpen(false); abrirAjuda(); }}
+            >
+              <HelpCircle size={18} />
+              <span>Como funciona esta tela</span>
+            </button>
+            <button
+              className="sidebar-link"
+              onClick={() => { setMobileSidebarOpen(false); abrirRelatarProblema(); }}
+            >
+              <Bug size={18} />
+              <span>Relatar problema</span>
             </button>
             <button className="sidebar-link" onClick={() => { setMobileSidebarOpen(false); navigate('/'); }}>
               <LogOut size={18} />
