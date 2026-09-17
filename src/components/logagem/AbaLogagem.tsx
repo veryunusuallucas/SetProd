@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Sun, MessageSquare, Layers } from 'lucide-react';
+import { Sun, MessageSquare } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem } from '../../types';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -17,11 +17,7 @@ import { ExportarRelatorios } from './ExportarRelatorios';
 import { Acompanhamento } from './Acompanhamento';
 import { NotasRapidas } from './NotasRapidas';
 import { acrescentarNota } from '../../lib/logagem/notas';
-import {
-  NOME_DA_DENSIDADE, densidadeInicial, densidadesPossiveis, lembrarDensidade, lerDensidadeLembrada,
-  type Densidade,
-} from '../../lib/logagem/densidade';
-import type { VisaoDeQuemVe } from '../../lib/logagem/permissao';
+import type { Densidade } from '../../lib/logagem/densidade';
 
 /**
  * Aba Logagem: a claquete do momento.
@@ -38,15 +34,16 @@ import type { VisaoDeQuemVe } from '../../lib/logagem/permissao';
  * mão e o set andando. Quem está logando não vai procurar um número de 14px no
  * meio de um formulário entre um "ação" e um "corta".
  */
-export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe = 'acompanhamento', quem }: {
+export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, quem, densidade, aoTrocarDensidade }: {
   projetoId: string;
   diariaId: string;
   podeEditar: boolean;
   departamentoId?: string;
-  /** Em que visão quem SÓ VÊ abre — a continuísta vê tudo, o resto acompanha. */
-  visaoDeQuemVe?: VisaoDeQuemVe;
   /** Quem registra: a ficha da pessoa na produção, ou a conta quando não há ficha. */
   quem?: string;
+  /** A visão (Foco, Detalhada, Acompanhamento). Quem escolhe é o interruptor do topo da página. */
+  densidade: Densidade;
+  aoTrocarDensidade: (d: Densidade) => void;
 }) {
   const estadoSalvo = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
 
@@ -60,22 +57,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
   const mudar = (m: Partial<EstadoDaLogagem>) => { if (podeEditar) void mudarEstado(diariaId, m); };
   const bloqueado = !podeEditar;
 
-  /*
-    A visão abre pelo aparelho e pelo papel, e depois obedece a pessoa.
-
-    `window.matchMedia` e não um hook de largura porque isto se decide UMA vez,
-    na abertura: trocar de visão sozinho porque alguém girou o celular seria a
-    tela mudando de forma no meio do take.
-  */
-  const [densidade, setDensidade] = useState<Densidade>(() =>
-    densidadeInicial({
-      podeEditar,
-      visaoDeQuemVe,
-      ehCelular: typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
-      lembrada: lerDensidadeLembrada(),
-    })
-  );
-  const trocarDensidade = (nova: Densidade) => { setDensidade(nova); lembrarDensidade(nova); };
+  const trocarDensidade = aoTrocarDensidade;
 
   // Antes de qualquer retorno, porque é hook. No Acompanhamento não há botões,
   // então o Espaço também não registra nada ali.
@@ -103,31 +85,12 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
     return () => window.removeEventListener('keydown', aoTeclar);
   }, [podeEditar, densidade]);
 
-  const seletorDeVisao = (
-    <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px' }}>
-      <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Layers size={14} style={{ color: 'var(--cor-criativo)' }} />
-        Visão
-      </span>
-      <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-        <Segmentado
-          nome="logagem-densidade"
-          opcoes={densidadesPossiveis(podeEditar).map(d => ({ id: d, nome: NOME_DA_DENSIDADE[d] }))}
-          valor={densidade}
-          bloqueado={false}
-          aoMudar={v => trocarDensidade(v as Densidade)}
-        />
-      </div>
-    </div>
-  );
-
   if (densidade === 'acompanhamento') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <ODiaNaLogagem estado={estado} bloqueado aoEscolher={() => {}} />
         <Acompanhamento estado={estado} />
         <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
-        {seletorDeVisao}
       </div>
     );
   }
@@ -250,7 +213,6 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, vi
       {/* No Foco, o set não exporta nada: o relatório é trabalho do fim do dia. */}
       {detalhada && <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />}
 
-      {seletorDeVisao}
     </div>
   );
 }

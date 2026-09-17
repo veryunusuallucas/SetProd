@@ -17,8 +17,9 @@ import { AbaIngest } from '../components/logagem/AbaIngest';
 import { AbaConfig } from '../components/logagem/AbaConfig';
 import { pedirUmaVez } from '../lib/logagem/aparelho';
 import { SeletorDeDiaria } from '../components/logagem/SeletorDeDiaria';
+import { ToggleDeVisao } from '../components/logagem/ToggleDeVisao';
+import { densidadeInicial, lembrarDensidade, lerDensidadeLembrada, type Densidade } from '../lib/logagem/densidade';
 import type { Departamento, Perfil } from '../types';
-import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
 import { diariaDeAgora, estaAcontecendo } from '../lib/logagem/diariaPadrao';
 import { confirmar } from '../components/ui/Confirmacao';
 import { diaDaSemana } from '../lib/formato';
@@ -124,6 +125,17 @@ export default function LogagemPage() {
   });
   useEffect(() => { if (registra) void pedirUmaVez(); }, [registra]);
 
+  /*
+    A visão (Foco, Detalhada, Acompanhamento) mora aqui em cima, porque o
+    interruptor fica no topo, ao lado da diária. Ela abre pelo aparelho e pelo
+    papel e depois obedece a pessoa. O aparelho se lê UMA vez, na abertura:
+    trocar de visão porque alguém girou o celular seria a tela mudando de forma
+    no meio do take.
+  */
+  const [ehCelular] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
+  const [visaoEscolhida, setVisaoEscolhida] = useState<string | null>(lerDensidadeLembrada);
+  const trocarVisao = (d: Densidade) => { setVisaoEscolhida(d); lembrarDensidade(d); };
+
   const [aba, setAbaEstado] = useState<Aba>(abaInicial);
   /*
     A direção da troca de aba, para o conteúdo entrar pelo lado certo.
@@ -167,6 +179,8 @@ export default function LogagemPage() {
   });
 
   const diaria = ordenadas.find(d => d.id === diariaId);
+  const visaoDeQuemVe = visaoPadraoDeQuemVe(perfis.find(p => p.id === perfilId));
+  const densidade = densidadeInicial({ podeEditar, visaoDeQuemVe, ehCelular, lembrada: visaoEscolhida });
   const administra = role === 'dono' || role === 'admin';
   const deslocamento = reduzido ? 0 : 24;
 
@@ -215,13 +229,20 @@ export default function LogagemPage() {
         </div>
 
         {ordenadas.length > 0 && (
-          <SeletorDeDiaria
-            diarias={ordenadas}
-            valor={diariaId}
-            aoMudar={id => void trocarDiaria(id)}
-            agoraId={acontecendo ? idDeAgora : undefined}
-            alerta={foraDoDia}
-          />
+          // A diária e a visão juntas: no celular, uma em cada ponta da linha.
+          <div className="logagem-controles">
+            <SeletorDeDiaria
+              diarias={ordenadas}
+              valor={diariaId}
+              aoMudar={id => void trocarDiaria(id)}
+              agoraId={acontecendo ? idDeAgora : undefined}
+              alerta={foraDoDia}
+            />
+            {/* A visão só vale para a aba Logagem; nas outras o interruptor sai. */}
+            {aba === 'logagem' && (
+              <ToggleDeVisao podeEditar={podeEditar} valor={densidade} aoMudar={trocarVisao} />
+            )}
+          </div>
         )}
       </div>
 
@@ -340,7 +361,8 @@ export default function LogagemPage() {
               diariaId={diariaId}
               podeEditar={podeEditar}
               departamentoId={departamentoDaFotografia(departamentos)?.id}
-              visaoDeQuemVe={visaoPadraoDeQuemVe(perfis.find(p => p.id === perfilId))}
+              densidade={densidade}
+              aoTrocarDensidade={trocarVisao}
               // A ficha primeiro: é o nome que a equipe conhece, e é o que o
               // camera report imprime em "logado por". A conta fica para quem
               // entrou só pelo convite, sem ficha vinculada.
@@ -376,7 +398,7 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
 function ConteudoDaAba({
-  aba, diariaData, projetoId, diariaId, podeEditar, departamentoId, visaoDeQuemVe, quem,
+  aba, diariaData, projetoId, diariaId, podeEditar, departamentoId, densidade, aoTrocarDensidade, quem,
   administra, liberados, perfis, departamentos, usuarioId,
 }: {
   aba: Aba;
@@ -385,7 +407,8 @@ function ConteudoDaAba({
   diariaId: string;
   podeEditar: boolean;
   departamentoId?: string;
-  visaoDeQuemVe?: VisaoDeQuemVe;
+  densidade: Densidade;
+  aoTrocarDensidade: (d: Densidade) => void;
   quem?: string;
   administra: boolean;
   liberados: string[];
@@ -414,7 +437,7 @@ function ConteudoDaAba({
     return <AbaBackup projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;
   }
   if (aba === 'logagem' && diariaId) {
-    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} visaoDeQuemVe={visaoDeQuemVe} quem={quem} />;
+    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} densidade={densidade} aoTrocarDensidade={aoTrocarDensidade} />;
   }
 
   if (aba === 'ingest') {
