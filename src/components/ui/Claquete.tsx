@@ -19,7 +19,12 @@ import { useEffect } from 'react';
 
 export const DURACAO_DA_CLAQUETE = 1000;
 
-export function Claquete({ take = 3, reduzido = false }: { take?: number; reduzido?: boolean }) {
+export function Claquete({ take = 3, reduzido = false, diretor }: {
+  take?: number;
+  reduzido?: boolean;
+  /** Quem está dirigindo: o nome da conta de quem cutucou. */
+  diretor?: string;
+}) {
   // A tela inteira é dela enquanto dura: nada atrás deve rolar junto.
   useEffect(() => {
     const antes = document.body.style.overflow;
@@ -50,7 +55,7 @@ export function Claquete({ take = 3, reduzido = false }: { take?: number; reduzi
           </div>
           <div className="claquete-celula larga">
             <span>Diretor</span>
-            <b>VOCÊ</b>
+            <b>{(diretor || 'você').toUpperCase()}</b>
           </div>
         </div>
       </div>

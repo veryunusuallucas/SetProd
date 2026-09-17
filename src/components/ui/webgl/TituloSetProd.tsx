@@ -28,8 +28,17 @@ const RICK = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 const JANELA_MS = 1500;
 const CLIQUES_PARA_ESTOURAR = 3;
 
-/** Tensão acumulada em cada clique — o terceiro é o estouro. */
-const TENSAO = [0, 0.3, 0.65, 1];
+/**
+ * Tensão acumulada em cada clique — o terceiro é o estouro.
+ *
+ * Sobe rápido de propósito (pedido do Lucas, 17/09/2026: "mais dramática, tipo
+ * ele separa mais"): o primeiro cutucão já abre as letras o suficiente para a
+ * pessoa desconfiar de que cutucar de novo faz alguma coisa.
+ */
+const TENSAO = [0, 0.45, 0.8, 1];
+
+/** O quanto as letras se afastam no auge, em em. */
+const ABERTURA = 0.3;
 
 interface Props {
   tamanho?: number;
@@ -44,14 +53,23 @@ interface Props {
   alinhamento?: 'esquerda' | 'centro';
   /** Tinge o título de vermelho junto com o fundo, no modo de apagar. */
   perigo?: boolean;
+  /** Quem abriu o app: vira o "diretor" da claquete do easter egg. */
+  diretor?: string;
 }
 
 export function TituloSetProd({
-  tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro', perigo = false,
+  tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro', perigo = false, diretor,
 }: Props) {
   const [tensao, setTensao] = useState(0);
   const [claquete, setClaquete] = useState(false);
   const [reduzido] = useState(() => movimentoReduzido());
+  /*
+    A abertura da chegada é uma ANIMAÇÃO CSS, e animação vence estilo em linha
+    enquanto durar — com `both`, ela segurava o espaçamento no valor final e o
+    cutucão não separava letra nenhuma. Por isso a classe sai assim que a
+    animação termina: dali em diante quem manda é a tensão.
+  */
+  const [abrindo, setAbrindo] = useState(!movimentoReduzido());
 
   const cliques = useRef(0);
   const relogio = useRef<number | undefined>(undefined);
@@ -90,24 +108,34 @@ export function TituloSetProd({
         title="SetProd"
         aria-label="SetProd"
         disabled={!interativo}
-        className={reduzido ? 'titulo-setprod' : 'titulo-setprod abrindo'}
+        className={abrindo ? 'titulo-setprod abrindo' : 'titulo-setprod'}
+        onAnimationEnd={() => setAbrindo(false)}
         style={{
           fontFamily: fontFamily || "'Archivo Black', 'Arial Black', system-ui, sans-serif",
           fontSize: `${tamanho}px`,
           color: perigo ? 'var(--color-danger)' : 'var(--text-primary)',
           alignSelf: alinhamento === 'centro' ? 'center' : 'flex-start',
           cursor: interativo ? 'pointer' : 'default',
-          // A tensão do easter egg: apertar, desfocar, inclinar. Só isso.
-          letterSpacing: `${-0.06 + tensao * 0.05}em`,
-          filter: tensao ? `blur(${tensao * 2.4}px)` : undefined,
-          transform: tensao ? `skewX(${tensao * -5}deg) scale(${1 + tensao * 0.03})` : undefined,
+          /*
+            A tensão do easter egg. O que ela faz é UMA coisa: as letras se
+            afastam, como se o nome estivesse sendo esticado até arrebentar.
+            O desfoque, a inclinação e o brilho vêm junto, mais fracos, só para
+            a separação não parecer um ajuste de tipografia.
+          */
+          letterSpacing: `${-0.06 + tensao * ABERTURA}em`,
+          filter: tensao ? `blur(${tensao * 3.2}px)` : undefined,
+          transform: tensao
+            ? `skewX(${tensao * -9}deg) scale(${1 + tensao * 0.07}) rotate(${tensao * -1.2}deg)`
+            : undefined,
+          textShadow: tensao ? `0 0 ${tensao * 26}px rgba(255, 215, 0, ${tensao * 0.4})` : undefined,
+          transitionDuration: '0.16s',
         }}
       >
         SETPROD
       </button>
 
       {claquete && typeof document !== 'undefined'
-        && createPortal(<Claquete reduzido={reduzido} />, document.body)}
+        && createPortal(<Claquete reduzido={reduzido} diretor={diretor} />, document.body)}
     </>
   );
 }
