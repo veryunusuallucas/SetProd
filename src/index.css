@@ -1065,3 +1065,12 @@ input[type="radio"]:checked::before {
 @media (prefers-reduced-motion: reduce) {
   .proximo-aceso { animation: none; }
 }
+
+/* Topo da Logagem: a diária e o interruptor da visão, lado a lado. */
+.logagem-controles {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  margin-left: auto; min-width: 0;
+}
+@media (max-width: 1023px) {
+  .logagem-controles { width: 100%; justify-content: space-between; margin-left: 0; }
+}
