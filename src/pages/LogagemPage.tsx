@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
-  Clapperboard, Camera, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays, ChevronDown,
+  Clapperboard, Camera, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays,
 } from 'lucide-react';
 import { db } from '../db/db';
 import { useRole } from '../hooks/useRole';
@@ -16,11 +16,11 @@ import { AbaBackup } from '../components/logagem/AbaBackup';
 import { AbaIngest } from '../components/logagem/AbaIngest';
 import { AbaConfig } from '../components/logagem/AbaConfig';
 import { pedirUmaVez } from '../lib/logagem/aparelho';
+import { SeletorDeDiaria } from '../components/logagem/SeletorDeDiaria';
 import type { Departamento, Perfil } from '../types';
 import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
 import { diariaPadrao } from '../lib/logagem/diariaPadrao';
 import { hojeISO } from '../lib/urgencia';
-import { diaDaSemana } from '../lib/formato';
 
 /**
  * Logagem — o boletim de câmera da diária.
@@ -274,38 +274,6 @@ export default function LogagemPage() {
         </>
       )}
     </div>
-  );
-}
-
-/**
- * A diária em que a Logagem está. Um `select` nativo de propósito: no celular
- * ele abre a roda do sistema, que é o controle mais legível e mais fácil de
- * acertar com o dedo que existe — e ninguém precisa aprender um seletor novo
- * no meio do set.
- */
-function SeletorDeDiaria({ diarias, valor, aoMudar }: {
-  diarias: { id: string; numero: number; data: string }[];
-  valor: string;
-  aoMudar: (id: string) => void;
-}) {
-  const hoje = hojeISO();
-  return (
-    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0 36px 0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', cursor: 'pointer', flexShrink: 0 }}>
-      <CalendarDays size={16} color="var(--cor-set)" />
-      <select
-        value={valor}
-        onChange={e => aoMudar(e.target.value)}
-        aria-label="Diária da Logagem"
-        style={{ appearance: 'none', background: 'none', border: 'none', color: 'var(--text-primary)', fontWeight: 700, fontSize: '14px', cursor: 'pointer', outline: 'none', paddingRight: 0, minHeight: '44px' }}
-      >
-        {diarias.map(d => (
-          <option key={d.id} value={d.id}>
-            Diária {String(d.numero).padStart(2, '0')} · {d.data ? diaDaSemana(d.data) : 'sem data'}{d.data === hoje ? ' · hoje' : ''}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={16} className="text-muted" style={{ position: 'absolute', right: '12px', pointerEvents: 'none' }} />
-    </label>
   );
 }
 
