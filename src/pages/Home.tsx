@@ -19,7 +19,6 @@ import {
 } from '../lib/lixeira';
 import Stepper, { Step } from '../components/ui/Stepper';
 import { CreepyButton } from '../components/ui/CreepyButton';
-import { HelpButton } from '../components/HelpButton';
 import { ChangelogModal } from '../components/ChangelogModal';
 import { useAuth } from '../hooks/useAuth';
 import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
@@ -303,7 +302,8 @@ export function Home() {
         </button>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <HelpButton />
+          {/* O "?" mora no menu flutuante do canto de baixo, que existe em toda
+              tela. Aqui em cima ele era um segundo botão para a mesma coisa. */}
           {/* Confirmação na própria tela, não no confirm() do navegador.
               O Chrome oferece "não exibir mais caixas de diálogo" depois de
               alguns avisos seguidos; marcada essa opção, o confirm devolve
