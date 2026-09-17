@@ -162,10 +162,15 @@ export function ProjectLayout() {
 
   const [menuAberto, setMenuAberto] = useState(false);
   const esperaDoMenu = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // 160ms: quem só passou o mouse a caminho de outra coisa não abre o menu.
+  /*
+    450ms, e não os 160 do primeiro corte (pedido do Lucas, 17/09/2026): quem
+    já sabe qual ícone é o dele mira e clica sem querer ver nome nenhum, e o
+    menu abria no caminho. Meio segundo é o tempo de quem PAROU ali para ler.
+    Quem quiser na hora, clica: o clique abre sem esperar.
+  */
   const entrouNoMenu = () => {
     clearTimeout(esperaDoMenu.current);
-    esperaDoMenu.current = setTimeout(() => setMenuAberto(true), 160);
+    esperaDoMenu.current = setTimeout(() => setMenuAberto(true), 450);
   };
   const saiuDoMenu = () => { clearTimeout(esperaDoMenu.current); setMenuAberto(false); };
   // No toque não existe "tirar o mouse": trocar de módulo fecha o trilho.
