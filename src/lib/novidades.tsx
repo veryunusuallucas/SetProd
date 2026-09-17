@@ -6,6 +6,7 @@ import {
   Bell, LogIn, Bug, Send, Mail, Film, Share2, AlertTriangle, CheckSquare, CalendarClock, CalendarPlus,
   FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
   Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
+  Camera, HardDrive, FileInput, Target, Image, Save,
 } from 'lucide-react';
 
 /**
@@ -223,6 +224,108 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.12.0',
+    resumo: <>O boletim de câmera entrou no app: cada take, cada cartão e cada HD da diária, no celular do set ou no notebook do DIT — e sem internet.</>,
+    grupos: [
+      {
+        id: 'logagem',
+        titulo: 'Logagem: o boletim de câmera',
+        resumo: 'A claquete, os takes e o dia acontecendo, dentro da diária que já existe.',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'Registrar take em um toque',
+            texto: 'Cena, plano e take em números grandes, o nome do arquivo embaixo e os quatro botões colados neles: OK, NG, HERO e REC invertido. O plano anda sozinho no alfabeto de claquete (sem I, O, Q, S e Z), o arquivo é numerado em sequência, e a mesma claquete duas vezes vira um aviso com saída. No computador, Espaço registra OK e Shift+Espaço, NG.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Target size={20} />,
+            titulo: 'Três visões, num interruptor no alto',
+            texto: 'Foco para o celular no set, Detalhada para o notebook na mesa e Acompanhamento para quem não loga e só quer saber o que está rolando. A troca é um interruptor de dois ícones ao lado da diária, e o aparelho lembra a escolha.',
+          },
+          {
+            tipo: 'novo',
+            icone: <CalendarClock size={20} />,
+            titulo: 'O dia da Ordem do Dia, no alto da tela',
+            texto: 'A hora, o que está rodando, e o que vem depois — cena, refeição, ensaio — já com o atraso real do dia somado. Do lado, o próximo plano da decupagem: um toque põe cena, plano, lente e descrição na claquete. Depois de um take OK ou HERO, esse botão acende sozinho.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Camera size={20} />,
+            titulo: 'Kits de câmera e de lente',
+            texto: 'Cada câmera com a letra, o cartão e o clipe dela; cada lente com a faixa que alcança, em f-stop ou em T-stop, do jeito que está escrito no anel. A abertura da claquete nunca passa do que a lente faz, e dá para copiar o kit de outra produção. A câmera e a lente se editam no lápis da caixinha.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Image size={20} />,
+            titulo: 'Foto de referência e anotações rápidas',
+            texto: 'Uma foto por take, que encolhe antes de ser guardada para não disputar a internet do set, e pílulas de frase pronta embaixo da observação — "Vazou boom", "MOS", "Foco cravado" —, editáveis na Config. Take já registrado se corrige, e a correção pode seguir para os próximos takes da mesma câmera.',
+          },
+        ],
+      },
+      {
+        id: 'cartoes',
+        titulo: 'Cartão nenhum se formata no escuro',
+        resumo: 'O backup, o ingest e os relatórios que o set precisa entregar.',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <HardDrive size={20} />,
+            titulo: 'Safe to Format, com prova',
+            texto: 'Cada cartão vira uma lista de passos: copiar para cada HD e anexar o comprovante de verificação daquele cartão. O verde só aparece com cópia em todos os HDs e comprovante anexado, e o app diz exatamente o que falta. Trocar um cartão com take e sem backup pergunta antes.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileInput size={20} />,
+            titulo: 'Ingest: ler o cartão no computador',
+            texto: 'Escolha a pasta do cartão e o app lê os XML da Sony, confere se cada vídeo abre, aproveita o manifesto do DaVinci para quem não tem XML, separa os clipes de outro dia e importa o que ninguém logou. Nada sai do computador: o cartão é lido no lugar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'Camera report em PDF, e a planilha',
+            texto: 'O relatório da diária com as colunas do boletim, a faixa de formato a cada mudança, a foto de referência e quem logou; o relatório de integridade com cartão × HD × comprovante; e o CSV com as 43 colunas para abrir no Excel. Tudo fica guardado em Documentos, na pasta Camera Reports.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Save size={20} />,
+            titulo: 'Cópia de segurança em um arquivo',
+            texto: 'A diária inteira num JSON para guardar no HD, com as fotos e os comprovantes dentro. Trazer de volta aceita esse arquivo e também o backup do antigo Lumavi, mostra antes o que vai entrar e só acrescenta o que falta.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Smartphone size={20} />,
+            titulo: 'Feita para o set sem sinal',
+            texto: 'Tudo funciona offline e sobe quando o sinal volta — os takes primeiro, as fotos depois. O app pede ao navegador para não apagar os dados do aparelho, e a Config mostra se está guardado, o que falta subir e se há internet. Quem registra é a Fotografia, quem administra, e quem o dono liberar; o resto acompanha.',
+          },
+        ],
+      },
+      {
+        id: 'fora',
+        titulo: 'Fora da Logagem',
+        resumo: 'A tela inicial e o menu.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <Home size={20} />,
+            titulo: 'A tela inicial não mostra mais o saldo do filme',
+            texto: 'O cartão de cada produção agora diz em que fase ela está — pré-produção, filmando hoje, em filmagem, encerrada —, qual é a próxima diária e quanto falta para ela, quantas diárias já rodaram e qual é o seu papel na produção. O dinheiro continua no Financeiro, de quem administra.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <LayoutGrid size={20} />,
+            titulo: 'Equipamentos saiu do menu',
+            texto: 'Era um item que só dizia "Em breve". Volta quando for a vez dele. O resumo de equipamento do SetGear dentro da diária continua onde estava.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.11.0',
     resumo: <>A primeira leva de melhorias de tela: o calendário se lê no celular, e o app inteiro para de escapar pelas bordas.</>,
