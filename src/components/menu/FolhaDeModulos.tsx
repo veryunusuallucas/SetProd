@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { useMovimentoReduzido } from '../ui/movimento';
@@ -25,6 +25,8 @@ export interface ModuloDaFolha {
 
 export interface GrupoDaFolha {
   titulo: string;
+  /** A cor da área (SET, CRIATIVO…). É ela que separa os grupos, no lugar do espaço. */
+  cor: string;
   itens: ModuloDaFolha[];
 }
 
@@ -97,10 +99,15 @@ export function FolhaDeModulos({ aberta, aoFechar, grupos, ativo, rodape }: {
         </div>
 
         <div className="folha-rolagem">
-          {grupos.map(g => (
-            <section key={g.titulo} className="folha-grupo">
-              <h2 className="folha-titulo">{g.titulo}</h2>
-              <div className="folha-malha">
+          {/*
+            Uma grade só, e a cor da área separando os grupos — não o espaço.
+            Em seções empilhadas, cada grupo abria um vão e a folha virava
+            rolagem só para caber cinco títulos (pedido do Lucas, 17/09/2026).
+          */}
+          <div className="folha-malha">
+            {grupos.map(g => (
+              <Fragment key={g.titulo}>
+                <h2 className="folha-titulo" style={{ color: g.cor }}>{g.titulo}</h2>
                 {g.itens.map(m => {
                   const aqui = m.exact ? ativo === m.path : ativo.startsWith(m.path);
                   return (
@@ -110,16 +117,17 @@ export function FolhaDeModulos({ aberta, aoFechar, grupos, ativo, rodape }: {
                       end={m.exact}
                       onClick={aoFechar}
                       className={`folha-quadro ${aqui ? 'aqui' : ''}`}
+                      style={{ '--cor-area': g.cor } as React.CSSProperties}
                       aria-current={aqui ? 'page' : undefined}
                     >
-                      <m.icone size={22} />
+                      <m.icone size={20} />
                       <span>{m.nome}</span>
                     </NavLink>
                   );
                 })}
-              </div>
-            </section>
-          ))}
+              </Fragment>
+            ))}
+          </div>
 
           {rodape && <div className="folha-rodape">{rodape}</div>}
         </div>

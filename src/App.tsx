@@ -6,7 +6,7 @@ import { Login } from './pages/Login';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { BugReportModal } from './components/BugReportModal';
 import { PenseNisso } from './components/PenseNisso';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Bug, HelpCircle } from 'lucide-react';
 import { MenuFlutuante } from './components/ui/MenuFlutuante';
 import { useAlturaOcupada } from './components/ui/slotFlutuante';
@@ -14,6 +14,7 @@ import { HelpButton } from './components/HelpButton';
 import { AvisoDeVersao } from './components/AvisoDeVersao';
 import { Faiscas } from './components/ui/Faisca';
 import { Confirmacoes } from './components/ui/Confirmacao';
+import { useAjudaEstaNoMenu } from './components/menu/ajudaNoMenu';
 
 /**
  * As telas de dentro do app carregam sob demanda.
@@ -176,12 +177,29 @@ function MenuGlobal() {
     botão "Mais" da barra do celular.
   */
   const ocupado = useAlturaOcupada();
+  /*
+    Dentro da produção, no celular, quem abriga a ajuda é o menu do "Mais" —
+    o canto de baixo agora é da dock. Ver `components/menu/ajudaNoMenu.ts`.
+  */
+  const noMenu = useAjudaEstaNoMenu();
+
+  // As duas ações também são abertas de dentro daquele menu.
+  useEffect(() => {
+    const ajudar = () => setAjuda(true);
+    const relatar = () => { setDuvidaInicial(''); setBug(true); };
+    window.addEventListener('setprod-abrir-ajuda', ajudar);
+    window.addEventListener('setprod-abrir-bug', relatar);
+    return () => {
+      window.removeEventListener('setprod-abrir-ajuda', ajudar);
+      window.removeEventListener('setprod-abrir-bug', relatar);
+    };
+  }, []);
   /** 16px de respiro acima de quem estiver embaixo; 24 do rodapé quando não há ninguém. */
   const base = ocupado > 0 ? ocupado + 16 : 24;
 
   return (
     <>
-      <MenuFlutuante
+      {!noMenu && <MenuFlutuante
         icone={<HelpCircle size={22} />}
         rotulo="Ajuda e problemas"
         base={base}
@@ -201,7 +219,7 @@ function MenuGlobal() {
             onClick: () => setAjuda(true),
           },
         ]}
-      />
+      />}
 
       <HelpButton
         mostrarBotao={false}

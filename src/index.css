@@ -1196,48 +1196,57 @@ input[type="radio"]:checked::before {
 
 .folha-rolagem {
   overflow-y: auto;
-  padding: 4px 16px 20px;
+  padding: 2px 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
+/* O título ocupa a linha inteira da grade: é a etiqueta da cor que vem
+   embaixo, e não uma seção com espaço próprio. */
 .folha-titulo {
-  margin: 0 0 8px;
-  font-size: 11px;
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-muted);
 }
+.folha-malha > .folha-titulo:first-child { margin-top: 0; }
 
 .folha-malha {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
 }
 
+/*
+  Cada quadro é da cor da sua área (--cor-area), no tom mais fraco que ainda
+  se lê: cor de área diz ONDE você está, e é ela que agrupa a grade sem abrir
+  um vão entre um grupo e outro.
+*/
 .folha-quadro {
-  min-height: 84px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 6px;
+  gap: 6px;
+  padding: 8px 5px;
   text-align: center;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
-  background-color: var(--bg-primary);
+  border: 1px solid color-mix(in srgb, var(--cor-area, var(--border-light)) 22%, transparent);
+  background-color: color-mix(in srgb, var(--cor-area, var(--bg-surface)) 8%, transparent);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.2;
 }
+.folha-quadro svg { color: var(--cor-area, var(--text-secondary)); }
 .folha-quadro.aqui {
-  border-color: var(--accent);
+  border-color: var(--cor-area);
   color: var(--text-primary);
-  background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  background-color: color-mix(in srgb, var(--cor-area) 20%, transparent);
 }
 
 .folha-rodape {
