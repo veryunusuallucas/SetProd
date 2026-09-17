@@ -1109,8 +1109,16 @@ input[type="radio"]:checked::before {
   min-width: 0;
   min-height: 52px;
   border-radius: var(--radius-full);
+  /* Centrado nos dois eixos: o .nav-item de fora só alinha na horizontal, e
+     o ícone com o rótulo ficava encostado no topo da pílula. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
+  text-decoration: none;
 }
+/* Link dentro da dock não é texto corrido: o sublinhado do app não vale aqui. */
+.dock-nav a, .dock-nav a:hover { text-decoration: none; }
 
 /* O conteúdo sobe acima do marcador; sem isto o dourado cobriria o ícone. */
 .dock-conteudo {
@@ -1216,8 +1224,10 @@ input[type="radio"]:checked::before {
 
 .folha-malha {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 6px;
+  /* Três colunas, sempre: é a grade que o Lucas desenhou, e ela cabe até em
+     320px. Com `auto-fill`, a última linha ficava com um quadro solto. */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
 /*
@@ -1243,6 +1253,8 @@ input[type="radio"]:checked::before {
   line-height: 1.2;
 }
 .folha-quadro svg { color: var(--cor-area, var(--text-secondary)); }
+/* Quadro não é texto corrido: o sublinhado dos links do app não vale aqui. */
+.folha-quadro, .folha-quadro:hover { text-decoration: none; }
 .folha-quadro.aqui {
   border-color: var(--cor-area);
   color: var(--text-primary);

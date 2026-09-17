@@ -146,15 +146,6 @@ export function ProjectLayout() {
     );
   }
 
-  /** A cor de cada área. É ela que separa os grupos na folha do celular. */
-  const COR_DO_GRUPO: Record<string, string> = {
-    SET: 'var(--cor-set)',
-    EQUIPE: 'var(--cor-equipe)',
-    CRIATIVO: 'var(--cor-criativo)',
-    'LOGÍSTICA': 'var(--cor-logistica)',
-    FINANCEIRO: 'var(--cor-financeiro)',
-  };
-
   const navGroups = [
     {
       title: 'SET',
@@ -303,56 +294,33 @@ export function ProjectLayout() {
         aberta={mobileSidebarOpen}
         aoFechar={() => setMobileSidebarOpen(false)}
         ativo={currentPath}
-        grupos={navGroups.map(g => ({
-          titulo: g.title,
-          cor: COR_DO_GRUPO[g.title] || 'var(--text-muted)',
-          itens: g.items.map(i => ({ nome: i.name, path: i.path, icone: i.icon, exact: i.exact })),
-        }))}
+        /*
+          A grade do "Mais": o que NÃO está na dock, na cor da sua área, e no
+          fim as duas de aviso — a ajuda e o "relatar problema", que antes
+          moravam no botão flutuante do canto.
+        */
+        itens={[
+          { nome: 'Logagem', path: `/projeto/${id}/logagem`, icone: Clapperboard, cor: 'var(--cor-criativo)' },
+          { nome: 'Decupagem', path: `/projeto/${id}/decupagem`, icone: Film, cor: 'var(--cor-criativo)' },
+          { nome: 'Documentos', path: `/projeto/${id}/documentos`, icone: FileText, cor: 'var(--cor-criativo)' },
+          { nome: 'Produção', path: `/projeto/${id}/producao`, icone: Users, cor: 'var(--cor-equipe)' },
+          { nome: 'Eventos', path: `/projeto/${id}/eventos`, icone: CalendarClock, cor: 'var(--cor-set)' },
+          { nome: 'Locações', path: `/projeto/${id}/locacoes`, icone: MapPin, cor: 'var(--cor-logistica)' },
+          { nome: 'Transporte', path: `/projeto/${id}/transporte`, icone: Truck, cor: 'var(--cor-logistica)' },
+          { nome: 'Dados', path: `/projeto/${id}/dados`, icone: Database, cor: 'var(--cor-logistica)' },
+          { nome: 'Acesso', icone: Users, cor: 'var(--cor-equipe)', aoTocar: () => setMostrarCompartilhar(true) },
+          { nome: 'Config', path: `/projeto/${id}/config`, icone: Settings, cor: 'var(--text-muted)' },
+          { nome: 'Como funciona', icone: HelpCircle, cor: 'var(--color-danger)', aoTocar: abrirAjuda },
+          { nome: 'Relatar problema', icone: Bug, cor: 'var(--color-danger)', aoTocar: abrirRelatarProblema },
+        ]}
         rodape={
           <>
-            <Link
-              to={`/projeto/${id}/dados`}
-              className="sidebar-link"
-              onClick={() => setMobileSidebarOpen(false)}
-            >
-              <Database size={18} />
-              <span>Gestão de Dados</span>
-            </Link>
-            <Link
-              to={`/projeto/${id}/config`}
-              className="sidebar-link"
-              onClick={() => setMobileSidebarOpen(false)}
-            >
-              <Settings size={18} />
-              <span>Configurações</span>
-            </Link>
-            <button
-              className="sidebar-link"
-              onClick={() => { setMobileSidebarOpen(false); setMostrarCompartilhar(true); }}
-            >
-              <Users size={18} />
-              <span>Quem tem acesso</span>
-            </button>
             <button
               className="sidebar-link"
               onClick={() => { setMobileSidebarOpen(false); window.dispatchEvent(new Event('open-command-palette')); }}
             >
               <Search size={18} />
               <span>Busca</span>
-            </button>
-            <button
-              className="sidebar-link"
-              onClick={() => { setMobileSidebarOpen(false); abrirAjuda(); }}
-            >
-              <HelpCircle size={18} />
-              <span>Como funciona esta tela</span>
-            </button>
-            <button
-              className="sidebar-link"
-              onClick={() => { setMobileSidebarOpen(false); abrirRelatarProblema(); }}
-            >
-              <Bug size={18} />
-              <span>Relatar problema</span>
             </button>
             <button className="sidebar-link" onClick={() => { setMobileSidebarOpen(false); navigate('/'); }}>
               <LogOut size={18} />
