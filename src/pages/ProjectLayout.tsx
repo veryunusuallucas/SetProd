@@ -256,8 +256,9 @@ export function ProjectLayout() {
       
       <div className="sidebar-nav" style={{ flex: 1, overflowY: 'auto' }}>
         {navGroups.map((group) => (
-          <div key={group.title} style={{ marginBottom: '16px' }}>
-            <div className="sidebar-grupo text-xs text-secondary font-bold uppercase tracking-widest px-4 mb-2 mt-2">{group.title}</div>
+          // Sem título de grupo (pedido do Lucas, 17/09/2026): a ordem já diz o
+          // agrupamento, e cinco títulos numa barra estreita só faziam volume.
+          <div key={group.title} className="sidebar-bloco">
             {group.items.map(item => (
               <Link 
                 key={item.name} 
