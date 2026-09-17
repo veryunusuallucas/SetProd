@@ -192,10 +192,17 @@
 }
 .menu-lateral .sidebar-link svg { flex-shrink: 0; }
 
-/* Encolhido: ficam os ícones, e o nome de cada um vive no `title`. */
+/*
+  Encolhido: ficam os ícones, e o nome de cada um vive no `title`.
+
+  O `:not(:has(svg))` não é capricho: o "Salvo" do rodapé desenha o ícone
+  DENTRO de um span (é ele que pinta de verde ou de laranja), e a primeira
+  versão desta regra apagava o span inteiro — o trilho ficava sem o sinal de
+  que o trabalho está salvo, que é justamente o que se olha de relance.
+*/
 .menu-lateral.trilho:not(.aberto) .sidebar-title,
-.menu-lateral.trilho:not(.aberto) .sidebar-link span,
-.menu-lateral.trilho:not(.aberto) .sidebar-footer span,
+.menu-lateral.trilho:not(.aberto) .sidebar-link span:not(:has(svg)),
+.menu-lateral.trilho:not(.aberto) .sidebar-footer span:not(:has(svg)),
 .menu-lateral.trilho:not(.aberto) .sidebar-footer .text-xs {
   opacity: 0;
   pointer-events: none;
