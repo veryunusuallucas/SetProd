@@ -42,7 +42,16 @@ const SAUDACOES: Record<Persona, { antes: string; nome: string }> = {
 };
 
 export function Home() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  /*
+    O nome que a pessoa deu ao criar a conta (`user_metadata.nome`) — o mesmo
+    que aparece na lista de membros. Sem ele, a parte do e-mail antes do @, que
+    quase sempre é o nome. É o que a claquete do easter egg escreve em
+    "diretor".
+  */
+  const nomeDeQuemAbriu = String(user?.user_metadata?.nome || '').trim()
+    || (user?.email || '').split('@')[0]
+    || '';
   const reduzido = useMovimentoReduzido();
   const projetos = useLiveQuery(() => db.projetos.toArray());
   /*
@@ -313,7 +322,7 @@ export function Home() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Alinhado à esquerda, na mesma coluna do selo, da saudação, da busca
             e dos cards — centralizado ele ficava boiando fora da composição. */}
-        <TituloSetProd tamanho={84} alinhamento="esquerda" perigo={modoDeletar} />
+        <TituloSetProd tamanho={84} alinhamento="esquerda" perigo={modoDeletar} diretor={nomeDeQuemAbriu} />
       </div>
 
       {/* Uma frase só. Antes eram dois rótulos de tamanhos muito diferentes
