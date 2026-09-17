@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useEffect, Suspense } from 'react';
+import { useState, createContext, useContext, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
 import { voltarDe } from '../lib/navegacao';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -11,7 +11,8 @@ import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
-  LogOut, DollarSign, ListTodo, X, Users, FileText, Truck, Database, Clapperboard, HelpCircle, Bug
+  LogOut, DollarSign, ListTodo, X, Users, FileText, Truck, Database, Clapperboard, HelpCircle, Bug,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
@@ -22,7 +23,29 @@ import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 import { confirmar } from '../components/ui/Confirmacao';
 
-export const LayoutContext = createContext<{
+export /** O menu lateral preso (com nomes) ou em trilho. Por aparelho. */
+const CHAVE_MENU_PRESO = 'setprod:menu:preso';
+
+/** Uma media query como estado, para a tela reagir a girar e redimensionar. */
+function useMedia(consulta: string) {
+  const [vale, setVale] = useState(() => typeof window !== 'undefined' && window.matchMedia(consulta).matches);
+  useEffect(() => {
+    const m = window.matchMedia(consulta);
+    const mudar = () => setVale(m.matches);
+    m.addEventListener('change', mudar);
+    // O 'resize' é reforço: em navegador embarcado e em janela redimensionada
+    // no braço, o 'change' às vezes não chega, e a tela ficava no layout errado.
+    window.addEventListener('resize', mudar);
+    setVale(m.matches);
+    return () => {
+      m.removeEventListener('change', mudar);
+      window.removeEventListener('resize', mudar);
+    };
+  }, [consulta]);
+  return vale;
+}
+
+const LayoutContext = createContext<{
   openPanel: (content: React.ReactNode) => void;
   closePanel: () => void;
 }>({ openPanel: () => {}, closePanel: () => {} });
@@ -111,14 +134,43 @@ export function ProjectLayout() {
     botão flutuante sai da tela — o canto de baixo é da dock. No computador a
     barra lateral não tem esse menu, então o botão continua.
   */
-  const [temDock, setTemDock] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
-  useEffect(() => {
-    const m = window.matchMedia('(max-width: 1023px)');
-    const mudar = () => setTemDock(m.matches);
-    m.addEventListener('change', mudar);
-    return () => m.removeEventListener('change', mudar);
-  }, []);
+  const temDock = useMedia('(max-width: 767px)');
   useAjudaNoMenu(temDock);
+
+  /*
+    O MENU LATERAL VIRA TRILHO (fase 2 da leva dos menus, 17/09/2026).
+
+    Preso, é a barra de sempre, com os nomes, empurrando o conteúdo. Solto,
+    encolhe para só ícones e abre POR CIMA quando o mouse chega — por cima, e
+    não empurrando, porque senão a tela inteira dançaria toda vez que o mouse
+    passasse por ali a caminho de outra coisa.
+
+    O padrão muda com o aparelho: no computador começa preso (é a barra que a
+    equipe já conhece), no tablet começa em trilho, que é onde a largura faz
+    falta. A escolha da pessoa vale mais, e fica guardada no aparelho.
+  */
+  const ehComputador = useMedia('(min-width: 1024px)');
+  const [escolhaDoMenu, setEscolhaDoMenu] = useState<string | null>(() => {
+    try { return localStorage.getItem(CHAVE_MENU_PRESO); } catch { return null; }
+  });
+  const menuPreso = escolhaDoMenu === null ? ehComputador : escolhaDoMenu === 'sim';
+  const trocarMenuPreso = () => {
+    const novo = menuPreso ? 'nao' : 'sim';
+    setEscolhaDoMenu(novo);
+    try { localStorage.setItem(CHAVE_MENU_PRESO, novo); } catch { /* fica só nesta visita */ }
+  };
+
+  const [menuAberto, setMenuAberto] = useState(false);
+  const esperaDoMenu = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // 160ms: quem só passou o mouse a caminho de outra coisa não abre o menu.
+  const entrouNoMenu = () => {
+    clearTimeout(esperaDoMenu.current);
+    esperaDoMenu.current = setTimeout(() => setMenuAberto(true), 160);
+  };
+  const saiuDoMenu = () => { clearTimeout(esperaDoMenu.current); setMenuAberto(false); };
+  // No toque não existe "tirar o mouse": trocar de módulo fecha o trilho.
+  useEffect(() => { setMenuAberto(false); }, [currentPath]);
+  useEffect(() => () => clearTimeout(esperaDoMenu.current), []);
 
   // `undefined` é o Dexie ainda respondendo; `null` é resposta dada e não achou.
   if (projeto === undefined) return <div className="screen-padding">Carregando...</div>;
@@ -205,12 +257,13 @@ export function ProjectLayout() {
       <div className="sidebar-nav" style={{ flex: 1, overflowY: 'auto' }}>
         {navGroups.map((group) => (
           <div key={group.title} style={{ marginBottom: '16px' }}>
-            <div className="text-xs text-secondary font-bold uppercase tracking-widest px-4 mb-2 mt-2">{group.title}</div>
+            <div className="sidebar-grupo text-xs text-secondary font-bold uppercase tracking-widest px-4 mb-2 mt-2">{group.title}</div>
             {group.items.map(item => (
               <Link 
                 key={item.name} 
                 to={item.path} 
                 className={`sidebar-link ${isActive(item.path, item.exact) ? 'active' : ''}`}
+                title={item.name}
                 onClick={() => setMobileSidebarOpen(false)}
               >
                 <item.icon size={18} />
@@ -249,7 +302,7 @@ export function ProjectLayout() {
           <span>Busca (Cmd+K)</span>
         </button>
         <button className="sidebar-link" onClick={() => navigate('/')}>
-          <LogOut size={18} /> Sair do Projeto
+          <LogOut size={18} /> <span>Sair do Projeto</span>
         </button>
       </div>
 
@@ -278,10 +331,29 @@ export function ProjectLayout() {
   );
 
   return (
-    <div className="project-layout">
-      {/* Desktop Sidebar */}
-      <aside className="sidebar desktop-only">
+    <div
+      className="project-layout"
+      style={{ ['--menu-largura' as string]: menuPreso ? '240px' : '58px' } as React.CSSProperties}
+    >
+      {/* O menu lateral: barra no computador, trilho de ícones quando solto. */}
+      <aside
+        className={`sidebar menu-lateral ${menuPreso ? 'preso' : 'trilho'} ${!menuPreso && menuAberto ? 'aberto' : ''}`}
+        onPointerEnter={e => { if (!menuPreso && e.pointerType !== 'touch') entrouNoMenu(); }}
+        onPointerLeave={saiuDoMenu}
+        onFocus={() => { if (!menuPreso) setMenuAberto(true); }}
+        onClick={() => { if (!menuPreso) setMenuAberto(true); }}
+      >
         {renderSidebarContent()}
+        <button
+          type="button"
+          className="alfinete-menu"
+          onClick={e => { e.stopPropagation(); trocarMenuPreso(); setMenuAberto(false); }}
+          aria-pressed={menuPreso}
+          title={menuPreso ? 'Encolher o menu (só ícones)' : 'Prender o menu aberto'}
+          aria-label={menuPreso ? 'Encolher o menu' : 'Prender o menu aberto'}
+        >
+          {menuPreso ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+        </button>
       </aside>
 
       {/*
@@ -336,8 +408,9 @@ export function ProjectLayout() {
           e estilo inline não obedece a media query. */}
       <main className="main-content">
         
-        {/* Mobile Header */}
-        <header className="mobile-header mobile-only" style={{ 
+        {/* O cabeçalho do celular. No tablet e no computador, quem tem o voltar e
+            o nome da produção é o menu lateral. */}
+        {temDock && <header className="mobile-header" style={{ 
           position: 'sticky', top: 0, zIndex: 40, backgroundColor: 'var(--bg-primary)', 
           display: 'flex', alignItems: 'center', gap: '16px',
           borderBottom: '1px solid var(--border-light)'
@@ -355,7 +428,7 @@ export function ProjectLayout() {
           {/* Aqui havia um segundo "?". O menu flutuante do canto já abre a
               ajuda em toda tela, e os dois lado a lado espremiam o nome da
               produção em duas linhas. */}
-        </header>
+        </header>}
 
         <div className="screen-padding" style={{ paddingTop: '24px' }}>
           <LayoutContext.Provider value={{

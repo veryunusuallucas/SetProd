@@ -80,7 +80,7 @@ export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape }: {
   };
 
   return (
-    <div className="folha-fundo mobile-only" role="presentation" onClick={aoFechar}>
+    <div className="folha-fundo celular-only" role="presentation" onClick={aoFechar}>
       <div
         ref={folha}
         className={`folha-modulos ${reduzido || arrasto.current.ativo ? '' : 'folha-suave'}`}
