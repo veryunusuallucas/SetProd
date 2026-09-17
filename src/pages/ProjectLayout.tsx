@@ -1,14 +1,16 @@
 import { useState, createContext, useContext, useEffect, Suspense } from 'react';
-import { useParams, useNavigate, Outlet, useLocation, Link, NavLink } from 'react-router-dom';
+import { useParams, useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
 import { voltarDe } from '../lib/navegacao';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useOcuparRodape } from '../components/ui/slotFlutuante';
+import { DockDoProjeto } from '../components/menu/DockDoProjeto';
+import { FolhaDeModulos } from '../components/menu/FolhaDeModulos';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
-  LogOut, DollarSign, ListTodo, X, Menu, Users, FileText, Truck, Database, Clapperboard
+  LogOut, DollarSign, ListTodo, X, Users, FileText, Truck, Database, Clapperboard
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
@@ -267,19 +269,59 @@ export function ProjectLayout() {
         {renderSidebarContent()}
       </aside>
 
-      {/* Mobile Sidebar (Overlay) */}
-      {mobileSidebarOpen && (
-        <div className="mobile-only" style={{ position: 'fixed', inset: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <aside className="sidebar" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '280px', transform: 'translateX(0)', transition: 'transform 0.3s' }}>
-            <div style={{ position: 'absolute', right: '-48px', top: '16px' }}>
-              <button onClick={() => setMobileSidebarOpen(false)} className="btn-icon" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                <X size={24} />
-              </button>
-            </div>
-            {renderSidebarContent()}
-          </aside>
-        </div>
-      )}
+      {/*
+        No celular, o "Mais" abre uma FOLHA de baixo, e não mais a barra
+        lateral do computador por cima da tela: quem está no set segura o
+        aparelho com uma mão, e o dedo que tocou no rodapé já está no lugar do
+        próximo toque. Ver `.md/PLANO-menus.md`.
+      */}
+      <FolhaDeModulos
+        aberta={mobileSidebarOpen}
+        aoFechar={() => setMobileSidebarOpen(false)}
+        ativo={currentPath}
+        grupos={navGroups.map(g => ({
+          titulo: g.title,
+          itens: g.items.map(i => ({ nome: i.name, path: i.path, icone: i.icon, exact: i.exact })),
+        }))}
+        rodape={
+          <>
+            <Link
+              to={`/projeto/${id}/dados`}
+              className="sidebar-link"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <Database size={18} />
+              <span>Gestão de Dados</span>
+            </Link>
+            <Link
+              to={`/projeto/${id}/config`}
+              className="sidebar-link"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <Settings size={18} />
+              <span>Configurações</span>
+            </Link>
+            <button
+              className="sidebar-link"
+              onClick={() => { setMobileSidebarOpen(false); setMostrarCompartilhar(true); }}
+            >
+              <Users size={18} />
+              <span>Quem tem acesso</span>
+            </button>
+            <button
+              className="sidebar-link"
+              onClick={() => { setMobileSidebarOpen(false); window.dispatchEvent(new Event('open-command-palette')); }}
+            >
+              <Search size={18} />
+              <span>Busca</span>
+            </button>
+            <button className="sidebar-link" onClick={() => { setMobileSidebarOpen(false); navigate('/'); }}>
+              <LogOut size={18} />
+              <span>Sair do Projeto</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Main Content Area */}
       {/* O espaço embaixo mora no CSS (.main-content), e não aqui: no celular ele
@@ -348,41 +390,18 @@ export function ProjectLayout() {
       {/* Ela se anuncia como ocupante do rodapé, para o menu de ajuda ficar
           acima dela em vez de por cima do "Mais". No desktop ela vira barra
           lateral e a medida vai a zero sozinha. */}
-      <nav ref={barraDeBaixo} className="glass-nav mobile-only">
-        <NavLink to={`/projeto/${id}`} className={({ isActive }) => `nav-item ${isActive && currentPath === `/projeto/${id}` ? 'active' : ''}`} end>
-          <LayoutDashboard size={20} />
-          <span style={{ fontSize: '10px', fontWeight: 600 }}>Dash</span>
-        </NavLink>
-
-        <NavLink to={`/projeto/${id}/diarias`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <CalendarDays size={20} />
-          {/* No celular são cinco itens dividindo a largura da tela, e não
-              cabe um sexto. Eventos virou página própria e fica a um toque,
-              no "Mais" — é consultado bem menos que as diárias. */}
-          <span style={{ fontSize: '10px', fontWeight: 600 }}>Diárias</span>
-        </NavLink>
-
-        <NavLink to={`/projeto/${id}/financeiro`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <DollarSign size={20} />
-          <span style={{ fontSize: '10px', fontWeight: 600 }}>$$$</span>
-        </NavLink>
-
-        {/*
-          Este slot mudava conforme o papel simulado (fotografia via
-          Equipamentos, resto via Tasks). Com A e B no mesmo nível não há mais
-          de onde tirar essa escolha, então fica Tasks, que serve a todo mundo.
-        */}
-        <NavLink to={`/projeto/${id}/tasks`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <ListTodo size={20} />
-          <span style={{ fontSize: '10px', fontWeight: 600 }}>Tasks</span>
-        </NavLink>
-
-        {/* More Button */}
-        <button className="nav-item" onClick={() => setMobileSidebarOpen(true)}>
-          <Menu size={20} />
-          <span style={{ fontSize: '10px', fontWeight: 600 }}>Mais</span>
-        </button>
-      </nav>
+      <DockDoProjeto
+        refDaBarra={barraDeBaixo}
+        ativo={currentPath}
+        aberta={mobileSidebarOpen}
+        aoAbrirMais={() => setMobileSidebarOpen(true)}
+        itens={[
+          { nome: 'Dash', path: `/projeto/${id}`, icone: LayoutDashboard, exact: true },
+          { nome: 'Diárias', path: `/projeto/${id}/diarias`, icone: CalendarDays },
+          { nome: '$$$', path: `/projeto/${id}/financeiro`, icone: DollarSign },
+          { nome: 'Tasks', path: `/projeto/${id}/tasks`, icone: ListTodo },
+        ]}
+      />
 
       {/* Fica montado sempre: o conflito chega quando chega, e um aviso que só
           existe se alguma tela específica estiver aberta não avisaria ninguém. */}

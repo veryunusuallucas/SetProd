@@ -1074,3 +1074,193 @@ input[type="radio"]:checked::before {
 @media (max-width: 1023px) {
   .logagem-controles { width: 100%; justify-content: space-between; margin-left: 0; }
 }
+
+/* ============================================================
+   MENU DO CELULAR — a dock e a folha do "Mais"
+   (leva dos menus, 17/09/2026; ver .md/PLANO-menus.md)
+
+   A barra colada no rodapé virou uma dock flutuante: o conteúdo passa por
+   baixo do vidro, e um marcador dourado desliza até o módulo aberto. O "Mais"
+   abre uma folha de baixo, no alcance do polegar, em vez da barra lateral do
+   computador aparecendo por cima da tela.
+   ============================================================ */
+
+.dock-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  width: min(440px, calc(100% - 20px));
+  z-index: 50;
+  display: flex;
+  gap: 2px;
+  padding: 5px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+  background-color: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
+.dock-nav .nav-item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  border-radius: var(--radius-full);
+  padding: 0;
+}
+
+/* O conteúdo sobe acima do marcador; sem isto o dourado cobriria o ícone. */
+.dock-conteudo {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.dock-marcador {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background-color: var(--accent);
+}
+
+/* Em cima do dourado, o texto é escuro — a mesma regra dos botões de status. */
+.dock-nav .nav-item.active { color: #0b0b0b; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .dock-nav {
+    background-color: var(--bg-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Celular deitado: só os ícones, e a dock encosta mais no rodapé. */
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 1023px) {
+  .dock-nav { bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .dock-nav .nav-item { min-height: 44px; }
+  .dock-conteudo > span { display: none; }
+}
+
+/* ── a folha do "Mais" ── */
+
+.folha-fundo {
+  position: fixed;
+  inset: 0;
+  /* Acima do menu flutuante do "?" (2000): com a folha aberta, ela é a tela. */
+  z-index: 2100;
+  background-color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  animation: folha-fundo-entra 0.2s ease;
+}
+
+.folha-modulos {
+  width: 100%;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.5);
+  animation: folha-sobe 0.26s cubic-bezier(0.22, 0.8, 0.3, 1);
+  touch-action: none;
+}
+
+.folha-suave { transition: transform 0.22s cubic-bezier(0.22, 0.8, 0.3, 1); }
+
+/* A área de pegar é alta de propósito: o polegar não mira num traço de 4px. */
+.folha-pegador-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: grab;
+}
+.folha-pegador {
+  width: 38px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--border-color);
+}
+
+.folha-rolagem {
+  overflow-y: auto;
+  padding: 4px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.folha-titulo {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.folha-malha {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.folha-quadro {
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 6px;
+  text-align: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.folha-quadro.aqui {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.folha-rodape {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* O link do rodapé da folha tem 42px no resto do app; aqui é alvo de dedo. */
+.folha-rodape .sidebar-link {
+  min-height: 44px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+
+@keyframes folha-sobe {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes folha-fundo-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .folha-modulos, .folha-fundo { animation: none; }
+  .folha-suave { transition: none; }
+}

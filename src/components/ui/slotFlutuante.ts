@@ -132,8 +132,15 @@ export function useOcuparRodape() {
     s.registro ??= ocuparSlotInferior(0);
     s.medir = () => {
       const r = el.getBoundingClientRect();
-      const coladoNoFundo = r.height > 0 && Math.abs(r.bottom - window.innerHeight) < 2;
-      s.registro?.atualizar(coladoNoFundo ? Math.round(r.height) : 0);
+      /*
+        O que se mede é do TOPO do ocupante até o fim da tela, não a altura
+        dele. A barra de baixo virou uma dock que flutua alguns pixels acima do
+        rodapé: medindo só a altura, o vão de baixo sumia da conta e o "?"
+        subia de menos, encostando na dock. A folga de 40px é o que separa
+        "está no fundo da tela" de "é uma barra lateral que começa no alto".
+      */
+      const noFundo = r.height > 0 && window.innerHeight - r.bottom < 40;
+      s.registro?.atualizar(noFundo ? Math.round(window.innerHeight - r.top) : 0);
     };
 
     s.medir();
