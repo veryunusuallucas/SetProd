@@ -245,3 +245,33 @@
 @media (prefers-reduced-motion: reduce) {
   .menu-lateral, .project-layout .main-content { transition: none; }
 }
+
+/*
+  O sino no menu lateral é um ícone, não um botão de caixa.
+
+  Ele vem do `.btn-icon` (40x40 com borda e fundo), que é o certo no cabeçalho
+  do celular e ficava estranho no meio de uma coluna de ícones soltos. Os 40px
+  continuam: é o que põe o sino no mesmo eixo dos outros, e o contador vermelho
+  precisa do canto.
+*/
+/* Os que ficam soltos no fim ("Quem tem acesso", o estado do sync) não têm o
+   recuo da lista em volta, então ganham o eixo aqui. */
+.menu-lateral > .sidebar-link { padding-left: 20px; }
+
+/* O rodapé usa o mesmo recuo da lista, para os ícones ficarem num eixo só. */
+.menu-lateral .sidebar-footer { padding-left: 8px; padding-right: 8px; }
+.menu-lateral .sidebar-notificacoes { padding-left: 11px !important; }
+.menu-lateral .sidebar-notificacoes .btn-icon {
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+.menu-lateral .sidebar-notificacoes .btn-icon:hover { color: var(--text-primary); }
+
+/*
+  O alfinete só aparece com o menu aberto. No trilho ele cobria o "Salvo" do
+  rodapé — e ali ele nem serve: para prender, a pessoa já precisa abrir antes.
+*/
+.menu-lateral.trilho:not(.aberto) .alfinete-menu { display: none; }
