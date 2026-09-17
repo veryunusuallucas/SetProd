@@ -11,7 +11,7 @@ import { calcularAtraso, calcularDia, COR_TIPO, descreverAtraso, montarLinhaDoDi
 import { faseDoDia, descreverEspera } from '../../lib/faseDoDia';
 import { diaDaSemana } from '../../lib/formato';
 import { claqueteDoPlano, planosDaDiaria } from '../../lib/logagem/decupagem';
-import { itemDeAgora, itensAFrente, proximoPlano, quandoFalta, rotuloDoItem } from '../../lib/logagem/dia';
+import { itemDeAgora, itensAFrente, planoResolvido, proximoPlano, quandoFalta, rotuloDoItem } from '../../lib/logagem/dia';
 
 /** A partir daqui o próximo item está em cima, e a faixa avisa. */
 const EM_CIMA_MIN = 10;
@@ -199,28 +199,42 @@ export function ODiaNaLogagem({ estado, bloqueado, aoEscolher, compacto }: {
   function botaoDoProximo() {
     if (!proximo || !dados) return null;
     const detalhe = [proximo.plano.descricao, proximo.plano.tamanho, proximo.plano.lente].filter(Boolean).join(' · ');
+    /*
+      O plano da claquete já teve o take bom (OK ou HERO): o botão acende.
+      É só destaque — a claquete continua onde está até alguém tocar.
+    */
+    const aceso = !bloqueado && planoResolvido(dados.takes, estado);
     return (
       <BotaoTatil
         onClick={() => aoEscolher(claqueteDoPlano(proximo, estado, dados.kitDeLentes))}
         disabled={bloqueado}
         escala={0.98}
+        className={aceso ? 'proximo-aceso' : undefined}
         style={{
           display: 'flex', alignItems: 'center', gap: '10px', minHeight: expandido ? '52px' : '44px', padding: '6px 12px',
           borderRadius: 'var(--radius-sm)', textAlign: 'left', width: '100%',
-          border: '1px dashed color-mix(in srgb, var(--cor-criativo) 60%, transparent)',
-          backgroundColor: 'transparent', color: 'inherit', cursor: bloqueado ? 'default' : 'pointer',
+          border: aceso ? '1px solid var(--cor-criativo)' : '1px dashed color-mix(in srgb, var(--cor-criativo) 60%, transparent)',
+          backgroundColor: aceso ? 'color-mix(in srgb, var(--cor-criativo) 14%, transparent)' : 'transparent',
+          color: 'inherit', cursor: bloqueado ? 'default' : 'pointer',
+          transition: 'background-color 0.25s ease, border-color 0.25s ease',
         }}
       >
         <Clapperboard size={16} style={{ color: 'var(--cor-criativo)', flexShrink: 0 }} aria-hidden />
         <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: expandido ? 'column' : 'row', gap: expandido ? 0 : '6px', alignItems: expandido ? 'stretch' : 'baseline' }}>
-          <span className="text-xs text-muted uppercase tracking-widest" style={{ flexShrink: 0 }}>{expandido ? 'Próximo plano' : 'Próximo'}</span>
+          <span className="text-xs text-muted uppercase tracking-widest" style={{ flexShrink: 0 }}>{aceso ? (expandido ? 'Plano feito · próximo' : 'Feito · próximo') : expandido ? 'Próximo plano' : 'Próximo'}</span>
           <span className="text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
             <strong>{proximo.cena.numero} · {proximo.naClaquete}</strong>
             {detalhe && <span className="text-secondary"> — {detalhe}</span>}
           </span>
         </span>
         {!bloqueado && (
-          <span className="text-xs font-bold" style={{ color: 'var(--cor-criativo)', flexShrink: 0 }}>
+          <span
+            className="text-xs font-bold"
+            style={aceso ? {
+              flexShrink: 0, padding: '6px 10px', borderRadius: '999px',
+              backgroundColor: 'var(--cor-criativo)', color: '#0b0b0b',
+            } : { color: 'var(--cor-criativo)', flexShrink: 0 }}
+          >
             {expandido ? 'Pôr na claquete' : 'Usar'}
           </span>
         )}
