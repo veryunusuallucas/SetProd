@@ -12,30 +12,32 @@ import { useMovimentoReduzido } from '../ui/movimento';
  * só. O dedo que tocou em "Mais", no rodapé, já está onde o próximo toque
  * precisa acontecer — uma lista que começa no alto da tela obriga a outra mão.
  *
+ * UMA GRADE, SEM TÍTULO DE GRUPO (pedido do Lucas, 17/09/2026). O que separa
+ * as áreas é a COR de cada quadro; os títulos abriam um vão a cada grupo e
+ * empurravam metade do menu para fora da tela. O que já está na dock também
+ * não se repete aqui — a dock está logo embaixo, à vista.
+ *
  * A folha se arrasta para baixo para fechar. Arrastar é o que a torna um objeto
  * e não uma tela: dá para começar a abrir, ver o que tem e desistir.
  */
 
-export interface ModuloDaFolha {
+export interface ItemDaFolha {
   nome: string;
-  path: string;
   icone: LucideIcon;
-  exact?: boolean;
-}
-
-export interface GrupoDaFolha {
-  titulo: string;
-  /** A cor da área (SET, CRIATIVO…). É ela que separa os grupos, no lugar do espaço. */
+  /** A cor da área (SET, CRIATIVO…), ou a de aviso nas duas últimas. */
   cor: string;
-  itens: ModuloDaFolha[];
+  /** Módulo: para onde vai. Sem `path`, é uma ação (`aoTocar`). */
+  path?: string;
+  exact?: boolean;
+  aoTocar?: () => void;
 }
 
-export function FolhaDeModulos({ aberta, aoFechar, grupos, ativo, rodape }: {
+export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape }: {
   aberta: boolean;
   aoFechar: () => void;
-  grupos: GrupoDaFolha[];
+  itens: ItemDaFolha[];
   ativo: string;
-  /** Busca, dados, config, voltar ao início: o que não é módulo. */
+  /** O que não cabe num quadro: busca, sair. */
   rodape?: React.ReactNode;
 }) {
   const reduzido = useMovimentoReduzido();
@@ -85,7 +87,7 @@ export function FolhaDeModulos({ aberta, aoFechar, grupos, ativo, rodape }: {
         style={{ transform: y ? `translateY(${y}px)` : undefined }}
         role="dialog"
         aria-modal="true"
-        aria-label="Mais módulos"
+        aria-label="Mais"
         onClick={e => e.stopPropagation()}
       >
         <div
@@ -99,34 +101,41 @@ export function FolhaDeModulos({ aberta, aoFechar, grupos, ativo, rodape }: {
         </div>
 
         <div className="folha-rolagem">
-          {/*
-            Uma grade só, e a cor da área separando os grupos — não o espaço.
-            Em seções empilhadas, cada grupo abria um vão e a folha virava
-            rolagem só para caber cinco títulos (pedido do Lucas, 17/09/2026).
-          */}
           <div className="folha-malha">
-            {grupos.map(g => (
-              <Fragment key={g.titulo}>
-                <h2 className="folha-titulo" style={{ color: g.cor }}>{g.titulo}</h2>
-                {g.itens.map(m => {
-                  const aqui = m.exact ? ativo === m.path : ativo.startsWith(m.path);
-                  return (
-                    <NavLink
-                      key={m.path}
-                      to={m.path}
-                      end={m.exact}
-                      onClick={aoFechar}
-                      className={`folha-quadro ${aqui ? 'aqui' : ''}`}
-                      style={{ '--cor-area': g.cor } as React.CSSProperties}
-                      aria-current={aqui ? 'page' : undefined}
-                    >
-                      <m.icone size={20} />
-                      <span>{m.nome}</span>
-                    </NavLink>
-                  );
-                })}
-              </Fragment>
-            ))}
+            {itens.map(i => {
+              const aqui = Boolean(i.path) && (i.exact ? ativo === i.path : ativo.startsWith(i.path!));
+              const dentro = (
+                <Fragment>
+                  <i.icone size={20} />
+                  <span>{i.nome}</span>
+                </Fragment>
+              );
+              const estilo = { '--cor-area': i.cor } as React.CSSProperties;
+
+              return i.path ? (
+                <NavLink
+                  key={i.nome}
+                  to={i.path}
+                  end={i.exact}
+                  onClick={aoFechar}
+                  className={`folha-quadro ${aqui ? 'aqui' : ''}`}
+                  style={estilo}
+                  aria-current={aqui ? 'page' : undefined}
+                >
+                  {dentro}
+                </NavLink>
+              ) : (
+                <button
+                  key={i.nome}
+                  type="button"
+                  className="folha-quadro"
+                  style={estilo}
+                  onClick={() => { aoFechar(); i.aoTocar?.(); }}
+                >
+                  {dentro}
+                </button>
+              );
+            })}
           </div>
 
           {rodape && <div className="folha-rodape">{rodape}</div>}
