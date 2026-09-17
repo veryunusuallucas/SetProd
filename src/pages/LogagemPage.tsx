@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
-  Clapperboard, Camera, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays,
+  Clapperboard, Camera, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays, AlertTriangle,
 } from 'lucide-react';
 import { db } from '../db/db';
 import { useRole } from '../hooks/useRole';
@@ -19,8 +19,9 @@ import { pedirUmaVez } from '../lib/logagem/aparelho';
 import { SeletorDeDiaria } from '../components/logagem/SeletorDeDiaria';
 import type { Departamento, Perfil } from '../types';
 import type { VisaoDeQuemVe } from '../lib/logagem/permissao';
-import { diariaPadrao } from '../lib/logagem/diariaPadrao';
-import { hojeISO } from '../lib/urgencia';
+import { diariaDeAgora, estaAcontecendo } from '../lib/logagem/diariaPadrao';
+import { confirmar } from '../components/ui/Confirmacao';
+import { diaDaSemana } from '../lib/formato';
 
 /**
  * Logagem — o boletim de câmera da diária.
@@ -86,12 +87,32 @@ export default function LogagemPage() {
   */
   const [parametros] = useSearchParams();
   const [diariaId, setDiariaId] = useState<string>(() => parametros.get('diaria') || '');
+  /*
+    A Logagem SEGUE o dia sozinha enquanto ninguém escolheu outra diária à
+    mão: quem deixou o app aberto da véspera abre na de hoje, e a diária que
+    vira a noite continua a mesma até as 6h (ver `diariaDeAgora`). Escolher
+    uma diária diferente da de agora trava a escolha; voltar para a de agora
+    solta de novo.
+  */
+  const [escolhaManual, setEscolhaManual] = useState(() => parametros.has('diaria'));
+  const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
-    // Só escolhe sozinho quando ainda não há escolha (ou a escolhida sumiu).
+    const bater = () => setAgora(new Date());
+    const intervalo = setInterval(bater, 60_000);
+    const aoVoltar = () => { if (document.visibilityState === 'visible') bater(); };
+    document.addEventListener('visibilitychange', aoVoltar);
+    return () => { clearInterval(intervalo); document.removeEventListener('visibilitychange', aoVoltar); };
+  }, []);
+  const deAgora = diarias ? diariaDeAgora(diarias, agora) : undefined;
+  const idDeAgora = deAgora?.diaria.id;
+
+  useEffect(() => {
     if (!diarias) return;
-    if (diariaId && diarias.some(d => d.id === diariaId)) return;
-    setDiariaId(diariaPadrao(diarias, hojeISO())?.id || '');
-  }, [diarias, diariaId]);
+    const existe = Boolean(diariaId) && diarias.some(d => d.id === diariaId);
+    if (existe && escolhaManual) return;
+    const alvo = idDeAgora || '';
+    if (alvo !== diariaId) setDiariaId(alvo);
+  }, [diarias, diariaId, escolhaManual, idDeAgora]);
 
   /*
     Na primeira vez que alguém que REGISTRA abre a Logagem, o app pede ao
@@ -149,6 +170,35 @@ export default function LogagemPage() {
   const administra = role === 'dono' || role === 'admin';
   const deslocamento = reduzido ? 0 : 24;
 
+  const rotulo = (d?: { numero: number }) => (d ? `Diária ${String(d.numero).padStart(2, '0')}` : '');
+  const acontecendo = Boolean(deAgora && estaAcontecendo(deAgora.motivo));
+  /** Está numa diária que não é a do dia que está acontecendo. */
+  const foraDoDia = acontecendo && Boolean(diaria) && diariaId !== idDeAgora;
+
+  /*
+    Trocar de diária no meio do dia é o jeito mais fácil de pôr take no dia
+    errado — e ninguém confere depois. Quem registra ouve a pergunta; quem só
+    acompanha troca à vontade (conferir a véspera é o trabalho dele).
+  */
+  const trocarDiaria = async (id: string) => {
+    if (id === diariaId) return;
+    const voltandoParaAgora = id === idDeAgora;
+    if (!voltandoParaAgora && acontecendo && podeEditar && deAgora) {
+      const destino = ordenadas.find(d => d.id === id);
+      const ok = await confirmar({
+        titulo: `A diária de agora é a ${String(deAgora.diaria.numero).padStart(2, '0')}`,
+        detalhe: `${deAgora.motivo === 'virou_a_noite' ? 'Ela começou ontem e ainda está rolando. ' : ''}`
+          + `Take registrado na ${rotulo(destino)} fica no boletim desse outro dia. `
+          + 'Troque só para conferir um dia que passou ou preparar o próximo.',
+        confirmar: `Ir para a ${rotulo(destino)}`,
+        cancelar: `Ficar na ${rotulo(deAgora.diaria)}`,
+      });
+      if (!ok) return;
+    }
+    setEscolhaManual(!voltandoParaAgora);
+    setDiariaId(id);
+  };
+
   return (
     <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="cabecalho-pagina" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
@@ -168,10 +218,41 @@ export default function LogagemPage() {
           <SeletorDeDiaria
             diarias={ordenadas}
             valor={diariaId}
-            aoMudar={setDiariaId}
+            aoMudar={id => void trocarDiaria(id)}
+            agoraId={acontecendo ? idDeAgora : undefined}
+            alerta={foraDoDia}
           />
         )}
       </div>
+
+      {/* Fora da diária de agora: a faixa fica enquanto durar, com a volta a um toque. */}
+      {foraDoDia && deAgora && diaria && (
+        <div
+          role="status"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '10px 10px 10px 14px',
+            borderRadius: 'var(--radius-md)',
+            border: `1px solid ${podeEditar ? 'color-mix(in srgb, var(--color-warning) 55%, transparent)' : 'var(--border-light)'}`,
+            backgroundColor: podeEditar ? 'var(--color-warning-bg)' : 'var(--bg-surface)',
+          }}
+        >
+          <AlertTriangle size={18} style={{ flexShrink: 0, color: podeEditar ? 'var(--color-warning)' : 'var(--text-muted)' }} aria-hidden />
+          <span className="text-sm" style={{ flex: '1 1 220px', lineHeight: 1.45 }}>
+            <strong>Você está na {rotulo(diaria)}</strong>
+            {diaria.data ? ` (${diaDaSemana(diaria.data)})` : ''}.{' '}
+            A diária de agora é a <strong>{rotulo(deAgora.diaria)}</strong>
+            {podeEditar ? ': take registrado aqui vai para o outro dia.' : '.'}
+          </span>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void trocarDiaria(deAgora.diaria.id)}
+            style={{ minHeight: '44px', whiteSpace: 'nowrap' }}
+          >
+            Voltar para a {rotulo(deAgora.diaria)}
+          </button>
+        </div>
+      )}
 
       {ordenadas.length === 0 ? (
         <SemDiaria projetoId={projetoId} />

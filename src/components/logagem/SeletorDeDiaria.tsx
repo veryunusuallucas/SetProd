@@ -38,10 +38,14 @@ function useToque() {
   return toque;
 }
 
-export function SeletorDeDiaria({ diarias, valor, aoMudar }: {
+export function SeletorDeDiaria({ diarias, valor, aoMudar, agoraId, alerta }: {
   diarias: DiariaDoSeletor[];
   valor: string;
   aoMudar: (id: string) => void;
+  /** A diária do dia que está acontecendo (inclusive a que virou a noite). */
+  agoraId?: string;
+  /** Está fora da diária de agora: o botão fica laranja. */
+  alerta?: boolean;
 }) {
   const hoje = hojeISO();
   const toque = useToque();
@@ -86,6 +90,7 @@ export function SeletorDeDiaria({ diarias, valor, aoMudar }: {
   };
 
   if (!atual) return null;
+  const selo = (d: DiariaDoSeletor) => (d.id === agoraId ? (d.data === hoje ? 'Hoje' : 'Agora') : !agoraId && d.data === hoje ? 'Hoje' : null);
   const ehHoje = atual.data === hoje;
 
   return (
@@ -102,20 +107,21 @@ export function SeletorDeDiaria({ diarias, valor, aoMudar }: {
         style={{
           display: 'flex', alignItems: 'center', gap: '10px', minHeight: '48px', padding: '6px 12px 6px 10px',
           borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left',
-          border: `1px solid ${aberto ? 'var(--cor-set)' : 'var(--border-color)'}`,
+          border: `1px solid ${alerta ? 'var(--color-warning)' : aberto ? 'var(--cor-set)' : 'var(--border-color)'}`,
           backgroundColor: 'var(--bg-surface)', transition: 'border-color 0.15s ease',
         }}
       >
         <span aria-hidden style={{
           width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--cor-set)', backgroundColor: 'color-mix(in srgb, var(--cor-set) 14%, transparent)', flexShrink: 0,
+          color: alerta ? 'var(--color-warning)' : 'var(--cor-set)', flexShrink: 0,
+          backgroundColor: `color-mix(in srgb, ${alerta ? 'var(--color-warning)' : 'var(--cor-set)'} 14%, transparent)`,
         }}>
           <CalendarDays size={17} />
         </span>
         <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
           <span style={{ fontWeight: 800, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             Diária {numero(atual.numero)}
-            {ehHoje && <SeloHoje />}
+            {selo(atual) && <SeloHoje texto={selo(atual)!} />}
           </span>
           <span className="text-xs text-muted" style={{ whiteSpace: 'nowrap' }}>
             {atual.data ? diaDaSemana(atual.data) : 'sem data'}{atual.data && !ehHoje ? ` · ${quando(atual.data, hoje)}` : ''}
@@ -190,7 +196,7 @@ export function SeletorDeDiaria({ diarias, valor, aoMudar }: {
                     {d.estado === 'fechada' ? 'fechada' : d.data ? quando(d.data, hoje) : ''}
                   </span>
                 </span>
-                {d.data === hoje && <SeloHoje />}
+                {selo(d) && <SeloHoje texto={selo(d)!} />}
                 <Check size={16} aria-hidden style={{ color: 'var(--cor-set)', visibility: escolhida ? 'visible' : 'hidden', flexShrink: 0 }} />
               </li>
             );
@@ -201,14 +207,14 @@ export function SeletorDeDiaria({ diarias, valor, aoMudar }: {
   );
 }
 
-function SeloHoje() {
+function SeloHoje({ texto }: { texto: string }) {
   return (
     <span style={{
       padding: '1px 6px', borderRadius: '999px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em',
       textTransform: 'uppercase', color: 'var(--color-success)',
       backgroundColor: 'color-mix(in srgb, var(--color-success) 14%, transparent)',
     }}>
-      Hoje
+      {texto}
     </span>
   );
 }
