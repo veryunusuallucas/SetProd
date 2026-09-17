@@ -1285,3 +1285,84 @@ input[type="radio"]:checked::before {
   .folha-modulos, .folha-fundo { animation: none; }
   .folha-suave { transition: none; }
 }
+
+/* ============================================================
+   A CLAQUETE DO EASTER EGG (leva da porta, 17/09/2026)
+
+   Três cliques no título e ela fecha em cima da tela. O braço bate, a tela
+   estoura em branco por um instante, a câmera treme — e um segundo depois o
+   take vai para o corte.
+   ============================================================ */
+
+.claquete-egg { opacity: 1; }
+.claquete-quadro { display: flex; flex-direction: column; height: 100%; }
+.claquete-egg.batendo .claquete-quadro { animation: claquete-tremer 0.6s ease-out; }
+
+.claquete-braco {
+  height: clamp(34px, 6vh, 58px);
+  flex-shrink: 0;
+  background: repeating-linear-gradient(74deg, #ebe7df 0 26px, #121216 26px 52px);
+  border-bottom: 3px solid #0b0b0d;
+  transform-origin: 10px center;
+}
+.claquete-egg.batendo .claquete-braco {
+  transform: rotate(-20deg);
+  animation: claquete-bater 0.34s cubic-bezier(0.35, 1.6, 0.5, 1) forwards;
+}
+
+.claquete-corpo {
+  flex: 1;
+  background: #17171b;
+  border-top: 4px solid #0b0b0d;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: center;
+  justify-content: center;
+  gap: 1px;
+  padding: clamp(14px, 4vw, 40px);
+}
+.claquete-celula {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px 14px;
+  min-width: 0;
+}
+.claquete-celula.larga { grid-column: 1 / -1; }
+.claquete-celula span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.claquete-celula b {
+  display: block;
+  font-size: clamp(22px, 5vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.claquete-celula.larga b { font-size: clamp(30px, 7vw, 64px); }
+
+.claquete-clarao {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+.claquete-egg.batendo .claquete-clarao { animation: claquete-clarao 0.3s ease-out; }
+
+@keyframes claquete-bater {
+  0% { transform: rotate(-20deg); }
+  62% { transform: rotate(1.5deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes claquete-clarao {
+  0%, 52% { opacity: 0; }
+  60% { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+@keyframes claquete-tremer {
+  0%, 55% { transform: none; }
+  62% { transform: translate(3px, -4px) rotate(0.4deg); }
+  72% { transform: translate(-3px, 3px) rotate(-0.3deg); }
+  100% { transform: none; }
+}

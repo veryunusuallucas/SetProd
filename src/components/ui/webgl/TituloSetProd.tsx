@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { decidirEfeitos, movimentoReduzido } from './suporte';
+import { Claquete, DURACAO_DA_CLAQUETE } from '../Claquete';
 
 // Carregado só quando a tela de entrada monta: o `ogl` e os shaders não têm
 // por que pesar no carregamento de quem já está trabalhando dentro do app.
@@ -104,6 +106,12 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
 
   const cliques = useRef(0);
   const relogio = useRef<number | undefined>(undefined);
+  /*
+    A claquete cobre a tela no estouro (escolhido com o Lucas em 17/09/2026).
+    Ela fica um segundo no ar — o tempo de bater, estourar em branco e a
+    pessoa ler "cena 1, take 3" — e só então o take vai para o corte.
+  */
+  const [claquete, setClaquete] = useState(false);
 
   useEffect(() => () => window.clearTimeout(relogio.current), []);
 
@@ -115,12 +123,12 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
       setTensao(1);
       cliques.current = 0;
 
-      // O estouro tem que ser visto antes da aba abrir; meio segundo é o
-      // suficiente para o texto se desfazer e voltar.
+      setClaquete(true);
       window.setTimeout(() => {
         window.open(RICK, '_blank', 'noopener,noreferrer');
+        setClaquete(false);
         setTensao(0);
-      }, 520);
+      }, DURACAO_DA_CLAQUETE);
       return;
     }
 
@@ -133,8 +141,13 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
 
   // Sem WebGL, sem cursor ou com movimento reduzido: título comum, e o easter
   // egg continua existindo — só sem o acúmulo visual.
+  const aClaquete = claquete && typeof document !== 'undefined'
+    ? createPortal(<Claquete reduzido={movimentoReduzido()} />, document.body)
+    : null;
+
   if (!efeitos.titulo || contextoPerdido) {
     return (
+      <>
       <button
         onPointerDown={interativo ? cutucar : undefined}
         title="SetProd"
@@ -151,11 +164,14 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
       >
         SETPROD
       </button>
+      {aClaquete}
+      </>
     );
   }
 
   return (
     <Suspense fallback={<div style={{ height: `${tamanho * 1.2}px` }} />}>
+      {aClaquete}
       {/* O onClick fica no wrapper porque o componente oficial não expõe um —
           e assim o easter egg não exige tocar no código dele. */}
       <div
