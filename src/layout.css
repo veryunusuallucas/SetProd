@@ -159,24 +159,69 @@
   }
 }
 
-/* Encolhido: ficam os ícones. O nome de cada um vive no `title`. */
+/*
+  POR QUE O CONTEÚDO TEM LARGURA FIXA
+
+  A primeira versão escondia os nomes com `display: none` e recentrava os
+  ícones. Ao abrir, o menu remontava a linha inteira enquanto a largura
+  animava: o nome da produção reaparecia, "Decupagem & Storyboard" quebrava em
+  duas linhas e desquebrava, e a barra chegava tremendo ao lugar.
+
+  Agora o conteúdo mede SEMPRE 240px e fica cortado pelo `overflow: hidden` do
+  menu. Abrir só desloca a janela por onde se olha: nada é remedido, nada
+  quebra linha, e os nomes entram com um fade. É a diferença entre animar
+  layout e animar pintura.
+*/
+.menu-lateral .sidebar-header,
+.menu-lateral .sidebar-nav,
+.menu-lateral .sidebar-footer,
+.menu-lateral .sidebar-nav > *,
+.menu-lateral > .sidebar-link,
+.menu-lateral > .status-sync {
+  width: 240px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* Uma linha é uma linha: sem quebrar, o texto some no corte em vez de saltar. */
+.menu-lateral .sidebar-link {
+  white-space: nowrap;
+  overflow: hidden;
+  /* Com os 8px do .sidebar-nav, isto põe o ícone no centro do trilho de 58px. */
+  padding-left: 12px;
+}
+.menu-lateral .sidebar-link svg { flex-shrink: 0; }
+
+/* Encolhido: ficam os ícones, e o nome de cada um vive no `title`. */
 .menu-lateral.trilho:not(.aberto) .sidebar-title,
-.menu-lateral.trilho:not(.aberto) .sidebar-grupo,
 .menu-lateral.trilho:not(.aberto) .sidebar-link span,
 .menu-lateral.trilho:not(.aberto) .sidebar-footer span,
-.menu-lateral.trilho:not(.aberto) .status-sync span {
-  display: none;
+.menu-lateral.trilho:not(.aberto) .sidebar-footer .text-xs {
+  opacity: 0;
+  pointer-events: none;
 }
-.menu-lateral.trilho:not(.aberto) .sidebar-link,
-.menu-lateral.trilho:not(.aberto) .sidebar-header,
-.menu-lateral.trilho:not(.aberto) .sidebar-footer > div {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-  gap: 0;
+.menu-lateral .sidebar-title,
+.menu-lateral .sidebar-link span,
+.menu-lateral .sidebar-footer span {
+  transition: opacity 0.16s ease;
 }
-.menu-lateral.trilho:not(.aberto) .sidebar-nav { padding-left: 0; padding-right: 0; }
-.menu-lateral.trilho:not(.aberto) .sidebar-footer { padding: 10px 0; }
+/* O cabeçalho não muda de recuo entre os dois estados: mudar moveria o botão
+   de voltar no meio da animação, que é justamente o tranco que saiu daqui. */
+.menu-lateral .sidebar-header { padding-left: 10px; }
+
+/* Um respiro entre os grupos, no lugar dos títulos que saíram. */
+.menu-lateral .sidebar-bloco + .sidebar-bloco {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+/*
+  A barra de rolagem some (o Lucas: "fica feio"). A rolagem continua: o dedo,
+  a roda do mouse e o teclado seguem funcionando — só o traço da lateral sai.
+*/
+.menu-lateral .sidebar-nav { scrollbar-width: none; }
+.menu-lateral .sidebar-nav::-webkit-scrollbar { display: none; }
 
 /* O alfinete: prende a barra aberta, ou encolhe de volta ao trilho. */
 .alfinete-menu {
