@@ -50,7 +50,7 @@ export function DockDoProjeto({ itens, ativo, aoAbrirMais, aberta, refDaBarra }:
   );
 
   return (
-    <nav ref={refDaBarra} className="dock-nav mobile-only" aria-label="Módulos da produção">
+    <nav ref={refDaBarra} className="dock-nav celular-only" aria-label="Módulos da produção">
       {itens.map((i, n) => (
         <NavLink
           key={i.path}

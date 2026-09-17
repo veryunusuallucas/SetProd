@@ -122,3 +122,81 @@
     display: none !important;
   }
 }
+
+/* ============================================================
+   O MENU LATERAL VIRA TRILHO (fase 2 da leva dos menus, 17/09/2026)
+
+   Três tamanhos, três menus, e um componente só do 768 para cima:
+   - celular (<768): dock embaixo e a folha do "Mais";
+   - tablet (768–1023): trilho de ícones, que abre empurrando o conteúdo;
+   - computador (≥1024): a mesma barra de sempre, presa. Solta no alfinete,
+     encolhe para ícones e abre POR CIMA quando o mouse chega.
+
+   Ver `.md/PLANO-menus.md`.
+   ============================================================ */
+
+.celular-only { display: none; }
+@media (max-width: 767px) {
+  .celular-only { display: flex; }
+}
+
+.menu-lateral {
+  display: none;
+  width: var(--menu-largura, 240px);
+  overflow: hidden;
+  transition: width 0.22s cubic-bezier(0.22, 0.8, 0.3, 1), box-shadow 0.22s ease;
+}
+.menu-lateral.trilho { width: 58px; }
+/* Aberto por cima: o conteúdo não se mexe, só ganha uma sombra em cima dele. */
+.menu-lateral.trilho.aberto { width: 240px; box-shadow: 18px 0 44px rgba(0, 0, 0, 0.5); }
+
+@media (min-width: 768px) {
+  .menu-lateral { display: flex; }
+  .project-layout .main-content {
+    margin-left: var(--menu-largura, 240px);
+    padding-bottom: 32px;
+    transition: margin-left 0.22s cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+}
+
+/* Encolhido: ficam os ícones. O nome de cada um vive no `title`. */
+.menu-lateral.trilho:not(.aberto) .sidebar-title,
+.menu-lateral.trilho:not(.aberto) .sidebar-grupo,
+.menu-lateral.trilho:not(.aberto) .sidebar-link span,
+.menu-lateral.trilho:not(.aberto) .sidebar-footer span,
+.menu-lateral.trilho:not(.aberto) .status-sync span {
+  display: none;
+}
+.menu-lateral.trilho:not(.aberto) .sidebar-link,
+.menu-lateral.trilho:not(.aberto) .sidebar-header,
+.menu-lateral.trilho:not(.aberto) .sidebar-footer > div {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
+}
+.menu-lateral.trilho:not(.aberto) .sidebar-nav { padding-left: 0; padding-right: 0; }
+.menu-lateral.trilho:not(.aberto) .sidebar-footer { padding: 10px 0; }
+
+/* O alfinete: prende a barra aberta, ou encolhe de volta ao trilho. */
+.alfinete-menu {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.alfinete-menu:hover { color: var(--text-primary); }
+.menu-lateral.trilho:not(.aberto) .alfinete-menu { right: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-lateral, .project-layout .main-content { transition: none; }
+}
