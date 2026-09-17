@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import type { Projeto } from '../types';
+import type { Diaria, Projeto } from '../types';
 import { Search, Film, Trash2, Sparkles, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
-import { Holofote } from '../components/ui/Holofote';
+import { CardDaProducao } from '../components/CardDaProducao';
+import { resumirProducao } from '../lib/resumoDaProducao';
+import { hojeISO } from '../lib/urgencia';
 import { criarDepartamentosPadrao } from '../lib/creditos';
-import { entrarComoFundador, descobrirPersona, type Persona } from '../lib/membros';
+import { entrarComoFundador, descobrirPersona, participacaoLocal, type Persona } from '../lib/membros';
 import { sincronizarProjetosCompartilhados } from '../lib/sincronizacaoAutomatica';
 import {
   estaNaLixeira, mandarParaLixeira, restaurarDaLixeira, diasRestantes,
@@ -22,7 +24,6 @@ import { ChangelogModal } from '../components/ChangelogModal';
 import { useAuth } from '../hooks/useAuth';
 import { TituloSetProd } from '../components/ui/webgl/TituloSetProd';
 import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
-import { Numero } from '../components/ui/Numero';
 import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../components/ui/ia';
 import { LogOut } from 'lucide-react';
 
@@ -44,8 +45,17 @@ export function Home() {
   const { logout } = useAuth();
   const reduzido = useMovimentoReduzido();
   const projetos = useLiveQuery(() => db.projetos.toArray());
-  const aportesGlobais = useLiveQuery(() => db.aportes.toArray());
-  const despesasGlobais = useLiveQuery(() => db.despesas.toArray());
+  /*
+    Só as diárias, para a fase e a próxima diária de cada card. O saldo saiu
+    da tela inicial: ela é de todo mundo que entrou, e dinheiro é da produção.
+  */
+  const diarias = useLiveQuery(() => db.diarias.toArray());
+  const diariasPorProjeto = new Map<string, Diaria[]>();
+  for (const d of diarias || []) {
+    const lista = diariasPorProjeto.get(d.projeto_id);
+    if (lista) lista.push(d); else diariasPorProjeto.set(d.projeto_id, [d]);
+  }
+  const hoje = hojeISO();
   const navigate = useNavigate();
 
   const [modoDeletar, setModoDeletar] = useState(false);
@@ -397,6 +407,8 @@ export function Home() {
               style={{
                 cursor: modoDeletar ? 'default' : 'pointer',
                 position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
                 // Contorno vermelho grosso enquanto o modo está ligado: o card
                 // some quando clicado, e ação sem volta precisa de aviso antes.
                 outline: modoDeletar ? '2px solid var(--color-danger)' : '2px solid transparent',
@@ -404,13 +416,11 @@ export function Home() {
                 transition: 'outline-color 0.18s ease',
               }}
             >
-              {/* Segue o ponteiro dentro do card. No celular não aparece — sem
-                  cursor, o brilho ficaria parado como uma mancha. */}
-              <Holofote />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <span className="badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>ATIVO</span>
-                {modoDeletar ? (
+              <CardDaProducao
+                projeto={projeto}
+                resumo={resumirProducao(diariasPorProjeto.get(projeto.id) || [], hoje)}
+                papel={participacaoLocal(projeto.id)?.papel}
+                acao={modoDeletar ? (
                   <motion.button
                     onClick={(e) => { e.stopPropagation(); setProjetoParaDeletar(projeto); }}
                     initial={reduzido ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
@@ -428,27 +438,8 @@ export function Home() {
                   >
                     <Trash2 size={18} />
                   </motion.button>
-                ) : (
-                  <span className="text-secondary">&gt;</span>
-                )}
-              </div>
-              <h3 className="text-xl font-bold" style={{ marginBottom: '4px' }}>{projeto.nome}</h3>
-              <div className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Acerto: {projeto.modo_acerto === 'direto' ? 'Direto' : 'Centralizado'}
-              </div>
-              
-              <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
-                <div className="text-xs text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Saldo Atual</div>
-                <div className="font-bold text-lg" style={{ color: ((aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) - (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                  <Numero
-                    moeda
-                    valor={
-                      (aportesGlobais?.filter(a => a.projeto_id === projeto.id).reduce((acc, a) => acc + a.valor, 0) || 0) -
-                      (despesasGlobais?.filter(d => d.projeto_id === projeto.id).reduce((acc, d) => acc + d.valor_total, 0) || 0)
-                    }
-                  />
-                </div>
-              </div>
+                ) : undefined}
+              />
             </motion.div>
           ))
         )}
