@@ -1,11 +1,26 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { decidirEfeitos, movimentoReduzido } from './suporte';
+import { movimentoReduzido } from './suporte';
 import { Claquete, DURACAO_DA_CLAQUETE } from '../Claquete';
 
-// Carregado só quando a tela de entrada monta: o `ogl` e os shaders não têm
-// por que pesar no carregamento de quem já está trabalhando dentro do app.
-const WarpText = lazy(() => import('./WarpText'));
+/**
+ * O título SETPROD, com o easter egg.
+ *
+ * ERA UM SHADER (`WarpText`, do React Bits): o texto ondulava o tempo todo e
+ * refratava sob o cursor. Saiu em 17/09/2026, a pedido do Lucas, por três
+ * motivos que só aparecem com o app na mão: o nome do app é a primeira coisa
+ * que se lê e não devia estar tremendo; num aparelho sem WebGL ele caía para
+ * um texto comum, e a porta do app tinha duas caras; e o efeito custava um
+ * canvas e uma biblioteca de gráficos para desenhar sete letras.
+ *
+ * No lugar, o título **se abre**: as letras entram espaçadas e desfocadas e
+ * assentam no lugar, uma vez, na chegada. Depois fica parado, como um nome.
+ *
+ * O EASTER EGG CONTINUA, e continua sem aviso: a cada cutucão o nome aperta e
+ * desfoca um pouco mais, e no terceiro a claquete bate (ver `Claquete.tsx`).
+ * Quem só passa o olho não vê nada; quem cutuca de propósito sente a tensão
+ * subindo e descobre sozinho.
+ */
 
 const RICK = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
@@ -14,42 +29,13 @@ const JANELA_MS = 1500;
 const CLIQUES_PARA_ESTOURAR = 3;
 
 /** Tensão acumulada em cada clique — o terceiro é o estouro. */
-const TENSAO = [0, 0.22, 0.55, 1];
-
-/**
- * COMPENSAÇÃO DE TAMANHO — por que os números não são os da referência.
- *
- * O shader desloca o texto em coordenadas de textura (0 a 1), então o efeito
- * final em PIXELS é proporcional à largura do canvas. A demonstração do React
- * Bits usa um texto enorme; aqui o título tem 84px na tela inicial e 52px no
- * login. Com os mesmos números, o movimento vira um terço — e o repouso cai
- * para MENOS DE UM PIXEL, que é literalmente invisível.
- *
- * Medido com os valores antigos (warp 0.08, ponteiro 0.38):
- *   login  0,66px em repouso ·  6,3px sob o cursor
- *   início 1,08px em repouso · 10,3px sob o cursor
- *   demo   1,98px em repouso · 18,8px sob o cursor
- *
- * Daí a compensação: a força cresce na mesma proporção em que o título
- * encolhe, e o movimento percebido fica igual em qualquer tamanho — cerca de
- * 2,7px em repouso e 16px sob o cursor, nos dois lugares.
- *
- * Para mexer na intensidade, mexa só nestes três números.
- */
-const TAMANHO_REFERENCIA = 84;
-const BASE_WARP = 0.20;
-const BASE_PONTEIRO = 0.62;
-const BASE_REFRACAO = 0.028;
-
-/** Teto de 2,2× para um título minúsculo não virar borrão ilegível. */
-const compensacaoDe = (tamanho: number) =>
-  Math.min(2.2, Math.max(1, TAMANHO_REFERENCIA / Math.max(tamanho, 1)));
+const TENSAO = [0, 0.3, 0.65, 1];
 
 interface Props {
   tamanho?: number;
   fontFamily?: string;
   /**
-   * Liga o easter egg. Desligado, o título é só bonito.
+   * Liga o easter egg. Desligado, o título é só o nome.
    *
    * Ele mora só na tela inicial de propósito: um segredo que aparece em duas
    * telas deixa de ser segredo e vira botão.
@@ -60,59 +46,15 @@ interface Props {
   perigo?: boolean;
 }
 
-/**
- * O título SETPROD, com o easter egg.
- *
- * Não há contador, balão nem dica: o único aviso é o próprio efeito ficando
- * mais violento a cada clique. Quem só passa o olho não percebe nada; quem
- * cutuca de propósito sente a tensão subindo e descobre sozinho.
- */
-export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro', perigo = false }: Props) {
-  const [efeitos] = useState(() => decidirEfeitos());
+export function TituloSetProd({
+  tamanho = 92, fontFamily, interativo = true, alinhamento = 'centro', perigo = false,
+}: Props) {
   const [tensao, setTensao] = useState(0);
-  const compensacao = compensacaoDe(tamanho);
-
-  /*
-    ⚠️ TER WEBGL NÃO É O MESMO QUE CONTINUAR TENDO.
-
-    `decidirEfeitos()` pergunta uma vez, na montagem, e o Firefox às vezes tira
-    o contexto DEPOIS — foi o relato de 12/08: "no mozila o título não aparece"
-    e, junto, "WebGL context was lost" no console. Sem contexto, o canvas fica
-    em branco e a tela de entrada perde o nome do app; a pessoa não tem nem como
-    saber onde está.
-
-    O `webglcontextlost` não sobe pela árvore, mas passa por ela na descida —
-    por isso o ouvinte é registrado na fase de captura, no elemento que embrulha
-    o canvas. Perdeu o contexto, cai no título de texto, que é o mesmo caminho
-    de quem nunca teve WebGL.
-  */
-  const [contextoPerdido, setContextoPerdido] = useState(false);
-
-  /*
-    O ouvinte entra por ref, e não por `useEffect`.
-
-    A caixa mora dentro de um `Suspense`, e o WarpText é carregado sob demanda:
-    quando um efeito com `[]` roda, o que está na tela ainda é o vazio do
-    Suspense e a caixa é `null`. O efeito não pegava nada e nunca mais rodava —
-    a queda do contexto passava batida, que foi como este conserto falhou na
-    primeira tentativa. A ref é chamada quando o elemento aparece de verdade.
-  */
-  const aoMontarCaixa = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    const perdeu = () => setContextoPerdido(true);
-    el.addEventListener('webglcontextlost', perdeu, true);
-    return () => el.removeEventListener('webglcontextlost', perdeu, true);
-  }, []);
+  const [claquete, setClaquete] = useState(false);
+  const [reduzido] = useState(() => movimentoReduzido());
 
   const cliques = useRef(0);
   const relogio = useRef<number | undefined>(undefined);
-  /*
-    A claquete cobre a tela no estouro (escolhido com o Lucas em 17/09/2026).
-    Ela fica um segundo no ar — o tempo de bater, estourar em branco e a
-    pessoa ler "cena 1, take 3" — e só então o take vai para o corte.
-  */
-  const [claquete, setClaquete] = useState(false);
-
   useEffect(() => () => window.clearTimeout(relogio.current), []);
 
   const cutucar = () => {
@@ -122,8 +64,9 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
     if (cliques.current >= CLIQUES_PARA_ESTOURAR) {
       setTensao(1);
       cliques.current = 0;
-
       setClaquete(true);
+      // A claquete fica um segundo no ar — bater, estourar, ler — e só então
+      // o take vai para o corte.
       window.setTimeout(() => {
         window.open(RICK, '_blank', 'noopener,noreferrer');
         setClaquete(false);
@@ -139,67 +82,32 @@ export function TituloSetProd({ tamanho = 92, fontFamily, interativo = true, ali
     }, JANELA_MS);
   };
 
-  // Sem WebGL, sem cursor ou com movimento reduzido: título comum, e o easter
-  // egg continua existindo — só sem o acúmulo visual.
-  const aClaquete = claquete && typeof document !== 'undefined'
-    ? createPortal(<Claquete reduzido={movimentoReduzido()} />, document.body)
-    : null;
-
-  if (!efeitos.titulo || contextoPerdido) {
-    return (
-      <>
+  return (
+    <>
       <button
-        onPointerDown={interativo ? cutucar : undefined}
+        type="button"
+        onClick={interativo ? cutucar : undefined}
         title="SetProd"
+        aria-label="SetProd"
         disabled={!interativo}
+        className={reduzido ? 'titulo-setprod' : 'titulo-setprod abrindo'}
         style={{
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
           fontFamily: fontFamily || "'Archivo Black', 'Arial Black', system-ui, sans-serif",
-          fontWeight: 900, letterSpacing: '-0.06em',
-          fontSize: `${Math.min(tamanho, 56)}px`,
-          color: perigo ? 'var(--color-danger)' : 'var(--text-primary)', lineHeight: 1.1,
-          opacity: movimentoReduzido() ? 1 : 1 - tensao * 0.35,
-          transition: 'opacity 0.2s ease, color 0.45s ease',
+          fontSize: `${tamanho}px`,
+          color: perigo ? 'var(--color-danger)' : 'var(--text-primary)',
+          alignSelf: alinhamento === 'centro' ? 'center' : 'flex-start',
+          cursor: interativo ? 'pointer' : 'default',
+          // A tensão do easter egg: apertar, desfocar, inclinar. Só isso.
+          letterSpacing: `${-0.06 + tensao * 0.05}em`,
+          filter: tensao ? `blur(${tensao * 2.4}px)` : undefined,
+          transform: tensao ? `skewX(${tensao * -5}deg) scale(${1 + tensao * 0.03})` : undefined,
         }}
       >
         SETPROD
       </button>
-      {aClaquete}
-      </>
-    );
-  }
 
-  return (
-    <Suspense fallback={<div style={{ height: `${tamanho * 1.2}px` }} />}>
-      {aClaquete}
-      {/* O onClick fica no wrapper porque o componente oficial não expõe um —
-          e assim o easter egg não exige tocar no código dele. */}
-      <div
-        ref={aoMontarCaixa}
-        onClick={interativo ? cutucar : undefined}
-        style={{ cursor: interativo ? 'pointer' : 'default' }}
-      >
-        <WarpText
-          text="SETPROD"
-          color="#f8f5ff"
-          /* Ver COMPENSACAO abaixo: os números crescem quando o título encolhe. */
-          warpStrength={BASE_WARP * compensacao}
-          warpScale={1.7}
-          speed={0.55}
-          pointerInfluence={0.42}
-          pointerStrength={BASE_PONTEIRO * compensacao}
-          refraction={BASE_REFRACAO * compensacao}
-          ripple
-          fontSize={tamanho}
-          fontWeight={800}
-          letterSpacing="-0.06em"
-          align={alinhamento === 'esquerda' ? 'left' : 'center'}
-          boost={tensao}
-          tint={perigo ? '#ff6b6b' : '#ffffff'}
-          {...(fontFamily ? { fontFamily } : {})}
-          style={{ height: `${tamanho * 1.2}px`, minHeight: 0 }}
-        />
-      </div>
-    </Suspense>
+      {claquete && typeof document !== 'undefined'
+        && createPortal(<Claquete reduzido={reduzido} />, document.body)}
+    </>
   );
 }

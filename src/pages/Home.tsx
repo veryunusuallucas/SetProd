@@ -280,9 +280,12 @@ export function Home() {
       {/* HEADER — a barra de cima só tem a versão (esquerda) e as ações
           (direita); o título fica solto embaixo, sem nada disputando espaço. */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
+        {/* Chip, e não botão cheio: com o fundo animado atrás, um retângulo
+            amarelo sólido no canto puxava o olho antes do nome do app. */}
         <button
           onClick={() => setMostrarChangelog(true)}
-          style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '6px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+          className="selo-da-versao"
+          title="O que mudou nesta versão"
         >
           {/* Sai do package.json: escrito à mão, o selo já ficou dizendo v4.2
               enquanto o app era outro. Só maior.menor — o número de correção

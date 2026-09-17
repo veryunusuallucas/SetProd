@@ -1366,3 +1366,73 @@ input[type="radio"]:checked::before {
   72% { transform: translate(-3px, 3px) rotate(-0.3deg); }
   100% { transform: none; }
 }
+
+/* ============================================================
+   O NOME DO APP, na porta (leva da porta, 17/09/2026)
+
+   Ele SE ABRE uma vez, na chegada: as letras entram espaçadas e desfocadas e
+   assentam no lugar. Depois fica parado — era um shader que ondulava o tempo
+   todo, e o nome do app é a primeira coisa que se lê.
+   ============================================================ */
+
+.titulo-setprod {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.06em;
+  text-align: left;
+  transition: letter-spacing 0.22s ease, filter 0.22s ease, transform 0.22s ease, color 0.45s ease;
+}
+
+.titulo-setprod.abrindo { animation: titulo-abre 0.9s cubic-bezier(0.22, 0.9, 0.25, 1) both; }
+
+@keyframes titulo-abre {
+  from { opacity: 0; letter-spacing: 0.34em; filter: blur(10px); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; letter-spacing: -0.06em; filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titulo-setprod.abrindo { animation: none; }
+}
+
+/* ── A porta: o selo da versão, a busca e os cards deixam o fundo passar ── */
+
+.selo-da-versao {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.selo-da-versao:hover { background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
+
+/*
+  Vidro na porta, e só na porta: o fundo animado passa por baixo da busca e
+  dos cards, e a tela vira uma coisa só em vez de papel recortado sobre um
+  papel de parede.
+*/
+.home-shell input[type="text"],
+.home-shell .card {
+  background-color: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .home-shell input[type="text"],
+  .home-shell .card {
+    background-color: var(--bg-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
