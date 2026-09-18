@@ -30,15 +30,22 @@ export interface ItemDaFolha {
   path?: string;
   exact?: boolean;
   aoTocar?: () => void;
+  /** É o módulo aberto. Sem isto, a folha compara o caminho. */
+  aqui?: boolean;
 }
 
-export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape }: {
+export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape, acaoDoTopo, substituto, rotulo = 'Mais' }: {
   aberta: boolean;
   aoFechar: () => void;
   itens: ItemDaFolha[];
   ativo: string;
   /** O que não cabe num quadro: busca, sair. */
   rodape?: React.ReactNode;
+  /** Um botão pequeno no canto de cima, na altura do pegador. */
+  acaoDoTopo?: React.ReactNode;
+  /** Outra coisa no lugar da grade — o editor da dock. */
+  substituto?: React.ReactNode;
+  rotulo?: string;
 }) {
   const reduzido = useMovimentoReduzido();
   const folha = useRef<HTMLDivElement>(null);
@@ -87,7 +94,7 @@ export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape }: {
         style={{ transform: y ? `translateY(${y}px)` : undefined }}
         role="dialog"
         aria-modal="true"
-        aria-label="Mais"
+        aria-label={rotulo}
         onClick={e => e.stopPropagation()}
       >
         <div
@@ -99,11 +106,13 @@ export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape }: {
         >
           <span className="folha-pegador" aria-hidden />
         </div>
+        {acaoDoTopo && <div className="folha-acao-topo">{acaoDoTopo}</div>}
 
         <div className="folha-rolagem">
+          {substituto ?? (<>
           <div className="folha-malha">
             {itens.map(i => {
-              const aqui = Boolean(i.path) && (i.exact ? ativo === i.path : ativo.startsWith(i.path!));
+              const aqui = i.aqui ?? (Boolean(i.path) && (i.exact ? ativo === i.path : ativo.startsWith(i.path!)));
               const dentro = (
                 <Fragment>
                   <i.icone size={20} />
@@ -139,6 +148,7 @@ export function FolhaDeModulos({ aberta, aoFechar, itens, ativo, rodape }: {
           </div>
 
           {rodape && <div className="folha-rodape">{rodape}</div>}
+          </>)}
         </div>
       </div>
     </div>
