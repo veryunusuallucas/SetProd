@@ -31,6 +31,14 @@ import { confirmar } from '../components/ui/Confirmacao';
 export /** O menu lateral preso (com nomes) ou em trilho. Por aparelho. */
 const CHAVE_MENU_PRESO = 'setprod:menu:preso';
 
+/**
+ * Quando a produção usa a dock do celular em vez da barra lateral: tela
+ * estreita, ou tela de toque de pé (iPad em retrato) ou deitada e baixa
+ * (celular deitado). A mesma consulta mora no `layout.css`.
+ */
+const CONSULTA_DA_DOCK =
+  '(max-width: 767px), (hover: none) and (pointer: coarse) and (orientation: portrait), (hover: none) and (pointer: coarse) and (max-height: 500px)';
+
 /** Uma media query como estado, para a tela reagir a girar e redimensionar. */
 function useMedia(consulta: string) {
   const [vale, setVale] = useState(() => typeof window !== 'undefined' && window.matchMedia(consulta).matches);
@@ -167,7 +175,9 @@ export function ProjectLayout() {
     botão flutuante sai da tela — o canto de baixo é da dock. No computador a
     barra lateral não tem esse menu, então o botão continua.
   */
-  const temDock = useMedia('(max-width: 767px)');
+  const temDock = useMedia(CONSULTA_DA_DOCK);
+  /** Tela de toque: não existe "passar o mouse", então não existe trilho. */
+  const soToque = useMedia('(hover: none) and (pointer: coarse)');
   useAjudaNoMenu(temDock);
 
   /*
@@ -186,7 +196,7 @@ export function ProjectLayout() {
   const [escolhaDoMenu, setEscolhaDoMenu] = useState<string | null>(() => {
     try { return localStorage.getItem(CHAVE_MENU_PRESO); } catch { return null; }
   });
-  const menuPreso = escolhaDoMenu === null ? ehComputador : escolhaDoMenu === 'sim';
+  const menuPreso = soToque || (escolhaDoMenu === null ? ehComputador : escolhaDoMenu === 'sim');
   const trocarMenuPreso = () => {
     const novo = menuPreso ? 'nao' : 'sim';
     setEscolhaDoMenu(novo);
@@ -195,17 +205,45 @@ export function ProjectLayout() {
 
   const [menuAberto, setMenuAberto] = useState(false);
   const esperaDoMenu = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const ondeParou = useRef({ x: 0, y: 0 });
+  /** Clicou num ícone: o trilho não abre até o mouse sair e voltar. */
+  const clicouNoTrilho = useRef(false);
   /*
-    450ms, e não os 160 do primeiro corte (pedido do Lucas, 17/09/2026): quem
-    já sabe qual ícone é o dele mira e clica sem querer ver nome nenhum, e o
-    menu abria no caminho. Meio segundo é o tempo de quem PAROU ali para ler.
-    Quem quiser na hora, clica: o clique abre sem esperar.
+    O TRILHO ABRE POR "INTENÇÃO", NÃO POR PASSAGEM (18/09/2026).
+
+    O clique abria o menu na hora — e o foco que o clique dá ao link também —,
+    e em seguida a troca de tela o fechava: meio segundo de menu aberto a cada
+    clique, que era o "esquisito" que o Lucas via. Agora é o padrão de hover
+    intent das barras que se expandem:
+
+    - abre só quando o mouse PARA sobre o trilho por 400ms. Mexer mais que
+      alguns pixels recomeça a conta — quem está passando a caminho de um
+      ícone nunca vê o menu abrir;
+    - clicar num ícone NUNCA abre. Quem clicou já sabia onde ia;
+    - fecha 200ms depois de o mouse sair, e não no mesmo instante: escorregar
+      um pixel para fora da borda não derruba o menu;
+    - pelo teclado (Tab), abre na hora, porque aí não há ícone para mirar.
   */
-  const entrouNoMenu = () => {
+  const armarAbertura = () => {
     clearTimeout(esperaDoMenu.current);
-    esperaDoMenu.current = setTimeout(() => setMenuAberto(true), 450);
+    if (clicouNoTrilho.current) return;
+    esperaDoMenu.current = setTimeout(() => setMenuAberto(true), 400);
   };
-  const saiuDoMenu = () => { clearTimeout(esperaDoMenu.current); setMenuAberto(false); };
+  const entrouNoMenu = (e: React.PointerEvent) => {
+    ondeParou.current = { x: e.clientX, y: e.clientY };
+    armarAbertura();
+  };
+  const moveuNoMenu = (e: React.PointerEvent) => {
+    if (menuAberto || e.pointerType === 'touch') return;
+    if (Math.hypot(e.clientX - ondeParou.current.x, e.clientY - ondeParou.current.y) < 6) return;
+    ondeParou.current = { x: e.clientX, y: e.clientY };
+    armarAbertura();
+  };
+  const saiuDoMenu = () => {
+    clicouNoTrilho.current = false;
+    clearTimeout(esperaDoMenu.current);
+    esperaDoMenu.current = setTimeout(() => setMenuAberto(false), 200);
+  };
   // No toque não existe "tirar o mouse": trocar de módulo fecha o trilho.
   useEffect(() => { setMenuAberto(false); }, [currentPath]);
   useEffect(() => () => clearTimeout(esperaDoMenu.current), []);
@@ -381,10 +419,21 @@ export function ProjectLayout() {
       {/* O menu lateral: barra no computador, trilho de ícones quando solto. */}
       <aside
         className={`sidebar menu-lateral ${menuPreso ? 'preso' : 'trilho'} ${!menuPreso && menuAberto ? 'aberto' : ''}`}
-        onPointerEnter={e => { if (!menuPreso && e.pointerType !== 'touch') entrouNoMenu(); }}
-        onPointerLeave={saiuDoMenu}
-        onFocus={() => { if (!menuPreso) setMenuAberto(true); }}
-        onClick={() => { if (!menuPreso) setMenuAberto(true); }}
+        onPointerEnter={e => { if (!menuPreso && e.pointerType !== 'touch') entrouNoMenu(e); }}
+        onPointerMove={e => { if (!menuPreso) moveuNoMenu(e); }}
+        onPointerLeave={e => { if (!menuPreso && e.pointerType !== 'touch') saiuDoMenu(); }}
+        onPointerDown={() => {
+          if (menuPreso || menuAberto) return;
+          clicouNoTrilho.current = true;
+          clearTimeout(esperaDoMenu.current);
+        }}
+        onFocus={e => {
+          // Só o foco do teclado: o do clique é o clique, e clique não abre.
+          if (!menuPreso && (e.target as HTMLElement).matches(':focus-visible')) setMenuAberto(true);
+        }}
+        onBlur={e => {
+          if (!menuPreso && !e.currentTarget.contains(e.relatedTarget as Node | null)) setMenuAberto(false);
+        }}
       >
         {renderSidebarContent()}
         <button

@@ -1286,6 +1286,12 @@ input[type="radio"]:checked::before {
 @media (max-width: 359px) { .dock-conteudo { font-size: 9px; } }
 
 .folha-modulos { position: relative; }
+/* No iPad de pé a folha não atravessa a tela: fica da largura de um
+   celular grande, centrada sobre a dock. */
+@media (min-width: 768px) {
+  .folha-fundo { justify-content: center; }
+  .folha-modulos { max-width: 560px; }
+}
 /* O lápis do editor, na altura do pegador: presente, mas fora do caminho. */
 .folha-acao-topo { position: absolute; top: 4px; right: 10px; }
 .folha-acao-topo .btn-icon { width: 36px; height: 36px; color: var(--text-muted); }
