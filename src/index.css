@@ -1273,6 +1273,89 @@ input[type="radio"]:checked::before {
   border-top: 1px solid var(--border-light);
 }
 
+/* ── a dock que é de quem usa (18/09/2026): segurar, editar, acompanhar ── */
+
+/* Segurar um item abre o editor: sem isto, o celular seleciona o texto ou
+   oferece "abrir em nova aba" em cima do dedo. */
+.dock-nav { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.dock-fluido { display: flex; min-width: 0; max-width: 100%; }
+/* Com o módulo que cada um escolhe, o rótulo pode ser longo: num celular
+   estreito a letra desce um ponto, e o que ainda não couber termina em "…". */
+.dock-conteudo { max-width: 100%; }
+.dock-conteudo > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 359px) { .dock-conteudo { font-size: 9px; } }
+
+.folha-modulos { position: relative; }
+/* O lápis do editor, na altura do pegador: presente, mas fora do caminho. */
+.folha-acao-topo { position: absolute; top: 4px; right: 10px; }
+.folha-acao-topo .btn-icon { width: 36px; height: 36px; color: var(--text-muted); }
+/* Com o lápis, a grade desce um pouco para ele não pousar no último quadro. */
+.folha-acao-topo + .folha-rolagem { padding-top: 14px; }
+
+.editor-dock { display: flex; flex-direction: column; gap: 14px; }
+.editor-dock-titulo { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+
+/* Os quatro lugares, desenhados como a dock que eles viram. */
+.editor-dock-vagas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 5px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+  background-color: var(--bg-primary);
+}
+.editor-vaga {
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: var(--radius-full);
+  border: 1.5px dashed transparent;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.editor-vaga svg { color: var(--cor-area, currentColor); }
+.editor-vaga.escolhida {
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--text-primary);
+  background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+/* O quarto não se escolhe: ele é quem acompanha. */
+.editor-vaga.fluida { border-color: var(--border-color); color: var(--text-muted); cursor: default; }
+
+.editor-dock .folha-quadro { position: relative; cursor: pointer; }
+/* Quem já está na dock fica marcado, com o número do lugar. */
+.folha-quadro.na-dock {
+  border-color: var(--cor-area);
+  color: var(--text-primary);
+  background-color: color-mix(in srgb, var(--cor-area) 18%, transparent);
+}
+.editor-selo {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent);
+  color: #0b0b0b;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-dock-acoes { display: flex; gap: 8px; }
+.editor-dock-acoes .btn { flex: 1; min-height: 44px; }
+
 @keyframes folha-sobe {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }

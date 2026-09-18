@@ -7,12 +7,17 @@ import { useOcuparRodape } from '../components/ui/slotFlutuante';
 import { DockDoProjeto } from '../components/menu/DockDoProjeto';
 import { FolhaDeModulos } from '../components/menu/FolhaDeModulos';
 import { abrirAjuda, abrirRelatarProblema, useAjudaNoMenu } from '../components/menu/ajudaNoMenu';
+import { EditorDaDock } from '../components/menu/EditorDaDock';
+import {
+  MODULOS, caminhoDo, moduloDoCaminho, moduloPorId, quartoLugar, useFixosDaDock,
+  lerUltima, guardarUltima, EVENTO_EDITAR_DOCK, type IdModulo,
+} from '../components/menu/modulosDaDock';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
-  LogOut, DollarSign, ListTodo, X, Users, FileText, Truck, Database, Clapperboard, HelpCircle, Bug,
-  PanelLeftClose, PanelLeftOpen
+  LogOut, X, Users, FileText, Truck, Database, Clapperboard, HelpCircle, Bug,
+  PanelLeftClose, PanelLeftOpen, Pencil
 } from 'lucide-react';
 import { CompartilharModal } from '../components/CompartilharModal';
 import { StatusSync } from '../components/StatusSync';
@@ -128,6 +133,34 @@ export function ProjectLayout() {
   const barraDeBaixo = useOcuparRodape();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  /** A folha aberta no editor da dock, e em qual dos três lugares. */
+  const [editandoDock, setEditandoDock] = useState<number | null>(null);
+  const fecharFolha = () => { setMobileSidebarOpen(false); setEditandoDock(null); };
+
+  /*
+    A DOCK É DE QUEM USA (pedido do Lucas, 18/09/2026): três fixos que cada um
+    escolhe e um quarto lugar que acompanha o último módulo aberto — assim ela
+    sempre mostra onde você está. Ver `modulosDaDock.ts`.
+  */
+  const fixos = useFixosDaDock();
+  const moduloAtual = moduloDoCaminho(currentPath, id!);
+  const [ultima, setUltima] = useState<IdModulo | null>(() => lerUltima(id!));
+  useEffect(() => { setUltima(lerUltima(id!)); }, [id]);
+  useEffect(() => {
+    if (moduloAtual && !fixos.includes(moduloAtual)) {
+      setUltima(moduloAtual);
+      guardarUltima(id!, moduloAtual);
+    }
+  }, [moduloAtual, fixos, id]);
+  const quarto = quartoLugar(fixos, moduloAtual, ultima);
+  const idsDaDock = [...fixos, quarto];
+
+  // A tela de Config também abre o editor.
+  useEffect(() => {
+    const abrir = () => { setMobileSidebarOpen(true); setEditandoDock(0); };
+    window.addEventListener(EVENTO_EDITAR_DOCK, abrir);
+    return () => window.removeEventListener(EVENTO_EDITAR_DOCK, abrir);
+  }, []);
 
   /*
     No celular, a ajuda e o "relatar problema" moram no menu do "Mais", e o
@@ -245,6 +278,10 @@ export function ProjectLayout() {
   const isActive = (path: string, exact: boolean) => {
     if (exact) return currentPath === path;
     return currentPath.startsWith(path);
+  };
+
+  const quadroDoAcesso = {
+    nome: 'Acesso', icone: Users, cor: 'var(--cor-equipe)', aoTocar: () => setMostrarCompartilhar(true),
   };
 
   const renderSidebarContent = () => (
@@ -370,37 +407,58 @@ export function ProjectLayout() {
       */}
       <FolhaDeModulos
         aberta={mobileSidebarOpen}
-        aoFechar={() => setMobileSidebarOpen(false)}
+        aoFechar={fecharFolha}
         ativo={currentPath}
+        rotulo={editandoDock !== null ? 'Editar a barra de baixo' : 'Mais'}
+        substituto={editandoDock !== null
+          ? <EditorDaDock key={editandoDock} vagaInicial={editandoDock} aoConcluir={() => setEditandoDock(null)} />
+          : undefined}
+        acaoDoTopo={editandoDock === null && (
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => setEditandoDock(0)}
+            title="Escolher os módulos da barra de baixo"
+            aria-label="Editar a barra de baixo"
+          >
+            <Pencil size={16} />
+          </button>
+        )}
         /*
-          A grade do "Mais": o que NÃO está na dock, na cor da sua área, e no
-          fim as duas de aviso — a ajuda e o "relatar problema", que antes
-          moravam no botão flutuante do canto.
+          A grade do "Mais": todo módulo que não é um dos três fixos — o do
+          quarto lugar fica também, para a grade não trocar de desenho a cada
+          tela aberta. Depois o "Quem tem acesso" e, em vermelho, a ajuda.
+          Com os fixos padrão são 12 quadros: a grade 3×4 do Lucas.
         */
         itens={[
-          { nome: 'Logagem', path: `/projeto/${id}/logagem`, icone: Clapperboard, cor: 'var(--cor-criativo)' },
-          { nome: 'Decupagem', path: `/projeto/${id}/decupagem`, icone: Film, cor: 'var(--cor-criativo)' },
-          { nome: 'Documentos', path: `/projeto/${id}/documentos`, icone: FileText, cor: 'var(--cor-criativo)' },
-          { nome: 'Produção', path: `/projeto/${id}/producao`, icone: Users, cor: 'var(--cor-equipe)' },
-          { nome: 'Eventos', path: `/projeto/${id}/eventos`, icone: CalendarClock, cor: 'var(--cor-set)' },
-          { nome: 'Locações', path: `/projeto/${id}/locacoes`, icone: MapPin, cor: 'var(--cor-logistica)' },
-          { nome: 'Transporte', path: `/projeto/${id}/transporte`, icone: Truck, cor: 'var(--cor-logistica)' },
-          { nome: 'Dados', path: `/projeto/${id}/dados`, icone: Database, cor: 'var(--cor-logistica)' },
-          { nome: 'Acesso', icone: Users, cor: 'var(--cor-equipe)', aoTocar: () => setMostrarCompartilhar(true) },
-          { nome: 'Config', path: `/projeto/${id}/config`, icone: Settings, cor: 'var(--text-muted)' },
+          ...MODULOS.filter(m => !fixos.includes(m.id)).flatMap(m => {
+            const quadro = {
+              nome: m.nome, icone: m.icone, cor: m.cor,
+              path: caminhoDo(id!, m), exact: m.trecho === '', aqui: moduloAtual === m.id,
+            };
+            // "Acesso" entra logo depois da Produção: é da mesma área.
+            return m.id === 'producao' ? [quadro, quadroDoAcesso] : [quadro];
+          }),
+          // Produção virou fixo: o Acesso fica sem vizinho e vai para o fim.
+          ...(fixos.includes('producao') ? [quadroDoAcesso] : []),
           { nome: 'Como funciona', icone: HelpCircle, cor: 'var(--color-danger)', aoTocar: abrirAjuda },
-          { nome: 'Relatar problema', icone: Bug, cor: 'var(--color-danger)', aoTocar: abrirRelatarProblema },
         ]}
         rodape={
           <>
             <button
               className="sidebar-link"
-              onClick={() => { setMobileSidebarOpen(false); window.dispatchEvent(new Event('open-command-palette')); }}
+              onClick={() => { fecharFolha(); window.dispatchEvent(new Event('open-command-palette')); }}
             >
               <Search size={18} />
               <span>Busca</span>
             </button>
-            <button className="sidebar-link" onClick={() => { setMobileSidebarOpen(false); navigate('/'); }}>
+            {/* Desceu da grade para cá: o quadro vermelho ficou com a ajuda, e o
+                relato é coisa que se procura, não que se toca de passagem. */}
+            <button className="sidebar-link" onClick={() => { fecharFolha(); abrirRelatarProblema(); }}>
+              <Bug size={18} className="text-danger" />
+              <span>Relatar problema</span>
+            </button>
+            <button className="sidebar-link" onClick={() => { fecharFolha(); navigate('/'); }}>
               <LogOut size={18} />
               <span>Sair do Projeto</span>
             </button>
@@ -478,15 +536,15 @@ export function ProjectLayout() {
           lateral e a medida vai a zero sozinha. */}
       <DockDoProjeto
         refDaBarra={barraDeBaixo}
-        ativo={currentPath}
         aberta={mobileSidebarOpen}
-        aoAbrirMais={() => setMobileSidebarOpen(true)}
-        itens={[
-          { nome: 'Dash', path: `/projeto/${id}`, icone: LayoutDashboard, exact: true },
-          { nome: 'Diárias', path: `/projeto/${id}/diarias`, icone: CalendarDays },
-          { nome: '$$$', path: `/projeto/${id}/financeiro`, icone: DollarSign },
-          { nome: 'Tasks', path: `/projeto/${id}/tasks`, icone: ListTodo },
-        ]}
+        aoAbrirMais={() => { setEditandoDock(null); setMobileSidebarOpen(true); }}
+        aoSegurar={n => { setEditandoDock(n > 2 ? 0 : n); setMobileSidebarOpen(true); }}
+        indiceAtivo={moduloAtual ? idsDaDock.indexOf(moduloAtual) : -1}
+        fluido={3}
+        itens={idsDaDock.map(mid => {
+          const m = moduloPorId(mid);
+          return { nome: m.curto ?? m.nome, path: caminhoDo(id!, m), icone: m.icone, exact: m.trecho === '' };
+        })}
       />
 
       {/* Fica montado sempre: o conflito chega quando chega, e um aviso que só

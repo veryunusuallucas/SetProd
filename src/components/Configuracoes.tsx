@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Save, Trash2, Bug, Info, X, ShieldCheck } from 'lucide-react';
+import { Save, Trash2, Bug, Info, X, ShieldCheck, PanelBottom } from 'lucide-react';
+import { abrirEditorDaDock, moduloPorId, useFixosDaDock } from './menu/modulosDaDock';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
 import type { Projeto } from '../types';
@@ -12,6 +13,7 @@ import { ComemoracaoDoWrap } from './ComemoracaoDoWrap';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
+  const fixosDaDock = useFixosDaDock();
   const configuracao = useLiveQuery(() => db.configuracoes.get(projetoId), [projetoId]);
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
 
@@ -203,6 +205,20 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
       */}
       <PadraoDaOD projetoId={projetoId} />
       <ComemoracaoDoWrap />
+
+      {/* Só no celular: é o único lugar onde a barra de baixo existe. O mesmo
+          editor abre segurando um item da barra ou no lápis do "Mais". */}
+      <div className="card celular-only" style={{ flexDirection: 'column' }}>
+        <h3 className="text-lg font-bold" style={{ marginBottom: '8px' }}>Barra de baixo</h3>
+        <p className="text-xs text-secondary" style={{ marginBottom: '16px', lineHeight: 1.5 }}>
+          Os três primeiros lugares são seus: agora {fixosDaDock.map(f => moduloPorId(f).nome).join(', ')}.
+          O quarto acompanha a última tela que você abriu. Vale para todas as produções neste aparelho.
+          Atalho: segure um item da barra.
+        </p>
+        <button onClick={abrirEditorDaDock} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
+          <PanelBottom size={16} className="text-accent" /> Escolher os módulos
+        </button>
+      </div>
 
       <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Suporte</h3>
