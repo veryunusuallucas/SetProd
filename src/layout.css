@@ -132,11 +132,17 @@
    - computador (≥1024): a mesma barra de sempre, presa. Solta no alfinete,
      encolhe para ícones e abre POR CIMA quando o mouse chega.
 
+   E O TOQUE MUDA A CONTA (18/09/2026). Trilho que abre ao passar o mouse não
+   existe num iPad: não há mouse. Então, em tela de toque:
+   - de pé (retrato) ou celular deitado: a dock e a folha, como no celular;
+   - iPad deitado: a barra inteira, sempre presa, sem trilho.
+   A consulta abaixo é a mesma de `CONSULTA_DA_DOCK` no ProjectLayout.
+
    Ver `.md/PLANO-menus.md`.
    ============================================================ */
 
 .celular-only { display: none; }
-@media (max-width: 767px) {
+@media (max-width: 767px), (hover: none) and (pointer: coarse) and (orientation: portrait), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .celular-only { display: flex; }
 }
 
@@ -157,6 +163,18 @@
     padding-bottom: 32px;
     transition: margin-left 0.22s cubic-bezier(0.22, 0.8, 0.3, 1);
   }
+}
+/* iPad de pé e celular deitado: a dock no lugar da barra lateral. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) and (orientation: portrait), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .menu-lateral { display: none; }
+  .project-layout .main-content {
+    margin-left: 0;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 32px);
+  }
+}
+/* No toque a barra fica sempre presa: o alfinete não teria como voltar. */
+@media (hover: none) and (pointer: coarse) {
+  .alfinete-menu { display: none; }
 }
 
 /*
