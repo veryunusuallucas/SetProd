@@ -427,11 +427,13 @@ export function ProjectLayout() {
         /*
           A grade do "Mais": todo módulo que não é um dos três fixos — o do
           quarto lugar fica também, para a grade não trocar de desenho a cada
-          tela aberta. Depois o "Quem tem acesso" e, em vermelho, a ajuda.
-          Com os fixos padrão são 12 quadros: a grade 3×4 do Lucas.
+          tela aberta. Depois o "Quem tem acesso", a ajuda (neutra) e o
+          "relatar problema" (vermelho). Config mora no rodapé, com a Busca e
+          o Sair (pedido do Lucas, 18/09/2026). Com os fixos padrão são 12
+          quadros: a grade 3×4 do Lucas.
         */
         itens={[
-          ...MODULOS.filter(m => !fixos.includes(m.id)).flatMap(m => {
+          ...MODULOS.filter(m => m.id !== 'config' && !fixos.includes(m.id)).flatMap(m => {
             const quadro = {
               nome: m.nome, icone: m.icone, cor: m.cor,
               path: caminhoDo(id!, m), exact: m.trecho === '', aqui: moduloAtual === m.id,
@@ -441,7 +443,8 @@ export function ProjectLayout() {
           }),
           // Produção virou fixo: o Acesso fica sem vizinho e vai para o fim.
           ...(fixos.includes('producao') ? [quadroDoAcesso] : []),
-          { nome: 'Como funciona', icone: HelpCircle, cor: 'var(--color-danger)', aoTocar: abrirAjuda },
+          { nome: 'Como funciona', icone: HelpCircle, cor: 'var(--text-secondary)', aoTocar: abrirAjuda },
+          { nome: 'Relatar problema', icone: Bug, cor: 'var(--color-danger)', aoTocar: abrirRelatarProblema },
         ]}
         rodape={
           <>
@@ -452,12 +455,10 @@ export function ProjectLayout() {
               <Search size={18} />
               <span>Busca</span>
             </button>
-            {/* Desceu da grade para cá: o quadro vermelho ficou com a ajuda, e o
-                relato é coisa que se procura, não que se toca de passagem. */}
-            <button className="sidebar-link" onClick={() => { fecharFolha(); abrirRelatarProblema(); }}>
-              <Bug size={18} className="text-danger" />
-              <span>Relatar problema</span>
-            </button>
+            <Link to={`/projeto/${id}/config`} className="sidebar-link" onClick={fecharFolha}>
+              <Settings size={18} />
+              <span>Configurações</span>
+            </Link>
             <button className="sidebar-link" onClick={() => { fecharFolha(); navigate('/'); }}>
               <LogOut size={18} />
               <span>Sair do Projeto</span>
