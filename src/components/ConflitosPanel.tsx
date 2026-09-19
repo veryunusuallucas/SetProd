@@ -33,6 +33,17 @@ const ROTULO: Record<string, string> = {
   locacoes: 'locação', documentos: 'documento', cenas: 'cena', eventos: 'evento',
 };
 
+/** O nome do campo como a pessoa o vê na tela, não como ele é no banco. */
+const CAMPO: Record<string, string> = {
+  local_base: "Local base", observacoes: "Observações", equipe_escalada: "Escala",
+  data: "Data", numero: "Número", descricao: "Descrição", valor_total: "Valor",
+  categoria: "Categoria", status: "Status", titulo: "Título", nome: "Nome",
+  funcao: "Função", departamento_id: "Departamento", responsavel_id: "Responsável",
+  responsaveis_ids: "Responsáveis", prazo: "Prazo", hora_inicio: "Início",
+  hora_fim: "Fim", endereco: "Endereço", telefone: "Telefone", email: "E-mail",
+};
+const nomeDoCampo = (c: string) => CAMPO[c] || c.replace(/_/g, " ");
+
 /** Um valor de campo em uma linha legível. */
 function mostrar(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -162,18 +173,20 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
                   {c.campos_em_disputa.length === 0 && (
                     <span className="text-sm text-muted">Nada em disputa além do carimbo de hora.</span>
                   )}
+                  {c.campos_em_disputa.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) 1fr 1fr', gap: '8px' }}>
+                      <span />
+                      <span className="text-xs font-bold" style={{ color: 'var(--color-warning)' }}>a sua</span>
+                      <span className="text-xs text-muted">a que está valendo</span>
+                    </div>
+                  )}
                   {c.campos_em_disputa.map(campo => (
                     <div key={campo} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) 1fr 1fr', gap: '8px', alignItems: 'baseline' }}>
-                      <span className="text-xs text-muted" style={{ textTransform: 'capitalize' }}>{campo.replace(/_/g, ' ')}</span>
+                      <span className="text-xs text-muted">{nomeDoCampo(campo)}</span>
                       <span className="text-sm" style={{ color: 'var(--color-warning)' }}>{mostrar(local?.[campo])}</span>
                       <span className="text-sm text-secondary">{mostrar(remota?.[campo])}</span>
                     </div>
                   ))}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) 1fr 1fr', gap: '8px' }}>
-                    <span />
-                    <span className="text-xs text-muted">a sua</span>
-                    <span className="text-xs text-muted">a que está valendo</span>
-                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
