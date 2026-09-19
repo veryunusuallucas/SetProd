@@ -40,6 +40,9 @@
   --cor-criativo: #a78bfa;           /* Roteiro, decupagem */
   --cor-logistica: #38bdf8;          /* Locações, transporte, equipamentos */
   --cor-equipe: #2dd4bf;             /* Pessoas, créditos, departamentos */
+  /* A cor do MEU departamento (Etapa 9). O layout da produção a troca pela
+     do departamento da minha ficha; sem ficha, fica este neutro. */
+  --cor-funcao: var(--text-secondary);
   
   --radius-sm: 8px;
   --radius-md: 12px;
