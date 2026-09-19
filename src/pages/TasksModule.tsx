@@ -449,7 +449,7 @@ export function TasksModule() {
               }}
             >
               {!podeEscrever('tasks', editando) && (
-                <SoQuemPode motivo={`${motivo('tasks', editando)} Você pode acompanhar, não alterar.`} style={{ padding: '10px 18px 0' }} />
+                <SoQuemPode motivo={`${motivo('tasks', editando)} Você pode acompanhar, não alterar.`} style={{ margin: '14px 18px 0' }} />
               )}
               {/* Cabeçalho fixo: o título é o campo, sem rótulo em cima dele. */}
               <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
