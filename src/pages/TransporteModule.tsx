@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { naEquipe } from '../lib/vinculos';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -256,7 +257,7 @@ export function TransporteModule() {
                 style={inputStyle}
               >
                 <option value="">(Motorista externo)</option>
-                {perfis.filter(p => p.id !== 'caixa_central').map(p => (
+                {perfis.filter(naEquipe).map(p => (
                   <option key={p.id} value={p.id}>{p.nome} {p.sobrenome || ''}</option>
                 ))}
               </select>

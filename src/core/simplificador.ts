@@ -1,4 +1,5 @@
 import type { SaldoParticipante } from './calculadora';
+import { CAIXA_CENTRAL } from './caixaCentral';
 import type { QuemTipo } from '../types';
 
 export interface TransacaoSugerida {
@@ -33,14 +34,14 @@ export const simplificarDividas = (saldosDict: Record<string, SaldoParticipante>
     devedores.forEach(devedor => {
       transacoes.push({
         de: { tipo: devedor.tipo, id_ref: devedor.id_ref },
-        para: { tipo: 'producao', id_ref: 'caixa_central' },
+        para: { tipo: 'producao', id_ref: CAIXA_CENTRAL },
         valor: Math.round(devedor.saldo_liquido * 100) / 100
       });
     });
 
     credores.forEach(credor => {
       transacoes.push({
-        de: { tipo: 'producao', id_ref: 'caixa_central' },
+        de: { tipo: 'producao', id_ref: CAIXA_CENTRAL },
         para: { tipo: credor.tipo, id_ref: credor.id_ref },
         valor: Math.round(credor.saldo_liquido * 100) / 100
       });

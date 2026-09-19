@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -199,7 +200,7 @@ export function Home() {
       // para sempre, sem erro na tela. Quem clicasse de novo criava outro
       // projeto pela metade.
       await db.perfis.put({
-        id: 'caixa_central',
+        id: CAIXA_CENTRAL,
         projeto_id: id,
         nome: 'Caixa da Produção',
         funcao: 'Caixa'

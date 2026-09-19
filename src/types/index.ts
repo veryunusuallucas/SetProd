@@ -120,6 +120,12 @@ export interface Departamento {
 }
 
 export interface Perfil {
+  /**
+   * Saiu da produção, mas aparece no histórico (despesas, diárias, créditos).
+   * Arquivar em vez de apagar é o que mantém o nome no passado — ver
+   * `lib/vinculos.ts`.
+   */
+  arquivado_em?: number;
   id: string;
   projeto_id: string;
   nome: string;

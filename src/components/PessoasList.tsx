@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { vinculosDaPessoa } from '../lib/vinculos';
+import { naEquipe } from '../lib/vinculos';
 import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -280,22 +282,54 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
     setShowForm(true);
   };
 
+  /*
+    APAGAR QUEM TEM HISTÓRICO VIRA ARQUIVAR (ROADMAP §10.C). Sem chave
+    estrangeira em lugar nenhum, apagar a ficha de quem pagou uma despesa
+    deixava a despesa apontando para ninguém — o nome virava "—" e o saldo
+    ficava órfão no cálculo. Arquivada, a pessoa sai das listas e continua dando
+    nome ao passado. Quem não aparece em nada é apagado de verdade, como antes.
+  */
   const handleDelete = async (id: string, nomeCompleto: string) => {
-    if (await confirmar(`Tem certeza que deseja excluir ${nomeCompleto}?`)) {
+    const nome = nomeCompleto.trim();
+    const v = await vinculosDaPessoa(projetoId, id);
+    if (v.total > 0) {
+      const ok = await confirmar({
+        titulo: `Arquivar ${nome}?`,
+        detalhe: `${nome} aparece em ${v.frase}. Apagar deixaria esses registros sem dono; arquivando, a pessoa sai das listas e o nome continua no histórico. Dá para restaurar depois.`,
+        confirmar: 'Arquivar',
+        cancelar: 'Cancelar',
+      });
+      if (ok) await db.perfis.update(id, { arquivado_em: Date.now() });
+      return;
+    }
+    if (await confirmar(`Tem certeza que deseja excluir ${nome}?`)) {
       await db.perfis.delete(id);
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (await confirmar(`Tem certeza que deseja excluir as ${selectedIds.size} pessoas selecionadas?`)) {
+    const comHistorico: string[] = [];
+    for (const id of selectedIds) {
+      if ((await vinculosDaPessoa(projetoId, id)).total > 0) comHistorico.push(id);
+    }
+    const semHistorico = selectedIds.size - comHistorico.length;
+    const aviso = comHistorico.length
+      ? ` ${comHistorico.length} delas aparecem em despesas, diárias ou créditos e vão ser arquivadas, não apagadas.`
+      : '';
+    if (await confirmar(`Tirar as ${selectedIds.size} pessoas selecionadas da equipe?${aviso}`)) {
       for (const id of selectedIds) {
-        await db.perfis.delete(id);
+        if (comHistorico.includes(id)) await db.perfis.update(id, { arquivado_em: Date.now() });
+        else await db.perfis.delete(id);
       }
+      void semHistorico;
       setSelectedIds(new Set());
       setBulkMode(false);
     }
   };
+
+  const arquivados = (perfis || []).filter(p => p.arquivado_em);
+  const [verArquivados, setVerArquivados] = useState(false);
 
   const toggleSelection = (id: string) => {
     const next = new Set(selectedIds);
@@ -544,11 +578,11 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '24px' }}>
-            {perfis?.filter(p => p.id !== 'caixa_central').length === 0 && (
+            {perfis?.filter(naEquipe).length === 0 && (
               <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum membro cadastrado.</div>
             )}
 
-            {perfis?.filter(p => p.id !== 'caixa_central').map(p => (
+            {perfis?.filter(naEquipe).map(p => (
               <div 
                 key={p.id} 
                 onClick={() => {
@@ -635,6 +669,42 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
               </div>
             ))}
           </div>
+
+          {/* Quem saiu, mas está no histórico. Fica fechado: é consulta rara. */}
+          {arquivados.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <button
+                type="button"
+                onClick={() => setVerArquivados(v => !v)}
+                className="text-xs text-secondary font-bold uppercase tracking-widest"
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                aria-expanded={verArquivados}
+              >
+                {verArquivados ? '▾' : '▸'} Arquivados ({arquivados.length})
+              </button>
+              {verArquivados && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                  {arquivados.map(p => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-light)' }}>
+                      <span className="text-sm text-secondary">
+                        {`${p.nome} ${p.sobrenome || ''}`.trim()}
+                        {p.funcao && <span className="text-muted"> · {p.funcao}</span>}
+                      </span>
+                      {podeEscrever('perfis', p) && (
+                        <button
+                          type="button"
+                          className="btn-chip"
+                          onClick={() => db.perfis.update(p.id, { arquivado_em: undefined })}
+                        >
+                          Restaurar
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>

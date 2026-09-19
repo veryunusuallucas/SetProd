@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import type { Perfil, Projeto } from '../types';
 
 interface RelatorioTransversalProps {
@@ -27,7 +28,7 @@ export function RelatorioTransversal({ perfis, projeto, onClose }: RelatorioTran
   const [campoSelecionado, setCampoSelecionado] = useState<string>(todosCampos[0].id);
 
   // Filtrar e agrupar
-  const membros = perfis.filter(p => p.id !== 'caixa_central').map(p => {
+  const membros = perfis.filter(p => p.id !== CAIXA_CENTRAL).map(p => {
     let valor = '';
     if (campoSelecionado.startsWith('custom_')) {
       const customId = campoSelecionado.replace('custom_', '');

@@ -1,4 +1,5 @@
 import { db } from '../db/db';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { dinheiro } from './formato';
 import type { Perfil } from '../types';
 import { totalDaDiaria } from './despesasDaDiaria';
@@ -37,7 +38,7 @@ const dataIso = (iso?: string) => {
 async function nomeDeQuem(tipo: string, idRef: string, perfis: Perfil[], deptos: { id: string; nome: string }[]) {
   if (tipo === 'producao') return 'Produção';
   if (tipo === 'departamento') return deptos.find(d => d.id === idRef)?.nome || 'Departamento';
-  if (idRef === 'caixa_central') return 'Caixa da Produção';
+  if (idRef === CAIXA_CENTRAL) return 'Caixa da Produção';
   const p = perfis.find(x => x.id === idRef);
   return p ? `${p.nome} ${p.sobrenome || ''}`.trim() : '—';
 }
@@ -100,7 +101,7 @@ export const CONJUNTOS: ConjuntoDados[] = [
       return {
         colunas: ['Nome', 'Função', 'Departamento', 'Telefone', 'E-mail'],
         linhas: perfis
-          .filter(p => p.id !== 'caixa_central')
+          .filter(p => p.id !== CAIXA_CENTRAL)
           .map(p => [
             `${p.nome} ${p.sobrenome || ''}`.trim(),
             p.funcao || '',
@@ -132,7 +133,7 @@ export const CONJUNTOS: ConjuntoDados[] = [
           ...custom.map(c => c.nome),
         ],
         linhas: perfis
-          .filter(p => p.id !== 'caixa_central')
+          .filter(p => p.id !== CAIXA_CENTRAL)
           .map(p => [
             p.nome, p.sobrenome || '', p.nome_social || '', p.cpf || '', p.rg || '', dataIso(p.data_nascimento),
             p.telefone || '', p.email || '', p.endereco || '', p.funcao || '',
