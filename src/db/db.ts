@@ -65,6 +65,27 @@ export function definirTravaDeEscrita(trava: TravaDeEscrita) {
   travaDeEscrita = trava;
 }
 
+/**
+ * O carimbo mínimo desta escrita — para desfazer um LWW perdido.
+ *
+ * Quando a pessoa traz de volta a versão dela (ConflitosPanel), a escrita
+ * precisa ganhar do carimbo que está valendo no servidor. `Date.now()` quase
+ * sempre ganha, mas não quando o relógio do outro aparelho está adiantado — e aí
+ * a versão dela seria descartada outra vez, em silêncio, que é exatamente o que
+ * este plano existe para acabar.
+ */
+let carimboMinimo = 0;
+
+export function escreverGanhandoDe(carimboDoServidor: number) {
+  carimboMinimo = carimboDoServidor;
+}
+
+function carimboDeAgora(): number {
+  const agora = Math.max(Date.now(), carimboMinimo + 1);
+  carimboMinimo = 0; // vale para a próxima escrita, uma só
+  return agora;
+}
+
 function escritaVindaDoServidor(): boolean {
   return Boolean((Dexie.currentTransaction as any)?.[MARCA_REMOTA]);
 }
@@ -335,7 +356,7 @@ export class SetMoneyDB extends Dexie {
       this.table(tabela).hook('creating', function (_primKey, obj: any) {
         if (escritaVindaDoServidor()) return;
         travaDeEscrita?.(tabela, undefined, obj);
-        const carimbo = Date.now();
+        const carimbo = carimboDeAgora();
         obj.atualizado_em = carimbo;
         // A escala nasce carimbada, pessoa a pessoa (ROADMAP §10.A).
         if (tabela === 'diarias' && obj.equipe_escalada?.length) {
@@ -347,7 +368,7 @@ export class SetMoneyDB extends Dexie {
       this.table(tabela).hook('updating', function (mods, _primKey, obj: any) {
         if (escritaVindaDoServidor()) return;
         travaDeEscrita?.(tabela, obj, { ...obj, ...(mods as object) });
-        const carimbo = Date.now();
+        const carimbo = carimboDeAgora();
         enfileirar(tabela, { ...obj, ...(mods as object) }, false, carimbo);
 
         // Quem entrou e quem saiu da escala ganha o próprio carimbo — é o que
