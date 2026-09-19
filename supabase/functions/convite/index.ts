@@ -54,6 +54,15 @@ const CHAVE_PUBLICA = Deno.env.get('SB_PUBLISHABLE_KEY') || Deno.env.get('SUPABA
 /** Por que a sessão não foi reconhecida — vai para o log da função. */
 let ultimaFalhaDeAuth = '';
 
+/**
+ * Sim/não de cada chave, para a mensagem de erro. NUNCA o valor: isto aparece
+ * na tela de quem está usando o app.
+ */
+function chavesConfiguradas(): string {
+  const tem = (n: string) => (Deno.env.get(n) ? 'sim' : 'não');
+  return `SB_SECRET_KEY=${tem('SB_SECRET_KEY')} service_role=${tem('SUPABASE_SERVICE_ROLE_KEY')} publishable=${tem('SB_PUBLISHABLE_KEY')} anon=${tem('SUPABASE_ANON_KEY')}`;
+}
+
 async function conferirSessao(auth: string): Promise<Record<string, unknown> | null> {
   const tentadas = [...new Set([CHAVE_PUBLICA, SERVICE_ROLE].filter(Boolean))];
   for (const chave of tentadas) {
@@ -140,7 +149,7 @@ Deno.serve(async req => {
 
     const usuario = await usuarioDaRequisicao(req);
     if (!usuario) {
-      return responder({ erro: `Entre na sua conta antes de aceitar o convite.${ultimaFalhaDeAuth ? ` (servidor: ${ultimaFalhaDeAuth})` : ''}` }, 401);
+      return responder({ erro: `Entre na sua conta antes de aceitar o convite.${` (servidor: ${ultimaFalhaDeAuth || 'sem resposta'} | ${chavesConfiguradas()})`}` }, 401);
     }
 
     const { token } = await req.json().catch(() => ({ token: null }));
