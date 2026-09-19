@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, RotateCw, UserCheck } from 'lucide-react';
 import { db } from '../db/db';
 import { membrosDoProjeto, participacaoLocal, sincronizarParticipacoes, type Participacao, type PapelMembro } from '../lib/membros';
@@ -36,10 +35,14 @@ function gravarVisto(projetoId: string, v: Visto) {
 
 const nomeDoPapel = (p?: string) => (p && DESCRICAO[p as PapelMembro]?.nome) || p || '—';
 
-export function AvisoDeAcesso({ projetoId }: { projetoId: string }) {
+/**
+ * `aoAbrirAcesso` abre a janela "Quem tem acesso", que mora no ProjectLayout:
+ * navegar para a tela da produção não abria nada, porque ela é uma janela e
+ * não uma rota.
+ */
+export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string; aoAbrirAcesso: () => void }) {
   const [recado, setRecado] = useState<{ texto: string; recarregar?: boolean } | null>(null);
   const [pedidos, setPedidos] = useState<{ quem: string; ficha: string }[]>([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
     let vivo = true;
@@ -140,7 +143,7 @@ export function AvisoDeAcesso({ projetoId }: { projetoId: string }) {
               : <>{pedidos.length} pessoas pediram para ser uma ficha da equipe.</>}
             {' '}Confirmar libera os dados protegidos daquela ficha.
           </div>
-          <button className="btn btn-primary" onClick={() => navigate(`/projeto/${projetoId}/producao`)} style={{ flexShrink: 0 }}>
+          <button className="btn btn-primary" onClick={aoAbrirAcesso} style={{ flexShrink: 0 }}>
             Ver em Quem tem acesso
           </button>
         </div>
