@@ -56,7 +56,27 @@ async function comoServidor(caminho: string, init: RequestInit = {}) {
   });
 }
 
-async function usuarioDaRequisicao(req: Request): Promise<{ id: string } | null> {
+
+/**
+ * Registra na ata da produção (`auditoria`, só de inserção — Etapa 7).
+ *
+ * Mudança de acesso é exatamente o que alguém vai querer saber depois: quem
+ * promoveu quem, quem tirou quem. Vai daqui, com service role, porque a ação
+ * acontece aqui — o app não tem como registrar o que só o servidor fez.
+ * Nunca derruba a ação: se a tabela não existir ainda, a ação vale sem a linha.
+ */
+async function registrarNaAta(projetoId: string, autor: { id: string; email?: string }, acao: string, alvo: string, detalhes: string) {
+  await comoServidor('auditoria', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      id: crypto.randomUUID(), projeto_id: projetoId, autor_id: autor.id, autor_nome: autor.email ?? null,
+      acao, entidade: 'membro', entidade_id: alvo, detalhes, data_hora: Date.now(),
+    }),
+  }).catch(() => {});
+}
+
+async function usuarioDaRequisicao(req: Request): Promise<{ id: string; email?: string } | null> {
   const auth = req.headers.get('Authorization');
   if (!auth) return null;
   const r = await fetch(`${URL_BASE}/auth/v1/user`, {
@@ -64,7 +84,7 @@ async function usuarioDaRequisicao(req: Request): Promise<{ id: string } | null>
   });
   if (!r.ok) return null;
   const u = await r.json();
-  return u?.id ? { id: u.id } : null;
+  return u?.id ? { id: u.id, email: u.email } : null;
 }
 
 interface Participacao {
@@ -178,6 +198,7 @@ Deno.serve(async req => {
       const rebaixa = await comoServidor(filtro(usuario.id), {
         method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ papel: 'admin' }),
       });
+      await registrarNaAta(projeto_id, usuario, 'editar', alvo, `Passou a posse da produção para ${oAlvo.apelido || 'outra pessoa'}.`);
       if (!rebaixa.ok) {
         // A produção tem dois donos agora, o que é seguro; só avisa.
         console.error('[membros] posse passada, mas não rebaixei quem passou:', await rebaixa.text());
@@ -220,6 +241,7 @@ Deno.serve(async req => {
         console.error('[membros] falha ao mudar papel:', await r.text());
         return responder({ erro: 'Não consegui mudar o papel.' }, 500);
       }
+      await registrarNaAta(projeto_id, usuario, 'editar', alvo, `Papel de ${oAlvo.apelido || 'uma pessoa'}: ${oAlvo.papel} → ${papel}.`);
       return responder({ ok: true });
     }
 
@@ -246,6 +268,7 @@ Deno.serve(async req => {
         console.error('[membros] falha ao remover:', await r.text());
         return responder({ erro: 'Não consegui remover a pessoa.' }, 500);
       }
+      await registrarNaAta(projeto_id, usuario, 'deletar', alvo, `Tirou ${oAlvo.apelido || 'uma pessoa'} (${oAlvo.papel}) da produção.`);
       return responder({ ok: true });
     }
 
@@ -264,6 +287,8 @@ Deno.serve(async req => {
         console.error('[membros] falha ao vincular perfil:', await r.text());
         return responder({ erro: 'Não consegui salvar o vínculo.' }, 500);
       }
+      await registrarNaAta(projeto_id, usuario, 'editar', alvo,
+        perfilId ? `Disse quem ${oAlvo.apelido || 'uma pessoa'} é na equipe.` : `Desvinculou ${oAlvo.apelido || 'uma pessoa'} da ficha.`);
       return responder({ ok: true });
     }
 
