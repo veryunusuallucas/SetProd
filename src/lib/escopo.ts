@@ -21,7 +21,8 @@ import { TABELAS_SINCRONIZADAS } from '../db/db';
  * Por isso o escopo é decidido área por área, aqui, e não por uma regra
  * genérica que se descobre errada tabela a tabela.
  *
- * ⚠️ Esta lista precisa concordar com o SQL (`supabase/sql/papeis.sql`). Se
+ * ⚠️ Esta lista precisa concordar com o SQL (`supabase/sql/escopo.sql`,
+ * `escopo_da_tabela`). Se
  * divergirem, o sintoma é o pior bug deste projeto: a tela deixa editar e o
  * servidor recusa em silêncio, porque RLS barrada devolve vazio, não erro.
  */
@@ -118,64 +119,6 @@ export const ESCOPO: Record<TabelaSincronizada, Escopo> = {
 
 export function escopoDe(tabela: string): Escopo {
   return ESCOPO[tabela as TabelaSincronizada] ?? 'comum';
-}
-
-/**
- * Posso escrever nesta tabela?
- *
- * ⚠️ **ISTO É A TELA, NÃO A SEGURANÇA.** A RLS de hoje faz valer o PAPEL, não o
- * departamento — ver a dívida declarada em `supabase/sql/papeis.sql`. Um membro
- * com o DevTools aberto escreve em tabela de outro departamento. O risco é
- * "colega curioso", não "estranho na internet", porque só quem é membro passa
- * do `e_membro()`.
- *
- * A razão de não estar na RLS ainda é de ordem, não de preguiça: o escopo
- * departamental depende de `projeto_membros.perfil_id` estar preenchido, e quem
- * preenche isso é a Etapa 6, que vem depois. Ligar a regra no servidor antes
- * disso trancaria TODO MUNDO para fora de tasks e fichas, porque hoje quase
- * ninguém tem perfil vinculado.
- */
-export function podeEscreverNaTabela(
-  tabela: string,
-  contexto: {
-    /** dono/admin/super-admin ignoram o escopo departamental. */
-    ignoraDepartamento: boolean;
-    /** Meu departamento, se eu tiver um vinculado. */
-    meuDepartamentoId?: string | null;
-    /** O departamento do registro que estou tentando mexer. */
-    departamentoDoRegistro?: string | null;
-  }
-): boolean {
-  const escopo = escopoDe(tabela);
-
-  if (contexto.ignoraDepartamento) return true;
-  if (escopo === 'restrito') return false;
-  if (escopo === 'comum') return true;
-
-  // Departamental daqui para baixo.
-  //
-  // Quem não tem departamento vinculado cai no escopo `comum` e nada mais — não
-  // se tranca a pessoa para fora do app inteiro por não ter preenchido a ficha.
-  if (!contexto.meuDepartamentoId) return false;
-
-  return contexto.departamentoDoRegistro === contexto.meuDepartamentoId;
-}
-
-/**
- * A exceção que confirma a regra: `perfis` é departamental, MAS cada um edita a
- * própria ficha, sempre. Sem isto ninguém atualiza o próprio PIX.
- */
-export function podeEditarFicha(perfilId: string, meuPerfilId: string, contexto: {
-  ignoraDepartamento: boolean;
-  meuDepartamentoId?: string | null;
-  departamentoDaFicha?: string | null;
-}): boolean {
-  if (perfilId && perfilId === meuPerfilId) return true;
-  return podeEscreverNaTabela('perfis', {
-    ignoraDepartamento: contexto.ignoraDepartamento,
-    meuDepartamentoId: contexto.meuDepartamentoId,
-    departamentoDoRegistro: contexto.departamentoDaFicha,
-  });
 }
 
 // ---------------------------------------------------------------------------
