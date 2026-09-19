@@ -278,7 +278,8 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   const trocarPerfil = async (perfilId: string) => {
     if (!perfilId) return;
     try {
-      await definirMeuPerfil(projetoId, perfilId);
+      const vinculou = await definirMeuPerfil(projetoId, perfilId);
+      if (!vinculou) setErro('');
       await recarregar();
     } catch (e: any) {
       setErro(e?.message || 'Não consegui salvar quem você é na equipe.');
