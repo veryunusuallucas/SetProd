@@ -1,4 +1,5 @@
 import { db } from '../db/db';
+import { possoEscrever } from './travaDeEscrita';
 import { migrarValor } from './arquivos';
 
 /**
@@ -25,6 +26,7 @@ export async function migrarAnexosDoProjeto(projetoId: string): Promise<number> 
     // ---- roteiro em PDF: o maior de todos ----
     const roteiros = await db.roteiro_pdfs.where('projeto_id').equals(projetoId).toArray();
     for (const r of roteiros) {
+      if (!possoEscrever('roteiro_pdfs', projetoId, r)) continue;
       const novo = await migrarValor(projetoId, r.dados, r.nome || 'roteiro.pdf');
       if (novo && novo !== r.dados) {
         await db.roteiro_pdfs.update(r.id, { dados: novo });
@@ -36,6 +38,9 @@ export async function migrarAnexosDoProjeto(projetoId: string): Promise<number> 
     const diarias = await db.diarias.where('projeto_id').equals(projetoId).toArray();
     for (const d of diarias) {
       if (!d.anexos?.length) continue;
+      // Diária é de quem administra. Quem não pode gravar nela deixa a
+      // conversão para quem pode — tentar aqui abortaria a volta de sync.
+      if (!possoEscrever('diarias', projetoId, d)) continue;
       let mexeu = false;
 
       const anexos = [];
@@ -51,6 +56,7 @@ export async function migrarAnexosDoProjeto(projetoId: string): Promise<number> 
     // ---- storyboard das cenas ----
     const cenas = await db.cenas.where('projeto_id').equals(projetoId).toArray();
     for (const c of cenas) {
+      if (!possoEscrever('cenas', projetoId, c)) continue;
       if (!c.anexos?.length) continue;
       let mexeu = false;
 
@@ -67,6 +73,7 @@ export async function migrarAnexosDoProjeto(projetoId: string): Promise<number> 
     // ---- comprovantes de despesa ----
     const despesas = await db.despesas.where('projeto_id').equals(projetoId).toArray();
     for (const d of despesas) {
+      if (!possoEscrever('despesas', projetoId, d)) continue;
       const novo = await migrarValor(projetoId, d.comprovante, `comprovante-${d.descricao || d.id}`);
       if (novo && novo !== d.comprovante) {
         await db.despesas.update(d.id, { comprovante: novo });
@@ -77,6 +84,7 @@ export async function migrarAnexosDoProjeto(projetoId: string): Promise<number> 
     // ---- documentos ----
     const documentos = await db.documentos.where('projeto_id').equals(projetoId).toArray();
     for (const doc of documentos) {
+      if (!possoEscrever('documentos', projetoId, doc)) continue;
       const url = await migrarValor(projetoId, doc.url, doc.nome);
       // A miniatura é o MESMO arquivo do documento quando é imagem — reaponta
       // para a referência nova em vez de subir uma segunda cópia.

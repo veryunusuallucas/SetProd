@@ -177,3 +177,101 @@ export function podeEditarFicha(perfilId: string, meuPerfilId: string, contexto:
     departamentoDoRegistro: contexto.departamentoDaFicha,
   });
 }
+
+// ---------------------------------------------------------------------------
+// A regra por REGISTRO — a que vale de fato (18/09/2026)
+// ---------------------------------------------------------------------------
+
+/**
+ * Quem está escrevendo, com o que se sabe dele agora.
+ *
+ * `departamentoConhecido` é falso enquanto o layout da produção não disse qual é
+ * o meu departamento (a ficha ainda carregando, uma escrita fora da produção).
+ * Nesse intervalo o departamental PASSA: a trava local falha abrindo, como o
+ * resto do cliente, e quem decide é o servidor.
+ */
+export interface QuemEscreve {
+  papel: import('./permissoes').Papel;
+  departamentoConhecido: boolean;
+  meuPerfilId?: string;
+  meuDepartamentoId?: string | null;
+  usuarioId?: string;
+  meuEmail?: string;
+  /** `Projeto.logagem_liberados`: quem o dono liberou na Logagem. */
+  liberadosLogagem?: string[];
+}
+
+/** Por que não — cada motivo vira uma frase diferente no aviso. */
+export type Negacao = 'leitura' | 'restrito' | 'departamental' | 'departamento_da_ficha';
+
+type Registro = { id?: string; departamento_id?: string | null; email?: string } | undefined;
+
+/**
+ * Esta escrita pode acontecer? `null` é sim; senão, o motivo.
+ *
+ * `antes` é a linha como está (ausente numa criação); `depois` é como vai ficar
+ * (ausente numa exclusão). Olhar os DOIS é o que barra "mover uma task da
+ * Fotografia para a Arte": o `antes` não é meu, então não mexo, nem para
+ * trazer para mim.
+ *
+ * ⚠️ ESPELHO: `supabase/sql/escopo.sql` (`public.escopo_permite`) aplica a
+ * mesma regra no servidor. Mudou aqui, muda lá — senão a tela deixa e o
+ * servidor recusa, e a recusa volta como aviso para quem não fez nada errado.
+ *
+ * As regras, em ordem:
+ * 1. papel desconhecido (offline, projeto só local, super-admin): passa;
+ * 2. `leitura`: nada;
+ * 3. dono e admin: tudo;
+ * 4. `equipe` em tabela restrita: não; em tabela comum: sim;
+ * 5. departamental:
+ *    - na Logagem, quem o dono liberou escreve;
+ *    - a própria ficha, sempre — mas sem trocar o próprio departamento (senão
+ *      "edito minha ficha" viraria "escolho de que departamento sou");
+ *    - quem ainda não tem ficha pode criar a sua, com o e-mail da conta;
+ *    - registro SEM departamento é de todo mundo (as tasks antigas não têm);
+ *    - registro com departamento: só se for o meu, antes e depois.
+ */
+export function negacaoDaEscrita(
+  tabela: string, quem: QuemEscreve, antes?: Registro, depois?: Registro,
+): Negacao | null {
+  if (quem.papel === 'desconhecido') return null;
+  if (quem.papel === 'leitura') return 'leitura';
+  if (quem.papel === 'dono' || quem.papel === 'admin') return null;
+
+  const escopo = escopoDe(tabela);
+  if (escopo === 'restrito') return 'restrito';
+  if (escopo === 'comum') return null;
+
+  if (!quem.departamentoConhecido) return null;
+
+  if (tabela.startsWith('log_') && quem.usuarioId && quem.liberadosLogagem?.includes(quem.usuarioId)) {
+    return null;
+  }
+
+  const deptoDe = (r: Registro) => r?.departamento_id || null;
+
+  if (tabela === 'perfis') {
+    const id = (depois ?? antes)?.id;
+    if (id && quem.meuPerfilId && id === quem.meuPerfilId) {
+      if (antes && depois && deptoDe(antes) !== deptoDe(depois)) return 'departamento_da_ficha';
+      return null;
+    }
+    const criandoAPropria = !antes && depois && !quem.meuPerfilId && quem.meuEmail
+      && depois.email?.trim().toLowerCase() === quem.meuEmail.trim().toLowerCase();
+    if (criandoAPropria) return null;
+  }
+
+  const meu = quem.meuDepartamentoId || null;
+  const podeMexer = (r: Registro) => deptoDe(r) === null || (meu !== null && deptoDe(r) === meu);
+  if (antes && !podeMexer(antes)) return 'departamental';
+  if (depois && !podeMexer(depois)) return 'departamental';
+  return null;
+}
+
+/** A frase do aviso, para cada motivo. */
+export const FRASE_DA_NEGACAO: Record<Negacao, string> = {
+  leitura: 'Seu acesso nesta produção é só de leitura.',
+  restrito: 'Só quem administra a produção altera isto.',
+  departamental: 'Isto é de outro departamento.',
+  departamento_da_ficha: 'Trocar o próprio departamento é com quem administra a produção.',
+};

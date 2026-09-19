@@ -119,7 +119,10 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
             chave: `${tipo}:${t}:${Date.now()}`,
             texto: comoSeChama(t),
             tipo,
-            motivo: tipo === 'recusa' ? motivoDaRecusa(meus[0].projeto_id, t) : undefined,
+            motivo: tipo === 'recusa'
+              ? ((meus.find(c => c.tabela === t) as { motivo?: string } | undefined)?.motivo
+                ?? motivoDaRecusa(meus[0].projeto_id, t))
+              : undefined,
           }));
 
         const juntos = [...atuais, ...novos];
