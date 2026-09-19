@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { auditoriaPendente, sincronizarAuditoria } from './audit';
 import { db, marcarTransacaoComoRemota } from '../db/db';
 import { supabaseConfigurado } from './supabase';
 import { participacoesLocais } from './membros';
@@ -50,7 +51,10 @@ export function haRisco(r: Retencao): boolean {
  *   porque na hora de sair pode não haver rede.
  */
 export async function conferirAntesDeSair(): Promise<Retencao> {
-  const pendentes = await db.sync_queue.count().catch(() => 0);
+  // A ata conta como pendência: o que foi registrado sem sinal e ainda não
+  // subiu some junto com o banco — e ata que perde linha é o que a Etapa 7
+  // existe para impedir.
+  const pendentes = (await db.sync_queue.count().catch(() => 0)) + (await auditoriaPendente());
 
   const comParticipacao = new Set(participacoesLocais().map(p => p.projeto_id));
   const projetos = await db.projetos.toArray().catch(() => []);
@@ -116,6 +120,11 @@ export async function tentarSubirTudo(): Promise<void> {
     } catch (e) {
       console.warn('[SetProd] Não consegui subir as pendências de', projetoId, e);
     }
+  }
+
+  const ata = await db.fila_auditoria.toArray().catch(() => []);
+  for (const projetoId of new Set(ata.map(l => l.projeto_id))) {
+    await sincronizarAuditoria(projetoId);
   }
 }
 

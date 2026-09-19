@@ -5,8 +5,10 @@ import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, Audi
 /**
  * As tabelas que viajam para o servidor.
  *
- * `logs` entra porque a ata do rodapé é compartilhada (§3.5 da spec) — assim
- * ela não precisa de tabela própria. `notificacoes` fica de fora: é o sino de
+ * `logs` SAIU em 18/09/2026 (ROADMAP, Etapa 7): viajando pelo espelho, quem
+ * apagava o próprio log apagava para todo mundo. A ata agora sobe para uma
+ * tabela só de inserção no servidor (`auditoria`), pela fila própria
+ * `fila_auditoria` — ver `lib/audit.ts`. `notificacoes` fica de fora: é o sino de
  * cada um, não dado do projeto. `pesquisas` e `respostas_pesquisa` já têm
  * caminho próprio no Supabase, com leitura pública.
  */
@@ -14,7 +16,7 @@ export const TABELAS_SINCRONIZADAS = [
   'projetos', 'departamentos', 'perfis', 'despesas', 'acertos', 'configuracoes',
   'locacoes', 'diarias', 'diaria_tasks', 'tasks', 'aportes', 'cenas', 'planos',
   'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos',
-  'motoristas', 'elementos', 'stripboard_itens', 'logs',
+  'motoristas', 'elementos', 'stripboard_itens',
   'registros_cena', 'registros_plano', 'eventos',
   'log_takes', 'log_estado', 'log_kits', 'log_hds', 'log_backups', 'log_checksums',
 ] as const;
@@ -75,7 +77,10 @@ export class SetMoneyDB extends Dexie {
   aportes!: Table<Aporte, string>; // Fase 4
   
   // v3 Sync and Audit
+  /** Cópia local da ata — o que se lê offline. Não viaja pelo espelho. */
   logs!: Table<AuditLog, string>;
+  /** A caixa de saída da auditoria: o que foi registrado e ainda não subiu. */
+  fila_auditoria!: Table<AuditLog, string>;
   sync_queue!: Table<SyncQueue, string>;
   locacoes!: Table<Locacao, string>;
   
@@ -255,6 +260,15 @@ export class SetMoneyDB extends Dexie {
       `log_backups` indexa `[diaria_id+cartao]`: a pergunta da matriz é "em quais
       HDs ESTE cartão já está".
     */
+    /*
+      v20: a fila da auditoria (ROADMAP, Etapa 7). Separada da `sync_queue`
+      porque o destino é outro — uma tabela só de inserção — e porque a regra
+      é outra: log não tem LWW nem lápide, só chega.
+    */
+    this.version(20).stores({
+      fila_auditoria: 'id, projeto_id'
+    });
+
     this.version(19).stores({
       log_takes: 'id, projeto_id, diaria_id, [diaria_id+ordem], camera_id',
       log_estado: 'id, projeto_id, diaria_id',
