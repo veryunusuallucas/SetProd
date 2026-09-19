@@ -14,7 +14,8 @@
  * Deploy:
  *   supabase functions deploy convite
  *
- * A SUPABASE_SERVICE_ROLE_KEY já existe no ambiente das functions; não precisa
+ * A chave de servidor vem do segredo `SB_SECRET_KEY` (chaves novas) ou da
+ * SUPABASE_SERVICE_ROLE_KEY que o Supabase injeta sozinho; não precisa
  * criar secret. Ela passa por cima de toda a RLS — por isso este arquivo é
  * curto e não faz nada além do que precisa.
  */
@@ -33,7 +34,36 @@ function responder(corpo: unknown, status = 200) {
 }
 
 const URL_BASE = Deno.env.get('SUPABASE_URL') ?? '';
-const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+/*
+  AS DUAS GERAÇÕES DE CHAVE DO SUPABASE.
+
+  O projeto migrou para as chaves novas (`sb_secret_…` / `sb_publishable_…`).
+  Quando as antigas são desativadas, o `SUPABASE_SERVICE_ROLE_KEY` que o Supabase
+  injeta sozinho para de ser aceito — e a função passa a falhar em TUDO, sempre
+  com a mesma cara: "Entre na sua conta", porque a primeira coisa que ela faz é
+  conferir quem está chamando.
+
+  Então: a chave nova vem do segredo `SB_SECRET_KEY` quando existir, e a antiga
+  fica como reserva. Para identificar quem chama basta uma chave pública, e é o
+  que se usa primeiro — a secreta nunca precisou estar ali.
+*/
+const SERVICE_ROLE = Deno.env.get('SB_SECRET_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const CHAVE_PUBLICA = Deno.env.get('SB_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || SERVICE_ROLE;
+
+/** Por que a sessão não foi reconhecida — vai para o log da função. */
+let ultimaFalhaDeAuth = '';
+
+async function conferirSessao(auth: string): Promise<Record<string, unknown> | null> {
+  const tentadas = [...new Set([CHAVE_PUBLICA, SERVICE_ROLE].filter(Boolean))];
+  for (const chave of tentadas) {
+    const r = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: chave, Authorization: auth } });
+    if (r.ok) return await r.json();
+    ultimaFalhaDeAuth = `${r.status} ${(await r.text()).slice(0, 160)}`;
+  }
+  console.error('[auth] sessão não reconhecida:', ultimaFalhaDeAuth || 'sem chave configurada');
+  return null;
+}
 
 /**
  * Os papéis que um convite pode conceder.
@@ -73,12 +103,7 @@ async function usuarioDaRequisicao(
   const auth = req.headers.get('Authorization');
   if (!auth) return null;
 
-  const resposta = await fetch(`${URL_BASE}/auth/v1/user`, {
-    headers: { apikey: SERVICE_ROLE, Authorization: auth },
-  });
-  if (!resposta.ok) return null;
-
-  const usuario = await resposta.json();
+  const usuario = await conferirSessao(auth) as any;
   if (!usuario?.id) return null;
   return {
     id: usuario.id,
@@ -115,7 +140,7 @@ Deno.serve(async req => {
 
     const usuario = await usuarioDaRequisicao(req);
     if (!usuario) {
-      return responder({ erro: 'Entre na sua conta antes de aceitar o convite.' }, 401);
+      return responder({ erro: `Entre na sua conta antes de aceitar o convite.${ultimaFalhaDeAuth ? ` (servidor: ${ultimaFalhaDeAuth})` : ''}` }, 401);
     }
 
     const { token } = await req.json().catch(() => ({ token: null }));
