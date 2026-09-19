@@ -175,9 +175,9 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
             style={{
               pointerEvents: 'auto',
               borderRadius: '14px', overflow: 'hidden',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 12px 32px rgba(0,0,0,0.28)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
               display: 'flex', alignItems: 'flex-start', gap: '10px',
               padding: '13px 12px 13px 14px',
             }}
