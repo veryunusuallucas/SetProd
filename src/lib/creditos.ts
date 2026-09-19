@@ -109,6 +109,36 @@ export function catalogoDoDepartamento(departamento: Departamento): Departamento
   return DEPARTAMENTOS_PADRAO.find(d => normalizar(d.nome) === normalizar(departamento.nome));
 }
 
+/*
+  A COR DE CADA DEPARTAMENTO (ROADMAP, Etapa 9)
+
+  A cor é a do departamento, não a do papel de acesso: é por produção (cada
+  filme escolhe as suas), é a divisão que a equipe já usa, e não se confunde
+  com o que a conta pode fazer. Quem define é quem administra, no seletor da
+  tela de Departamentos. Sem escolha, vale a do catálogo; fora do catálogo, uma
+  da paleta, sempre a mesma para o mesmo nome.
+*/
+const PALETA_EXTRA = DEPARTAMENTOS_PADRAO.map(d => d.cor);
+
+export function corDoDepartamento(departamento: Departamento): string {
+  if (departamento.cor) return departamento.cor;
+  const doCatalogo = catalogoDoDepartamento(departamento)?.cor;
+  if (doCatalogo) return doCatalogo;
+  let h = 0;
+  for (const c of normalizar(departamento.nome)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PALETA_EXTRA[h % PALETA_EXTRA.length];
+}
+
+/**
+ * Grava a cor nos departamentos que não têm uma — os criados antes de a cor
+ * existir, ou à mão. Só quem administra chama (departamento é restrito).
+ */
+export async function preencherCoresDosDepartamentos(projetoId: string): Promise<number> {
+  const semCor = (await db.departamentos.where('projeto_id').equals(projetoId).toArray()).filter(d => !d.cor);
+  for (const d of semCor) await db.departamentos.update(d.id, { cor: corDoDepartamento(d) });
+  return semCor.length;
+}
+
 /**
  * Uma linha de crédito montada para a tela: junta a função (do catálogo ou
  * adicionada pelo usuário) com quem a ocupa.

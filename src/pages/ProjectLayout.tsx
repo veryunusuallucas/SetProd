@@ -1,4 +1,5 @@
 import { useState, createContext, useContext, useEffect, useRef, Suspense } from 'react';
+import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
 import { limparFichasQueNaoPossoVer } from '../lib/fichaEmCamadas';
 import { useParams, useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
 import { voltarDe } from '../lib/navegacao';
@@ -89,21 +90,31 @@ export function ProjectLayout() {
     a trava deixa o departamental passar (falha abrindo, como o resto).
   */
   const { perfilId: meuPerfilId } = useRole();
-  const minhaFicha = useLiveQuery(
-    async () => (meuPerfilId ? (await db.perfis.get(meuPerfilId)) ?? null : null),
-    [meuPerfilId]
-  );
+  const minhaFuncao = useMinhaFuncao();
+  const meuDepartamentoId = minhaFuncao.perfil?.departamento_id ?? null;
   useEffect(() => {
-    if (minhaFicha === undefined || projeto === undefined) return;
+    if (minhaFuncao.carregando || projeto === undefined) return;
     definirContextoDeEscrita(id!, {
       meuPerfilId: meuPerfilId || undefined,
-      meuDepartamentoId: minhaFicha?.departamento_id ?? null,
+      meuDepartamentoId,
       usuarioId: user?.id,
       meuEmail: user?.email ?? undefined,
       liberadosLogagem: projeto?.logagem_liberados,
     });
     return () => esquecerContextoDeEscrita(id!);
-  }, [id, meuPerfilId, minhaFicha, projeto, user?.id, user?.email]);
+  }, [id, meuPerfilId, meuDepartamentoId, minhaFuncao.carregando, projeto, user?.id, user?.email]);
+
+  /*
+    A cor da minha função como variável CSS (ROADMAP, Etapa 9), e não como cor
+    em linha: a fase visual muda o app inteiro mexendo em CSS, sem tocar em
+    componente. Sem ficha ou sem departamento, vale o neutro do :root.
+  */
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (minhaFuncao.cor) raiz.style.setProperty('--cor-funcao', minhaFuncao.cor);
+    else raiz.style.removeProperty('--cor-funcao');
+    return () => { raiz.style.removeProperty('--cor-funcao'); };
+  }, [minhaFuncao.cor]);
 
   const [rightPanelContent, setRightPanelContent] = useState<React.ReactNode | null>(null);
   

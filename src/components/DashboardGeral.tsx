@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,7 @@ import { Numero } from './ui/Numero';
 import { tipoDoEvento } from './EventosPanel';
 
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
+  const minhaFuncao = useMinhaFuncao();
   const navigate = useNavigate();
   
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -132,6 +134,35 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
           <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>{projeto.nome}</h2>
         </div>
       </div>
+
+      {/*
+        O crachá: quem sou eu nesta produção, na cor do meu departamento.
+
+        É a prova viva da Etapa 9 do ROADMAP — o encanamento da cor por função
+        aplicado num lugar só, antes da fase visual. A cor vai em ACENTO (o
+        ponto, a borda, um tom de fundo), nunca no texto nem no fundo inteiro:
+        cor escolhida à mão vira texto ilegível num dos temas. E nunca sozinha:
+        o nome da função e do departamento estão escritos ao lado, para quem não
+        distingue cores e para o call sheet fotocopiado.
+      */}
+      {minhaFuncao.perfil && (minhaFuncao.funcao || minhaFuncao.departamento) && (
+        <div
+          className="cracha-da-funcao"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start',
+            padding: '5px 12px 5px 10px', borderRadius: 'var(--radius-full)',
+            border: '1px solid color-mix(in srgb, var(--cor-funcao) 45%, transparent)',
+            backgroundColor: 'color-mix(in srgb, var(--cor-funcao) 12%, transparent)',
+            color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600,
+          }}
+        >
+          <span aria-hidden style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--cor-funcao)', flexShrink: 0 }} />
+          <span>
+            Você{minhaFuncao.funcao ? ` · ${minhaFuncao.funcao}` : ''}
+            {minhaFuncao.departamento ? <span className="text-muted" style={{ fontWeight: 500 }}> · {minhaFuncao.departamento.nome}</span> : null}
+          </span>
+        </div>
+      )}
 
       {/*
         O ritmo vem ANTES da fila, e a ordem importa.

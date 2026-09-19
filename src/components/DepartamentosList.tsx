@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { preencherCoresDosDepartamentos } from '../lib/creditos';
 import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -15,6 +16,12 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   // Departamento é estrutura da produção: quem administra cria e muda (escopo.ts).
   const canEditProducao = useAcesso().podeEscrever('departamentos');
+
+  // Os departamentos antigos, sem cor, ganham a do catálogo (Etapa 9). Só quem
+  // administra grava; para os outros a cor já aparece pelo `corDoDepartamento`.
+  useEffect(() => {
+    if (canEditProducao) preencherCoresDosDepartamentos(projetoId).catch(() => {});
+  }, [projetoId, canEditProducao]);
 
   const [abaAtiva, setAbaAtiva] = useState<'depto' | 'grupos'>('depto');
 
