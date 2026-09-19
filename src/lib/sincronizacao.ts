@@ -362,22 +362,24 @@ async function guardarConflito(
   base?: unknown,
   disputa?: string[],
 ) {
-  if (!local) return;
+  // `local` ausente com disputa declarada = "eu apaguei e o outro editou": não
+  // há versão minha para guardar, e é justamente isso que a tela precisa dizer.
+  if (!local && !disputa) return;
   const remota = (linha.dados ?? null) as Record<string, unknown> | null;
 
   // Carimbo não é disputa: ele muda SEMPRE, e listá-lo faria toda briga parecer
   // briga de tudo.
   const ignorar = new Set(["atualizado_em", "criado_em", "escala_carimbos"]);
-  const chaves = new Set([...Object.keys(local), ...Object.keys(remota || {})]);
+  const chaves = new Set([...Object.keys(local || {}), ...Object.keys(remota || {})]);
   const campos_em_disputa = disputa ?? [...chaves].filter(k =>
-    !ignorar.has(k) && JSON.stringify(local[k]) !== JSON.stringify(remota?.[k]));
+    !ignorar.has(k) && JSON.stringify(local?.[k]) !== JSON.stringify(remota?.[k]));
 
   await db.conflitos.put({
     id: `${linha.tabela}:${linha.id}`,
     tabela: linha.tabela,
     registro_id: linha.id,
     projeto_id: linha.projeto_id,
-    versao_local: local,
+    versao_local: local ?? null,
     versao_remota: remota,
     versao_base: base,
     campos_em_disputa,
@@ -464,6 +466,7 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
           aBase.dados as Record<string, unknown>,
           local as Record<string, unknown>,
           linha.dados as Record<string, unknown>,
+          linha.tabela,
         );
 
         if (!m.disputa.length && m.meusCamposMantidos.length) {
@@ -509,6 +512,34 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
           perdidas.push({ projeto_id: linha.projeto_id, tabela: linha.tabela, id: linha.id });
           continue;
         }
+      }
+
+      /*
+        APAGOU × EDITOU: editar ganha de apagar, e pergunta (§5 do plano).
+
+        O LWW resolveria por carimbo, o que é sorteio — e apagar não tem volta.
+        Ressuscitar algo que devia sumir é um incômodo de trinta segundos;
+        perder a despesa que alguém acabou de lançar é prejuízo. Então o
+        registro fica, com carimbo novo para a restauração subir, e a pessoa
+        decide no painel.
+      */
+      if (linha.deletado && naFila && local && !naFila.deletado) {
+        const novo = Math.max(Date.now(), linha.atualizado_em + 1, carimboDaqui + 1);
+        await tabela.put({ ...(local as object), atualizado_em: novo });
+        await db.sync_queue.put({ ...naFila, atualizado_em: novo });
+        await guardarConflito(linha, local as Record<string, unknown>, aBase?.dados, ["apagado"]);
+        perdidas.push({ projeto_id: linha.projeto_id, tabela: linha.tabela, id: linha.id });
+        aplicadas++;
+        continue;
+      }
+
+      /*
+        E o contrário: EU apaguei, o outro editou. Pela mesma regra a edição
+        dele ganha — o registro volta —, mas a minha intenção de apagar não se
+        perde em silêncio: fica guardada para eu confirmar ou desistir.
+      */
+      if (!linha.deletado && naFila?.deletado && linha.dados) {
+        await guardarConflito(linha, undefined, aBase?.dados, ["apagado"]);
       }
 
       // Sem base (edição antiga, tabela pesada): guarda a nossa inteira antes

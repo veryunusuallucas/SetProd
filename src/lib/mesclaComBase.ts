@@ -35,6 +35,22 @@ const IGNORAR = new Set(['atualizado_em', 'criado_em', 'escala_carimbos']);
  */
 const SEM_UNIAO = new Set(['pagadores', 'devedores', 'planos', 'ordem', 'takes']);
 
+/**
+ * DINHEIRO NÃO SE MESCLA SOZINHO (PLANO-conflitos-sync, §5).
+ *
+ * Nestes campos, qualquer diferença entre os dois lados vira pergunta — mesmo
+ * quando a base diz que só um lado mexeu. A regra é mais dura de propósito: em
+ * dinheiro, um erro silencioso não destrói a confiança naquele número, destrói
+ * a confiança em TODOS os números do app.
+ */
+const DINHEIRO = new Set([
+  'valor', 'valor_total', 'valor_ideal', 'limite_gasto', 'valor_diaria',
+  'orcamento_departamento', 'pagadores', 'devedores', 'aportes',
+]);
+
+/** Onde a regra do dinheiro vale. Fora daqui, um campo "valor" é só um número. */
+const TABELAS_DE_DINHEIRO = new Set(['despesas', 'aportes', 'acertos', 'projetos', 'configuracoes']);
+
 const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Lista de texto (ids, tags) — o único formato que dá para unir com segurança. */
@@ -83,6 +99,8 @@ export function mesclarComBase(
   base: Registro | null | undefined,
   local: Registro,
   remoto: Registro,
+  /** A tabela, só para a regra do dinheiro saber onde vale. */
+  tabela?: string,
 ): Mescla {
   const resultado: Registro = { ...remoto };
   const disputa: string[] = [];
@@ -98,6 +116,12 @@ export function mesclarComBase(
     const r = remoto[campo];
 
     if (igual(l, r)) continue;
+
+    // Dinheiro: diferiu, pergunta. Sem exceção e sem esperteza.
+    if (tabela && TABELAS_DE_DINHEIRO.has(tabela) && DINHEIRO.has(campo)) {
+      disputa.push(campo);
+      continue;
+    }
 
     const mudouLocal = !base || !igual(l, b);
     const mudouRemoto = !base || !igual(r, b);

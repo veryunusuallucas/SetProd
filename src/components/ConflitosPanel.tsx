@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { GitMerge, X, Check } from 'lucide-react';
+import { GitMerge, X, Check, Trash2 } from 'lucide-react';
 import { db, escreverGanhandoDe } from '../db/db';
+import { dinheiro } from '../lib/formato';
 import { MOLA } from './ui/ia';
 import type { ConflitoGuardado } from '../types';
 
@@ -44,14 +45,21 @@ const CAMPO: Record<string, string> = {
 };
 const nomeDoCampo = (c: string) => CAMPO[c] || c.replace(/_/g, " ");
 
+/** Campos em que "1500" sem R$ na frente engana quem lê depressa. */
+const EH_DINHEIRO = new Set(['valor', 'valor_total', 'valor_ideal', 'limite_gasto', 'valor_diaria', 'orcamento_departamento']);
+
 /** Um valor de campo em uma linha legível. */
-function mostrar(v: unknown): string {
+function mostrar(v: unknown, campo?: string): string {
+  if (campo && EH_DINHEIRO.has(campo) && typeof v === "number") return dinheiro(v);
   if (v === null || v === undefined || v === '') return '—';
   if (Array.isArray(v)) return v.length ? `${v.length} item(ns)` : 'vazio';
   if (typeof v === 'object') return '(dados)';
   if (typeof v === 'boolean') return v ? 'sim' : 'não';
   return String(v);
 }
+
+/** O conflito é "um apagou, o outro editou" — não uma briga de campos. */
+const ehApagar = (c: ConflitoGuardado) => c.campos_em_disputa.includes('apagado');
 
 export function ConflitosPanel({ projetoId }: { projetoId: string }) {
   const [aberto, setAberto] = useState(false);
@@ -98,10 +106,21 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
     um caminho especial de sincronização — é uma edição normal, feita pela
     pessoa, que por acaso tem o conteúdo antigo.
   */
-  const escolher = async (c: ConflitoGuardado, escolha: 'minha' | 'servidor') => {
+  const escolher = async (c: ConflitoGuardado, escolha: 'minha' | 'servidor' | 'apagar') => {
     setMexendo(c.id);
     setErro('');
     try {
+      /*
+        APAGOU × EDITOU. O sync já trouxe o registro de volta — editar ganha de
+        apagar, porque ressuscitar incomoda e perder custa. Aqui a pessoa
+        confirma: fica, ou some de vez.
+      */
+      if (escolha === 'apagar') {
+        await db.table(c.tabela).delete(c.registro_id);
+        await db.conflitos.update(c.id, { resolvido_em: Date.now(), escolha: 'servidor' });
+        return;
+      }
+
       if (escolha === 'minha' && c.versao_local) {
         const dados = { ...(c.versao_local as Record<string, unknown>) };
         delete dados.atualizado_em;
@@ -169,6 +188,13 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
                   {new Date(c.detectado_em).toLocaleString('pt-BR')}
                 </div>
 
+                {ehApagar(c) ? (
+                  <p className="text-sm" style={{ margin: '0 0 14px', lineHeight: 1.5 }}>
+                    {local
+                      ? <>Outra pessoa <strong>apagou</strong> isto enquanto você editava. O registro continua aqui, com a sua edição — é a regra: editar ganha de apagar, e pergunta.</>
+                      : <>Você apagou isto, e outra pessoa <strong>editou</strong> ao mesmo tempo. O registro voltou, com a edição dela.</>}
+                  </p>
+                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
                   {c.campos_em_disputa.length === 0 && (
                     <span className="text-sm text-muted">Nada em disputa além do carimbo de hora.</span>
@@ -183,19 +209,33 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
                   {c.campos_em_disputa.map(campo => (
                     <div key={campo} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) 1fr 1fr', gap: '8px', alignItems: 'baseline' }}>
                       <span className="text-xs text-muted">{nomeDoCampo(campo)}</span>
-                      <span className="text-sm" style={{ color: 'var(--color-warning)' }}>{mostrar(local?.[campo])}</span>
-                      <span className="text-sm text-secondary">{mostrar(remota?.[campo])}</span>
+                      <span className="text-sm" style={{ color: 'var(--color-warning)' }}>{mostrar(local?.[campo], campo)}</span>
+                      <span className="text-sm text-secondary">{mostrar(remota?.[campo], campo)}</span>
                     </div>
                   ))}
                 </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button className="btn btn-primary" disabled={mexendo === c.id} onClick={() => escolher(c, 'minha')}>
-                    Usar a minha de volta
-                  </button>
-                  <button className="btn" disabled={mexendo === c.id} onClick={() => escolher(c, 'servidor')}>
-                    <Check size={14} style={{ marginRight: '6px' }} /> Manter a que está valendo
-                  </button>
+                  {ehApagar(c) ? (
+                    <>
+                      <button className="btn btn-primary" disabled={mexendo === c.id} onClick={() => escolher(c, 'servidor')}>
+                        <Check size={14} style={{ marginRight: '6px' }} /> Manter o registro
+                      </button>
+                      <button className="btn text-danger" disabled={mexendo === c.id} onClick={() => escolher(c, 'apagar')}>
+                        <Trash2 size={14} style={{ marginRight: '6px' }} /> Apagar mesmo assim
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-primary" disabled={mexendo === c.id} onClick={() => escolher(c, 'minha')}>
+                        Usar a minha de volta
+                      </button>
+                      <button className="btn" disabled={mexendo === c.id} onClick={() => escolher(c, 'servidor')}>
+                        <Check size={14} style={{ marginRight: '6px' }} /> Manter a que está valendo
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
