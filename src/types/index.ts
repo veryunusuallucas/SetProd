@@ -244,7 +244,7 @@ export interface Configuracao {
 export type AcaoLog = 'criar' | 'editar' | 'deletar'
   /** Abrir o que é protegido — a ficha médica pela emergência (fichas.sql). */
   | 'ver';
-export type EntidadeLog = 'projeto' | 'perfil' | 'despesa' | 'acerto' | 'departamento' | 'configuracao' | 'diaria' | 'locacao' | 'equipamento' | 'task' | 'evento'
+export type EntidadeLog = 'acesso' | 'projeto' | 'perfil' | 'despesa' | 'acerto' | 'departamento' | 'configuracao' | 'diaria' | 'locacao' | 'equipamento' | 'task' | 'evento'
   /** Acesso (ROADMAP, Etapa 8): convite criado/aceito, papel, remoção, posse, vínculo. */
   | 'membro' | 'convite';
 

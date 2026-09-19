@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AreaProtegida, ModoLeitura } from '../components/ui/Acesso';
 import { useAcesso } from '../hooks/useAcesso';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useParams } from 'react-router-dom';
@@ -30,6 +31,13 @@ export function FinanceiroModule() {
   if (!id) return <div>ID do projeto não encontrado.</div>;
 
   return (
+    /*
+      O Financeiro é "restrito" na matriz (escopo.ts): quem é equipe acompanha,
+      quem é 'leitura' nem abre. Antes, a página inteira aparecia igual para
+      todo mundo, com um aviso no meio — ver PLANO-acesso-na-tela.
+    */
+    <AreaProtegida titulo="Financeiro" projetoId={id}>
+    <ModoLeitura tabela="despesas" complemento="Aqui você acompanha." faixa={false}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Sub Navbar Financeiro */}
@@ -72,7 +80,7 @@ export function FinanceiroModule() {
         </button>
       </div>
 
-      {!administra && <SoQuemPode motivo={`${motivo('despesas')} Aqui você acompanha.`} />}
+      {!administra && <SoQuemPode motivo={`Somente leitura. ${motivo('despesas')} Aqui você acompanha.`} />}
 
       {/* Conteúdo Dinâmico */}
       {abaAtiva === 'visao' && (
@@ -106,5 +114,7 @@ export function FinanceiroModule() {
       )}
       
     </div>
+    </ModoLeitura>
+    </AreaProtegida>
   );
 }

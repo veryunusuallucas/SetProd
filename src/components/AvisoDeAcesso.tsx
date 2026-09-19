@@ -33,6 +33,15 @@ function gravarVisto(projetoId: string, v: Visto) {
   try { localStorage.setItem(CHAVE + projetoId, JSON.stringify(v)); } catch { /* aba privada */ }
 }
 
+/** Pedidos de acesso já lidos — a dispensa é deste aparelho, como o resto. */
+const CHAVE_LIDOS = 'setprod:acesso:lidos';
+function dispensados(): string[] {
+  try { return JSON.parse(localStorage.getItem(CHAVE_LIDOS) || '[]'); } catch { return []; }
+}
+function dispensar(id: string) {
+  try { localStorage.setItem(CHAVE_LIDOS, JSON.stringify([...dispensados(), id].slice(-50))); } catch { /* aba privada */ }
+}
+
 const nomeDoPapel = (p?: string) => (p && DESCRICAO[p as PapelMembro]?.nome) || p || '—';
 
 /**
@@ -43,6 +52,8 @@ const nomeDoPapel = (p?: string) => (p && DESCRICAO[p as PapelMembro]?.nome) || 
 export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string; aoAbrirAcesso: () => void }) {
   const [recado, setRecado] = useState<{ texto: string; recarregar?: boolean } | null>(null);
   const [pedidos, setPedidos] = useState<{ quem: string; ficha: string }[]>([]);
+  /** Pedidos de ACESSO (o botão da área bloqueada), que chegam pela ata. */
+  const [pedidosDeAcesso, setPedidosDeAcesso] = useState<string[]>([]);
 
   useEffect(() => {
     let vivo = true;
@@ -76,6 +87,18 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
 
       // 3. Para quem administra: os pedidos esperando resposta.
       if (eu.papel === 'dono' || eu.papel === 'admin') {
+        /*
+          Pedido de acesso a uma área (ui/Acesso.tsx) vem pela ATA, e não pelo
+          sino: o sino é do aparelho e não sincroniza, então morreria no celular
+          de quem pediu. Sete dias é o quanto um pedido ainda é notícia.
+        */
+        const desde = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const naAta = await db.logs.where('projeto_id').equals(projetoId).toArray();
+        const recentes = naAta
+          .filter(l => l.entidade === 'acesso' && l.data_hora >= desde && !dispensados().includes(l.id))
+          .sort((a, b) => b.data_hora - a.data_hora);
+        if (vivo) setPedidosDeAcesso(recentes.map(l => l.id + '|' + l.detalhes));
+
         try {
           const todos = await membrosDoProjeto(projetoId);
           const esperando = todos.filter((m: Participacao) => m.perfil_pedido);
@@ -101,7 +124,7 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
     };
   }, [projetoId]);
 
-  if (!recado && pedidos.length === 0) return null;
+  if (!recado && pedidos.length === 0 && pedidosDeAcesso.length === 0) return null;
 
   const faixa: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
@@ -133,6 +156,26 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
           </button>
         </div>
       )}
+
+      {pedidosDeAcesso.map(linha => {
+        const [id, texto] = [linha.slice(0, linha.indexOf('|')), linha.slice(linha.indexOf('|') + 1)];
+        return (
+          <div key={id} style={faixa}>
+            <UserCheck size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
+            <div className="text-sm" style={{ flex: 1, minWidth: '200px', lineHeight: 1.45 }}>{texto}</div>
+            <button className="btn btn-primary" onClick={aoAbrirAcesso} style={{ flexShrink: 0 }}>
+              Ver em Quem tem acesso
+            </button>
+            <button
+              onClick={() => { dispensar(id); setPedidosDeAcesso(a => a.filter(l => !l.startsWith(id))); }}
+              className="text-xs"
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              já vi
+            </button>
+          </div>
+        );
+      })}
 
       {pedidos.length > 0 && (
         <div style={faixa}>

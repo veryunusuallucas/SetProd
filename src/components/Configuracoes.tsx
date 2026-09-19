@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SeuAcesso } from './SeuAcesso';
 import { useAcesso } from '../hooks/useAcesso';
 import { useRole } from '../hooks/useRole';
 import { SoQuemPode } from './ui/SoQuemPode';
@@ -88,6 +89,10 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {!administra && <SoQuemPode motivo={`${motivo('projetos')} Aqui ficam só os ajustes deste aparelho.`} />}
+
+      {/* Quem você é nesta produção e o que isso permite — a tela que
+          responde sozinha a maior parte das dúvidas de permissão. */}
+      <SeuAcesso projetoId={projetoId} />
       {administra && <>
       <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Templates de Mensagem</h3>
