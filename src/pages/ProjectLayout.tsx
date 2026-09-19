@@ -652,7 +652,7 @@ export function ProjectLayout() {
               <div className="master-detail-master">
                 {/* Fora do Suspense: o aviso não depende da tela que está
                     carregando, e é o mesmo em todas as abas da produção. */}
-                <AvisoDeAcesso projetoId={id!} />
+                <AvisoDeAcesso projetoId={id!} aoAbrirAcesso={() => setMostrarCompartilhar(true)} />
                 <AvisoSemFicha projetoId={id!} meuEmail={user?.email} />
 
                 {/* Suspense aqui, e não só lá no App: as telas do projeto
