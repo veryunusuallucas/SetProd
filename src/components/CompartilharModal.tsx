@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight, UserMinus } from 'lucide-react';
+import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight, UserMinus, Crown } from 'lucide-react';
 import { db } from '../db/db';
 import {
   criarConvite, convitesDoProjeto, revogarConvite, linkDoConvite,
@@ -14,7 +14,7 @@ import {
   meusAcervos, acervosDaProducao, vincularAcervo, desvincularAcervo,
   type AcervoDisponivel,
 } from '../lib/acervoVinculado';
-import { listarMembros, mudarPapel, removerMembro, type MembroDetalhado } from '../lib/painelMembros';
+import { listarMembros, mudarPapel, removerMembro, vincularPerfilDe, transferirPosse, type MembroDetalhado } from '../lib/painelMembros';
 import { MOLA } from './ui/ia';
 import { confirmar } from './ui/Confirmacao';
 
@@ -87,6 +87,43 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
       await recarregar();
     } catch (e: any) {
       setErro(e?.message || 'Não consegui mudar o papel.');
+    } finally {
+      setMexendo(null);
+    }
+  };
+
+  /*
+    Quem administra diz quem é quem na ficha (ROADMAP §4.5.3). Vai pela Edge
+    Function porque a RLS só deixa cada um mexer na PRÓPRIA linha — e é o que
+    resolve quem entrou e nunca respondeu "quem é você nesta produção?".
+  */
+  const trocarFicha = async (m: Participacao, perfilId: string) => {
+    if ((m.perfil_id || '') === perfilId) return;
+    setMexendo(m.usuario_id);
+    try {
+      await vincularPerfilDe(projetoId, m.usuario_id, perfilId || null);
+      await recarregar();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui vincular a ficha.');
+    } finally {
+      setMexendo(null);
+    }
+  };
+
+  const passarPosse = async (m: Participacao, nome: string) => {
+    const ok = await confirmar({
+      titulo: `Passar a produção para ${nome}?`,
+      detalhe: `${nome} vira dono — inclusive quem pode apagar a produção — e você passa a administrar. Só ${nome} consegue devolver.`,
+      confirmar: 'Passar a posse',
+      cancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    setMexendo(m.usuario_id);
+    try {
+      await transferirPosse(projetoId, m.usuario_id);
+      await recarregar();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui passar a posse.');
     } finally {
       setMexendo(null);
     }
@@ -380,6 +417,38 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                             <option key={p} value={p}>{DESCRICAO[p].nome}</option>
                           ))}
                         </select>
+
+                        {/* A ficha: as livres, mais a que já é dela. Uma ficha só
+                            pode ser de uma conta (índice único no servidor). */}
+                        <select
+                          value={m.perfil_id || ''}
+                          onChange={e => trocarFicha(m, e.target.value)}
+                          disabled={mexendo === m.usuario_id}
+                          aria-label="Quem é na equipe"
+                          title="Quem é na equipe"
+                          style={{ ...campoEstilo, width: 'auto', maxWidth: '150px', padding: '6px 8px', fontSize: '12px' }}
+                        >
+                          <option value="">Sem ficha</option>
+                          {perfis
+                            .filter(p => p.id === m.perfil_id || !membros.some(o => o.perfil_id === p.id))
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {`${p.nome} ${p.sobrenome || ''}`.trim()}{p.funcao ? ` · ${p.funcao}` : ''}
+                              </option>
+                            ))}
+                        </select>
+
+                        {minhaParticipacao?.papel === 'dono' && m.papel !== 'dono' && (
+                          <button
+                            className="btn-icon"
+                            title="Passar a posse da produção"
+                            aria-label="Passar a posse da produção"
+                            onClick={() => passarPosse(m, nome || conta?.nome || conta?.email || 'esta pessoa')}
+                            disabled={mexendo === m.usuario_id}
+                          >
+                            <Crown size={16} />
+                          </button>
+                        )}
 
                         <button
                           className="btn-icon"

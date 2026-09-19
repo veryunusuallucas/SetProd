@@ -68,6 +68,12 @@ export async function removerMembro(projetoId: string, alvo: string): Promise<vo
   await sincronizarParticipacoes();
 }
 
+/** O dono passa a produção para outra pessoa e vira admin. */
+export async function transferirPosse(projetoId: string, alvo: string): Promise<void> {
+  await chamar({ acao: 'transferir_posse', projeto_id: projetoId, alvo });
+  await sincronizarParticipacoes();
+}
+
 /** O dono diz quem é quem na ficha, sem depender da pessoa fazer isso. */
 export async function vincularPerfilDe(projetoId: string, alvo: string, perfilId: string | null): Promise<void> {
   await chamar({ acao: 'vincular_perfil', projeto_id: projetoId, alvo, perfil_id: perfilId });
