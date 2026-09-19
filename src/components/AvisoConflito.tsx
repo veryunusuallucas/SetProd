@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge, Lock, X } from 'lucide-react';
-import { EVENTO_CONFLITO, EVENTO_RECUSA, type Conflito } from '../lib/sincronizacao';
+import { EVENTO_CONFLITO, EVENTO_RECUSA, EVENTO_MESCLA, type Conflito } from '../lib/sincronizacao';
 import { escopoDe } from '../lib/escopo';
 import { participacaoLocal } from '../lib/membros';
 import { MOLA, MOLA_GESTO, useMovimentoReduzido } from './ui/ia';
@@ -78,7 +78,7 @@ const comoSeChama = (tabela: string) => NOMES[tabela] || 'um registro';
 interface Aviso {
   chave: string;
   texto: string;
-  tipo: 'conflito' | 'recusa';
+  tipo: 'conflito' | 'recusa' | 'mescla';
   /** Na recusa: por que não deu. */
   motivo?: string;
 }
@@ -110,7 +110,11 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
       // mesma frase não acrescentam nada ao primeiro.
       const porTabela = [...new Set(meus.map(c => c.tabela))];
 
-      const tipo = e.type === EVENTO_RECUSA ? 'recusa' as const : 'conflito' as const;
+      const tipo = e.type === EVENTO_RECUSA
+        ? 'recusa' as const
+        : e.type === EVENTO_MESCLA
+          ? 'mescla' as const
+          : 'conflito' as const;
 
       setAvisos(atuais => {
         const novos = porTabela
@@ -136,9 +140,11 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
 
     window.addEventListener(EVENTO_CONFLITO, aoConflitar);
     window.addEventListener(EVENTO_RECUSA, aoConflitar);
+    window.addEventListener(EVENTO_MESCLA, aoConflitar);
     return () => {
       window.removeEventListener(EVENTO_CONFLITO, aoConflitar);
       window.removeEventListener(EVENTO_RECUSA, aoConflitar);
+      window.removeEventListener(EVENTO_MESCLA, aoConflitar);
     };
   }, [projetoId]);
 
@@ -184,7 +190,7 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
           >
             {aviso.tipo === 'recusa'
               ? <Lock size={16} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
-              : <GitMerge size={16} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />}
+              : <GitMerge size={16} style={{ color: aviso.tipo === 'mescla' ? 'var(--color-success, #4ade80)' : 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />}
 
             <div style={{ flex: 1, minWidth: 0 }}>
               {aviso.tipo === 'recusa' ? (
@@ -194,6 +200,20 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>
                     {aviso.motivo} Ficou como estava.
+                  </p>
+                </>
+              ) : aviso.tipo === 'mescla' ? (
+                /*
+                  Mesclou sozinho: ninguém perdeu nada e não há o que decidir.
+                  O aviso existe só para a pessoa entender por que apareceu na
+                  tela coisa que ela não digitou.
+                */
+                <>
+                  <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.45, color: 'var(--text-primary)' }}>
+                    Outra pessoa também editou <strong>{aviso.texto}</strong>.
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    As duas alterações foram mantidas.
                   </p>
                 </>
               ) : (

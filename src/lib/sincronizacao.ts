@@ -1,4 +1,5 @@
 import { db, TABELAS_SINCRONIZADAS, marcarTransacaoComoRemota } from '../db/db';
+import { mesclarComBase } from './mesclaComBase';
 import { mesclarEscala, mesmaEscala } from './escalaMesclada';
 import { supabase, supabaseConfigurado } from './supabase';
 import { contaAtual } from './conta';
@@ -48,6 +49,9 @@ type Linha = { id: string; projeto_id?: string; atualizado_em?: number };
  * merece saber que o que digitou foi substituído.
  */
 export const EVENTO_CONFLITO = 'setprod-conflito';
+
+/** "Fulano também editou isto, e as duas alterações ficaram" — aviso discreto. */
+export const EVENTO_MESCLA = 'setprod-mescla';
 
 export interface Conflito {
   projeto_id: string;
@@ -274,6 +278,9 @@ export async function empurrar(projetoId: string): Promise<number> {
   }
 
   await db.sync_queue.bulkDelete(enviadas);
+  // A base era "como estava antes de eu editar". Subiu: agora o servidor tem a
+  // minha versão, e a próxima edição guardará uma base nova.
+  await db.sync_base.bulkDelete(enviadas);
   if (recusadas.length) await desfazerRecusadas(projetoId, recusadas);
   return subiram;
 }
@@ -349,7 +356,12 @@ async function desfazerRecusadas(projetoId: string, recusadas: LinhaEspelho[]) {
  * Um conflito por registro: se a mesma diária brigar de novo antes de alguém
  * decidir, vale a disputa mais recente — a anterior está contida nela.
  */
-async function guardarConflito(linha: LinhaEspelho, local: Record<string, unknown> | undefined) {
+async function guardarConflito(
+  linha: LinhaEspelho,
+  local: Record<string, unknown> | undefined,
+  base?: unknown,
+  disputa?: string[],
+) {
   if (!local) return;
   const remota = (linha.dados ?? null) as Record<string, unknown> | null;
 
@@ -357,7 +369,7 @@ async function guardarConflito(linha: LinhaEspelho, local: Record<string, unknow
   // briga de tudo.
   const ignorar = new Set(["atualizado_em", "criado_em", "escala_carimbos"]);
   const chaves = new Set([...Object.keys(local), ...Object.keys(remota || {})]);
-  const campos_em_disputa = [...chaves].filter(k =>
+  const campos_em_disputa = disputa ?? [...chaves].filter(k =>
     !ignorar.has(k) && JSON.stringify(local[k]) !== JSON.stringify(remota?.[k]));
 
   await db.conflitos.put({
@@ -367,6 +379,7 @@ async function guardarConflito(linha: LinhaEspelho, local: Record<string, unknow
     projeto_id: linha.projeto_id,
     versao_local: local,
     versao_remota: remota,
+    versao_base: base,
     campos_em_disputa,
     detectado_em: Date.now(),
   });
@@ -383,8 +396,10 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
   const tabelas = [...new Set(usaveis.map(l => (ehParteDaFicha(l.tabela) ? 'perfis' : l.tabela)))];
   let aplicadas = 0;
   const perdidas: Conflito[] = [];
+  /** Mesclou sozinho: ninguém perdeu nada, e o aviso é só para a pessoa saber. */
+  const mescladas: Conflito[] = [];
 
-  await db.transaction('rw', [...tabelas.map(t => db.table(t)), db.sync_queue, db.conflitos], async () => {
+  await db.transaction('rw', [...tabelas.map(t => db.table(t)), db.sync_queue, db.conflitos, db.sync_base], async () => {
     // Sem esta marca, os hooks do Dexie carimbam cada linha recebida com a hora
     // daqui e a devolvem para a caixa de saída como se fosse alteração local —
     // e ela sobe de novo, e volta, sem fim. Ver `marcarTransacaoComoRemota`.
@@ -424,6 +439,49 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
       */
       const escalaDeLa = linha.tabela === 'diarias' && local && linha.dados && !linha.deletado;
 
+      /*
+        A MESCLA COM A BASE (PLANO-conflitos-sync, passos 4 e 5).
+
+        Vem ANTES da regra da escala de propósito: a escala é um caso particular
+        disto — lista de texto que os dois lados mexeram —, e a mescla com base
+        resolve a diária inteira, não só a escala.
+
+        Antes de aceitar que "o último a salvar ganha", pergunta o que cada lado
+        realmente mudou. Se as alterações não se cruzam — uma pessoa no
+        transporte, a outra nos horários —, as duas ficam, e ninguém precisa
+        escolher nada. Só o que os dois mexeram vira disputa.
+
+        ⚠️ A pendência FICA na fila neste caminho. Se ela saísse, como sai no
+        LWW, o resultado da mescla nunca subiria e o outro lado jamais veria a
+        parte dele de volta.
+      */
+      const aBase = naFila && !linha.deletado && linha.dados && local
+        ? await db.sync_base.get(`${linha.tabela}:${linha.id}`)
+        : undefined;
+
+      if (aBase && local && linha.dados) {
+        const m = mesclarComBase(
+          aBase.dados as Record<string, unknown>,
+          local as Record<string, unknown>,
+          linha.dados as Record<string, unknown>,
+        );
+
+        if (!m.disputa.length && m.meusCamposMantidos.length) {
+          const novo = Math.max(Date.now(), linha.atualizado_em + 1, carimboDaqui + 1);
+          await tabela.put({ ...m.resultado, atualizado_em: novo });
+          await db.sync_queue.put({ ...naFila!, atualizado_em: novo });
+          mescladas.push({ projeto_id: linha.projeto_id, tabela: linha.tabela, id: linha.id });
+          aplicadas++;
+          continue;
+        }
+
+        if (m.disputa.length && carimboDaqui < linha.atualizado_em) {
+          await guardarConflito(linha, local as Record<string, unknown>, aBase.dados, m.disputa);
+        }
+      }
+
+      const temBase = Boolean(aBase);
+
       if (carimboDaqui >= linha.atualizado_em) {
         // A nossa versão ganha — mas quem o outro escalou entra nela, e sobe
         // junto quando a nossa pendência subir.
@@ -453,8 +511,9 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
         }
       }
 
-      // A nossa versão está a um `put` de deixar de existir. Guarda antes.
-      if (naFila) await guardarConflito(linha, local as Record<string, unknown> | undefined);
+      // Sem base (edição antiga, tabela pesada): guarda a nossa inteira antes
+      // do `put`, como no passo 2. Com base, a mescla acima já decidiu.
+      if (naFila && !temBase) await guardarConflito(linha, local as Record<string, unknown> | undefined);
 
       if (linha.deletado) await tabela.delete(linha.id);
       else if (linha.dados && linha.tabela === 'perfis') {
@@ -472,6 +531,9 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
       // acima barrou o contrário), então ela sai da fila sem nova comparação.
       if (naFila) {
         await db.sync_queue.delete(naFila.id);
+        // A base media a NOSSA edição, que acabou de ser descartada. Guardá-la
+        // faria a próxima mescla comparar com um "antes" que não existe mais.
+        await db.sync_base.delete(naFila.id);
         // Aqui alguém perdeu trabalho. O LWW já decidiu e não há o que desfazer,
         // mas perder em silêncio é o pior aspecto disto: a pessoa vê o próprio
         // texto mudar sozinho na tela e não entende. Ver §10.A do ROADMAP.
@@ -484,6 +546,9 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
   // aviso teria sido mentira.
   if (perdidas.length) {
     window.dispatchEvent(new CustomEvent(EVENTO_CONFLITO, { detail: perdidas }));
+  }
+  if (mescladas.length) {
+    window.dispatchEvent(new CustomEvent(EVENTO_MESCLA, { detail: mescladas }));
   }
 
   return aplicadas;

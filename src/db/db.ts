@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 import { carimbarMudancasDaEscala } from '../lib/escalaMesclada';
 import type { Table } from 'dexie';
 
-import type { ConflitoGuardado, Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
+import type { SyncBase, ConflitoGuardado, Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -47,6 +47,14 @@ export const TABELAS_SINCRONIZADAS = [
 export const EVENTO_ALTERACAO = 'setprod-alteracao';
 
 export const MARCA_REMOTA = 'setprodEscritaRemota';
+
+/**
+ * Tabelas sem base: o registro é pesado e não se edita a quatro mãos.
+ *
+ * Duplicar um PDF de roteiro de 5 MB para medir uma mescla que nunca vai
+ * acontecer é caro e inútil — elas seguem no LWW de sempre.
+ */
+const SEM_BASE = new Set(['roteiro_pdfs']);
 
 export function marcarTransacaoComoRemota() {
   const tx = Dexie.currentTransaction as any;
@@ -106,6 +114,8 @@ export class SetMoneyDB extends Dexie {
   fila_auditoria!: Table<AuditLog, string>;
   /** Conflitos vistos NESTE aparelho — fora do sync, como as notificações. */
   conflitos!: Table<ConflitoGuardado, string>;
+  /** A versão do servidor de antes da nossa edição — a base da mescla. */
+  sync_base!: Table<SyncBase, string>;
   sync_queue!: Table<SyncQueue, string>;
   locacoes!: Table<Locacao, string>;
   
@@ -304,6 +314,15 @@ export class SetMoneyDB extends Dexie {
       conflitos: 'id, projeto_id, detectado_em'
     });
 
+    /*
+      v22: a base da mescla (PLANO-conflitos-sync, passo 4). Local, fora do
+      sync, e com a mesma chave da `sync_queue` — as duas nascem e morrem
+      juntas: uma diz "isto está para subir", a outra "era assim antes".
+    */
+    this.version(22).stores({
+      sync_base: 'id, projeto_id'
+    });
+
     this.version(19).stores({
       log_takes: 'id, projeto_id, diaria_id, [diaria_id+ordem], camera_id',
       log_estado: 'id, projeto_id, diaria_id',
@@ -320,6 +339,33 @@ export class SetMoneyDB extends Dexie {
      */
     const donoDaLinha = (tabela: string, obj: any): string | undefined =>
       tabela === 'projetos' ? obj?.id : obj?.projeto_id;
+
+    /*
+      A BASE, guardada na PRIMEIRA edição local de um registro.
+
+      `obj` aqui é o registro ANTES da alteração — ou seja, como o servidor o
+      entregou, se esta é a primeira edição daqui. `add` (e não `put`) é de
+      propósito: a segunda edição não pode sobrescrever a base, senão ela
+      viraria "antes da última edição", que não mede nada.
+
+      Fica fora da transação pelo mesmo motivo da fila: escrever de dentro dela
+      travaria o Dexie esperando por ela mesma.
+    */
+    const guardarBase = (tabela: string, obj: any) => {
+      if (SEM_BASE.has(tabela)) return;
+      const projeto_id = donoDaLinha(tabela, obj);
+      if (!projeto_id || !obj?.id) return;
+      Dexie.ignoreTransaction(() => {
+        this.sync_base.add({
+          id: `${tabela}:${obj.id}`,
+          tabela,
+          registro_id: obj.id,
+          projeto_id,
+          dados: { ...obj },
+          guardada_em: Date.now(),
+        }).catch(() => { /* já existe: a primeira é que vale */ });
+      });
+    };
 
     const enfileirar = (tabela: string, obj: any, deletado: boolean, carimbo: number) => {
       const projeto_id = donoDaLinha(tabela, obj);
@@ -368,6 +414,7 @@ export class SetMoneyDB extends Dexie {
       this.table(tabela).hook('updating', function (mods, _primKey, obj: any) {
         if (escritaVindaDoServidor()) return;
         travaDeEscrita?.(tabela, obj, { ...obj, ...(mods as object) });
+        guardarBase(tabela, obj);
         const carimbo = carimboDeAgora();
         enfileirar(tabela, { ...obj, ...(mods as object) }, false, carimbo);
 
