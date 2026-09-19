@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, X } from 'lucide-react';
-import { EVENTO_CONFLITO, type Conflito } from '../lib/sincronizacao';
+import { GitMerge, Lock, X } from 'lucide-react';
+import { EVENTO_CONFLITO, EVENTO_RECUSA, type Conflito } from '../lib/sincronizacao';
+import { escopoDe } from '../lib/escopo';
+import { participacaoLocal } from '../lib/membros';
 import { MOLA, MOLA_GESTO, useMovimentoReduzido } from './ui/ia';
 
 /**
@@ -15,6 +17,11 @@ import { MOLA, MOLA_GESTO, useMovimentoReduzido } from './ui/ia';
  * sozinho na tela e achava que o app tinha bugado.
  *
  * O tratamento de verdade (merge por campo) é a §10.A do ROADMAP.
+ *
+ * Desde 18/09/2026 avisa também a RECUSA: a alteração que o servidor não
+ * aceitou (ou que a trava local barrou antes de chegar lá). Mesmo lugar, mesmo
+ * jeito, outro ícone — e a frase diz POR QUE, que é o que evita a pessoa tentar
+ * de novo achando que foi a internet.
  */
 
 /** Quanto tempo o aviso fica antes de sair sozinho. */
@@ -47,6 +54,18 @@ const NOMES: Record<string, string> = {
   veiculos: 'um veículo',
   motoristas: 'um motorista',
   roteiro_tags: 'uma marcação do roteiro',
+  roteiro_pdfs: 'o roteiro',
+  pastas: 'uma pasta',
+  planos: 'um plano',
+  eventos: 'um evento',
+  registros_cena: 'o que foi gravado',
+  registros_plano: 'o que foi gravado',
+  log_takes: 'a logagem',
+  log_estado: 'a logagem',
+  log_kits: 'a logagem',
+  log_hds: 'a logagem',
+  log_backups: 'a logagem',
+  log_checksums: 'a logagem',
   stripboard_itens: 'o stripboard',
   configuracoes: 'as configurações',
   notificacoes: 'uma notificação',
@@ -59,6 +78,18 @@ const comoSeChama = (tabela: string) => NOMES[tabela] || 'um registro';
 interface Aviso {
   chave: string;
   texto: string;
+  tipo: 'conflito' | 'recusa';
+  /** Na recusa: por que não deu. */
+  motivo?: string;
+}
+
+/** Por que esta conta não pode mexer nesta tabela — a mesma regra do servidor. */
+function motivoDaRecusa(projetoId: string, tabela: string): string {
+  if (participacaoLocal(projetoId)?.papel === 'leitura') return 'Seu acesso nesta produção é só de leitura.';
+  const escopo = escopoDe(tabela);
+  if (escopo === 'restrito') return 'Só quem administra a produção altera isto.';
+  if (escopo === 'departamental') return 'Só o departamento responsável altera isto.';
+  return 'Seu acesso não permite esta alteração.';
 }
 
 export function AvisoConflito({ projetoId }: { projetoId?: string }) {
@@ -79,10 +110,17 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
       // mesma frase não acrescentam nada ao primeiro.
       const porTabela = [...new Set(meus.map(c => c.tabela))];
 
+      const tipo = e.type === EVENTO_RECUSA ? 'recusa' as const : 'conflito' as const;
+
       setAvisos(atuais => {
         const novos = porTabela
-          .filter(t => !atuais.some(a => a.chave.startsWith(`${t}:`)))
-          .map(t => ({ chave: `${t}:${Date.now()}`, texto: comoSeChama(t) }));
+          .filter(t => !atuais.some(a => a.chave.startsWith(`${tipo}:${t}:`)))
+          .map(t => ({
+            chave: `${tipo}:${t}:${Date.now()}`,
+            texto: comoSeChama(t),
+            tipo,
+            motivo: tipo === 'recusa' ? motivoDaRecusa(meus[0].projeto_id, t) : undefined,
+          }));
 
         const juntos = [...atuais, ...novos];
         if (juntos.length > MAXIMO) {
@@ -94,7 +132,11 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
     };
 
     window.addEventListener(EVENTO_CONFLITO, aoConflitar);
-    return () => window.removeEventListener(EVENTO_CONFLITO, aoConflitar);
+    window.addEventListener(EVENTO_RECUSA, aoConflitar);
+    return () => {
+      window.removeEventListener(EVENTO_CONFLITO, aoConflitar);
+      window.removeEventListener(EVENTO_RECUSA, aoConflitar);
+    };
   }, [projetoId]);
 
   // Cada aviso se despede sozinho. Um relógio por aviso, e não um só para a
@@ -137,15 +179,30 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
               padding: '13px 12px 13px 14px',
             }}
           >
-            <GitMerge size={16} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
+            {aviso.tipo === 'recusa'
+              ? <Lock size={16} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
+              : <GitMerge size={16} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />}
 
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.45, color: 'var(--text-primary)' }}>
-                Outra equipe alterou <strong>{aviso.texto}</strong> enquanto você editava.
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                A versão do servidor ficou. Confira antes de continuar.
-              </p>
+              {aviso.tipo === 'recusa' ? (
+                <>
+                  <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.45, color: 'var(--text-primary)' }}>
+                    Não deu para alterar <strong>{aviso.texto}</strong>.
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {aviso.motivo} Ficou como estava.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.45, color: 'var(--text-primary)' }}>
+                    Outra equipe alterou <strong>{aviso.texto}</strong> enquanto você editava.
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    A versão do servidor ficou. Confira antes de continuar.
+                  </p>
+                </>
+              )}
             </div>
 
             <motion.button
