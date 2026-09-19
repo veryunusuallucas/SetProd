@@ -25,6 +25,8 @@ const PAGINA: Record<EntidadeLog, string> = {
   locacao: 'Locações',
   equipamento: 'Equipamentos',
   task: 'Tasks',
+  membro: 'Quem tem acesso',
+  convite: 'Quem tem acesso',
 };
 
 const VERBO: Record<AcaoLog, string> = {

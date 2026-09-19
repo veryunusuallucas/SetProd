@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigurado } from './supabase';
+import { logAction } from './audit';
 import { linkDoApp } from './urlPublica';
 import { papelConvidavel, type PapelConvidavel } from './permissoes';
 
@@ -412,6 +413,13 @@ export async function criarConvite(
     .single();
 
   if (error) throw error;
+
+  // Na ata (Etapa 8). Sem o token: a ata é lida por todo membro, e o link de
+  // um convite de várias pessoas continua valendo depois de usado.
+  await logAction(
+    projetoId, 'criar', 'convite', '',
+    `Criou um link de convite como ${papel}${multiuso ? ' (várias pessoas)' : ''}${apelido ? ` para ${apelido}` : ''}.`
+  );
   return data as Convite;
 }
 

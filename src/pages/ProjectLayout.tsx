@@ -24,7 +24,9 @@ import { StatusSync } from '../components/StatusSync';
 import { AvisoConflito } from '../components/AvisoConflito';
 import { AvisoSemFicha } from '../components/AvisoSemFicha';
 import { useAuth } from '../hooks/useAuth';
-import { participacaoLocal, garantirParticipacao } from '../lib/membros';
+import { participacaoLocal, garantirParticipacao, sincronizarParticipacoes } from '../lib/membros';
+import { supabase, supabaseConfigurado } from '../lib/supabase';
+import { ShieldAlert } from 'lucide-react';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 import { confirmar } from '../components/ui/Confirmacao';
 import { useRole } from '../hooks/useRole';
@@ -126,6 +128,43 @@ export function ProjectLayout() {
 
     return () => { vivo = false; parar?.(); };
   }, [id]);
+
+  /*
+    O PAPEL PODE MUDAR COM A TELA ABERTA (ROADMAP, Etapa 8). Quem administra
+    rebaixa alguém para "leitura", e essa pessoa, com o app aberto desde de
+    manhã, continuava vendo os botões que o servidor já não honra. Voltar para
+    a aba (ou para o app, no celular) relê as participações — no máximo uma vez
+    a cada 30 segundos, que trocar de aba toda hora não é motivo para consulta.
+  */
+  useEffect(() => {
+    let ultima = 0;
+    const reler = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - ultima < 30_000) return;
+      ultima = Date.now();
+      sincronizarParticipacoes().then(() => setParticipacao(participacaoLocal(id!))).catch(() => {});
+    };
+    window.addEventListener('focus', reler);
+    document.addEventListener('visibilitychange', reler);
+    return () => {
+      window.removeEventListener('focus', reler);
+      document.removeEventListener('visibilitychange', reler);
+    };
+  }, [id]);
+
+  /*
+    MODO ADMINISTRADOR (ROADMAP, Etapa 8). O super-admin entra em qualquer
+    produção pelo `e_admin()` do servidor, sem ser membro — e, sem aviso, é
+    fácil editar a produção de alguém achando que é a própria. A faixa também
+    explica por que ele vê botões que o dono não vê.
+  */
+  const [souSuperAdmin, setSouSuperAdmin] = useState(false);
+  useEffect(() => {
+    if (!supabaseConfigurado || !user) return;
+    let vivo = true;
+    supabase.rpc('e_admin').then(({ data }) => { if (vivo) setSouSuperAdmin(Boolean(data)); });
+    return () => { vivo = false; };
+  }, [user]);
+  const modoAdministrador = souSuperAdmin && !participacao;
 
   const currentPath = location.pathname;
 
@@ -545,6 +584,20 @@ export function ProjectLayout() {
           depende da altura da barra de baixo e da faixa de gestos do aparelho,
           e estilo inline não obedece a media query. */}
       <main className="main-content">
+        {modoAdministrador && (
+          <div
+            role="status"
+            style={{
+              position: 'sticky', top: 0, zIndex: 45,
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px',
+              backgroundColor: 'var(--color-warning-bg)', borderBottom: '1px solid var(--color-warning)',
+              color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600,
+            }}
+          >
+            <ShieldAlert size={14} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
+            Modo administrador · esta produção não é sua. O que você mudar aqui muda para a equipe dela.
+          </div>
+        )}
         
         {/* O cabeçalho do celular. No tablet e no computador, quem tem o voltar e
             o nome da produção é o menu lateral. */}

@@ -236,7 +236,9 @@ export interface Configuracao {
 }
 
 export type AcaoLog = 'criar' | 'editar' | 'deletar';
-export type EntidadeLog = 'projeto' | 'perfil' | 'despesa' | 'acerto' | 'departamento' | 'configuracao' | 'diaria' | 'locacao' | 'equipamento' | 'task' | 'evento';
+export type EntidadeLog = 'projeto' | 'perfil' | 'despesa' | 'acerto' | 'departamento' | 'configuracao' | 'diaria' | 'locacao' | 'equipamento' | 'task' | 'evento'
+  /** Acesso (ROADMAP, Etapa 8): convite criado/aceito, papel, remoção, posse, vínculo. */
+  | 'membro' | 'convite';
 
 export interface AuditLog {
   id: string;

@@ -265,6 +265,20 @@ Deno.serve(async req => {
       );
     }
 
+    // Entrou na produção: vai para a ata (Etapa 8). Nunca derruba o aceite.
+    await comoServidor('auditoria', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        id: crypto.randomUUID(), projeto_id: convite.projeto_id, autor_id: usuario.id,
+        autor_nome: usuario.email ?? null, acao: 'criar', entidade: 'convite',
+        // NUNCA o token: a ata é lida por todo membro, e um convite de várias
+        // pessoas continua valendo — quem lesse o token daria acesso a alguém.
+        entidade_id: '',
+        detalhes: `Entrou na produção pelo convite, como ${papel}.`, data_hora: Date.now(),
+      }),
+    }).catch(() => {});
+
     // `perfil_id` volta para a tela saber se ainda precisa perguntar quem a
     // pessoa é. Sem convite nominal, ele vem nulo e a tela de aceite assume.
     return responder({
