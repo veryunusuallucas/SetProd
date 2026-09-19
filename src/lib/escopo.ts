@@ -98,8 +98,6 @@ export const ESCOPO: Record<TabelaSincronizada, Escopo> = {
   registros_cena: 'restrito',
   registros_plano: 'restrito',
 
-  // Auditoria: ninguém edita, todo mundo escreve o próprio. Ver Etapa 7.
-  logs: 'comum',
   /*
     Logagem: é da Fotografia. O boletim de câmera é o documento de trabalho
     do DIT e do 2º AC; direção, produção e continuísta leem.

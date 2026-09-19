@@ -1,4 +1,5 @@
 import { sincronizar, pendencias, aplicarLinhas, TABELA_ESPELHO } from './sincronizacao';
+import { sincronizarAuditoria } from './audit';
 import { supabase } from './supabase';
 import { EVENTO_ALTERACAO } from '../db/db';
 import { sincronizarParticipacoes } from './membros';
@@ -84,6 +85,8 @@ export async function rodada(projetoId: string): Promise<void> {
     await enviarPendentes(projetoId, ORCAMENTO_ANTES_DAS_LINHAS);
 
     const { enviadas } = await sincronizar(projetoId);
+    // A ata vai por caminho próprio (tabela só de inserção) e nunca derruba a volta.
+    await sincronizarAuditoria(projetoId);
 
     await enviarPendentes(projetoId);
     anunciar(projetoId, {
