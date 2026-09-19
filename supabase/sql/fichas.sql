@@ -213,7 +213,65 @@ $$;
 
 
 -- =============================================================================
--- PARTE 6 — Como conferir
+-- PARTE 6 — Guarda: a linha pública nunca mais leva campo protegido
+-- =============================================================================
+--
+-- Um aparelho com o app ANTIGO ainda sobe a ficha inteira numa linha só — e,
+-- até todo mundo atualizar, reabriria o vazamento a cada edição. Este trigger
+-- tira os campos protegidos da linha `perfis`, venha de que versão vier. Se
+-- quem mandou pode ver a ficha, os campos vão para as camadas (e o dado não se
+-- perde); se não pode, são descartados — ele nunca deveria tê-los.
+
+create or replace function public.separar_ficha()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  restritos text[] := array[
+    'cpf', 'rg', 'data_nascimento', 'endereco', 'valor_diaria', 'tipo_vinculo',
+    'chave_pix', 'banco', 'agencia', 'conta', 'cnpj', 'razao_social'
+  ];
+  medicos text[] := array[
+    'contato_emergencia', 'info_medica', 'tipo_sanguineo', 'alergias',
+    'medicamentos_continuos', 'restricao_alimentar', 'plano_saude'
+  ];
+  v_parte text;
+  v_campos text[];
+  v_dados jsonb;
+begin
+  if new.tabela <> 'perfis' or new.deletado or new.dados is null
+     or not (new.dados ?| restritos or new.dados ?| medicos) then
+    return new;
+  end if;
+
+  if public.pode_ver_ficha(new.projeto_id, new.id) then
+    foreach v_parte in array array['perfis_restritos', 'perfis_medicos'] loop
+      v_campos := case when v_parte = 'perfis_restritos' then restritos else medicos end;
+      v_dados := coalesce((select jsonb_object_agg(k, v) from jsonb_each(new.dados) e(k, v) where k = any(v_campos)), '{}'::jsonb)
+                 || jsonb_build_object('id', new.id, 'projeto_id', new.projeto_id);
+      insert into public.registros (projeto_id, tabela, id, dados, atualizado_em, deletado)
+      values (new.projeto_id, v_parte, new.id, v_dados, new.atualizado_em, false)
+      on conflict (projeto_id, tabela, id) do update
+        set dados = excluded.dados, atualizado_em = excluded.atualizado_em, deletado = false
+        where public.registros.atualizado_em < excluded.atualizado_em;
+    end loop;
+  end if;
+
+  new.dados := new.dados - restritos - medicos;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_separar_ficha on public.registros;
+create trigger trg_separar_ficha
+  before insert or update on public.registros
+  for each row execute function public.separar_ficha();
+
+
+-- =============================================================================
+-- PARTE 7 — Como conferir
 -- =============================================================================
 --
 -- 1. Nenhuma ficha pública com campo protegido (tem que dar zero):
