@@ -14,6 +14,7 @@ import type { AcaoLog, AuditLog, EntidadeLog } from '../types';
 
 /** Onde a pessoa estava, do ponto de vista de quem usa o app. */
 const PAGINA: Record<EntidadeLog, string> = {
+  acesso: 'Acesso',
   projeto: 'Produção',
   perfil: 'Equipe',
   departamento: 'Equipe',
