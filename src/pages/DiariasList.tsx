@@ -311,7 +311,7 @@ export function DiariasList() {
           <Plus size={16} /> Criar Diária
         </button>
         ) : (
-          <SoQuemPode motivo={motivo('diarias')} style={{ maxWidth: '240px' }} />
+          <SoQuemPode motivo={motivo('diarias')} style={{ maxWidth: '320px' }} />
         )}
       </div>
 

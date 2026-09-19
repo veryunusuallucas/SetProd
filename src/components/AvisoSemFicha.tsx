@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { UserCheck } from 'lucide-react';
 import { useRole } from '../hooks/useRole';
 import { EscolherMinhaFicha } from './EscolherMinhaFicha';
-import { sincronizarParticipacoes } from '../lib/membros';
+import { sincronizarParticipacoes, participacaoLocal } from '../lib/membros';
 
 /**
  * "Diga quem você é nesta produção."
@@ -29,7 +29,10 @@ export function AvisoSemFicha({ projetoId, meuEmail }: { projetoId: string; meuE
 
   // Quem não é membro não tem `projeto_membros` para vincular — é o projeto que
   // só existe neste navegador, e ali a pergunta não faz sentido nenhum.
-  if (!souMembro || perfilId || dispensado) return null;
+  // Quem já pediu uma ficha está esperando quem administra — perguntar de
+  // novo só faria a pessoa pedir outra.
+  const pediu = !!participacaoLocal(projetoId)?.perfil_pedido;
+  if (!souMembro || perfilId || pediu || dispensado) return null;
 
   return (
     <>

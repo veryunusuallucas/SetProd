@@ -135,7 +135,7 @@ export function AceitarConvite() {
 
   /** Sai da conta atual e volta para cá depois de entrar na certa. */
   const trocarDeConta = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     navigate('/login', { state: { voltarPara: `/convite/${token}` }, replace: true });
   };
 

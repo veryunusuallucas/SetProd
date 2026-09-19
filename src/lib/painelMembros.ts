@@ -23,12 +23,32 @@ export interface MembroDetalhado {
   papel: PapelMembro;
   apelido: string | null;
   perfil_id: string | null;
+  perfil_pedido?: string | null;
   /** Vem do `auth.users`, e só a Edge Function consegue lê-lo. */
   email: string | null;
   nome: string | null;
 }
 
-async function chamar<T>(corpo: Record<string, unknown>): Promise<T> {
+/*
+  SESSÃO QUE O SERVIDOR NÃO RECONHECE MAIS. O crachá (JWT) continua válido na
+  aba, mas a sessão por trás dele foi encerrada — por exemplo, a pessoa saiu da
+  conta em outro aparelho. A função responde "Entre na sua conta." Renovar a
+  sessão uma vez resolve quando dá; quando não dá, a mensagem diz o que houve.
+*/
+const SESSAO_RECUSADA = /Entre na sua conta/;
+
+async function chamar<T>(corpo: Record<string, unknown>, jaRenovou = false): Promise<T> {
+  try {
+    return await chamarUmaVez<T>(corpo);
+  } catch (e) {
+    if (jaRenovou || !(e instanceof Error) || !SESSAO_RECUSADA.test(e.message)) throw e;
+    const { error } = await supabase.auth.refreshSession();
+    if (error) throw new Error('Sua sessão foi encerrada (talvez você tenha saído da conta em outro aparelho). Saia e entre de novo.');
+    return chamar<T>(corpo, true);
+  }
+}
+
+async function chamarUmaVez<T>(corpo: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('membros', { body: corpo });
 
   if (error) {

@@ -30,6 +30,11 @@ export interface Participacao {
   apelido?: string | null;
   /** Quem eu sou na equipe desta produção (id do perfil no cadastro). */
   perfil_id?: string | null;
+  /**
+   * "Eu sou esta ficha", esperando quem administra confirmar. Não dá direito a
+   * nada: quem libera a ficha protegida é `perfil_id` (vinculo-pedido.sql).
+   */
+  perfil_pedido?: string | null;
   criado_em?: string;
 }
 
@@ -134,7 +139,7 @@ export async function sincronizarParticipacoes(): Promise<Participacao[]> {
 
   const { data, error } = await supabase
     .from(TABELA_MEMBROS)
-    .select('projeto_id, usuario_id, papel, apelido, perfil_id, criado_em')
+    .select('projeto_id, usuario_id, papel, apelido, perfil_id, perfil_pedido, criado_em')
     .eq('usuario_id', usuario.id);
 
   if (error) {
@@ -155,7 +160,7 @@ export async function membrosDoProjeto(projetoId: string): Promise<Participacao[
 
   const { data, error } = await supabase
     .from(TABELA_MEMBROS)
-    .select('projeto_id, usuario_id, papel, apelido, perfil_id, criado_em')
+    .select('projeto_id, usuario_id, papel, apelido, perfil_id, perfil_pedido, criado_em')
     .eq('projeto_id', projetoId)
     .order('criado_em', { ascending: true });
 
@@ -253,25 +258,37 @@ export async function garantirParticipacao(projetoId: string, apelido?: string):
 }
 
 /**
- * Diz quem eu sou na equipe desta produção.
+ * Diz quem eu sou na equipe desta produção — ou pede para ser.
  *
  * Vai para o servidor porque é sobre a pessoa, não sobre o aparelho: quem abre
  * o app no celular depois de configurar no computador continua sendo a mesma
- * pessoa. (Antes isto era o dropdown de simulação, e morria no localStorage.)
+ * pessoa.
+ *
+ * É um PEDIDO (`perfil_pedido`), e não o vínculo direto: o vínculo libera o
+ * CPF e a ficha médica daquela ficha, e escolher a ficha de outra pessoa não
+ * pode bastar para ler os dados dela. O servidor vincula na hora quando é
+ * seguro — quem administra, ou a primeira ficha com o e-mail da própria conta —
+ * e o resto espera quem administra confirmar. Ver `supabase/sql/vinculo-pedido.sql`.
+ *
+ * Devolve `true` quando já ficou vinculado, `false` quando ficou esperando.
  */
-export async function definirMeuPerfil(projetoId: string, perfilId: string | null): Promise<void> {
+export async function definirMeuPerfil(projetoId: string, perfilId: string | null): Promise<boolean> {
   const { data: sessao } = await supabase.auth.getSession();
   const usuario = sessao?.session?.user;
-  if (!usuario) return;
+  if (!usuario || !perfilId) return false;
 
   const { error } = await supabase
     .from(TABELA_MEMBROS)
-    .update({ perfil_id: perfilId })
+    .update({ perfil_pedido: perfilId })
     .eq('projeto_id', projetoId)
     .eq('usuario_id', usuario.id);
 
-  if (error) throw error;
-  await sincronizarParticipacoes();
+  if (error) {
+    if (error.code === '42501') throw new Error(error.message || 'Não deu para escolher esta ficha.');
+    throw error;
+  }
+  const lista = await sincronizarParticipacoes();
+  return lista.find(p => p.projeto_id === projetoId)?.perfil_id === perfilId;
 }
 
 /** Sai do projeto. Não apaga nada: só desfaz o vínculo desta conta. */

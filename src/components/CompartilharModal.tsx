@@ -276,13 +276,37 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   };
 
   const trocarPerfil = async (perfilId: string) => {
+    if (!perfilId) return;
     try {
-      await definirMeuPerfil(projetoId, perfilId || null);
+      await definirMeuPerfil(projetoId, perfilId);
       await recarregar();
     } catch (e: any) {
       setErro(e?.message || 'Não consegui salvar quem você é na equipe.');
     }
   };
+
+  /*
+    O pedido de "eu sou esta ficha" (vinculo-pedido.sql). Confirmar é o mesmo
+    vincular_perfil de sempre; recusar vincula de novo a ficha que a pessoa já
+    tinha — a ação zera o pedido em qualquer caso.
+  */
+  const responderPedido = async (m: Participacao, aceitar: boolean) => {
+    setMexendo(m.usuario_id);
+    try {
+      await vincularPerfilDe(projetoId, m.usuario_id, aceitar ? (m.perfil_pedido || null) : (m.perfil_id || null));
+      await recarregar();
+    } catch (e: any) {
+      setErro(e?.message || 'Não consegui responder o pedido.');
+    } finally {
+      setMexendo(null);
+    }
+  };
+
+  const nomeDaFicha = (id?: string | null) => {
+    const f = id ? perfis.find(p => p.id === id) : undefined;
+    return f ? `${f.nome} ${f.sobrenome || ''}`.trim() + (f.funcao ? ` · ${f.funcao}` : '') : 'uma ficha';
+  };
+  const administraAqui = minhaParticipacao?.papel === 'dono' || minhaParticipacao?.papel === 'admin';
 
   return (
     <div
@@ -329,22 +353,42 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
         {minhaParticipacao && (
           <section style={{ marginBottom: '24px' }}>
             <h3 style={tituloSecao}><UserCheck size={14} /> Eu, nesta produção</h3>
+            {/*
+              Quem administra escolhe e vale na hora. Os outros escolhem UMA vez
+              (vale na hora se o e-mail da ficha for o da conta) e, depois
+              disso, trocar vira pedido: a ficha libera o CPF e a ficha médica
+              de quem ela é, e não pode mudar de mãos sem alguém confirmar.
+            */}
             <select
-              value={minhaParticipacao.perfil_id || ''}
+              value={minhaParticipacao.perfil_pedido || minhaParticipacao.perfil_id || ''}
               onChange={e => trocarPerfil(e.target.value)}
               style={campoEstilo}
             >
-              <option value="">— não sou da equipe cadastrada —</option>
-              {perfis.filter(naEquipe).map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.nome} {p.sobrenome || ''} {p.funcao ? `(${p.funcao})` : ''}
-                </option>
-              ))}
+              {!minhaParticipacao.perfil_id && !minhaParticipacao.perfil_pedido && (
+                <option value="">— escolha quem você é —</option>
+              )}
+              {perfis.filter(naEquipe)
+                .filter(p => p.id === minhaParticipacao.perfil_id || !membros.some(o => o.perfil_id === p.id))
+                .map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome} {p.sobrenome || ''} {p.funcao ? `(${p.funcao})` : ''}
+                  </option>
+                ))}
             </select>
-            <p className="text-xs text-muted" style={{ marginTop: '6px' }}>
-              É o que faz “Minhas Tasks” saber o que é seu. Fica salvo na sua conta,
-              então vale em qualquer aparelho.
-            </p>
+            {minhaParticipacao.perfil_pedido ? (
+              <p className="text-sm" style={{ marginTop: '8px', color: 'var(--color-warning)' }}>
+                Pedido enviado: você pediu para ser <strong>{nomeDaFicha(minhaParticipacao.perfil_pedido)}</strong>.
+                Quem administra a produção confirma aqui mesmo, em Quem participa.
+                {minhaParticipacao.perfil_id && <> Até lá, você continua como {nomeDaFicha(minhaParticipacao.perfil_id)}.</>}
+              </p>
+            ) : (
+              <p className="text-xs text-muted" style={{ marginTop: '6px' }}>
+                É o que faz “Minhas Tasks” saber o que é seu, e o que mostra a sua
+                ficha completa. {administraAqui
+                  ? 'Fica salvo na sua conta, então vale em qualquer aparelho.'
+                  : 'Trocar depois precisa da confirmação de quem administra.'}
+              </p>
+            )}
           </section>
         )}
 
@@ -394,9 +438,34 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                         {conta?.email && <>{conta.email} · </>}
                         {m.papel === 'dono' ? 'criou a produção' : (DESCRICAO[m.papel]?.nome ?? m.papel)}
                         {souEu && ' · você'}
-                        {!m.perfil_id && ' · ainda não disse quem é na equipe'}
+                        {!m.perfil_id && !m.perfil_pedido && ' · ainda não disse quem é na equipe'}
                       </div>
                     </div>
+
+                    {/* O pedido de "eu sou esta ficha": só quem administra responde. */}
+                    {m.perfil_pedido && (
+                      <div style={{
+                        flexBasis: '100%', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                        padding: '10px 12px', borderRadius: '10px',
+                        background: 'var(--color-warning-bg)',
+                        border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)',
+                      }}>
+                        <span className="text-sm" style={{ flex: 1, minWidth: '160px' }}>
+                          {souEu ? 'Você pediu' : 'Pediu'} para ser <strong>{nomeDaFicha(m.perfil_pedido)}</strong>
+                        </span>
+                        {podeGerirAcervo && !souEu && (
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button className="btn-chip" disabled={mexendo === m.usuario_id} onClick={() => responderPedido(m, false)}>
+                              Recusar
+                            </button>
+                            <button className="btn-chip" disabled={mexendo === m.usuario_id} onClick={() => responderPedido(m, true)}
+                              style={{ background: 'var(--accent)', color: '#000', borderColor: 'var(--accent)' }}>
+                              Confirmar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/*
                       O painel só aparece para quem administra, e nunca sobre a

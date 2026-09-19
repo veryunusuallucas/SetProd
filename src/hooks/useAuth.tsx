@@ -60,7 +60,7 @@ async function anotarConta(id: string | undefined): Promise<void> {
     if (!seguir) {
       // A pessoa vai voltar para a outra conta. Sair daqui evita que ela comece
       // a trabalhar por cima de dado que não é dela.
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
       return;
     }
   }
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Dexie é o banco de verdade — apagar seria destruir o trabalho dela.
     if (!supabaseConfigurado) {
       limparParticipacoesLocais();
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
       return;
     }
 
@@ -130,7 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // o que mostrar; sem limpá-las a próxima conta veria permissões que não tem.
     limparParticipacoesLocais();
     await limparDadosLocais();
-    await supabase.auth.signOut();
+    // Só ESTE aparelho. O padrão do Supabase é sair de todos: sair no celular
+    // derrubava a sessão aberta no computador, que continuava na tela mas com
+    // o servidor respondendo "Entre na sua conta" a tudo.
+    await supabase.auth.signOut({ scope: 'local' });
   };
 
   return (

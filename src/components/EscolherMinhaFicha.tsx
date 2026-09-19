@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { empurrar } from '../lib/sincronizacao';
 import { naEquipe } from '../lib/vinculos';
 import { possoEscrever } from '../lib/travaDeEscrita';
 import { salvarCredito } from '../lib/creditos';
@@ -43,6 +44,8 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [ocupados, setOcupados] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState('');
+  /** A ficha escolhida ficou esperando quem administra (vinculo-pedido.sql). */
+  const [pedido, setPedido] = useState<Perfil | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   // Criar ficha nova
@@ -78,8 +81,14 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
     setSalvando(true);
     setErro('');
     try {
-      await definirMeuPerfil(projetoId, perfilId);
-      aoResolver(perfilId);
+      const vinculou = await definirMeuPerfil(projetoId, perfilId);
+      if (vinculou) { aoResolver(perfilId); return; }
+
+      // Ficou como pedido: avisa quem administra e diz à pessoa o que acontece.
+      const ficha = (perfis || []).find(p => p.id === perfilId) || null;
+      await notificar(projetoId, `Alguém pediu para ser ${ficha ? `${ficha.nome} ${ficha.sobrenome || ''}`.trim() : 'uma ficha'} nesta produção. Confirme em Quem tem acesso.`);
+      setPedido(ficha);
+      setSalvando(false);
     } catch (e: any) {
       setErro(
         /duplicate|unique/i.test(e?.message || '')
@@ -109,6 +118,9 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
       // Registro normal do Dexie: sobe pelo sync como qualquer outro, e o dono
       // vê a pessoa aparecer na ficha da equipe sozinha.
       await db.perfis.add(perfil);
+      // Sobe a ficha antes de pedir o vínculo: o servidor vincula na hora
+      // quando o e-mail da ficha é o da conta, mas só se já conhecer a ficha.
+      await empurrar(projetoId).catch(() => 0);
       await definirMeuPerfil(projetoId, perfil.id);
 
       /*
@@ -178,6 +190,16 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
           </div>
           <button className="btn-icon" onClick={aoPular} aria-label="Agora não"><X size={20} /></button>
         </div>
+
+        {pedido !== null && (
+          <div style={{ padding: '12px 14px', borderRadius: '10px', marginBottom: '14px', fontSize: '14px', lineHeight: 1.5, backgroundColor: 'var(--color-warning-bg)', color: 'var(--text-primary)' }}>
+            Pedido enviado: você pediu para ser <strong>{`${pedido.nome} ${pedido.sobrenome || ''}`.trim()}</strong>.
+            Quem administra a produção confirma — até lá, a ficha completa fica fechada para você.
+            <div style={{ marginTop: '10px' }}>
+              <button className="btn btn-primary" onClick={() => aoResolver(null)}>Entendi</button>
+            </div>
+          </div>
+        )}
 
         {erro && (
           <div style={{ padding: '10px 12px', borderRadius: '10px', marginBottom: '14px', fontSize: '13px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>

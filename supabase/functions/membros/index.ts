@@ -92,12 +92,14 @@ interface Participacao {
   papel: string;
   apelido: string | null;
   perfil_id: string | null;
+  /** "Eu sou esta ficha" — espera quem administra confirmar (vinculo-pedido.sql). */
+  perfil_pedido?: string | null;
 }
 
 /** Todos os membros do projeto, lidos com service role. */
 async function membrosDo(projetoId: string): Promise<Participacao[]> {
   const r = await comoServidor(
-    `projeto_membros?projeto_id=eq.${encodeURIComponent(projetoId)}&select=usuario_id,papel,apelido,perfil_id`
+    `projeto_membros?projeto_id=eq.${encodeURIComponent(projetoId)}&select=usuario_id,papel,apelido,perfil_id,perfil_pedido`
   );
   const dados = await r.json();
   return Array.isArray(dados) ? dados : [];
@@ -281,7 +283,7 @@ Deno.serve(async req => {
       const perfilId = perfil_id ?? null;
       const r = await comoServidor(
         `projeto_membros?projeto_id=eq.${encodeURIComponent(projeto_id)}&usuario_id=eq.${alvo}`,
-        { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ perfil_id: perfilId }) }
+        { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ perfil_id: perfilId, perfil_pedido: null }) }
       );
       if (!r.ok) {
         console.error('[membros] falha ao vincular perfil:', await r.text());
