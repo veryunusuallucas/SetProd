@@ -344,6 +344,12 @@ export interface Diaria {
   
   // Relações que poderiam estar em outras tabelas, mas podemos agrupar para simplificar
   equipe_escalada: string[]; // IDs dos perfis escalados para este dia
+  /**
+   * Quando cada pessoa entrou ou saiu da escala — é o que deixa dois aparelhos
+   * escalarem ao mesmo tempo sem um apagar o outro. Preenchido sozinho pelo
+   * hook do banco; ver `lib/escalaMesclada.ts`.
+   */
+  escala_carimbos?: import('../lib/escalaMesclada').CarimbosDaEscala;
   locacoes_ids: string[]; // IDs das locações usadas no dia
 
   // ---- Fase 5C: Clima e Gastos ----

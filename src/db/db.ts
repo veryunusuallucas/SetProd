@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { carimbarMudancasDaEscala } from '../lib/escalaMesclada';
 import type { Table } from 'dexie';
 import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
 
@@ -323,6 +324,10 @@ export class SetMoneyDB extends Dexie {
         travaDeEscrita?.(tabela, undefined, obj);
         const carimbo = Date.now();
         obj.atualizado_em = carimbo;
+        // A escala nasce carimbada, pessoa a pessoa (ROADMAP §10.A).
+        if (tabela === 'diarias' && obj.equipe_escalada?.length) {
+          obj.escala_carimbos = carimbarMudancasDaEscala([], obj.equipe_escalada, obj.escala_carimbos, carimbo);
+        }
         enfileirar(tabela, obj, false, carimbo);
       });
 
@@ -331,6 +336,19 @@ export class SetMoneyDB extends Dexie {
         travaDeEscrita?.(tabela, obj, { ...obj, ...(mods as object) });
         const carimbo = Date.now();
         enfileirar(tabela, { ...obj, ...(mods as object) }, false, carimbo);
+
+        // Quem entrou e quem saiu da escala ganha o próprio carimbo — é o que
+        // a mescla usa quando dois aparelhos escalam ao mesmo tempo (§10.A).
+        const m = mods as Record<string, unknown>;
+        if (tabela === 'diarias' && 'equipe_escalada' in m) {
+          return {
+            atualizado_em: carimbo,
+            escala_carimbos: carimbarMudancasDaEscala(
+              obj.equipe_escalada, m.equipe_escalada as string[] | undefined,
+              { ...(obj.escala_carimbos || {}), ...((m.escala_carimbos as object) || {}) }, carimbo,
+            ),
+          };
+        }
         return { atualizado_em: carimbo };
       });
 
