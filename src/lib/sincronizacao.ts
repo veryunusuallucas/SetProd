@@ -338,6 +338,40 @@ async function desfazerRecusadas(projetoId: string, recusadas: LinhaEspelho[]) {
  * internet caindo" não ser um caso especial no código: é o caso normal rodando
  * com o cursor atrasado.
  */
+/**
+ * Guarda a NOSSA versão antes de o LWW passar por cima dela.
+ *
+ * É o passo 2 do PLANO-conflitos-sync, e o que faz o dado parar de sumir. No
+ * instante em que o conflito era detectado, a versão local JÁ tinha sido
+ * destruída pelo `put` — não dava para oferecer escolha entre duas versões
+ * quando uma delas deixou de existir. Agora dá.
+ *
+ * Um conflito por registro: se a mesma diária brigar de novo antes de alguém
+ * decidir, vale a disputa mais recente — a anterior está contida nela.
+ */
+async function guardarConflito(linha: LinhaEspelho, local: Record<string, unknown> | undefined) {
+  if (!local) return;
+  const remota = (linha.dados ?? null) as Record<string, unknown> | null;
+
+  // Carimbo não é disputa: ele muda SEMPRE, e listá-lo faria toda briga parecer
+  // briga de tudo.
+  const ignorar = new Set(["atualizado_em", "criado_em", "escala_carimbos"]);
+  const chaves = new Set([...Object.keys(local), ...Object.keys(remota || {})]);
+  const campos_em_disputa = [...chaves].filter(k =>
+    !ignorar.has(k) && JSON.stringify(local[k]) !== JSON.stringify(remota?.[k]));
+
+  await db.conflitos.put({
+    id: `${linha.tabela}:${linha.id}`,
+    tabela: linha.tabela,
+    registro_id: linha.id,
+    projeto_id: linha.projeto_id,
+    versao_local: local,
+    versao_remota: remota,
+    campos_em_disputa,
+    detectado_em: Date.now(),
+  });
+}
+
 export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
   // As camadas da ficha não são tabela do Dexie — viram campos do `perfis`.
   // A pública vem antes delas na mesma leva, para a camada achar a ficha.
@@ -350,7 +384,7 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
   let aplicadas = 0;
   const perdidas: Conflito[] = [];
 
-  await db.transaction('rw', [...tabelas.map(t => db.table(t)), db.sync_queue], async () => {
+  await db.transaction('rw', [...tabelas.map(t => db.table(t)), db.sync_queue, db.conflitos], async () => {
     // Sem esta marca, os hooks do Dexie carimbam cada linha recebida com a hora
     // daqui e a devolvem para a caixa de saída como se fosse alteração local —
     // e ela sobe de novo, e volta, sem fim. Ver `marcarTransacaoComoRemota`.
@@ -413,10 +447,14 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
           aplicadas++;
           // O resto da diária daqui perdeu para a do servidor: continua sendo
           // conflito, e a pessoa é avisada — só a escala foi salva.
+          await guardarConflito(linha, local as Record<string, unknown> | undefined);
           perdidas.push({ projeto_id: linha.projeto_id, tabela: linha.tabela, id: linha.id });
           continue;
         }
       }
+
+      // A nossa versão está a um `put` de deixar de existir. Guarda antes.
+      if (naFila) await guardarConflito(linha, local as Record<string, unknown> | undefined);
 
       if (linha.deletado) await tabela.delete(linha.id);
       else if (linha.dados && linha.tabela === 'perfis') {
