@@ -149,6 +149,44 @@ Deno.serve(async req => {
     }
 
     // -----------------------------------------------------------------------
+    // transferir_posse — o dono passa a produção para outra pessoa
+    // -----------------------------------------------------------------------
+    /*
+      Ação própria, e não uma opção "Dono" no seletor de papel (ROADMAP §4.2):
+      passar a posse entrega a chave de apagar a produção, e isso merece uma
+      pergunta com o nome da pessoa, não um dropdown que se troca sem querer.
+
+      A ordem importa: primeiro o outro vira dono, depois quem passou vira
+      admin. Na ordem contrária, se a segunda escrita falhasse, a produção
+      ficaria sem dono nenhum — o beco sem saída que o "último dono" evita.
+    */
+    if (acao === 'transferir_posse') {
+      if (eu.papel !== 'dono') return responder({ erro: 'Só o dono passa a posse.' }, 403);
+      if (alvo === usuario.id) return responder({ erro: 'A posse já é sua.' }, 400);
+
+      const filtro = (quem: string) =>
+        `projeto_membros?projeto_id=eq.${encodeURIComponent(projeto_id)}&usuario_id=eq.${quem}`;
+
+      const promove = await comoServidor(filtro(alvo), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ papel: 'dono' }),
+      });
+      if (!promove.ok) {
+        console.error('[membros] falha ao passar a posse:', await promove.text());
+        return responder({ erro: 'Não consegui passar a posse.' }, 500);
+      }
+
+      const rebaixa = await comoServidor(filtro(usuario.id), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ papel: 'admin' }),
+      });
+      if (!rebaixa.ok) {
+        // A produção tem dois donos agora, o que é seguro; só avisa.
+        console.error('[membros] posse passada, mas não rebaixei quem passou:', await rebaixa.text());
+        return responder({ ok: true, aviso: 'A posse passou, mas você continua como dono também.' });
+      }
+      return responder({ ok: true });
+    }
+
+    // -----------------------------------------------------------------------
     // mudar_papel
     // -----------------------------------------------------------------------
     if (acao === 'mudar_papel') {

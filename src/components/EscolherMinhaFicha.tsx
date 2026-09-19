@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { possoEscrever } from '../lib/travaDeEscrita';
+import { salvarCredito } from '../lib/creditos';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { UserCheck, Plus, X } from 'lucide-react';
@@ -108,8 +110,24 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
       await db.perfis.add(perfil);
       await definirMeuPerfil(projetoId, perfil.id);
 
+      /*
+        O crédito sai junto (ROADMAP §4.5.5): quem disse "sou Operadora de
+        Câmera, da Fotografia" já disse a linha dos créditos. Mas os créditos
+        moram no registro da produção, que é de quem administra — então só
+        grava quem pode. Para os outros, o aviso ao dono diz o que falta.
+      */
+      let noCredito = false;
+      const projeto = await db.projetos.get(projetoId);
+      if (projeto && perfil.departamento_id && perfil.funcao && possoEscrever('projetos', projetoId, projeto)) {
+        await salvarCredito({
+          projeto, departamentoId: perfil.departamento_id, papel: perfil.funcao,
+          perfilId: perfil.id, sincronizarPerfil: false,
+        }).then(() => { noCredito = true; }).catch(() => {});
+      }
+
       // Sem isto a equipe ganha gente sem ninguém perceber.
-      await notificar(projetoId, `${perfil.nome} entrou na produção e criou a própria ficha.`, {
+      const falta = !noCredito && perfil.funcao ? ` Falta pôr nos créditos (${perfil.funcao}).` : '';
+      await notificar(projetoId, `${perfil.nome} entrou na produção e criou a própria ficha.${falta}`, {
         perfil_id: perfil.id,
       }).catch(() => {});
 

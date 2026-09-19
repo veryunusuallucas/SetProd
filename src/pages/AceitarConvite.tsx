@@ -237,6 +237,26 @@ export function AceitarConvite() {
                   </button>
                 </div>
 
+                {/*
+                  O convite foi feito para um e-mail, e quem abriu está com outro
+                  (ROADMAP §4.5.4). É CONFERÊNCIA, não trava: gente usa e-mail
+                  pessoal e do trabalho, e um convite barrado por isso vira
+                  mensagem para quem administra. Mas o convite pode trazer a
+                  ficha da pessoa já vinculada — aceitar com a conta errada daria
+                  a ficha de um para outro.
+                */}
+                {convite?.email_esperado && contaAtual
+                  && convite.email_esperado.trim().toLowerCase() !== contaAtual.trim().toLowerCase() && (
+                  <div role="alert" style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', marginBottom: '14px' }}>
+                    <p className="text-sm" style={{ margin: 0, lineHeight: 1.5 }}>
+                      Este convite foi feito para <strong style={{ wordBreak: 'break-all' }}>{convite.email_esperado}</strong>.
+                    </p>
+                    <p className="text-xs text-secondary" style={{ margin: '4px 0 0', lineHeight: 1.5 }}>
+                      Se for você com outro e-mail, pode aceitar. Se não for, entre com a conta certa antes: o convite já vem com a ficha dessa pessoa.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   className="btn btn-primary"
                   onClick={aceitar}
