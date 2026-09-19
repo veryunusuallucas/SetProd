@@ -226,6 +226,17 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '4.13.2',
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <Bell size={20} />,
+        titulo: 'Aviso quando o seu acesso muda',
+        texto: 'Quem administra vê na produção que alguém pediu para ser uma ficha da equipe, e abre a janela para confirmar ou recusar com um toque. Quem pediu fica sabendo a resposta. E quem teve o papel trocado recebe uma faixa com o botão de atualizar a página, para as telas acompanharem o acesso novo.',
+      },
+    ],
+  },
+  {
     versao: '4.13.1',
     itens: [
       {
