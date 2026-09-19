@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { possoEscrever } from '../lib/travaDeEscrita';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { GitCompare, AlertTriangle, Check } from 'lucide-react';
@@ -61,6 +62,9 @@ export function SincroniaStripboard({ diaria }: { diaria: Diaria }) {
   */
   useEffect(() => {
     if (!pronto || estado !== 'rascunho' || !diaria.stripboard_item_id) return;
+    // Quem não pode mexer na diária só olha: o espelho é feito por quem pode,
+    // e tentar aqui só renderia um aviso de recusa para quem não clicou em nada.
+    if (!possoEscrever('diarias', diaria.projeto_id, diaria)) return;
     void aplicarDoStripboard(diaria, cenas!, itens!);
     // `diaria` inteiro na dependência faria laço: aplicar altera a diária.
     // eslint-disable-next-line react-hooks/exhaustive-deps

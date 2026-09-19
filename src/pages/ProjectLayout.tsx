@@ -27,6 +27,8 @@ import { useAuth } from '../hooks/useAuth';
 import { participacaoLocal, garantirParticipacao } from '../lib/membros';
 import { manterSincronizado } from '../lib/sincronizacaoAutomatica';
 import { confirmar } from '../components/ui/Confirmacao';
+import { useRole } from '../hooks/useRole';
+import { definirContextoDeEscrita, esquecerContextoDeEscrita } from '../lib/travaDeEscrita';
 
 export /** O menu lateral preso (com nomes) ou em trilho. Por aparelho. */
 const CHAVE_MENU_PRESO = 'setprod:menu:preso';
@@ -77,6 +79,28 @@ export function ProjectLayout() {
   // o Dexie devolve `undefined` nos dois casos, e sem esta distinção a tela
   // fica em "Carregando..." para sempre quando o projeto não está aqui.
   const projeto = useLiveQuery(async () => (await db.projetos.get(id!)) ?? null, [id]);
+
+  /*
+    O que a trava de escrita precisa saber sobre mim nesta produção — ver
+    `lib/travaDeEscrita.ts`. Enquanto a ficha carrega, o contexto não existe e
+    a trava deixa o departamental passar (falha abrindo, como o resto).
+  */
+  const { perfilId: meuPerfilId } = useRole();
+  const minhaFicha = useLiveQuery(
+    async () => (meuPerfilId ? (await db.perfis.get(meuPerfilId)) ?? null : null),
+    [meuPerfilId]
+  );
+  useEffect(() => {
+    if (minhaFicha === undefined || projeto === undefined) return;
+    definirContextoDeEscrita(id!, {
+      meuPerfilId: meuPerfilId || undefined,
+      meuDepartamentoId: minhaFicha?.departamento_id ?? null,
+      usuarioId: user?.id,
+      meuEmail: user?.email ?? undefined,
+      liberadosLogagem: projeto?.logagem_liberados,
+    });
+    return () => esquecerContextoDeEscrita(id!);
+  }, [id, meuPerfilId, minhaFicha, projeto, user?.id, user?.email]);
 
   const [rightPanelContent, setRightPanelContent] = useState<React.ReactNode | null>(null);
   

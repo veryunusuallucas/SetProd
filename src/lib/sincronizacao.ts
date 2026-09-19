@@ -59,7 +59,10 @@ export interface Conflito {
  */
 export const EVENTO_RECUSA = 'setprod-recusa';
 
-export type Recusa = Conflito;
+export type Recusa = Conflito & {
+  /** A frase do porquê, quando quem avisa já sabe (a trava local sabe). */
+  motivo?: string;
+};
 
 /** Código do Postgres para "a política de RLS barrou esta linha". */
 const RECUSADO_PELA_RLS = '42501';

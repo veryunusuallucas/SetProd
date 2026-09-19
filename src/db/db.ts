@@ -49,6 +49,18 @@ export function marcarTransacaoComoRemota() {
   if (tx) tx[MARCA_REMOTA] = true;
 }
 
+/**
+ * A trava de escrita local — quem pode gravar o quê. Instalada de fora
+ * (`lib/travaDeEscrita.ts`) para o banco não depender da regra de acesso, que
+ * depende do banco. Lança para barrar; o Dexie aborta a escrita.
+ */
+type TravaDeEscrita = (tabela: string, antes: any | undefined, depois: any | undefined) => void;
+let travaDeEscrita: TravaDeEscrita | null = null;
+
+export function definirTravaDeEscrita(trava: TravaDeEscrita) {
+  travaDeEscrita = trava;
+}
+
 function escritaVindaDoServidor(): boolean {
   return Boolean((Dexie.currentTransaction as any)?.[MARCA_REMOTA]);
 }
@@ -294,6 +306,7 @@ export class SetMoneyDB extends Dexie {
       // que decide quem vence quando A e B editam o mesmo campo (LWW).
       this.table(tabela).hook('creating', function (_primKey, obj: any) {
         if (escritaVindaDoServidor()) return;
+        travaDeEscrita?.(tabela, undefined, obj);
         const carimbo = Date.now();
         obj.atualizado_em = carimbo;
         enfileirar(tabela, obj, false, carimbo);
@@ -301,6 +314,7 @@ export class SetMoneyDB extends Dexie {
 
       this.table(tabela).hook('updating', function (mods, _primKey, obj: any) {
         if (escritaVindaDoServidor()) return;
+        travaDeEscrita?.(tabela, obj, { ...obj, ...(mods as object) });
         const carimbo = Date.now();
         enfileirar(tabela, { ...obj, ...(mods as object) }, false, carimbo);
         return { atualizado_em: carimbo };
@@ -308,6 +322,7 @@ export class SetMoneyDB extends Dexie {
 
       this.table(tabela).hook('deleting', function (_primKey, obj: any) {
         if (escritaVindaDoServidor()) return;
+        travaDeEscrita?.(tabela, obj, undefined);
         // Vai como lápide, não some da fila: se a Equipe A apagar uma cena
         // enquanto a B está offline, a B não tem como saber que ela sumiu —
         // e a cena ressuscitaria no próximo pull dela.

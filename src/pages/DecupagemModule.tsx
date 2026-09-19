@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { possoEscrever } from '../lib/travaDeEscrita';
 import { motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -94,7 +95,8 @@ export function DecupagemModule() {
     (async () => {
       for (const c of pendentes) {
         const achada = acharLocacao(c.descricao, locacoes);
-        if (achada) await db.cenas.update(c.id, { locacao_id: achada.id });
+        // Quem só lê não grava nada sozinho — ver `possoEscrever`.
+        if (achada && possoEscrever('cenas', c.projeto_id, c)) await db.cenas.update(c.id, { locacao_id: achada.id });
       }
     })();
   }, [cenas, locacoes]);
