@@ -7,6 +7,7 @@ import {
   FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
   Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
   Camera, HardDrive, FileInput, Target, Image, Save,
+  Archive, Crown, BadgeCheck, HeartPulse,
 } from 'lucide-react';
 
 /**
@@ -224,6 +225,126 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.13.0',
+    resumo: <>Um menu novo em cada aparelho, e a produção com regras claras de quem mexe em quê — com os dados sensíveis da equipe protegidos de verdade.</>,
+    grupos: [
+      {
+        id: 'menu',
+        titulo: 'Um menu para cada aparelho',
+        resumo: 'O celular ganhou uma barra que é sua; o computador, um trilho que não atrapalha.',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Smartphone size={20} />,
+            titulo: 'A barra de baixo do celular é sua',
+            texto: 'A barra virou uma dock flutuante, com um marcador dourado que desliza até o módulo aberto. Os três primeiros lugares você escolhe: segure um item, toque no lápis do "Mais" ou vá em Config → Barra de baixo. O quarto acompanha você: abriu Eventos, ele vira Eventos e continua lá, a um toque. A escolha vale para todas as produções do aparelho.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <LayoutGrid size={20} />,
+            titulo: 'O "Mais" virou uma folha',
+            texto: 'Em vez de abrir a barra lateral por cima da tela, sobe uma folha com os módulos em ícones grandes, cada um na cor da sua área. Fecha arrastando para baixo, tocando fora ou no Esc. No fim ficam Configurações, Busca e Sair, e os quadros "Como funciona" e "Relatar problema" — que antes moravam no botão do canto.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Tablet size={20} />,
+            titulo: 'Tablet e computador: um trilho',
+            texto: 'No tablet, a barra lateral começa só com os ícones e abre no botão, empurrando o conteúdo. No computador, começa aberta; soltando o alfinete, encolhe e abre quando o mouse para sobre ela — clicar num ícone nunca abre, e ela não pisca. O iPad de pé usa a barra de baixo do celular; deitado, a lateral completa.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Sparkles size={20} />,
+            titulo: 'A porta do app mudou de luz',
+            texto: 'O fundo roxo de ondas deu lugar a um contraluz: um feixe frio de cima, poeira atravessando devagar e grão de filme — em qualquer aparelho, parado para quem pede menos movimento. O nome SETPROD se abre uma vez na chegada e depois fica quieto; a busca e os cards ficaram de vidro, e sobrou um "?" só.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'O segredo do título tem final novo',
+            texto: 'No terceiro cutucão, uma claquete fecha em cima da tela, bate e marca "SetProd · cena 1 · take 3" — com o seu nome no lugar do diretor.',
+          },
+        ],
+      },
+      {
+        id: 'acesso',
+        titulo: 'Cada um mexe no que é seu',
+        resumo: 'Quem pode o quê, dito na tela — e valendo também no servidor.',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'Departamento cuida do seu',
+            texto: 'Quem é da equipe edita as tasks e as fichas do próprio departamento, e a própria ficha. Diárias, despesas e configuração da produção são de quem administra. Onde você não pode, o botão some e fica uma linha dizendo quem pode.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Lock size={20} />,
+            titulo: 'CPF, conta e ficha médica protegidos',
+            texto: 'Esses dados agora só chegam ao aparelho da própria pessoa e de quem administra a produção — antes, iam para o celular de toda a equipe.',
+          },
+          {
+            tipo: 'novo',
+            icone: <HeartPulse size={20} />,
+            titulo: 'Ficha médica de emergência no set',
+            texto: 'No dia de filmagem, quem está escalado abre a ficha médica de emergência de quem está com ele no set — tipo sanguíneo, alergias, contato. Fica registrado na ata quem abriu.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ClipboardCheck size={20} />,
+            titulo: 'A ata não se apaga',
+            texto: 'Nem o dono da produção apaga o registro do que aconteceu. Convites, trocas de papel e remoções de acesso agora entram nela.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Crown size={20} />,
+            titulo: 'Passar a posse e dizer quem é quem',
+            texto: 'O dono pode passar a produção para outra pessoa e ligar cada membro à ficha certa. Abrir um convite logado com outro e-mail avisa antes de aceitar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <BadgeCheck size={20} />,
+            titulo: 'Seu crachá no painel',
+            texto: 'O painel mostra você, sua função e seu departamento, na cor da sua área.',
+          },
+        ],
+      },
+      {
+        id: 'confianca',
+        titulo: 'Contas que fecham',
+        resumo: 'Dinheiro no centavo, escala sem atropelo, histórico sem buraco.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <DollarSign size={20} />,
+            titulo: 'O rateio fecha no centavo',
+            texto: 'R$ 100 entre 7 pessoas dá R$ 100,00, e não R$ 100,03 — inclusive nas despesas que já estavam lançadas.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <GitMerge size={20} />,
+            titulo: 'Dois escalando ao mesmo tempo',
+            texto: 'Duas pessoas mexendo na escala da mesma diária, em aparelhos diferentes, não apagam mais o trabalho uma da outra: quem cada uma escalou fica.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <RefreshCw size={20} />,
+            titulo: 'A sincronização não trava',
+            texto: 'Quando o servidor recusa uma alteração, ela volta como estava, aparece "Não deu para alterar" com o motivo, e o resto continua subindo.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Archive size={20} />,
+            titulo: 'Arquivar em vez de apagar',
+            texto: 'Tirar da equipe alguém que aparece em despesas, diárias ou créditos arquiva a pessoa: ela sai das listas e o nome continua no histórico. Dá para restaurar em Pessoas → Arquivados. Departamento em uso diz onde aparece antes de ser apagado.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.12.0',
     resumo: <>O boletim de câmera entrou no app: cada take, cada cartão e cada HD da diária, no celular do set ou no notebook do DIT — e sem internet.</>,
