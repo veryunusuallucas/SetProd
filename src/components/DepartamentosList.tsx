@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Plus, Download, Edit2, Trash2, Check } from 'lucide-react';
 import { ProfileCard } from './ui/ProfileCard';
-import { useRole } from '../hooks/useRole';
 import { dinheiro } from '../lib/formato';
 import { contrasteSobre } from '../lib/contraste';
 import { confirmar } from './ui/Confirmacao';
@@ -13,7 +13,8 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
-  const { canEditProducao } = useRole();
+  // Departamento é estrutura da produção: quem administra cria e muda (escopo.ts).
+  const canEditProducao = useAcesso().podeEscrever('departamentos');
 
   const [abaAtiva, setAbaAtiva] = useState<'depto' | 'grupos'>('depto');
 

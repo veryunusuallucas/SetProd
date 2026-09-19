@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
+import { SoQuemPode } from './ui/SoQuemPode';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { PessoasList } from './PessoasList';
@@ -16,6 +18,9 @@ type SubAba = 'creditos' | 'departamentos' | 'equipe' | 'pesquisas';
 export function InfoProducao({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const [abaAtiva, setAbaAtiva] = useState<SubAba>('creditos');
+  const { podeEscrever, motivo } = useAcesso();
+  const administraCreditos = podeEscrever('projetos');
+  const motivoCreditos = motivo('projetos');
 
   const { openPanel, closePanel } = useLayoutContext();
 
@@ -139,6 +144,10 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* Créditos organizados por departamento e função */}
+          {/* Os créditos moram no registro da produção, que é de quem
+              administra. O editor é grande demais para esconder botão a botão;
+              a linha avisa, e a trava de escrita segura o resto. */}
+          {!administraCreditos && <SoQuemPode motivo={motivoCreditos} style={{ marginBottom: '12px' }} />}
           <CreditosPorDepartamento projeto={projeto} />
 
           {/* Apoios, patrocínios e parceiros — não pertencem a um departamento */}

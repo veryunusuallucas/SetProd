@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
+import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -64,6 +66,7 @@ export function TasksModule() {
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
 
   const { perfilId: meuPerfilId } = useRole();
+  const { podeEscrever, motivo, meuDepartamentoId } = useAcesso();
   const reduzido = useMovimentoReduzido();
 
   const [filtro, setFiltro] = useState<'todas' | 'minhas'>('todas');
@@ -163,6 +166,12 @@ export function TasksModule() {
       titulo: novaTaskTitulo.trim(),
       status: 'todo',
       ...gravarResponsaveis(meuPerfilId ? [meuPerfilId] : []),
+      /*
+        A task nasce do departamento de quem a criou. Sem isso ela ficaria "de
+        todo mundo" (registro sem departamento é comum — escopo.ts), e qualquer
+        um poderia mudá-la; com isso, é do seu departamento e de quem administra.
+      */
+      ...(meuDepartamentoId ? { departamento_id: meuDepartamentoId } : {}),
       subtarefas: [],
       depends_on: [],
       data_criacao: Date.now(),
@@ -439,6 +448,9 @@ export function TasksModule() {
                 display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden',
               }}
             >
+              {!podeEscrever('tasks', editando) && (
+                <SoQuemPode motivo={`${motivo('tasks', editando)} Você pode acompanhar, não alterar.`} style={{ padding: '10px 18px 0' }} />
+              )}
               {/* Cabeçalho fixo: o título é o campo, sem rótulo em cima dele. */}
               <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <CampoTexto
@@ -660,13 +672,13 @@ export function TasksModule() {
                   toque, e é por isso que ele diz "Pronto": um botão chamado
                   Salvar sugere que sair sem clicar perderia o trabalho. */}
               <div style={{ padding: '14px 18px', borderTop: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                <button
+                {podeEscrever('tasks', editando) ? <button
                   onClick={() => { deletarTask(editando.id); setEditandoId(null); }}
                   className="text-danger font-bold text-sm"
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Excluir task
-                </button>
+                </button> : <span />}
                 <BotaoTatil onClick={() => setEditandoId(null)} className="btn-primary">
                   Pronto
                 </BotaoTatil>

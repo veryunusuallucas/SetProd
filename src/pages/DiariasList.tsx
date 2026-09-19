@@ -1,4 +1,6 @@
 import { dinheiro } from '../lib/formato';
+import { useAcesso } from '../hooks/useAcesso';
+import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -36,6 +38,9 @@ const corDoEstado = (e: EstadoDiaria) =>
 export function DiariasList() {
   const { id: projetoId } = useParams();
   const navigate = useNavigate();
+  // Criar, mudar a data, duplicar e apagar diária é ato de produção (escopo.ts).
+  const { podeEscrever, motivo } = useAcesso();
+  const administra = podeEscrever('diarias');
 
   /**
    * As diárias NA ORDEM EM QUE ACONTECEM. Só isso.
@@ -297,6 +302,7 @@ export function DiariasList() {
           </h1>
           <p className="text-sm text-secondary">Os dias de filmagem e a Ordem do Dia de cada um</p>
         </div>
+        {administra ? (
         <button
           onClick={() => (showForm ? fecharFormulario() : abrirFormulario())}
           className="btn-primary"
@@ -304,6 +310,9 @@ export function DiariasList() {
         >
           <Plus size={16} /> Criar Diária
         </button>
+        ) : (
+          <SoQuemPode motivo={motivo('diarias')} style={{ maxWidth: '240px' }} />
+        )}
       </div>
 
       {diarias.length > 0 && (
@@ -485,7 +494,7 @@ export function DiariasList() {
                 </div>
                 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
+                  {administra && <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       abrirEdicao(d);
@@ -493,7 +502,7 @@ export function DiariasList() {
                     className="btn-icon"
                   >
                     <Edit2 size={18} />
-                  </button>
+                  </button>}
                   <ChevronRight className="text-muted" />
                 </div>
               </div>

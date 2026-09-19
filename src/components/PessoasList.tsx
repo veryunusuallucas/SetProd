@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
@@ -97,8 +98,19 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const camposCustom = projeto?.campos_customizados || [];
   
-  const { canEditProducao, role, perfilId: meuPerfilId, podeAqui } = useRole();
+  const { role, perfilId: meuPerfilId, podeAqui } = useRole();
   const podeConvidar = podeAqui('convidar');
+  /*
+    Três perguntas diferentes, e não mais um "canEditProducao" para tudo:
+    - administrar a equipe (seleção em massa, puxar cadastros do link, montar a
+      ficha) é de quem administra;
+    - adicionar alguém: quem administra, ou quem é do departamento (no seu);
+    - editar uma ficha: a regra por registro — a própria sempre, as do meu
+      departamento, e as sem departamento.
+  */
+  const { podeEscrever } = useAcesso();
+  const administra = podeEscrever('projetos');
+  const podeAdicionar = podeEscrever('perfis');
 
   /**
    * Quem da equipe já tem conta vinculada.
@@ -424,7 +436,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-        <span className="text-xs text-secondary font-bold uppercase tracking-widest">Equipe {!canEditProducao && '(Somente Leitura)'}</span>
+        <span className="text-xs text-secondary font-bold uppercase tracking-widest">Equipe {!podeAdicionar && '(Somente Leitura)'}</span>
 
         {/* Barra de ações: todos os botões com o mesmo tamanho.
             Ficha + link viram um menu só; importar + criar manualmente, outro. */}
@@ -438,7 +450,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
             <SlidersHorizontal size={16} />
           </button>
 
-          {canEditProducao && (
+          {administra && (
             <button
               onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }}
               title="Apagar vários"
@@ -448,7 +460,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
             </button>
           )}
 
-          {canEditProducao && (
+          {administra && (
             <button
               onClick={handleSync}
               disabled={isSyncing}
@@ -459,7 +471,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
             </button>
           )}
 
-          {canEditProducao && (
+          {administra && (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setMenuAberto(menuAberto === 'ficha' ? null : 'ficha')}
@@ -487,7 +499,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
             </div>
           )}
 
-          {canEditProducao && (
+          {podeAdicionar && (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setMenuAberto(menuAberto === 'add' ? null : 'add')}
@@ -548,7 +560,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                         perfil={p}
                         projeto={projeto!}
                         departamentoNome={getDeptoNome(p.departamento_id)}
-                        canEdit={canEditProducao}
+                        canEdit={podeEscrever('perfis', p)}
                         verRestrito={podeVerCamada('restrita', { papel: role, meuPerfilId, perfilId: p.id })}
                         verMedico={podeVerCamada('medica', { papel: role, meuPerfilId, perfilId: p.id })}
                         onClose={closePanel}

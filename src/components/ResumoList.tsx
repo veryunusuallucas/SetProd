@@ -1,4 +1,5 @@
 import { dinheiro } from '../lib/formato';
+import { useAcesso } from '../hooks/useAcesso';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -11,6 +12,8 @@ import { ProfileCard } from './ui/ProfileCard';
 export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVerFicha?: (id: string) => void }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
+  // Confirmar e estornar pagamento é dinheiro da produção: quem administra.
+  const podeAcertar = useAcesso().podeEscrever('acertos');
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const acertos = useLiveQuery(() => db.acertos.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const configuracao = useLiveQuery(() => db.configuracoes.get(projetoId), [projetoId]);
@@ -235,9 +238,9 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                               <div className="text-xs text-muted uppercase tracking-widest">{isPagar ? 'Deve à Produção' : 'A receber da Produção'}</div>
                               <div className={`text-lg font-bold ${isPagar ? 'text-danger' : 'text-success'}`}>{dinheiro(t.valor)}</div>
                             </div>
-                            <button onClick={() => registrarPagamento(t)} className="btn-icon" style={{ backgroundColor: 'var(--color-success-bg)', borderColor: 'transparent', color: 'var(--color-success)' }} title="Confirmar pagamento">
+                            {podeAcertar && <button onClick={() => registrarPagamento(t)} className="btn-icon" style={{ backgroundColor: 'var(--color-success-bg)', borderColor: 'transparent', color: 'var(--color-success)' }} title="Confirmar pagamento">
                               <Check size={20} />
-                            </button>
+                            </button>}
                           </div>
                         );
                       })}
@@ -305,7 +308,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                               <span className="text-muted">{recebeu ? 'Recebeu' : 'Pagou'} · {new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {dinheiro(a.valor)}
-                                <button onClick={(e) => { e.stopPropagation(); estornarPagamento(a.id); }} className="btn-icon" style={{ width: '26px', height: '26px' }} title="Estornar"><RotateCcw size={12} /></button>
+                                {podeAcertar && <button onClick={(e) => { e.stopPropagation(); estornarPagamento(a.id); }} className="btn-icon" style={{ width: '26px', height: '26px' }} title="Estornar"><RotateCcw size={12} /></button>}
                               </span>
                             </div>
                           );
@@ -336,7 +339,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                   </div>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="font-bold">{dinheiro(a.valor)}</span>
-                    <button onClick={() => estornarPagamento(a.id)} className="btn-icon" style={{ width: '28px', height: '28px' }} title="Estornar"><RotateCcw size={13} /></button>
+                    {podeAcertar && <button onClick={() => estornarPagamento(a.id)} className="btn-icon" style={{ width: '28px', height: '28px' }} title="Estornar"><RotateCcw size={13} /></button>}
                   </span>
                 </div>
               ))}

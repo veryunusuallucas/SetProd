@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
+import { useRole } from '../hooks/useRole';
+import { SoQuemPode } from './ui/SoQuemPode';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -14,6 +17,16 @@ import { ComemoracaoDoWrap } from './ComemoracaoDoWrap';
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
   const fixosDaDock = useFixosDaDock();
+  /*
+    Configuração é da produção: templates, dados do projeto, modo de diária e o
+    padrão da OD gravam no projeto, que é de quem administra (escopo.ts). O que
+    é do aparelho (barra de baixo, fim do dia) e o suporte ficam para todos.
+    Apagar a produção é só do dono — ou de quem está com uma produção só local.
+  */
+  const { podeEscrever, motivo } = useAcesso();
+  const administra = podeEscrever('projetos');
+  const { role, podeAqui } = useRole();
+  const podeApagar = role === 'desconhecido' || podeAqui('destruir');
   const configuracao = useLiveQuery(() => db.configuracoes.get(projetoId), [projetoId]);
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
 
@@ -74,6 +87,8 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {!administra && <SoQuemPode motivo={`${motivo('projetos')} Aqui ficam só os ajustes deste aparelho.`} />}
+      {administra && <>
       <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Templates de Mensagem</h3>
         <p className="text-xs text-muted" style={{ marginBottom: '8px' }}>
@@ -204,6 +219,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
         entra todo dia.
       */}
       <PadraoDaOD projetoId={projetoId} />
+      </>}
       <ComemoracaoDoWrap />
 
       {/* Só no celular: é o único lugar onde a barra de baixo existe. O mesmo
@@ -244,7 +260,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
         </button>
       </div>
 
-      <div className="card" style={{ borderColor: 'var(--color-danger)', backgroundColor: 'rgba(239, 68, 68, 0.05)' }}>
+      {podeApagar && <div className="card" style={{ borderColor: 'var(--color-danger)', backgroundColor: 'rgba(239, 68, 68, 0.05)' }}>
         <h3 className="text-lg font-bold text-danger" style={{ marginBottom: '16px' }}>Zona de Perigo</h3>
         <p className="text-xs text-secondary" style={{ marginBottom: '24px' }}>
           Esta ação é irreversível. Todos os dados desta produção, incluindo despesas, acertos e perfis serão apagados.
@@ -255,7 +271,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
             Deletar Produção
           </CreepyButton>
         </div>
-      </div>
+      </div>}
 
       {/* MODAL DUPLA ETAPA */}
       {showDelete && (

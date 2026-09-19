@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { SoQuemPode } from '../components/ui/SoQuemPode';
+import { useAcesso } from '../hooks/useAcesso';
 import { dinheiro } from '../lib/formato';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -107,7 +109,13 @@ export function DiariaModule() {
    * gesto. Ler ao vivo faria os números dançarem enquanto a pessoa os olha.
    */
   const [carta, setCarta] = useState<CartaDeWrapProps | null>(null);
-  const { perfilId: meuPerfilId, canEditProducao: podeAdministrar } = useRole();
+  const { perfilId: meuPerfilId } = useRole();
+  /*
+    A diária é de quem administra (escopo.ts): horários, escala, cenas, o
+    registro do set. O que é de cada departamento dentro dela são as tarefas —
+    `diaria_tasks` —, e essas cada um mexe no seu.
+  */
+  const podeAdministrar = useAcesso().podeEscrever('diarias');
 
   const [newTask, setNewTask] = useState('');
   const [frenteAberta, setFrenteAberta] = useState<string | null>(null);
@@ -1009,21 +1017,27 @@ export function DiariaModule() {
           saber qual escolher. O template continua no código, servindo o corpo do
           e-mail e o DPR; o que saiu foi o botão.
         */}
-        <AIButton onClick={() => setGeradorAberto(true)}>
+        {/* Exportar sobe a versão da OD e fechar arquiva o dia: os dois gravam
+            na diária, e a diária é de quem administra. */}
+        {podeAdministrar && <AIButton onClick={() => setGeradorAberto(true)}>
           {estadoDa(diaria) === 'rascunho' || estadoDa(diaria) === 'travada'
             ? 'Exportar OD'
             : `Exportar OD (v${(diaria.versao_od || 1) + 1})`}
-        </AIButton>
+        </AIButton>}
 
-        <button
+        {podeAdministrar && <button
           onClick={fecharDiaria}
           className="btn-icon"
           style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', whiteSpace: 'nowrap', width: 'auto', padding: '0 14px', }}
           title={diaria.fechada ? 'Reabrir a diária para edição' : 'Fazer o relatório do dia (DPR) e arquivar'}
         >
           {diaria.fechada ? <><Lock size={16} /> Reabrir</> : <><Archive size={16} /> Fechar Diária</>}
-        </button>
+        </button>}
       </div>
+
+      {!podeAdministrar && (
+        <SoQuemPode motivo="Só quem administra a produção altera a diária. Aqui você acompanha o dia e cuida das tarefas do seu departamento." />
+      )}
 
       {/* O atraso acumulado do projeto também aparece aqui, e não só no
           dashboard: quem está montando o dia de amanhã é exatamente quem pode
