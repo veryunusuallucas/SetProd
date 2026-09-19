@@ -1,4 +1,5 @@
 import type { Despesa, Acerto, QuemTipo } from '../types';
+import { emCentavos, emReais, fecharNoTotal } from './dinheiro';
 
 export interface SaldoParticipante {
   tipo: QuemTipo;
@@ -15,6 +16,11 @@ export const getChaveParticipante = (tipo: QuemTipo, id_ref: string) => `${tipo}
 
 /**
  * Calcula o saldo de cada participante com base na lista de despesas e acertos já realizados.
+ *
+ * EM CENTAVOS INTEIROS (ROADMAP §10.B): a soma acontece em inteiros, e cada
+ * despesa fecha no próprio total antes de entrar — inclusive as antigas, cujo
+ * rateio gravou 14,285714… por pessoa. Ver `core/dinheiro.ts`. Só a saída
+ * volta para reais.
  */
 export const calcularSaldos = (despesas: Despesa[], acertos: Acerto[]): Record<string, SaldoParticipante> => {
   const saldos: Record<string, SaldoParticipante> = {};
@@ -27,20 +33,23 @@ export const calcularSaldos = (despesas: Despesa[], acertos: Acerto[]): Record<s
     return chave;
   };
 
-  // 1. Processar Despesas
+  // 1. Processar Despesas — cada lista fechada no total da despesa, em centavos
   despesas.forEach(despesa => {
+    const pagos = fecharNoTotal(despesa.pagadores.map(p => p.valor), despesa.valor_total);
+    const devidos = fecharNoTotal(despesa.devedores.map(d => d.valor), despesa.valor_total);
+
     // Computar quem pagou (credor da despesa)
-    despesa.pagadores.forEach(pagador => {
+    despesa.pagadores.forEach((pagador, i) => {
       const chave = initParticipante(pagador.tipo, pagador.id_ref);
-      saldos[chave].total_pago += pagador.valor;
-      saldos[chave].saldo_liquido += pagador.valor;
+      saldos[chave].total_pago += pagos[i];
+      saldos[chave].saldo_liquido += pagos[i];
     });
 
     // Computar quem deve (devedor da despesa)
-    despesa.devedores.forEach(devedor => {
+    despesa.devedores.forEach((devedor, i) => {
       const chave = initParticipante(devedor.tipo, devedor.id_ref);
-      saldos[chave].total_devido += devedor.valor;
-      saldos[chave].saldo_liquido -= devedor.valor;
+      saldos[chave].total_devido += devidos[i];
+      saldos[chave].saldo_liquido -= devidos[i];
     });
   });
 
@@ -51,18 +60,18 @@ export const calcularSaldos = (despesas: Despesa[], acertos: Acerto[]): Record<s
       const chavePara = initParticipante(acerto.para.tipo, acerto.para.id_ref);
 
       // Quem pagou o acerto reduz a sua dívida (saldo líquido aumenta)
-      saldos[chaveDe].saldo_liquido += acerto.valor;
+      saldos[chaveDe].saldo_liquido += emCentavos(acerto.valor);
       
       // Quem recebeu o acerto reduz o seu crédito (saldo líquido diminui)
-      saldos[chavePara].saldo_liquido -= acerto.valor;
+      saldos[chavePara].saldo_liquido -= emCentavos(acerto.valor);
     }
   });
 
-  // Arredondamento para evitar problemas de precisão de float no JS
+  // A conta foi toda em centavos; a saída volta para reais, exata.
   Object.keys(saldos).forEach(chave => {
-    saldos[chave].saldo_liquido = Math.round(saldos[chave].saldo_liquido * 100) / 100;
-    saldos[chave].total_pago = Math.round(saldos[chave].total_pago * 100) / 100;
-    saldos[chave].total_devido = Math.round(saldos[chave].total_devido * 100) / 100;
+    saldos[chave].saldo_liquido = emReais(saldos[chave].saldo_liquido);
+    saldos[chave].total_pago = emReais(saldos[chave].total_pago);
+    saldos[chave].total_devido = emReais(saldos[chave].total_devido);
   });
 
   return saldos;
@@ -90,40 +99,43 @@ export const detalharParticipante = (
   let total_deve = 0;
   let total_adiantou = 0;
 
+  // Em centavos, e com cada despesa fechada no total — a mesma conta de
+  // `calcularSaldos`, senão a ficha de alguém diria um saldo e os acertos outro.
   despesas.forEach(despesa => {
-    despesa.devedores
-      .filter(d => d.tipo === tipo && d.id_ref === id_ref)
-      .forEach(d => {
-        total_deve += d.valor;
-        linhas.push({
-          despesa_id: despesa.id,
-          descricao: despesa.descricao,
-          categoria: despesa.categoria,
-          diaria: despesa.diaria,
-          valor: Math.round(d.valor * 100) / 100,
-          tipo: 'deve',
-        });
-      });
+    const devidos = fecharNoTotal(despesa.devedores.map(d => d.valor), despesa.valor_total);
+    const pagos = fecharNoTotal(despesa.pagadores.map(p => p.valor), despesa.valor_total);
 
-    despesa.pagadores
-      .filter(p => p.tipo === tipo && p.id_ref === id_ref)
-      .forEach(p => {
-        total_adiantou += p.valor;
-        linhas.push({
-          despesa_id: despesa.id,
-          descricao: despesa.descricao,
-          categoria: despesa.categoria,
-          diaria: despesa.diaria,
-          valor: Math.round(p.valor * 100) / 100,
-          tipo: 'adiantou',
-        });
+    despesa.devedores.forEach((d, i) => {
+      if (d.tipo !== tipo || d.id_ref !== id_ref) return;
+      total_deve += devidos[i];
+      linhas.push({
+        despesa_id: despesa.id,
+        descricao: despesa.descricao,
+        categoria: despesa.categoria,
+        diaria: despesa.diaria,
+        valor: emReais(devidos[i]),
+        tipo: 'deve',
       });
+    });
+
+    despesa.pagadores.forEach((p, i) => {
+      if (p.tipo !== tipo || p.id_ref !== id_ref) return;
+      total_adiantou += pagos[i];
+      linhas.push({
+        despesa_id: despesa.id,
+        descricao: despesa.descricao,
+        categoria: despesa.categoria,
+        diaria: despesa.diaria,
+        valor: emReais(pagos[i]),
+        tipo: 'adiantou',
+      });
+    });
   });
 
   return {
     linhas,
-    total_deve: Math.round(total_deve * 100) / 100,
-    total_adiantou: Math.round(total_adiantou * 100) / 100,
-    saldo: Math.round((total_adiantou - total_deve) * 100) / 100,
+    total_deve: emReais(total_deve),
+    total_adiantou: emReais(total_adiantou),
+    saldo: emReais(total_adiantou - total_deve),
   };
 };

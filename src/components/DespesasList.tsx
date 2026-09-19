@@ -1,4 +1,5 @@
 import { dinheiro, dataCurta } from '../lib/formato';
+import { dividirEmPartes } from '../core/dinheiro';
 import { naEquipe } from '../lib/vinculos';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { useAcesso } from '../hooks/useAcesso';
@@ -244,7 +245,9 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
       devedoresLista = perfis.filter(p => selecionados.includes(p.id));
     }
 
-    const valorPorPessoa = valorNum / devedoresLista.length;
+    // Em centavos, com o resto distribuído: R$ 100 entre 7 fecha em R$ 100,00,
+    // e não em 7 × 14,285714… (ROADMAP §10.B, `core/dinheiro.ts`).
+    const parcelas = dividirEmPartes(valorNum, devedoresLista.length);
     
     let nomeDiaria = 'Geral';
     if (diariaSelecionadaId === 'pre') nomeDiaria = 'Pré-produção';
@@ -273,7 +276,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     } else {
       // Pessoa paga, equipe deve
       pagadores = [{ tipo: 'pessoa' as const, id_ref: pagador.id, valor: valorNum }];
-      devedores = devedoresLista.map(p => ({ tipo: 'pessoa' as const, id_ref: p.id, valor: valorPorPessoa }));
+      devedores = devedoresLista.map((p, i) => ({ tipo: 'pessoa' as const, id_ref: p.id, valor: parcelas[i] }));
     }
 
     const dados = {
