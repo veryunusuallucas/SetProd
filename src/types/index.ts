@@ -249,6 +249,28 @@ export type EntidadeLog = 'acesso' | 'projeto' | 'perfil' | 'despesa' | 'acerto'
   | 'membro' | 'convite';
 
 /**
+ * O registro como veio do servidor da última vez, antes de alguém editar aqui.
+ *
+ * É a TERCEIRA versão que a mescla precisa (PLANO-conflitos-sync, passo 4): com
+ * ela dá para separar "o outro mudou isto" de "nós dois mudamos isto". Local e
+ * fora do sync — sincronizar a base faria a base ser sobrescrita pelo que ela
+ * deveria estar medindo.
+ *
+ * Nasce na PRIMEIRA edição local de um registro e morre quando a pendência
+ * sobe: dali em diante o servidor é a base. O custo acompanha a fila, não o
+ * tamanho do projeto.
+ */
+export interface SyncBase {
+  /** `tabela:registro` — a mesma chave da `sync_queue`. */
+  id: string;
+  tabela: string;
+  registro_id: string;
+  projeto_id: string;
+  dados: unknown;
+  guardada_em: number;
+}
+
+/**
  * Uma edição nossa que o LWW descartou — guardada ANTES de ser destruída
  * (PLANO-conflitos-sync, passo 2).
  *
@@ -268,6 +290,8 @@ export interface ConflitoGuardado {
   versao_remota: unknown;
   /** Onde as duas discordam, sem contar carimbos. Vazio = nada em disputa. */
   campos_em_disputa: string[];
+  /** A versão que as duas tinham antes, quando este aparelho a conhecia. */
+  versao_base?: unknown;
   detectado_em: number;
   /** Quando alguém escolheu. Enquanto for nulo, o aviso continua. */
   resolvido_em?: number;
