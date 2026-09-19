@@ -1,4 +1,5 @@
 import { dinheiro, dataCurta } from '../lib/formato';
+import { useAcesso } from '../hooks/useAcesso';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -90,6 +91,9 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
    * É um palpite, não uma trava: os chips ficam ali e mudar é um toque.
    */
   const { perfilId: meuPerfilId } = useRole();
+  // Dinheiro é da produção: lançar e editar é com quem administra (escopo.ts).
+  const { podeEscrever } = useAcesso();
+  const podeLancar = podeEscrever('despesas');
   const meuDepartamento = (perfis || []).find(p => p.id === meuPerfilId)?.departamento_id || '';
   const [departamentoId, setDepartamentoId] = useState('');
 
@@ -356,6 +360,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
         </div>
       )}
 
+      {podeLancar ? (
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 className="text-lg font-bold">{editandoId ? 'Editar Despesa' : 'Lançar Nova Despesa'}</h3>
@@ -550,6 +555,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
           <button type="submit" className="btn-primary">{editandoId ? 'Salvar Alterações' : 'Registrar Despesa'}</button>
         </form>
       </div>
+      ) : null /* o aviso de quem pode já está no topo do Financeiro */}
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
@@ -597,10 +603,10 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {podeLancar && <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <button onClick={() => iniciarEdicao(d)} className="btn-icon" style={{ padding: '6px' }} title="Editar"><Edit2 size={16} /></button>
                   <button onClick={() => handleDeletar(d.id)} className="btn-icon" style={{ padding: '6px', color: 'var(--color-danger)' }} title="Excluir"><Trash2 size={16} /></button>
-                </div>
+                </div>}
               </div>
             );
           })}

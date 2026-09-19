@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
+import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -37,6 +39,9 @@ export function GestaoDados() {
    */
   const { podeAqui } = useRole();
   const podeVerFichaCompleta = podeAqui('gerir_membros');
+  // Restaurar grava em todas as tabelas da produção: é de quem administra.
+  const { podeEscrever, motivo } = useAcesso();
+  const podeRestaurar = podeEscrever('projetos');
 
   const [selecionados, setSelecionados] = useState<Set<string>>(
     () => new Set(CONJUNTOS.filter(c => !c.sensivel).map(c => c.id))
@@ -419,7 +424,8 @@ export function GestaoDados() {
           </button>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+        {!podeRestaurar && <SoQuemPode motivo={`Restaurar um backup: ${motivo('projetos').toLowerCase()}`} />}
+        {podeRestaurar && <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
           <h4 className="font-bold text-sm" style={{ marginBottom: '6px' }}>Restaurar de um backup</h4>
           <p className="text-xs text-muted" style={{ lineHeight: 1.5, marginBottom: '10px' }}>
             Traz a produção de volta a partir de um arquivo. Se ela já existir aqui, o app pergunta
@@ -468,7 +474,7 @@ export function GestaoDados() {
               {avisoRestauracao}
             </p>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Relatório com IA */}

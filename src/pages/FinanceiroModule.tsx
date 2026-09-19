@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
+import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useParams } from 'react-router-dom';
 import { DespesasList } from '../components/DespesasList';
 import { ResumoList } from '../components/ResumoList';
@@ -17,6 +19,13 @@ export function FinanceiroModule() {
   const { id } = useParams<{ id: string }>();
   const [abaAtiva, setAbaAtiva] = useState<AbaFinanceiro>('visao');
   const { openPanel, closePanel } = useLayoutContext();
+  /*
+    Quem não administra VÊ o financeiro inteiro — ler é global — mas não lança.
+    A aba Controle (saldo inicial, limites) é só configuração, então some; nas
+    outras, os botões de lançar somem e fica a linha dizendo quem pode.
+  */
+  const { podeEscrever, motivo } = useAcesso();
+  const administra = podeEscrever('despesas');
 
   if (!id) return <div>ID do projeto não encontrado.</div>;
 
@@ -37,12 +46,12 @@ export function FinanceiroModule() {
         >
           <List size={18} /> <span style={{ fontSize: '12px' }}>Extrato</span>
         </button>
-        <button 
+        {administra && <button 
           onClick={() => setAbaAtiva('controle')}
           style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'controle' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'controle' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <Settings size={18} /> <span style={{ fontSize: '12px' }}>Controle</span>
-        </button>
+        </button>}
         <button 
           onClick={() => setAbaAtiva('entradas')}
           style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'entradas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'entradas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
@@ -63,6 +72,8 @@ export function FinanceiroModule() {
         </button>
       </div>
 
+      {!administra && <SoQuemPode motivo={`${motivo('despesas')} Aqui você acompanha.`} />}
+
       {/* Conteúdo Dinâmico */}
       {abaAtiva === 'visao' && (
         <>
@@ -75,7 +86,7 @@ export function FinanceiroModule() {
         </>
       )}
       {abaAtiva === 'movimento' && <MovimentoList projetoId={id} />}
-      {abaAtiva === 'controle' && <ControleFinanceiro projetoId={id} />}
+      {abaAtiva === 'controle' && administra && <ControleFinanceiro projetoId={id} />}
       {abaAtiva === 'entradas' && <EntradasList projetoId={id} />}
       {abaAtiva === 'saidas' && <DespesasList projetoId={id} />}
       {abaAtiva === 'distribuicao' && (

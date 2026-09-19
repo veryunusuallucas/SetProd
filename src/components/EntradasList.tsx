@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAcesso } from '../hooks/useAcesso';
 import { dinheiro } from '../lib/formato';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -8,6 +9,7 @@ import { confirmar } from './ui/Confirmacao';
 export function EntradasList({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const aportes = useLiveQuery(() => db.aportes.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const { podeEscrever } = useAcesso();
 
   const [novoAporte, setNovoAporte] = useState({ origem: '', valor: '', obs: '' });
 
@@ -32,13 +34,14 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
   };
 
   if (!projeto) return <div>Carregando...</div>;
+  const podeLancar = podeEscrever('aportes');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div className="card">
         <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-4">Entradas e Aportes de Dinheiro</div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {podeLancar && <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <input 
             placeholder="Origem (Ex: Sócio, Ancine...)" 
             value={novoAporte.origem} 
@@ -61,7 +64,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
           <button onClick={handleAddAporte} className="btn-primary" style={{ padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={16} /> Adicionar
           </button>
-        </div>
+        </div>}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {projeto.saldo_inicial != null && projeto.saldo_inicial > 0 && (
@@ -80,7 +83,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <span className="text-accent font-bold">{dinheiro(a.valor)}</span>
-                <button onClick={() => handleDeleteAporte(a.id)} className="btn-icon text-danger" style={{ padding: '8px' }} title="Excluir"><Trash2 size={16} /></button>
+                {podeLancar && <button onClick={() => handleDeleteAporte(a.id)} className="btn-icon text-danger" style={{ padding: '8px' }} title="Excluir"><Trash2 size={16} /></button>}
               </div>
             </div>
           ))}
