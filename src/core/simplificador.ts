@@ -1,4 +1,5 @@
 import type { SaldoParticipante } from './calculadora';
+import { emCentavos, emReais } from './dinheiro';
 import { CAIXA_CENTRAL } from './caixaCentral';
 import type { QuemTipo } from '../types';
 
@@ -22,10 +23,17 @@ export const simplificarDividas = (saldosDict: Record<string, SaldoParticipante>
     // Ignorar a entidade producao/projeto na listagem inicial de pessoas
     if (p.tipo === 'producao') return; 
 
-    if (p.saldo_liquido < -0.01) {
-      devedores.push({ ...p, saldo_liquido: Math.abs(p.saldo_liquido) });
-    } else if (p.saldo_liquido > 0.01) {
-      credores.push({ ...p });
+    /*
+      Em centavos inteiros (ROADMAP §10.B): o "saldo_liquido" daqui para baixo
+      é centavo, e só as transações que saem voltam para reais. A tolerância de
+      0,01 em float engolia dívida de um centavo — e às vezes deixava um credor
+      com R$ 0,01 que ninguém pagava.
+    */
+    const centavos = emCentavos(p.saldo_liquido);
+    if (centavos < 0) {
+      devedores.push({ ...p, saldo_liquido: -centavos });
+    } else if (centavos > 0) {
+      credores.push({ ...p, saldo_liquido: centavos });
     }
   });
 
@@ -35,7 +43,7 @@ export const simplificarDividas = (saldosDict: Record<string, SaldoParticipante>
       transacoes.push({
         de: { tipo: devedor.tipo, id_ref: devedor.id_ref },
         para: { tipo: 'producao', id_ref: CAIXA_CENTRAL },
-        valor: Math.round(devedor.saldo_liquido * 100) / 100
+        valor: emReais(devedor.saldo_liquido)
       });
     });
 
@@ -43,7 +51,7 @@ export const simplificarDividas = (saldosDict: Record<string, SaldoParticipante>
       transacoes.push({
         de: { tipo: 'producao', id_ref: CAIXA_CENTRAL },
         para: { tipo: credor.tipo, id_ref: credor.id_ref },
-        valor: Math.round(credor.saldo_liquido * 100) / 100
+        valor: emReais(credor.saldo_liquido)
       });
     });
     
@@ -64,19 +72,19 @@ export const simplificarDividas = (saldosDict: Record<string, SaldoParticipante>
 
     const valorTransferencia = Math.min(devedor.saldo_liquido, credor.saldo_liquido);
 
-    if (valorTransferencia > 0.01) {
+    if (valorTransferencia > 0) {
       transacoes.push({
         de: { tipo: devedor.tipo, id_ref: devedor.id_ref },
         para: { tipo: credor.tipo, id_ref: credor.id_ref },
-        valor: Math.round(valorTransferencia * 100) / 100
+        valor: emReais(valorTransferencia)
       });
     }
 
     devedor.saldo_liquido -= valorTransferencia;
     credor.saldo_liquido -= valorTransferencia;
 
-    if (devedor.saldo_liquido <= 0.01) i++;
-    if (credor.saldo_liquido <= 0.01) j++;
+    if (devedor.saldo_liquido <= 0) i++;
+    if (credor.saldo_liquido <= 0) j++;
   }
 
   return transacoes;
