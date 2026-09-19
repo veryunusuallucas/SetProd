@@ -51,6 +51,19 @@ export interface Conflito {
   id: string;
 }
 
+/**
+ * Uma escrita que não pode acontecer — recusada pelo servidor (RLS) ou barrada
+ * antes, aqui, pela mesma regra (ver `travaDeEscrita.ts`).
+ *
+ * Mesmo formato do conflito: quem mostra os dois avisos é o mesmo componente.
+ */
+export const EVENTO_RECUSA = 'setprod-recusa';
+
+export type Recusa = Conflito;
+
+/** Código do Postgres para "a política de RLS barrou esta linha". */
+const RECUSADO_PELA_RLS = '42501';
+
 interface LinhaEspelho {
   projeto_id: string;
   tabela: string;
@@ -177,11 +190,26 @@ function* emLotes(linhas: LinhaEspelho[]): Generator<LinhaEspelho[]> {
   if (atual.length) yield atual;
 }
 
+const subir = (lote: LinhaEspelho[]) =>
+  supabase.from(TABELA_ESPELHO).upsert(lote, { onConflict: 'projeto_id,tabela,id' });
+
 /**
  * Manda para o servidor o que este aparelho alterou.
  *
  * Devolve quantas linhas subiram. A fila só é limpa depois do envio confirmado:
  * se a rede cair no meio, a pendência continua lá e vai junto na próxima vez.
+ *
+ * QUANDO O SERVIDOR RECUSA (18/09/2026). Antes, um lote barrado pela RLS
+ * lançava erro e a fila parava ali — a linha recusada nunca saía, era reenviada
+ * a cada volta e recusada de novo, e NADA mais daquele aparelho subia. Um só
+ * clique de quem é "leitura" travava a sincronização dele para sempre.
+ *
+ * Agora o lote recusado é reenviado linha a linha, para achar QUAL foi barrada.
+ * A barrada sai da fila (reenviar não muda a resposta), o dado daqui volta a ser
+ * o do servidor, e a pessoa é avisada. O resto do lote sobe normalmente.
+ *
+ * Só a recusa de RLS é tratada assim. Rede caída, servidor fora e afins
+ * continuam lançando erro: aí a pendência TEM que ficar, porque vai passar.
  */
 export async function empurrar(projetoId: string): Promise<number> {
   if (!supabaseConfigurado) return 0;
@@ -193,17 +221,63 @@ export async function empurrar(projetoId: string): Promise<number> {
   }
 
   let subiram = 0;
-  for (const lote of emLotes(linhas)) {
-    const { error } = await supabase
-      .from(TABELA_ESPELHO)
-      .upsert(lote, { onConflict: 'projeto_id,tabela,id' });
+  const recusadas: LinhaEspelho[] = [];
 
-    if (error) throw error;
-    subiram += lote.length;
+  for (const lote of emLotes(linhas)) {
+    const { error } = await subir(lote);
+    if (!error) { subiram += lote.length; continue; }
+    if (error.code !== RECUSADO_PELA_RLS) throw error;
+
+    for (const linha of lote) {
+      const { error: sozinha } = await subir([linha]);
+      if (!sozinha) { subiram++; continue; }
+      if (sozinha.code !== RECUSADO_PELA_RLS) throw sozinha;
+      recusadas.push(linha);
+    }
   }
 
   await db.sync_queue.bulkDelete(enviadas);
+  if (recusadas.length) await desfazerRecusadas(projetoId, recusadas);
   return subiram;
+}
+
+/**
+ * Devolve ao estado do servidor o que ele recusou, e avisa.
+ *
+ * Sem isto, a alteração recusada ficaria aqui para sempre — a tela mostrando
+ * uma coisa que ninguém mais vê, e que a próxima edição de outra pessoa
+ * sobrescreveria sem aviso. Linha que só existia aqui (criação recusada) some.
+ */
+async function desfazerRecusadas(projetoId: string, recusadas: LinhaEspelho[]) {
+  const doDexie = recusadas.filter(l => conhecida(l.tabela));
+  const noServidor: LinhaEspelho[] = [];
+
+  for (const tabela of new Set(doDexie.map(l => l.tabela))) {
+    const ids = doDexie.filter(l => l.tabela === tabela).map(l => l.id);
+    const { data } = await supabase
+      .from(TABELA_ESPELHO)
+      .select('projeto_id, tabela, id, dados, atualizado_em, deletado')
+      .eq('projeto_id', projetoId).eq('tabela', tabela).in('id', ids);
+    noServidor.push(...((data || []) as unknown as LinhaEspelho[]));
+  }
+
+  const tabelas = [...new Set(doDexie.map(l => l.tabela))];
+  if (tabelas.length) {
+    await db.transaction('rw', tabelas.map(t => db.table(t)), async () => {
+      // É o servidor falando: a volta não pode entrar na fila de saída.
+      marcarTransacaoComoRemota();
+      for (const linha of doDexie) {
+        const tabela = db.table(linha.tabela);
+        const oficial = noServidor.find(l => l.tabela === linha.tabela && l.id === linha.id);
+        if (!oficial || oficial.deletado || !oficial.dados) await tabela.delete(linha.id);
+        else await tabela.put({ ...oficial.dados, atualizado_em: oficial.atualizado_em });
+      }
+    });
+  }
+
+  window.dispatchEvent(new CustomEvent<Recusa[]>(EVENTO_RECUSA, {
+    detail: recusadas.map(l => ({ projeto_id: l.projeto_id, tabela: l.tabela, id: l.id })),
+  }));
 }
 
 // ---------------------------------------------------------------------------
