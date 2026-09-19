@@ -39,7 +39,36 @@ function responder(corpo: unknown, status = 200) {
 }
 
 const URL_BASE = Deno.env.get('SUPABASE_URL') ?? '';
-const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+/*
+  AS DUAS GERAÇÕES DE CHAVE DO SUPABASE.
+
+  O projeto migrou para as chaves novas (`sb_secret_…` / `sb_publishable_…`).
+  Quando as antigas são desativadas, o `SUPABASE_SERVICE_ROLE_KEY` que o Supabase
+  injeta sozinho para de ser aceito — e a função passa a falhar em TUDO, sempre
+  com a mesma cara: "Entre na sua conta", porque a primeira coisa que ela faz é
+  conferir quem está chamando.
+
+  Então: a chave nova vem do segredo `SB_SECRET_KEY` quando existir, e a antiga
+  fica como reserva. Para identificar quem chama basta uma chave pública, e é o
+  que se usa primeiro — a secreta nunca precisou estar ali.
+*/
+const SERVICE_ROLE = Deno.env.get('SB_SECRET_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const CHAVE_PUBLICA = Deno.env.get('SB_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || SERVICE_ROLE;
+
+/** Por que a sessão não foi reconhecida — vai para o log da função. */
+let ultimaFalhaDeAuth = '';
+
+async function conferirSessao(auth: string): Promise<Record<string, unknown> | null> {
+  const tentadas = [...new Set([CHAVE_PUBLICA, SERVICE_ROLE].filter(Boolean))];
+  for (const chave of tentadas) {
+    const r = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: chave, Authorization: auth } });
+    if (r.ok) return await r.json();
+    ultimaFalhaDeAuth = `${r.status} ${(await r.text()).slice(0, 160)}`;
+  }
+  console.error('[auth] sessão não reconhecida:', ultimaFalhaDeAuth || 'sem chave configurada');
+  return null;
+}
 
 /** Os papéis que esta função aceita gravar. `dono` não se concede por aqui. */
 const PAPEIS = ['admin', 'equipe', 'leitura'];
@@ -79,12 +108,8 @@ async function registrarNaAta(projetoId: string, autor: { id: string; email?: st
 async function usuarioDaRequisicao(req: Request): Promise<{ id: string; email?: string } | null> {
   const auth = req.headers.get('Authorization');
   if (!auth) return null;
-  const r = await fetch(`${URL_BASE}/auth/v1/user`, {
-    headers: { apikey: SERVICE_ROLE, Authorization: auth },
-  });
-  if (!r.ok) return null;
-  const u = await r.json();
-  return u?.id ? { id: u.id, email: u.email } : null;
+  const u = await conferirSessao(auth);
+  return u?.id ? { id: u.id as string, email: u.email as string | undefined } : null;
 }
 
 interface Participacao {
@@ -114,7 +139,11 @@ Deno.serve(async req => {
     }
 
     const usuario = await usuarioDaRequisicao(req);
-    if (!usuario) return responder({ erro: 'Entre na sua conta.' }, 401);
+    if (!usuario) {
+      // O detalhe entra na mensagem de propósito: sem ele, "Entre na sua conta"
+      // aparece igual para sessão vencida e para chave errada no servidor.
+      return responder({ erro: `Entre na sua conta.${ultimaFalhaDeAuth ? ` (servidor: ${ultimaFalhaDeAuth})` : ''}` }, 401);
+    }
 
     const { acao, projeto_id, alvo, papel, perfil_id } = await req.json().catch(() => ({}));
     if (!projeto_id) return responder({ erro: 'Produção não informada.' }, 400);
