@@ -7,7 +7,7 @@ import {
   FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
   Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
   Camera, HardDrive, FileInput, Target, Image, Save,
-  Archive, Crown, BadgeCheck, HeartPulse,
+  Archive, Crown, BadgeCheck, HeartPulse, UserCheck,
 } from 'lucide-react';
 
 /**
@@ -225,6 +225,29 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.13.1',
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <UserCheck size={20} />,
+        titulo: 'Quem você é na produção, confirmado',
+        texto: 'A primeira escolha vale na hora quando o e-mail da ficha é o da sua conta. Fora isso, vira um pedido que quem administra confirma ou recusa em Quem tem acesso. É o que impede alguém de se passar por outra pessoa para ver os dados dela.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <LogIn size={20} />,
+        titulo: 'Sair encerra só este aparelho',
+        texto: 'Antes, sair da conta no celular derrubava a sessão aberta no computador, que passava a responder "Entre na sua conta" a tudo.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Lock size={20} />,
+        titulo: 'Avisos fáceis de ler',
+        texto: 'O aviso de "só quem administra altera isto" ficou maior e com fundo, e o "Não deu para alterar" deixou de ser transparente.',
+      },
+    ],
+  },
   {
     versao: '4.13.0',
     resumo: <>Um menu novo em cada aparelho, e a produção com regras claras de quem mexe em quê — com os dados sensíveis da equipe protegidos de verdade.</>,
