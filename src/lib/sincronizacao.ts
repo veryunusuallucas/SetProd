@@ -1,4 +1,5 @@
 import { db, TABELAS_SINCRONIZADAS, marcarTransacaoComoRemota } from '../db/db';
+import { mesclarEscala, mesmaEscala } from './escalaMesclada';
 import { supabase, supabaseConfigurado } from './supabase';
 import { contaAtual } from './conta';
 import {
@@ -381,7 +382,41 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
         Ele é quem deve enfrentar o LWW quando a linha local não existe mais.
       */
       const carimboDaqui = Math.max(local?.atualizado_em ?? 0, naFila?.atualizado_em ?? 0);
-      if (carimboDaqui >= linha.atualizado_em) continue;
+
+      /*
+        A ESCALA MESCLA POR PESSOA (§10.A). O resto da diária segue o LWW da
+        linha inteira; a escala não, porque é onde dois assistentes mexem ao
+        mesmo tempo e onde perder metade dói. Ver `escalaMesclada.ts`.
+      */
+      const escalaDeLa = linha.tabela === 'diarias' && local && linha.dados && !linha.deletado;
+
+      if (carimboDaqui >= linha.atualizado_em) {
+        // A nossa versão ganha — mas quem o outro escalou entra nela, e sobe
+        // junto quando a nossa pendência subir.
+        if (escalaDeLa) {
+          const m = mesclarEscala(local as never, linha.dados as never);
+          if (!mesmaEscala(m.equipe_escalada, (local as { equipe_escalada?: string[] }).equipe_escalada)) {
+            await tabela.put({ ...local, ...m });
+          }
+        }
+        continue;
+      }
+
+      // A do servidor ganha — mas quem ESTE aparelho escalou não se perde: a
+      // escala mesclada fica aqui com um carimbo novo e volta para a fila.
+      if (escalaDeLa && naFila) {
+        const m = mesclarEscala(linha.dados as never, local as never);
+        if (!mesmaEscala(m.equipe_escalada, (linha.dados as { equipe_escalada?: string[] }).equipe_escalada)) {
+          const novo = linha.atualizado_em + 1;
+          await tabela.put({ ...linha.dados, ...m, atualizado_em: novo });
+          await db.sync_queue.put({ ...naFila, atualizado_em: novo });
+          aplicadas++;
+          // O resto da diária daqui perdeu para a do servidor: continua sendo
+          // conflito, e a pessoa é avisada — só a escala foi salva.
+          perdidas.push({ projeto_id: linha.projeto_id, tabela: linha.tabela, id: linha.id });
+          continue;
+        }
+      }
 
       if (linha.deletado) await tabela.delete(linha.id);
       else if (linha.dados && linha.tabela === 'perfis') {
