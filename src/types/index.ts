@@ -248,6 +248,33 @@ export type EntidadeLog = 'acesso' | 'projeto' | 'perfil' | 'despesa' | 'acerto'
   /** Acesso (ROADMAP, Etapa 8): convite criado/aceito, papel, remoção, posse, vínculo. */
   | 'membro' | 'convite';
 
+/**
+ * Uma edição nossa que o LWW descartou — guardada ANTES de ser destruída
+ * (PLANO-conflitos-sync, passo 2).
+ *
+ * Fica só no aparelho que viu o conflito, fora do sync: um conflito é de quem o
+ * viu. Sincronizá-lo faria a mesma disputa aparecer para todo mundo, inclusive
+ * para quem não tem nada a decidir.
+ */
+export interface ConflitoGuardado {
+  /** `tabela:registro` — um conflito por registro; o novo substitui o velho. */
+  id: string;
+  tabela: string;
+  registro_id: string;
+  projeto_id: string;
+  /** O que estava aqui e ia subir. É o que se perderia sem isto. */
+  versao_local: unknown;
+  /** O que veio do servidor e passou a valer. */
+  versao_remota: unknown;
+  /** Onde as duas discordam, sem contar carimbos. Vazio = nada em disputa. */
+  campos_em_disputa: string[];
+  detectado_em: number;
+  /** Quando alguém escolheu. Enquanto for nulo, o aviso continua. */
+  resolvido_em?: number;
+  /** O que a pessoa decidiu, para a ata da própria cabeça. */
+  escolha?: 'minha' | 'servidor';
+}
+
 export interface AuditLog {
   id: string;
   projeto_id: string;

@@ -1,7 +1,8 @@
 import Dexie from 'dexie';
 import { carimbarMudancasDaEscala } from '../lib/escalaMesclada';
 import type { Table } from 'dexie';
-import type { Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
+
+import type { ConflitoGuardado, Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -82,6 +83,8 @@ export class SetMoneyDB extends Dexie {
   logs!: Table<AuditLog, string>;
   /** A caixa de saída da auditoria: o que foi registrado e ainda não subiu. */
   fila_auditoria!: Table<AuditLog, string>;
+  /** Conflitos vistos NESTE aparelho — fora do sync, como as notificações. */
+  conflitos!: Table<ConflitoGuardado, string>;
   sync_queue!: Table<SyncQueue, string>;
   locacoes!: Table<Locacao, string>;
   
@@ -268,6 +271,16 @@ export class SetMoneyDB extends Dexie {
     */
     this.version(20).stores({
       fila_auditoria: 'id, projeto_id'
+    });
+
+    /*
+      v21: o que o LWW ia jogar fora (PLANO-conflitos-sync, passo 2). Local e
+      fora do sync, pelo mesmo motivo das `notificacoes`: é do aparelho que viu.
+      Sem índice em `resolvido_em` de propósito — Dexie não indexa `undefined`,
+      e "ainda não resolvido" é justamente a ausência dele.
+    */
+    this.version(21).stores({
+      conflitos: 'id, projeto_id, detectado_em'
     });
 
     this.version(19).stores({
