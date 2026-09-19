@@ -5,11 +5,10 @@ import { normalizar } from '../creditos';
 /**
  * Quem mexe na Logagem, e em que visão cada um abre.
  *
- * ⚠️ ISTO É A TELA, NÃO A SEGURANÇA. O servidor faz valer o papel (`leitura`
- * não escreve), mas não o departamento. Ver `escopo.ts` e a dívida declarada em
- * `supabase/sql/papeis.sql`. Enquanto a RLS departamental não existir, um membro
- * `equipe` de outro departamento, com o DevTools aberto, conseguiria gravar um
- * take. É o mesmo risco que tasks e fichas já têm.
+ * ⚠️ ISTO É A TELA. O servidor faz valer a mesma regra em
+ * `supabase/sql/escopo.sql` (`escopo_permite`): as tabelas `log_*` são
+ * departamentais, e os liberados de `Projeto.logagem_liberados` passam. Se
+ * esta regra mudar, aquela muda junto.
  *
  * A regra (decidida com o Lucas em 15/09/2026, PLANO-logagem §9a):
  * - dono e admin editam;

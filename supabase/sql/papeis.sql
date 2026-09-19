@@ -204,8 +204,11 @@ create policy "anexos: quem escreve apaga" on storage.objects
 
 
 -- =============================================================================
--- PARTE 7 — DÍVIDA TÉCNICA DECLARADA: o escopo por departamento
+-- PARTE 7 — O escopo por departamento
 -- =============================================================================
+--
+-- ✅ FECHADO em 18/09/2026 por `escopo.sql`, que roda depois deste. O texto
+-- abaixo fica como registro de por que ele veio depois.
 --
 -- O que ESTE arquivo faz valer é o PAPEL. O escopo por departamento — "cada um
 -- edita o que é do seu departamento", a matriz de `src/lib/escopo.ts` — está
