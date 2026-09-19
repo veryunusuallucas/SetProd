@@ -1,4 +1,6 @@
 import { dinheiro, dataCurta } from '../lib/formato';
+import { naEquipe } from '../lib/vinculos';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { useAcesso } from '../hooks/useAcesso';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -72,7 +74,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
 
   /** A equipe de verdade: o 'caixa_central' e sentinela da producao, nao pessoa. */
-  const equipe = (perfis || []).filter(p => p.id !== 'caixa_central');
+  const equipe = (perfis || []).filter(naEquipe);
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [descricao, setDescricao] = useState('');
@@ -183,7 +185,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     setDataOcorrencia(d.data_ocorrencia || new Date(d.data).toISOString().split('T')[0]);
     
     // Cascata discovery based on data
-    if (d.pagadores[0]?.id_ref === 'caixa_central') {
+    if (d.pagadores[0]?.id_ref === CAIXA_CENTRAL) {
       setTipoDespesa('producao');
     } else if (d.reembolsavel) {
       setTipoDespesa('reembolsavel');
@@ -218,14 +220,14 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     if (!descricao || valorNum <= 0 || !pagadorId || !perfis) return;
 
     /*
-      O 'caixa_central' é sentinela, não pessoa — e a linha dele no banco é uma
+      O CAIXA_CENTRAL é sentinela, não pessoa — e a linha dele no banco é uma
       só, global, que muda de projeto conforme novos vão sendo criados. Exigir
       que ela exista fazia `salvarDespesa` RETORNAR EM SILÊNCIO nos projetos
       onde ela não estava: o botão "Registrar Despesa" simplesmente não fazia
       nada, sem erro nenhum na tela.
     */
-    const pagador = pagadorId === 'caixa_central'
-      ? { id: 'caixa_central' }
+    const pagador = pagadorId === CAIXA_CENTRAL
+      ? { id: CAIXA_CENTRAL }
       : perfis.find(p => p.id === pagadorId);
 
     if (!pagador) {
@@ -258,16 +260,16 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
     
     if (tipoDespesa === 'producao') {
       // Sai do caixa, morre no projeto (departamento se tiver)
-      pagadores = [{ tipo: 'pessoa' as const, id_ref: 'caixa_central', valor: valorNum }];
+      pagadores = [{ tipo: 'pessoa' as const, id_ref: CAIXA_CENTRAL, valor: valorNum }];
       if (deptoVinculado) {
         devedores = [{ tipo: 'departamento' as const, id_ref: deptoVinculado, valor: valorNum }];
       } else {
-        devedores = [{ tipo: 'pessoa' as const, id_ref: 'caixa_central', valor: valorNum }]; // custo cego
+        devedores = [{ tipo: 'pessoa' as const, id_ref: CAIXA_CENTRAL, valor: valorNum }]; // custo cego
       }
     } else if (tipoDespesa === 'reembolsavel') {
       // Pessoa paga, Caixa deve
       pagadores = [{ tipo: 'pessoa' as const, id_ref: pagador.id, valor: valorNum }];
-      devedores = [{ tipo: 'pessoa' as const, id_ref: 'caixa_central', valor: valorNum }];
+      devedores = [{ tipo: 'pessoa' as const, id_ref: CAIXA_CENTRAL, valor: valorNum }];
     } else {
       // Pessoa paga, equipe deve
       pagadores = [{ tipo: 'pessoa' as const, id_ref: pagador.id, valor: valorNum }];
@@ -467,7 +469,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
             <div className="text-xs text-secondary font-bold uppercase tracking-widest mt-2">Tipo de Despesa</div>
             
             <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-              <input type="radio" checked={tipoDespesa === 'producao'} onChange={() => { setTipoDespesa('producao'); setPagadorId('caixa_central'); }} />
+              <input type="radio" checked={tipoDespesa === 'producao'} onChange={() => { setTipoDespesa('producao'); setPagadorId(CAIXA_CENTRAL); }} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span className="text-sm font-bold">Gasto Direto da Produção (Caixa)</span>
                 <span className="text-xs text-muted">Dinheiro já saiu direto da conta do projeto. Ninguém deve a ninguém.</span>

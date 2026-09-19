@@ -1,4 +1,5 @@
 import { dinheiro } from '../lib/formato';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { useAcesso } from '../hooks/useAcesso';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -27,15 +28,15 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
   const transacoesSugeridas = simplificarDividas(saldos, projeto.modo_acerto as ModoAcerto);
 
   const nomePorId = (id: string) => {
-    if (id === 'caixa_central') return 'Produção';
+    if (id === CAIXA_CENTRAL) return 'Produção';
     const p = perfis.find(x => x.id === id);
     return p ? `${p.nome} ${p.sobrenome || ''}`.trim() : 'Desconhecido';
   };
 
   // Números do Caixa (entidade, não pessoa)
   const confirmados = acertos.filter(a => a.status === 'confirmado');
-  const aReceberPend = transacoesSugeridas.filter(t => t.para.id_ref === 'caixa_central').reduce((s, t) => s + t.valor, 0);
-  const aPagarPend = transacoesSugeridas.filter(t => t.de.id_ref === 'caixa_central').reduce((s, t) => s + t.valor, 0);
+  const aReceberPend = transacoesSugeridas.filter(t => t.para.id_ref === CAIXA_CENTRAL).reduce((s, t) => s + t.valor, 0);
+  const aPagarPend = transacoesSugeridas.filter(t => t.de.id_ref === CAIXA_CENTRAL).reduce((s, t) => s + t.valor, 0);
 
   const registrarPagamento = async (t: any) => {
     await db.acertos.add({
@@ -91,7 +92,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
     transacoesSugeridas.forEach(t => {
       msg += `- ${nomePorId(t.de.id_ref)} → ${nomePorId(t.para.id_ref)}: ${dinheiro(t.valor)}\n`;
     });
-    setMensagemGerada({ id: 'caixa_central', msg });
+    setMensagemGerada({ id: CAIXA_CENTRAL, msg });
   };
 
   const copiarMensagem = () => {
@@ -163,9 +164,9 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
             <button onClick={gerarRelatorioCaixa} className="btn-primary" style={{ width: '100%', marginTop: '16px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
               Gerar Relatório (Texto)
             </button>
-            {mensagemGerada?.id === 'caixa_central' && (
+            {mensagemGerada?.id === CAIXA_CENTRAL && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <textarea value={mensagemGerada.msg} onChange={e => setMensagemGerada({ id: 'caixa_central', msg: e.target.value })} rows={5} />
+                <textarea value={mensagemGerada.msg} onChange={e => setMensagemGerada({ id: CAIXA_CENTRAL, msg: e.target.value })} rows={5} />
                 <button onClick={copiarMensagem} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <Copy size={16} /> Copiar Relatório
                 </button>
@@ -180,7 +181,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
         <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '16px' }}>Acertos da Equipe</div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {perfis.filter(p => p.id !== 'caixa_central').map(p => {
+          {perfis.filter(p => p.id !== CAIXA_CENTRAL).map(p => {
             const minhatransacoes = transacoesSugeridas.filter(t => t.de.id_ref === p.id || t.para.id_ref === p.id);
             const detalhe = detalharParticipante(despesas, 'pessoa', p.id);
             const linhasDeve = detalhe.linhas.filter(l => l.tipo === 'deve');

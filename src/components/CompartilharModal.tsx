@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { naEquipe } from '../lib/vinculos';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight, UserMinus, Crown } from 'lucide-react';
@@ -334,7 +335,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
               style={campoEstilo}
             >
               <option value="">— não sou da equipe cadastrada —</option>
-              {perfis.filter(p => p.id !== 'caixa_central').map(p => (
+              {perfis.filter(naEquipe).map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nome} {p.sobrenome || ''} {p.funcao ? `(${p.funcao})` : ''}
                 </option>

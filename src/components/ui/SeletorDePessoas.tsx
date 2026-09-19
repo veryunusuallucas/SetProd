@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { naEquipe } from '../../lib/vinculos';
 import { Check, ChevronDown, Search, Users, X } from 'lucide-react';
 import type { Departamento, Perfil } from '../../types';
 import { normalizar } from '../../lib/creditos';
@@ -36,7 +37,7 @@ export function SeletorDePessoas({
   const caixa = useRef<HTMLDivElement>(null);
 
   const disponiveis = useMemo(
-    () => pessoas.filter(p => p.id !== 'caixa_central'),
+    () => pessoas.filter(naEquipe),
     [pessoas]
   );
 

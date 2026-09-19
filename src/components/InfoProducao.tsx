@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { naEquipe } from '../lib/vinculos';
 import { useAcesso } from '../hooks/useAcesso';
 import { SoQuemPode } from './ui/SoQuemPode';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -69,7 +70,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
   const exportarEnxuta = () => {
     if (!perfis) return;
     let txt = `CRÉDITOS - ${projeto.nome}\n\nEQUIPE:\n`;
-    perfis.filter(p => p.id !== 'caixa_central').forEach(p => {
+    perfis.filter(naEquipe).forEach(p => {
       txt += `${p.nome} ${p.sobrenome || ''} - ${p.funcao || 'Membro'}\n`;
     });
     if (projeto.creditos && projeto.creditos.length > 0) {
@@ -89,7 +90,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
   const exportarCSVCompleto = () => {
     if (!perfis) return;
     const headers = ['Nome', 'Sobrenome', 'CPF', 'Telefone', 'Email', 'Função', 'PIX', 'Valor Diária'];
-    const linhas = perfis.filter(p => p.id !== 'caixa_central').map(p => {
+    const linhas = perfis.filter(naEquipe).map(p => {
       return [
         p.nome, p.sobrenome || '', p.cpf || '', p.telefone || '', p.email || '', 
         p.funcao || '', p.chave_pix || '', p.valor_diaria || ''
@@ -181,7 +182,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
                 style={{ flex: 1, minWidth: '200px', backgroundColor: 'var(--bg-primary)' }}
               >
                 <option value="">-- Vincular membro da Equipe (Opcional) --</option>
-                {perfis?.filter(p => p.id !== 'caixa_central').map(p => (
+                {perfis?.filter(naEquipe).map(p => (
                   <option key={p.id} value={p.id}>{p.nome} {p.sobrenome || ''} ({p.funcao || 'Sem função'})</option>
                 ))}
               </select>

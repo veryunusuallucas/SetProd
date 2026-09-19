@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { naEquipe } from '../lib/vinculos';
 import { EmergenciaMedica } from '../components/EmergenciaMedica';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useAcesso } from '../hooks/useAcesso';
@@ -402,7 +403,7 @@ export function DiariaModule() {
   };
 
   /** Quem pode ser escalado. O caixa central é conta contábil, não gente. */
-  const perfisEscalaveis = perfis.filter(p => p.id !== 'caixa_central');
+  const perfisEscalaveis = perfis.filter(naEquipe);
   const todosEscalados = perfisEscalaveis.length > 0
     && perfisEscalaveis.every(p => (diaria.equipe_escalada || []).includes(p.id));
 

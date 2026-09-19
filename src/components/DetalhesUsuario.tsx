@@ -1,4 +1,5 @@
 import { dinheiro } from '../lib/formato';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -31,7 +32,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
 
   if (!projeto || !despesas || !acertos) return <div>Carregando...</div>;
 
-  const isProjeto = usuarioId === 'caixa_central';
+  const isProjeto = usuarioId === CAIXA_CENTRAL;
   const nomeUsuario = isProjeto ? 'Caixa da Produção' : (perfil?.nome + ' ' + (perfil?.sobrenome || ''));
   const campos = projeto.campos_customizados || [];
 
@@ -74,8 +75,8 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
     if (isProjeto) {
       msgFinal = `*Resumo Financeiro - ${projeto.nome}*\n\nTotal de pendências:\n`;
       transacoesSugeridas.forEach(t => {
-        const deNome = t.de.id_ref === 'caixa_central' ? 'Produção' : 'Membro';
-        const paraNome = t.para.id_ref === 'caixa_central' ? 'Produção' : 'Membro';
+        const deNome = t.de.id_ref === CAIXA_CENTRAL ? 'Produção' : 'Membro';
+        const paraNome = t.para.id_ref === CAIXA_CENTRAL ? 'Produção' : 'Membro';
         msgFinal += `- ${deNome} transfere ${dinheiro(t.valor)} para ${paraNome}\n`;
       });
       setMensagemGerada(msgFinal);
@@ -141,8 +142,8 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
 
   let dataGraficoCaixa: { name: string; valor: number }[] = [];
   if (isProjeto) {
-    const totalAReceber = transacoesSugeridas.filter(t => t.para.id_ref === 'caixa_central').reduce((acc, t) => acc + t.valor, 0);
-    const totalAPagar = transacoesSugeridas.filter(t => t.de.id_ref === 'caixa_central').reduce((acc, t) => acc + t.valor, 0);
+    const totalAReceber = transacoesSugeridas.filter(t => t.para.id_ref === CAIXA_CENTRAL).reduce((acc, t) => acc + t.valor, 0);
+    const totalAPagar = transacoesSugeridas.filter(t => t.de.id_ref === CAIXA_CENTRAL).reduce((acc, t) => acc + t.valor, 0);
     dataGraficoCaixa = [
       { name: 'A Receber', valor: totalAReceber },
       { name: 'A Pagar', valor: totalAPagar }

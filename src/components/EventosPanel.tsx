@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { naEquipe } from '../lib/vinculos';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -57,7 +58,7 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
 
   const locacoes = useLiveQuery(() => db.locacoes.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
-  const equipe = perfis.filter(p => p.id !== 'caixa_central');
+  const equipe = perfis.filter(naEquipe);
 
   const reduzido = useMovimentoReduzido();
   const [criando, setCriando] = useState(false);

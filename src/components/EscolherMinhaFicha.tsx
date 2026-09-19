@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { naEquipe } from '../lib/vinculos';
 import { possoEscrever } from '../lib/travaDeEscrita';
 import { salvarCredito } from '../lib/creditos';
 import { createPortal } from 'react-dom';
@@ -58,7 +59,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
         db.departamentos.where('projeto_id').equals(projetoId).toArray(),
       ]);
       if (!vivo) return;
-      setPerfis(ps.filter(p => p.id !== 'caixa_central'));
+      setPerfis(ps.filter(naEquipe));
       setDepartamentos(ds);
 
       // Quem já tem dono some da lista. O índice único do banco recusaria a

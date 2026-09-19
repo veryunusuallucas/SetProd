@@ -1,4 +1,6 @@
 import { db } from '../db/db';
+import { naEquipe } from './vinculos';
+import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import type { Departamento, Perfil, Projeto, Credito } from '../types';
 
 /**
@@ -303,7 +305,7 @@ export async function removerCredito(projeto: Projeto, creditoId: string): Promi
  */
 export function ordenarCandidatos(perfis: Perfil[], departamentoId: string): Perfil[] {
   return [...perfis]
-    .filter(p => p.id !== 'caixa_central')
+    .filter(naEquipe)
     .sort((a, b) => {
       const aNoDepto = a.departamento_id === departamentoId ? 0 : 1;
       const bNoDepto = b.departamento_id === departamentoId ? 0 : 1;
@@ -368,7 +370,7 @@ export function sugestoesPelaFicha(
   const disputadas = new Set<string>();
 
   for (const perfil of perfis) {
-    if (!perfil.funcao || perfil.id === 'caixa_central') continue;
+    if (!perfil.funcao || perfil.id === CAIXA_CENTRAL) continue;
 
     let candidatas = vagas.filter(v => normalizar(v.papel) === normalizar(perfil.funcao!));
 

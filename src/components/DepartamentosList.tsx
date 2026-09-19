@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { vinculosDoDepartamento } from '../lib/vinculos';
+import { naEquipe } from '../lib/vinculos';
 import { preencherCoresDosDepartamentos } from '../lib/creditos';
 import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -81,8 +83,24 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
     setShowForm(true);
   };
 
+  /*
+    Departamento em uso não se apaga (ROADMAP §10.C): as despesas lançadas
+    contra ele, as tasks e as fichas ficariam apontando para um departamento que
+    não existe, e o saldo por área perderia a linha. A tela diz onde ele aparece
+    — mover as pessoas e as tasks antes é o caminho.
+  */
   const handleDelete = async (id: string, nome: string) => {
-    if (await confirmar(`Excluir o departamento ${nome}? Os membros não serão apagados, mas ficarão sem departamento.`)) {
+    const v = await vinculosDoDepartamento(projetoId, id);
+    if (v.total > 0) {
+      await confirmar({
+        titulo: `${nome} ainda está em uso`,
+        detalhe: `Aparece em ${v.frase}. Mova as pessoas e as tasks para outro departamento antes de apagar este — senão elas ficariam apontando para um departamento que não existe mais.`,
+        confirmar: 'Entendi',
+        cancelar: 'Fechar',
+      });
+      return;
+    }
+    if (await confirmar(`Excluir o departamento ${nome}?`)) {
       await db.departamentos.delete(id);
     }
   };
@@ -381,7 +399,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
             <div>
               <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2">Selecionar Membros</div>
               <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--border-color)', padding: '12px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)' }}>
-                {perfis?.filter(p => p.id !== 'caixa_central').map(p => (
+                {perfis?.filter(naEquipe).map(p => (
                   <label key={p.id} className="checkbox-label" style={{ fontSize: '14px' }}>
                     <input 
                       type="checkbox" 
