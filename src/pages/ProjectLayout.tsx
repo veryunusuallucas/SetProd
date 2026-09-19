@@ -1,4 +1,5 @@
 import { useState, createContext, useContext, useEffect, useRef, Suspense } from 'react';
+import { limparFichasQueNaoPossoVer } from '../lib/fichaEmCamadas';
 import { useParams, useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
 import { voltarDe } from '../lib/navegacao';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -128,6 +129,15 @@ export function ProjectLayout() {
 
     return () => { vivo = false; parar?.(); };
   }, [id]);
+
+  /*
+    A ficha em camadas (fichaEmCamadas.ts): antes dela, o CPF e a ficha médica
+    de todo mundo chegavam a todo aparelho. Com o papel conhecido, o que esta
+    conta não pode ver sai daqui — e não volta, porque o servidor não manda.
+  */
+  useEffect(() => {
+    if (participacao) limparFichasQueNaoPossoVer(id!).catch(() => {});
+  }, [id, participacao?.papel, participacao?.perfil_id]);
 
   /*
     O PAPEL PODE MUDAR COM A TELA ABERTA (ROADMAP, Etapa 8). Quem administra

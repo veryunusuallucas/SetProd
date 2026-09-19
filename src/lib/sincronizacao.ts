@@ -1,6 +1,9 @@
 import { db, TABELAS_SINCRONIZADAS, marcarTransacaoComoRemota } from '../db/db';
 import { supabase, supabaseConfigurado } from './supabase';
 import { contaAtual } from './conta';
+import {
+  aplicarParteDaFicha, ehParteDaFicha, fundirPublica, partesQuePossoApagar, partirParaEnviar,
+} from './fichaEmCamadas';
 
 /**
  * O motor de sincronização: leva o que mudou aqui para o servidor e traz o que
@@ -150,6 +153,16 @@ async function montarEnvio(projetoId: string) {
         projeto_id: projetoId, tabela: p.tabela, id: p.registro_id,
         dados: null, atualizado_em: p.atualizado_em, deletado: true,
       });
+      // A ficha apagada leva junto as camadas que esta conta pode apagar. As
+      // outras ficam para quem pode — a RLS recusaria de qualquer jeito.
+      if (p.tabela === 'perfis') {
+        for (const parte of partesQuePossoApagar(projetoId, p.registro_id)) {
+          linhas.push({
+            projeto_id: projetoId, tabela: parte, id: p.registro_id,
+            dados: null, atualizado_em: p.atualizado_em, deletado: true,
+          });
+        }
+      }
       enviadas.push(p.id);
       continue;
     }
@@ -163,10 +176,30 @@ async function montarEnvio(projetoId: string) {
       continue;
     }
 
+    const carimbo = registro.atualizado_em ?? p.atualizado_em;
+
+    // A ficha sobe em três linhas: o crachá e, se esta conta pode ver, as duas
+    // camadas protegidas. Ver `fichaEmCamadas.ts`.
+    if (p.tabela === 'perfis') {
+      const { publica, partes } = partirParaEnviar(projetoId, registro as never);
+      linhas.push({
+        projeto_id: projetoId, tabela: 'perfis', id: p.registro_id,
+        dados: publica as Linha, atualizado_em: carimbo, deletado: false,
+      });
+      for (const parte of partes) {
+        linhas.push({
+          projeto_id: projetoId, tabela: parte.tabela, id: p.registro_id,
+          dados: parte.dados as Linha, atualizado_em: carimbo, deletado: false,
+        });
+      }
+      enviadas.push(p.id);
+      continue;
+    }
+
     linhas.push({
       projeto_id: projetoId, tabela: p.tabela, id: p.registro_id,
       dados: registro,
-      atualizado_em: registro.atualizado_em ?? p.atualizado_em,
+      atualizado_em: carimbo,
       deletado: false,
     });
     enviadas.push(p.id);
@@ -273,13 +306,22 @@ async function desfazerRecusadas(projetoId: string, recusadas: LinhaEspelho[]) {
         const tabela = db.table(linha.tabela);
         const oficial = noServidor.find(l => l.tabela === linha.tabela && l.id === linha.id);
         if (!oficial || oficial.deletado || !oficial.dados) await tabela.delete(linha.id);
+        else if (linha.tabela === 'perfis') {
+          // A versão do servidor que a conta enxerga é só o crachá: as camadas
+          // daqui ficam.
+          const local = await tabela.get(linha.id);
+          await tabela.put({ ...fundirPublica(local, oficial.dados), atualizado_em: oficial.atualizado_em });
+        }
         else await tabela.put({ ...oficial.dados, atualizado_em: oficial.atualizado_em });
       }
     });
   }
 
+  // As camadas da ficha acompanham a linha pública; o aviso é sobre a ficha.
+  const avisar = recusadas.filter(l => !ehParteDaFicha(l.tabela));
+  if (!avisar.length) return;
   window.dispatchEvent(new CustomEvent<Recusa[]>(EVENTO_RECUSA, {
-    detail: recusadas.map(l => ({ projeto_id: l.projeto_id, tabela: l.tabela, id: l.id })),
+    detail: avisar.map(l => ({ projeto_id: l.projeto_id, tabela: l.tabela, id: l.id })),
   }));
 }
 
@@ -296,10 +338,14 @@ async function desfazerRecusadas(projetoId: string, recusadas: LinhaEspelho[]) {
  * com o cursor atrasado.
  */
 export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
-  const usaveis = linhas.filter(l => conhecida(l.tabela));
+  // As camadas da ficha não são tabela do Dexie — viram campos do `perfis`.
+  // A pública vem antes delas na mesma leva, para a camada achar a ficha.
+  const usaveis = linhas
+    .filter(l => conhecida(l.tabela) || ehParteDaFicha(l.tabela))
+    .sort((a, b) => Number(ehParteDaFicha(a.tabela)) - Number(ehParteDaFicha(b.tabela)));
   if (!usaveis.length) return 0;
 
-  const tabelas = [...new Set(usaveis.map(l => l.tabela))];
+  const tabelas = [...new Set(usaveis.map(l => (ehParteDaFicha(l.tabela) ? 'perfis' : l.tabela)))];
   let aplicadas = 0;
   const perdidas: Conflito[] = [];
 
@@ -310,6 +356,11 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
     marcarTransacaoComoRemota();
 
     for (const linha of usaveis) {
+      if (ehParteDaFicha(linha.tabela)) {
+        if (await aplicarParteDaFicha({ ...linha, tabela: linha.tabela, dados: linha.dados as never })) aplicadas++;
+        continue;
+      }
+
       const tabela = db.table(linha.tabela);
       const local = await tabela.get(linha.id) as Linha | undefined;
       const naFila = await db.sync_queue.get(`${linha.tabela}:${linha.id}`);
@@ -333,6 +384,9 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
       if (carimboDaqui >= linha.atualizado_em) continue;
 
       if (linha.deletado) await tabela.delete(linha.id);
+      else if (linha.dados && linha.tabela === 'perfis') {
+        await tabela.put({ ...fundirPublica(local as never, linha.dados), atualizado_em: linha.atualizado_em });
+      }
       else if (linha.dados) await tabela.put({ ...linha.dados, atualizado_em: linha.atualizado_em });
       aplicadas++;
 

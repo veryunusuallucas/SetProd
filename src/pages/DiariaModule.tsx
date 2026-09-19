@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { EmergenciaMedica } from '../components/EmergenciaMedica';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useAcesso } from '../hooks/useAcesso';
 import { dinheiro } from '../lib/formato';
@@ -1050,6 +1051,15 @@ export function DiariaModule() {
         faixa do stripboard, que nem sempre existe.
       */}
       <EstadoDaDiaria diaria={diaria} podeMexer={podeAdministrar} />
+
+      {/* Só aparece no dia, para quem está escalado e não vê a ficha médica. */}
+      <EmergenciaMedica
+        projetoId={projetoId!}
+        diaria={diaria}
+        escalados={escalados}
+        meuPerfilId={meuPerfilId || undefined}
+        jaVejo={podeAdministrar}
+      />
 
       {/*
         O relógio aparece a partir da PUBLICAÇÃO, e não a partir da chamada.

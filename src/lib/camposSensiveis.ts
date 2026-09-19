@@ -70,10 +70,8 @@ interface Quem {
 /**
  * Posso ver esta camada desta pessoa?
  *
- * ⚠️ **ISTO É A TELA, NÃO A SEGURANÇA** — ver a decisão de armazenamento no fim
- * deste arquivo. Enquanto os dados morarem numa linha só de `registros`, quem
- * abrir o DevTools lê tudo. O que isto faz é não colocar CPF e remédio na cara
- * de quem não precisa, que já é a maior parte do risco real numa produção.
+ * É a mesma regra da RLS de leitura (`pode_ver_ficha` em `fichas.sql`) e de
+ * quem sobe as camadas (`fichaEmCamadas.ts`). Ver o fim deste arquivo.
  */
 export function podeVerCamada(camada: Camada, quem: Quem): boolean {
   if (camada === 'publica') return true;
@@ -103,29 +101,19 @@ export function fichaVisivel(perfil: Perfil, quem: Quem): Partial<Perfil> {
 
 /*
  * =============================================================================
- * A DECISÃO DE ARMAZENAMENTO (Etapa 3 do ROADMAP — escrita, não implementada)
+ * O ARMAZENAMENTO (Etapa 3 do ROADMAP — implementado em 18/09/2026)
  * =============================================================================
  *
- * O `registros` é jsonb genérico: o servidor vê `dados` e mais nada. A RLS não
- * consegue esconder CAMPO — ela esconde LINHA. Havia duas saídas:
+ * O `registros` é jsonb genérico e a RLS esconde LINHA, não campo. A decisão foi
+ * a (a), linha separada — e ela foi feita na fronteira com o servidor, sem
+ * partir o `Perfil` do app: a ficha sobe em três linhas (`perfis`,
+ * `perfis_restritos`, `perfis_medicos`) e é remontada ao descer. Ver
+ * `fichaEmCamadas.ts` e `supabase/sql/fichas.sql`.
  *
- *   (a) Linha separada: `perfis_restritos` como tabela própria, política
- *       própria. Mais limpo, mais trabalho, mexe em muitas telas.
- *   (b) View com máscara: o app lê de uma view que anula os campos para quem
- *       não pode. Menos invasivo, mas o `registros` genérico atrapalha.
+ * O que `podeVerCamada` decide aqui é o MESMO que a RLS decide lá
+ * (`pode_ver_ficha`). Quem não pode ver uma camada não a recebe do servidor,
+ * e a cópia antiga some deste aparelho ao abrir a produção.
  *
- * DECISÃO: (a), quando for a hora. É a única que sobrevive ao escopo por
- * departamento, porque nela o servidor tem uma linha para proteger em vez de um
- * campo dentro de um jsonb opaco.
- *
- * POR QUE NÃO AGORA: partir `Perfil` em duas tabelas atravessa o cadastro
- * público, o importador de CSV, a exportação, a ficha completa, a Ordem do Dia
- * e o backup — e é uma migração de dado pessoal, do tipo que se faz sozinha,
- * com backup, e não no meio de uma rodada que também mexe em RLS.
- *
- * O QUE VALE HOJE, ENTÃO: a separação existe em três camadas neste arquivo e a
- * tela a respeita. O dado continua chegando inteiro ao navegador de qualquer
- * membro. O risco é "colega curioso com DevTools", não "estranho na internet" —
- * porque só quem é membro passa do `e_membro()`. Está escrito aqui de propósito,
- * para ninguém achar que estava protegido quando não estava.
+ * A emergência (`mesmaDiaria`) não passa por aqui: ela é pontual e registrada,
+ * pela função `ficha_medica_de_emergencia` — ver `EmergenciaMedica.tsx`.
  */

@@ -139,6 +139,13 @@ begin
   if v_papel in ('dono', 'admin') then return true; end if;
   if v_papel is distinct from 'equipe' then return false; end if;
 
+  -- As camadas protegidas da ficha (`fichas.sql`): documento, dinheiro e saúde
+  -- de alguém só são escritos por essa pessoa — dono e admin já passaram acima.
+  -- É a mesma regra de quem as LÊ; ver `pode_ver_ficha`.
+  if p_tabela in ('perfis_restritos', 'perfis_medicos') then
+    return p_id = public.meu_perfil_id(p_projeto);
+  end if;
+
   v_escopo := public.escopo_da_tabela(p_tabela);
   if v_escopo = 'restrito' then return false; end if;
   if v_escopo = 'comum' then return true; end if;
