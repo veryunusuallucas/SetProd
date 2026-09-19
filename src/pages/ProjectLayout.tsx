@@ -26,6 +26,7 @@ import { StatusSync } from '../components/StatusSync';
 import { AvisoConflito } from '../components/AvisoConflito';
 import { AvisoSemFicha } from '../components/AvisoSemFicha';
 import { AvisoDeAcesso } from '../components/AvisoDeAcesso';
+import { ConflitosPanel } from '../components/ConflitosPanel';
 import { useAuth } from '../hooks/useAuth';
 import { participacaoLocal, garantirParticipacao, sincronizarParticipacoes } from '../lib/membros';
 import { supabase, supabaseConfigurado } from '../lib/supabase';
@@ -653,6 +654,7 @@ export function ProjectLayout() {
                 {/* Fora do Suspense: o aviso não depende da tela que está
                     carregando, e é o mesmo em todas as abas da produção. */}
                 <AvisoDeAcesso projetoId={id!} aoAbrirAcesso={() => setMostrarCompartilhar(true)} />
+                <ConflitosPanel projetoId={id!} />
                 <AvisoSemFicha projetoId={id!} meuEmail={user?.email} />
 
                 {/* Suspense aqui, e não só lá no App: as telas do projeto
