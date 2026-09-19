@@ -33,6 +33,7 @@ const VERBO: Record<AcaoLog, string> = {
   criar: 'adicionou algo em',
   editar: 'mexeu em',
   deletar: 'apagou algo em',
+  ver: 'abriu uma ficha médica em',
 };
 
 export interface LinhaDaAta {
