@@ -103,7 +103,10 @@ export function fundirPublica(local: FichaLocal | undefined, publica: Record<str
       if (valor !== undefined) guardado[campo] = valor;
     }
   }
-  return { ...guardado, ...publica };
+  // A pública chegou: não é mais esboço, é gente.
+  const junto = { ...guardado, ...publica };
+  delete junto._esboco;
+  return junto;
 }
 
 /**
@@ -125,9 +128,20 @@ export async function aplicarParteDaFicha(linha: {
   const carimboDaqui = Math.max(local?._carimbos?.[camada] ?? 0, naFila?.atualizado_em ?? 0);
   if (carimboDaqui >= linha.atualizado_em) return false;
 
+  /*
+    ESBOÇO: a camada chegou e a ficha pública não está aqui.
+
+    Acontece na virada de página do lote e quando a pública já tinha sido
+    baixada antes — nesse caso ela NÃO volta, e o esboço ficaria para sempre com
+    `nome: ''`. Sem marca, ele entrava nas listas como uma linha em branco: foi
+    assim que o seletor dos créditos ganhou cinco buracos no meio (20/09/2026).
+
+    A marca `_esboco` é o que deixa as telas ignorarem o que ainda não é uma
+    pessoa. Some sozinha quando a pública chega (`fundirPublica`).
+  */
   const ficha: Record<string, unknown> = local
     ? { ...local }
-    : { id: linha.id, projeto_id: linha.projeto_id, nome: '', atualizado_em: 0 };
+    : { id: linha.id, projeto_id: linha.projeto_id, nome: '', atualizado_em: 0, _esboco: true };
 
   for (const campo of campos) delete ficha[campo];
   if (!linha.deletado && linha.dados) {

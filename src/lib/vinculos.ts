@@ -84,7 +84,15 @@ export async function vinculosDoDepartamento(projetoId: string, departamentoId: 
   ]);
 }
 
-/** Quem conta como equipe nas listas: nem o caixa da produção, nem quem saiu. */
-export function naEquipe(p: { id: string; arquivado_em?: number }): boolean {
-  return p.id !== CAIXA_CENTRAL && !p.arquivado_em;
+/**
+ * Quem conta como equipe nas listas: nem o caixa da produção, nem quem saiu —
+ * nem o esboço de ficha que ainda não tem nome.
+ *
+ * O esboço nasce quando a camada protegida de uma ficha chega antes da parte
+ * pública (ver `fichaEmCamadas.ts`). Ele é um registro legítimo à espera do
+ * resto, mas não é uma pessoa: numa lista ele aparece como linha em branco.
+ */
+export function naEquipe(p: { id: string; arquivado_em?: number; nome?: string; _esboco?: boolean }): boolean {
+  if (p.id === CAIXA_CENTRAL || p.arquivado_em) return false;
+  return !p._esboco && Boolean(p.nome?.trim());
 }
