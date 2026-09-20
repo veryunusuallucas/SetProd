@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,13 +38,9 @@ export function IndicadorConexao() {
   const [conexao, setConexao] = useState<Conexao>({ estado: 'conectado', pendentes: 0, aoVivo: false });
   const [aberto, setAberto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
-  const botao = useRef<HTMLButtonElement>(null);
-  const reduzido = useMovimentoReduzido();
-
   useEffect(() => ouvirConexao(projetoId, setConexao), [projetoId]);
 
   const { curta, longa } = frasesDaConexao(conexao);
-  const { Icone, cor, chama } = aparencia(conexao);
 
   const agora = async () => {
     if (!projetoId) return;
@@ -54,9 +50,43 @@ export function IndicadorConexao() {
 
   return (
     <>
-      <button
-        ref={botao}
-        onClick={() => setAberto(a => !a)}
+      <PilulaDeConexao conexao={conexao} projetoId={projetoId} aoTocar={() => setAberto(a => !a)} />
+
+      {/* Para quem usa leitor de tela: a mudança é anunciada sem interromper. */}
+      <span aria-live="polite" className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+        {curta}
+      </span>
+
+      <AnimatePresence>
+        {aberto && (
+          <Detalhe
+            conexao={conexao}
+            longa={longa}
+            podeSincronizar={Boolean(projetoId)}
+            sincronizando={sincronizando}
+            aoSincronizar={agora}
+            aoFechar={() => setAberto(false)}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/**
+ * Só a pílula — separada para a demonstração e para os testes poderem vê-la em
+ * cada estado sem precisar derrubar a internet de verdade.
+ */
+export function PilulaDeConexao({
+  conexao, projetoId, aoTocar,
+}: { conexao: Conexao; projetoId?: string; aoTocar?: () => void }) {
+  const reduzido = useMovimentoReduzido();
+  const { longa } = frasesDaConexao(conexao);
+  const { Icone, cor, chama } = aparencia(conexao);
+
+  return (
+    <button
+      onClick={aoTocar}
         aria-label={longa}
         title={longa}
         /*
@@ -88,25 +118,6 @@ export function IndicadorConexao() {
             que muda o que a pessoa faz agora. */}
         {chama && <span className="text-xs font-bold">{conexao.pendentes}</span>}
       </button>
-
-      {/* Para quem usa leitor de tela: a mudança é anunciada sem interromper. */}
-      <span aria-live="polite" className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-        {curta}
-      </span>
-
-      <AnimatePresence>
-        {aberto && (
-          <Detalhe
-            conexao={conexao}
-            longa={longa}
-            podeSincronizar={Boolean(projetoId)}
-            sincronizando={sincronizando}
-            aoSincronizar={agora}
-            aoFechar={() => setAberto(false)}
-          />
-        )}
-      </AnimatePresence>
-    </>
   );
 }
 
