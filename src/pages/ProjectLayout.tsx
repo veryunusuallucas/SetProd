@@ -419,6 +419,12 @@ export function ProjectLayout() {
           <h2 className="text-base font-bold truncate" title={projeto.nome}>{projeto.nome}</h2>
           <span className="text-xs text-muted">SetProd v4</span>
         </div>
+        {/* O sino sobe para o cabeçalho: ele é um ícone com contador, não
+            precisava de uma linha inteira da lista — e a lista precisa do
+            espaço para caber sem rolagem. */}
+        <div style={{ marginLeft: 'auto' }}>
+          <NotificacoesBell projetoId={id} />
+        </div>
       </div>
       
       <div className="sidebar-nav" style={{ flex: 1, overflowY: 'auto' }}>
@@ -440,31 +446,34 @@ export function ProjectLayout() {
             ))}
           </div>
         ))}
-        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
-          <Link
-            to={`/projeto/${id}/dados`}
-            className={`sidebar-link ${isActive(`/projeto/${id}/dados`, false) ? 'active' : ''}`}
-            onClick={() => setMobileSidebarOpen(false)}
-          >
-            <Database size={18} />
-            <span>Gestão de Dados</span>
-          </Link>
-          <Link
-            to={`/projeto/${id}/config`}
-            className={`sidebar-link ${isActive(`/projeto/${id}/config`, false) ? 'active' : ''}`}
-            onClick={() => setMobileSidebarOpen(false)}
-          >
-            <Settings size={18} />
-            <span>Configurações</span>
-          </Link>
-        </div>
       </div>
       
+      {/*
+        O RODAPÉ É O QUE NÃO É O FILME (pedido do Lucas, 20/09/2026).
+
+        Gestão de Dados e Configurações estavam soltas no meio da lista, entre
+        os módulos do trabalho — e são de outra natureza: mexem no app, não na
+        produção. Descendo para cá, elas ficam com as suas vizinhas de verdade
+        (busca, acesso, sair) e a lista de cima volta a ser só "onde eu
+        trabalho", que é o que a pessoa procura correndo no set.
+      */}
       <div className="sidebar-footer">
-        <div className="sidebar-notificacoes" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}>
-          <NotificacoesBell projetoId={id} />
-          <span className="text-xs text-muted">Notificações</span>
-        </div>
+        <Link
+          to={`/projeto/${id}/dados`}
+          className={`sidebar-link ${isActive(`/projeto/${id}/dados`, false) ? 'active' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+        >
+          <Database size={18} />
+          <span>Gestão de Dados</span>
+        </Link>
+        <Link
+          to={`/projeto/${id}/config`}
+          className={`sidebar-link ${isActive(`/projeto/${id}/config`, false) ? 'active' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+        >
+          <Settings size={18} />
+          <span>Configurações</span>
+        </Link>
         <button className="sidebar-link" onClick={() => window.dispatchEvent(new Event('open-command-palette'))}>
           <Search size={18} />
           <span>Busca (Cmd+K)</span>
