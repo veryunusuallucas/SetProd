@@ -3,10 +3,19 @@ import { dinheiro, paraData } from '../lib/formato';
 import { db } from '../db/db';
 import { ArrowDownToLine, ArrowUpToLine, Calendar, FileText } from 'lucide-react';
 
-export function MovimentoList({ projetoId }: { projetoId: string }) {
+/**
+ * Com `soDoDepartamento`, o extrato mostra só as saídas daquele departamento —
+ * e nenhuma entrada, porque aporte é dinheiro que entra no caixa do filme, não
+ * no de uma área.
+ */
+export function MovimentoList({ projetoId, soDoDepartamento }: { projetoId: string; soDoDepartamento?: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
-  const aportes = useLiveQuery(() => db.aportes.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
-  const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const todosAportes = useLiveQuery(() => db.aportes.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const todasDespesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const aportes = soDoDepartamento ? [] : todosAportes;
+  const despesas = soDoDepartamento
+    ? todasDespesas.filter(d => d.departamento_id === soDoDepartamento)
+    : todasDespesas;
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
 
   if (!projeto) return <div>Carregando...</div>;

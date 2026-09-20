@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
+import { PainelDoDepartamento } from '../components/PainelDoDepartamento';
 import { AreaProtegida, ModoLeitura } from '../components/ui/Acesso';
 import { useAcesso } from '../hooks/useAcesso';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
@@ -27,6 +29,21 @@ export function FinanceiroModule() {
   */
   const { podeEscrever, motivo } = useAcesso();
   const administra = podeEscrever('despesas');
+
+  /*
+    O FINANCEIRO RECORTADO POR DEPARTAMENTO (decisão do Lucas, 20/09/2026).
+
+    Quem administra vê o filme inteiro. Quem é de um departamento vê o DELE: as
+    saídas da sua área e quanto sobra do orçamento dela. Não é esconder o total
+    — é mostrar o número que orienta o trabalho daquela pessoa, que é outro.
+
+    Aporte não aparece para a equipe em lugar nenhum: dinheiro que entra é do
+    caixa do filme, e não existe "aporte da Fotografia".
+  */
+  const { departamento: meuDepartamento, perfil: minhaFicha } = useMinhaFuncao();
+  const minhaFichaId = minhaFicha?.id;
+  const recorte = administra ? undefined : meuDepartamento?.id;
+  const soMinhaArea = Boolean(recorte);
 
   if (!id) return <div>ID do projeto não encontrado.</div>;
 
@@ -60,12 +77,12 @@ export function FinanceiroModule() {
         >
           <Settings size={18} /> <span style={{ fontSize: '12px' }}>Controle</span>
         </button>}
-        <button 
+        {!soMinhaArea && <button 
           onClick={() => setAbaAtiva('entradas')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'entradas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'entradas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <ArrowDownToLine size={18} /> <span style={{ fontSize: '12px' }}>Entradas</span>
-        </button>
+        </button>}
         <button 
           onClick={() => setAbaAtiva('saidas')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'saidas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'saidas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
@@ -85,21 +102,27 @@ export function FinanceiroModule() {
       {/* Conteúdo Dinâmico */}
       {abaAtiva === 'visao' && (
         <>
-          <DashboardFinanceiro projetoId={id} />
-          {/* Logo abaixo da visão geral: "quanto cada área gastou" é a segunda
-              pergunta de qualquer reunião, depois de "quanto gastamos". */}
-          <div style={{ marginTop: '16px' }}>
-            <GastoPorArea projetoId={id} />
-          </div>
+          {soMinhaArea
+            ? <PainelDoDepartamento projetoId={id} departamento={meuDepartamento!} />
+            : <DashboardFinanceiro projetoId={id} />}
+          {/* "Quanto cada área gastou" é a segunda pergunta de qualquer reunião,
+              depois de "quanto gastamos" — e é pergunta de quem administra. Para
+              quem é de uma área, o painel acima já respondeu a dela. */}
+          {!soMinhaArea && (
+            <div style={{ marginTop: '16px' }}>
+              <GastoPorArea projetoId={id} />
+            </div>
+          )}
         </>
       )}
-      {abaAtiva === 'movimento' && <MovimentoList projetoId={id} />}
+      {abaAtiva === 'movimento' && <MovimentoList projetoId={id} soDoDepartamento={recorte} />}
       {abaAtiva === 'controle' && administra && <ControleFinanceiro projetoId={id} />}
-      {abaAtiva === 'entradas' && <EntradasList projetoId={id} />}
-      {abaAtiva === 'saidas' && <DespesasList projetoId={id} />}
+      {abaAtiva === 'entradas' && !soMinhaArea && <EntradasList projetoId={id} />}
+      {abaAtiva === 'saidas' && <DespesasList projetoId={id} soDoDepartamento={recorte} />}
       {abaAtiva === 'distribuicao' && (
         <ResumoList 
           projetoId={id} 
+          soEstePerfil={soMinhaArea ? minhaFichaId : undefined}
           onVerFicha={(uid) => {
             openPanel(
               <DetalhesUsuario 
