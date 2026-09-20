@@ -10,7 +10,13 @@ import { Check, Copy, ArrowRight, RotateCcw, Wallet } from 'lucide-react';
 import type { ModoAcerto, StatusAcerto, Perfil } from '../types';
 import { ProfileCard } from './ui/ProfileCard';
 
-export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVerFicha?: (id: string) => void }) {
+/**
+ * `soEstePerfil` mostra só a linha de quem está olhando (decisão do Lucas,
+ * 20/09/2026). Quanto cada pessoa da equipe tem a receber é assunto de quem
+ * administra o dinheiro; para quem é da equipe, o que interessa — e o que é
+ * dela — é o próprio acerto.
+ */
+export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId: string, onVerFicha?: (id: string) => void, soEstePerfil?: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   // Confirmar e estornar pagamento é dinheiro da produção: quem administra.
@@ -116,8 +122,10 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
         </span>
       </div>
 
-      {/* ===== CAIXA DA PRODUÇÃO — entidade, não membro ===== */}
-      {projeto.modo_acerto === 'centralizado' && (
+      {/* ===== CAIXA DA PRODUÇÃO — entidade, não membro =====
+           Quanto o caixa tem a pagar e a receber é o retrato do dinheiro do
+           filme: some para quem está vendo só o próprio acerto. */}
+      {projeto.modo_acerto === 'centralizado' && !soEstePerfil && (
         <div>
           <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '12px' }}>Caixa da Produção</div>
           <div className="card" style={{ borderColor: 'var(--accent)', background: 'linear-gradient(145deg, rgba(255,215,0,0.08) 0%, var(--bg-surface) 60%)' }}>
@@ -178,10 +186,12 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
 
       {/* ===== SALDOS DA EQUIPE ===== */}
       <div>
-        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '16px' }}>Acertos da Equipe</div>
+        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '16px' }}>
+          {soEstePerfil ? 'O seu acerto' : 'Acertos da Equipe'}
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {perfis.filter(p => p.id !== CAIXA_CENTRAL).map(p => {
+          {perfis.filter(p => p.id !== CAIXA_CENTRAL).filter(p => !soEstePerfil || p.id === soEstePerfil).map(p => {
             const minhatransacoes = transacoesSugeridas.filter(t => t.de.id_ref === p.id || t.para.id_ref === p.id);
             const detalhe = detalharParticipante(despesas, 'pessoa', p.id);
             const linhasDeve = detalhe.linhas.filter(l => l.tipo === 'deve');

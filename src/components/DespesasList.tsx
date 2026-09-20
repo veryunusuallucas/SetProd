@@ -66,7 +66,13 @@ const emojiCategoria = (cat?: string, descricao = '') => {
   return '📄';
 };
 
-export function DespesasList({ projetoId }: { projetoId: string }) {
+/**
+ * `soDoDepartamento` recorta a lista ao departamento de quem está olhando
+ * (ROADMAP §3 + pedido do Lucas em 20/09/2026): quem é da Fotografia vê os
+ * gastos da Fotografia, não o caixa do filme. Vazio = vê tudo, que é o caso de
+ * quem administra.
+ */
+export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: string; soDoDepartamento?: string }) {
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const diariasOficiais = useLiveQuery(async () => {
@@ -352,7 +358,9 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
 
   // Diárias existentes para o filtro
   const diariasExistentes = Array.from(new Set((despesas || []).map(d => d.diaria).filter(Boolean))) as string[];
-  const despesasFiltradas = (despesas || []).filter(d => filtroDiaria === 'todas' || d.diaria === filtroDiaria);
+  const despesasFiltradas = (despesas || [])
+    .filter(d => !soDoDepartamento || d.departamento_id === soDoDepartamento)
+    .filter(d => filtroDiaria === 'todas' || d.diaria === filtroDiaria);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative' }}>
