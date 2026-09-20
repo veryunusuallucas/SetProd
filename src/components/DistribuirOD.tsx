@@ -247,7 +247,7 @@ export function DistribuirOD({
           defaultValue={diaria.link_reuniao || ''}
           onBlur={e => (diaria.link_reuniao || '') !== e.target.value && db.diarias.update(diaria.id, { link_reuniao: e.target.value || undefined })}
           placeholder="Cole aqui o link do Meet, Zoom ou Teams"
-          style={{ width: '100%', padding: '8px 10px', fontSize: '14px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}
+          style={{ width: '100%', padding: '8px 10px', fontSize: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}
         />
       </div>
 

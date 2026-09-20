@@ -925,7 +925,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
           </div>
 
           <div
-            style={{ flex: 1, overflow: 'auto', backgroundColor: '#e5e5e5', borderRadius: '8px', display: 'flex', justifyContent: 'center', padding: '24px 0' }}
+            style={{ flex: 1, overflow: 'auto', backgroundColor: '#e5e5e5', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'center', padding: '24px 0' }}
             onMouseUp={handleMouseUp}
           >
             <Document
@@ -967,7 +967,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
                 transition={{ duration: 0.14 }}
                 style={{
                   position: 'fixed', left: menuPos.x + 10, top: menuPos.y + 10,
-                  backgroundColor: 'var(--bg-surface)', padding: '12px', borderRadius: '12px',
+                  backgroundColor: 'var(--bg-surface)', padding: '12px', borderRadius: 'var(--radius-md)',
                   boxShadow: '0 10px 30px rgba(0,0,0,0.55)', zIndex: 100,
                   border: '1px solid var(--border-color)', width: '290px',
                 }}
@@ -1013,7 +1013,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
                 <button
                   onClick={() => setFiltroDepto(null)}
                   className="text-xs"
-                  style={{ padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  style={{ padding: '4px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   <Filter size={11} /> limpar
                 </button>
@@ -1025,7 +1025,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
                   onClick={() => setFiltroDepto(filtroDepto === d.chave ? null : d.chave)}
                   className="text-xs"
                   style={{
-                    padding: '4px 10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 700,
+                    padding: '4px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 700,
                     border: `1px solid ${d.border}`,
                     backgroundColor: filtroDepto === d.chave ? d.bg : 'transparent',
                     color: filtroDepto === d.chave ? '#fff' : d.text,
@@ -1054,7 +1054,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
                     style={{
                       display: 'flex', flexDirection: 'column', padding: '12px',
                       backgroundColor: 'var(--bg-primary)', borderLeft: `4px solid ${tema.border}`,
-                      borderRadius: '8px', gap: '8px',
+                      borderRadius: 'var(--radius-sm)', gap: '8px',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>

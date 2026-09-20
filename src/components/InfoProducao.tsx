@@ -109,22 +109,22 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Sub Navbar */}
-      <div className="tab-strip" style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
+      <div className="tab-strip" style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: 'var(--radius-md)', gap: '4px' }}>
         <button 
           onClick={() => setAbaAtiva('creditos')}
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'creditos' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'creditos' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'creditos' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'creditos' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <Film size={18} /> <span style={{ fontSize: '12px' }}>Créditos</span>
         </button>
         <button 
           onClick={() => setAbaAtiva('departamentos')}
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'departamentos' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'departamentos' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'departamentos' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'departamentos' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <LayoutList size={18} /> <span style={{ fontSize: '12px' }}>Depto</span>
         </button>
         <button 
           onClick={() => setAbaAtiva('equipe')}
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'equipe' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'equipe' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'equipe' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'equipe' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <Users size={18} /> <span style={{ fontSize: '12px' }}>Equipe</span>
         </button>
@@ -132,7 +132,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
             um canto da tela de Equipe. */}
         <button
           onClick={() => setAbaAtiva('pesquisas')}
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: abaAtiva === 'pesquisas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'pesquisas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'pesquisas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'pesquisas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <ClipboardList size={18} /> <span style={{ fontSize: '12px' }}>Pesquisas</span>
         </button>
@@ -157,7 +157,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {apoios.map(c => (
-                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
                   <div>
                     <div className="font-bold">{c.nome}</div>
                     <div className="text-xs text-muted">{nomeDoCredito(c)}</div>

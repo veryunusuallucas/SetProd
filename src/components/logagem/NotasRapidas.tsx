@@ -35,7 +35,7 @@ export function NotasRapidas({ bloqueado, aoTocar }: { bloqueado: boolean; aoToc
           escala={0.94}
           onClick={() => aoTocar(n)}
           style={{
-            minHeight: '44px', padding: '0 14px', borderRadius: '999px',
+            minHeight: '44px', padding: '0 14px', borderRadius: 'var(--radius-full)',
             border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)',
             color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 600,
             cursor: bloqueado ? 'default' : 'pointer', opacity: bloqueado ? 0.5 : 1,

@@ -68,7 +68,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {projeto.saldo_inicial != null && projeto.saldo_inicial > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)' }}>
               <div>
                 <span className="font-bold">Saldo Inicial (Configuração do Projeto)</span>
               </div>
@@ -76,7 +76,7 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
             </div>
           )}
           {aportes.map(a => (
-            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
               <div>
                 <div className="font-bold">{a.origem}</div>
                 <div className="text-xs text-muted">{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })} {a.obs && `- ${a.obs}`}</div>

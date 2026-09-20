@@ -82,7 +82,7 @@ export function AiSetupPanel({ totalPaginas, processando, progresso, onProcessar
               style={{
                 position: 'relative',
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px',
-                padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+                padding: '14px 16px', borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
                 border: `1px solid ${ativo ? 'var(--accent)' : 'var(--border-light)'}`,
                 backgroundColor: ativo ? 'var(--bg-active)' : 'var(--bg-primary)',
                 color: 'var(--text-primary)',
@@ -98,7 +98,7 @@ export function AiSetupPanel({ totalPaginas, processando, progresso, onProcessar
                 <motion.span
                   layoutId="modo-ativo"
                   style={{
-                    position: 'absolute', inset: -1, borderRadius: '12px',
+                    position: 'absolute', inset: -1, borderRadius: 'var(--radius-md)',
                     border: '2px solid var(--accent)', pointerEvents: 'none',
                   }}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}

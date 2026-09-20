@@ -194,7 +194,7 @@ export function StripboardTimeline({
                   className="text-sm"
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-                    padding: '7px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
                     background: 'transparent', color: 'var(--text-primary)', textAlign: 'left',
                   }}
                 >
@@ -238,7 +238,7 @@ export function StripboardTimeline({
                   onClick={() => organizar(m.modo)}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px',
-                    padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
                     background: 'transparent', textAlign: 'left', color: 'var(--text-primary)',
                   }}
                 >

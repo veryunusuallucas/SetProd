@@ -190,7 +190,7 @@ export function DocumentosModule() {
             value={modalInput}
             onChange={e => modalMode === 'new_link' ? handleLinkChange(e.target.value) : setModalInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && modalMode !== 'new_link' && handleModalSubmit()}
-            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+            style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
           />
 
           {modalMode === 'new_link' && (
@@ -203,11 +203,11 @@ export function DocumentosModule() {
                   value={modalNome}
                   onChange={e => setModalNome(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleModalSubmit()}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
                 />
               </div>
               {modalPreview && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)' }}>
                   <img
                     src={modalPreview}
                     alt="Pré-visualização"
@@ -223,7 +223,7 @@ export function DocumentosModule() {
           {(modalMode === 'new_folder' || modalMode === 'edit_folder') && (
             <div>
               <label className="text-xs text-secondary font-bold uppercase mb-2 block">Cor</label>
-              <input type="color" value={modalColor} onChange={e => setModalColor(e.target.value)} style={{ width: '100%', height: '40px', padding: 0, border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'transparent' }} />
+              <input type="color" value={modalColor} onChange={e => setModalColor(e.target.value)} style={{ width: '100%', height: '40px', padding: 0, border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', backgroundColor: 'transparent' }} />
             </div>
           )}
 
@@ -281,7 +281,7 @@ export function DocumentosModule() {
                   padding: '24px',
                   backgroundColor: 'var(--bg-primary)',
                   border: '1px solid var(--border-light)',
-                  borderRadius: '12px',
+                  borderRadius: 'var(--radius-md)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -343,8 +343,8 @@ export function DocumentosModule() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {documentos?.map(doc => (
-          <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '8px', backgroundColor: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+          <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
               <Miniatura doc={doc} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -407,7 +407,7 @@ function BotaoAbrir({ doc }: { doc: Documento }) {
 
   if (!endereco) {
     return (
-      <span className="text-xs text-muted" style={{ ...estilo, opacity: 0.6, borderRadius: '8px' }}>
+      <span className="text-xs text-muted" style={{ ...estilo, opacity: 0.6, borderRadius: 'var(--radius-sm)' }}>
         Indisponível offline
       </span>
     );

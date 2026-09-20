@@ -294,7 +294,7 @@ export default function LogagemPage() {
             mas não diria DE ONDE você veio — e é o deslizar que faz a troca de
             aba parecer um lugar, e não um piscar.
           */}
-          <div className="tab-strip" role="tablist" aria-label="Partes da Logagem" style={{ display: 'flex', gap: '4px', padding: '4px', borderRadius: '12px', backgroundColor: 'var(--bg-surface)' }}>
+          <div className="tab-strip" role="tablist" aria-label="Partes da Logagem" style={{ display: 'flex', gap: '4px', padding: '4px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)' }}>
             {ABAS.map(a => {
               const ativa = a.id === aba;
               const Icone = a.icone;
@@ -312,7 +312,7 @@ export default function LogagemPage() {
                   style={{
                     position: 'relative', flex: '1 0 auto',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    padding: '14px', border: 'none', borderRadius: '8px', background: 'none', cursor: 'pointer',
+                    padding: '14px', border: 'none', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer',
                     fontWeight: 700, fontSize: '13px',
                     color: ativa ? 'var(--text-primary)' : 'var(--text-muted)',
                   }}
@@ -321,7 +321,7 @@ export default function LogagemPage() {
                     <motion.span
                       layoutId="logagem-aba-ativa"
                       transition={reduzido ? { duration: 0 } : MOLA}
-                      style={{ position: 'absolute', inset: 0, borderRadius: '8px', backgroundColor: 'var(--bg-active)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}
+                      style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-active)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}
                     />
                   )}
                   <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>

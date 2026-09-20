@@ -302,7 +302,7 @@ export function GestaoDados() {
                       title={bloqueado ? 'Só quem é dono ou administra a produção pode exportar dados pessoais.' : undefined}
                       style={{
                         display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px',
-                        borderRadius: '8px', cursor: bloqueado ? 'not-allowed' : 'pointer',
+                        borderRadius: 'var(--radius-sm)', cursor: bloqueado ? 'not-allowed' : 'pointer',
                         opacity: bloqueado ? 0.5 : 1,
                         backgroundColor: marcado ? 'var(--bg-active)' : 'var(--bg-primary)',
                         border: `1px solid ${marcado ? 'var(--accent)' : 'var(--border-light)'}`,
@@ -336,7 +336,7 @@ export function GestaoDados() {
         })}
 
         {temSensivel && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,193,7,0.08)', border: '1px solid var(--color-warning)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(255,193,7,0.08)', border: '1px solid var(--color-warning)' }}>
             <ShieldAlert size={18} className="text-warning" />
             <span className="text-xs">
               A seleção inclui dados pessoais sensíveis (CPF, conta bancária, informações de saúde).
@@ -396,7 +396,7 @@ export function GestaoDados() {
         </div>
 
         {peso && (
-          <div className="text-xs text-muted" style={{ padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+          <div className="text-xs text-muted" style={{ padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
             Com anexos: <strong>~{formatarTamanho(peso.total)}</strong>
             {peso.quantidadeDeAnexos > 0 && <> ({peso.quantidadeDeAnexos} arquivo(s))</>}.
             {' '}Sem anexos: <strong>~{formatarTamanho(peso.dados) || '0 B'}</strong>.
@@ -449,7 +449,7 @@ export function GestaoDados() {
           </label>
 
           {arquivoParaRestaurar && (
-            <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-danger)', backgroundColor: 'rgba(220,38,38,0.06)' }}>
+            <div style={{ marginTop: '12px', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', backgroundColor: 'rgba(220,38,38,0.06)' }}>
               <p className="text-xs" style={{ lineHeight: 1.5, marginBottom: '10px' }}>
                 Esta produção já existe aqui. Substituir apaga o estado atual e coloca o do backup —
                 e, como o conteúdo restaurado é mais recente, ele vence e chega na outra equipe.
@@ -553,7 +553,7 @@ export function GestaoDados() {
               <div
                 contentEditable
                 suppressContentEditableWarning
-                style={{ backgroundColor: '#fff', color: '#000', padding: '40px', borderRadius: '8px', minHeight: '100%' }}
+                style={{ backgroundColor: '#fff', color: '#000', padding: '40px', borderRadius: 'var(--radius-sm)', minHeight: '100%' }}
                 dangerouslySetInnerHTML={{ __html: htmlGerado }}
               />
             </div>

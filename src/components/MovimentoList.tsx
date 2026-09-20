@@ -75,7 +75,7 @@ export function MovimentoList({ projetoId }: { projetoId: string }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {movimentos.map(m => (
-              <div key={m.id} style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+              <div key={m.id} style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: m.tipo === 'entrada' ? 'rgba(0, 196, 159, 0.1)' : 'rgba(255, 128, 66, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {m.tipo === 'entrada' ? <ArrowDownToLine size={20} className="text-success" /> : <ArrowUpToLine size={20} className="text-danger" />}
                 </div>

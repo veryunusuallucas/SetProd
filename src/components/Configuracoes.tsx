@@ -138,7 +138,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
           <button
             onClick={() => editandoProjeto ? salvarProjeto() : setEditandoProjeto(true)}
             className="text-xs font-bold"
-            style={{ backgroundColor: editandoProjeto ? 'var(--accent)' : 'var(--bg-surface)', color: editandoProjeto ? '#000' : 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '6px 14px' }}
+            style={{ backgroundColor: editandoProjeto ? 'var(--accent)' : 'var(--bg-surface)', color: editandoProjeto ? '#000' : 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '6px 14px' }}
           >
             {editandoProjeto ? 'Salvar' : 'Editar'}
           </button>
@@ -196,14 +196,14 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
           Como novas despesas escolhem a diária.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: (projeto?.modo_diaria || 'automatico') === 'automatico' ? 'var(--bg-active)' : 'transparent' }}>
+          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: (projeto?.modo_diaria || 'automatico') === 'automatico' ? 'var(--bg-active)' : 'transparent' }}>
             <input type="checkbox" checked={(projeto?.modo_diaria || 'automatico') === 'automatico'} onChange={() => projeto && db.projetos.put({ ...projeto, modo_diaria: 'automatico' })} />
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span className="font-bold">Automático</span>
               <span className="text-xs text-muted">Novas despesas já vêm na diária atual da produção.</span>
             </div>
           </label>
-          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: projeto?.modo_diaria === 'manual' ? 'var(--bg-active)' : 'transparent' }}>
+          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: projeto?.modo_diaria === 'manual' ? 'var(--bg-active)' : 'transparent' }}>
             <input type="checkbox" checked={projeto?.modo_diaria === 'manual'} onChange={() => projeto && db.projetos.put({ ...projeto, modo_diaria: 'manual' })} />
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span className="font-bold">Manual / Antecipado</span>

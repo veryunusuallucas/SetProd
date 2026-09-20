@@ -65,7 +65,7 @@ export function PadraoDaOD({ projetoId }: { projetoId: string }) {
             <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '6px' }}>Logo da produtora</div>
             {previa ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '10px', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ backgroundColor: '#fff', borderRadius: 'var(--radius-sm)', padding: '10px', display: 'flex', justifyContent: 'center' }}>
                   <img src={previa} alt="Logo da produção" style={{ maxWidth: '100%', maxHeight: '80px', objectFit: 'contain' }} />
                 </div>
                 <button

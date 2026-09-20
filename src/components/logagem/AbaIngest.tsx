@@ -171,7 +171,7 @@ function Escolher({ progresso, aoEscolher }: {
           <span className="text-sm">
             Lendo {progresso.feitos} de {progresso.total}…
           </span>
-          <div style={{ height: '6px', borderRadius: '999px', backgroundColor: 'var(--bg-active)', overflow: 'hidden' }}>
+          <div style={{ height: '6px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--bg-active)', overflow: 'hidden' }}>
             <motion.div
               animate={{ width: `${progresso.total ? (progresso.feitos / progresso.total) * 100 : 0}%` }}
               transition={reduzido ? { duration: 0 } : MOLA}

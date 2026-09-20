@@ -33,7 +33,7 @@ export function ToggleDeVisao({ podeEditar, valor, aoMudar }: {
       aria-label="Visão da Logagem"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '1px', flexShrink: 0,
-        borderRadius: '999px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)',
+        borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)',
       }}
     >
       {opcoes.map(d => {
@@ -59,7 +59,7 @@ export function ToggleDeVisao({ podeEditar, valor, aoMudar }: {
             data-visao={d}
             tabIndex={marcada ? 0 : -1}
             style={{
-              position: 'relative', width: '44px', height: '44px', borderRadius: '999px', padding: 0,
+              position: 'relative', width: '44px', height: '44px', borderRadius: 'var(--radius-full)', padding: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: 'none', background: 'none', cursor: 'pointer',
               color: marcada ? '#0b0b0b' : 'var(--text-muted)', transition: 'color 0.2s ease',
@@ -70,7 +70,7 @@ export function ToggleDeVisao({ podeEditar, valor, aoMudar }: {
                 layoutId="toggle-visao-bolinha"
                 transition={reduzido ? { duration: 0 } : MOLA}
                 aria-hidden
-                style={{ position: 'absolute', inset: 0, borderRadius: '999px', backgroundColor: 'var(--cor-criativo)' }}
+                style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-full)', backgroundColor: 'var(--cor-criativo)' }}
               />
             )}
             <Icone size={18} style={{ position: 'relative' }} aria-hidden />

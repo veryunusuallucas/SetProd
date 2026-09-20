@@ -169,7 +169,7 @@ export function SeletorDePessoas({
             position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60,
             width: '320px', minWidth: '100%', maxWidth: 'calc(100vw - 48px)',
             padding: '6px', backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-color)', borderRadius: '12px',
+            border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)',
             boxShadow: '0 14px 34px rgba(0,0,0,0.4)',
             display: 'flex', flexDirection: 'column', gap: '4px',
             maxHeight: '300px',
@@ -195,7 +195,7 @@ export function SeletorDePessoas({
                 placeholder="Buscar por nome, função ou área…"
                 style={{
                   width: '100%', padding: '7px 10px 7px 32px', fontSize: '13px',
-                  borderRadius: '8px', border: '1px solid var(--border-light)',
+                  borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)',
                   backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)',
                 }}
               />
@@ -218,7 +218,7 @@ export function SeletorDePessoas({
                   onClick={() => alternar(p.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-                    padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
                     background: marcado ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
                     textAlign: 'left', color: 'var(--text-primary)',
                   }}

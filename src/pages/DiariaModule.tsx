@@ -1689,7 +1689,7 @@ function LinhaAnexo({ anexo, aoRemover }: { anexo: AnexoOD; aoRemover: () => voi
   const endereco = useArquivo(anexo.dados);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
       <Paperclip size={14} className="text-muted" />
       {endereco ? (
         <a href={endereco} download={anexo.nome} target="_blank" rel="noreferrer" style={{ flex: 1, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexo.nome}</a>

@@ -29,7 +29,7 @@ export function FaixaDeAviso({
       role="status"
       style={{
         display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-        padding: '12px 16px', borderRadius: '12px',
+        padding: '12px 16px', borderRadius: 'var(--radius-md)',
         background: atencao ? 'var(--color-warning-bg)' : 'var(--bg-surface)',
         border: `1px solid ${atencao
           ? 'color-mix(in srgb, var(--color-warning) 40%, transparent)'

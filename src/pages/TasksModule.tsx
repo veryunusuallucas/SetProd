@@ -573,7 +573,7 @@ export function TasksModule() {
                         key={sub.id}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '10px',
-                          padding: '6px 8px', borderRadius: '8px',
+                          padding: '6px 8px', borderRadius: 'var(--radius-sm)',
                         }}
                       >
                         <input
@@ -627,7 +627,7 @@ export function TasksModule() {
                         const dt = tasks.find(t => t.id === depId);
                         const feita = dt?.status === 'done';
                         return (
-                          <div key={depId} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '7px 10px', borderRadius: '8px' }}>
+                          <div key={depId} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '7px 10px', borderRadius: 'var(--radius-sm)' }}>
                             {feita
                               ? <CheckCircle2 size={14} color="var(--color-success)" style={{ flexShrink: 0 }} />
                               : <Circle size={14} className="text-muted" style={{ flexShrink: 0 }} />}

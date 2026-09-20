@@ -402,7 +402,7 @@ export function DecupagemModule() {
     await db.planos.delete(id);
   };
 
-  const selectStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px', color: 'var(--text-primary)' };
+  const selectStyle = { padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px', color: 'var(--text-primary)' };
 
   return (
     <div style={{ paddingBottom: '32px' }}>
@@ -479,7 +479,7 @@ export function DecupagemModule() {
         )}
 
         {viewMode === 'stripboard' && (
-          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
               <div className="text-xs text-muted">
                 Arraste as tiras para definir a ordem · <strong>{totalPaginas()}</strong> páginas no total
@@ -568,7 +568,7 @@ export function DecupagemModule() {
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
                     {(cena.anexos || []).map((url, i) => (
-                      <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}>
+                      <div key={i} style={{ position: 'relative', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)' }}>
                         <ImagemAnexo
                           valor={url}
                           alt={`Referência ${i + 1} da cena ${cena.numero}`}
@@ -596,7 +596,7 @@ export function DecupagemModule() {
           const planosDaCena = planos.filter(p => p.cena_id === cena.id).sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
           
           return (
-            <div key={cena.id} style={{ border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div key={cena.id} style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
               {/* Header da Cena */}
               <div style={{ backgroundColor: 'var(--bg-primary)', padding: '16px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -651,7 +651,7 @@ export function DecupagemModule() {
                           key={i}
                           valor={url}
                           alt={`Storyboard ${i}`}
-                          estiloLink={{ display: 'block', width: '60px', height: '60px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-light)' }}
+                          estiloLink={{ display: 'block', width: '60px', height: '60px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-light)' }}
                         />
                       ))}
                     </div>
@@ -673,7 +673,7 @@ export function DecupagemModule() {
                 {planosDaCena.map((plano, index) => {
                   const isExpanded = expandida === plano.id;
                   return (
-                    <div key={plano.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div key={plano.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <GripVertical size={16} className="text-muted" style={{ cursor: 'grab' }} />
                         <span className="text-secondary font-bold text-xs" style={{ width: '20px' }}>{(index+1).toString().padStart(2, '0')}</span>

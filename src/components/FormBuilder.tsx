@@ -142,7 +142,7 @@ export function FormBuilder({ projetoId, onClose }: { projetoId: string, onClose
           {camposFixos.map((campo) => {
             const sempre = CAMPOS_SEMPRE_OBRIGATORIOS.includes(campo.id);
             return (
-              <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{campo.nome}</div>
                   <div className="text-xs text-muted">{ROTULO_GRUPO[campo.grupo]}</div>
@@ -162,7 +162,7 @@ export function FormBuilder({ projetoId, onClose }: { projetoId: string, onClose
 
           <div className="text-xs font-bold text-muted uppercase tracking-widest mb-1 mt-4">Campos Personalizados</div>
           {campos.map((campo) => (
-            <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div key={campo.id} style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                   <GripVertical size={14} className="text-muted" style={{ cursor: 'grab' }} />
@@ -229,13 +229,13 @@ export function FormBuilder({ projetoId, onClose }: { projetoId: string, onClose
               placeholder="Nome do campo (ex: Tamanho da Camiseta)" 
               value={novoCampo}
               onChange={e => setNovoCampo(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+              style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}
             />
             <div style={{ display: 'flex', gap: '8px' }}>
               <select 
                 value={novoTipo}
                 onChange={e => setNovoTipo(e.target.value as TipoCampo)}
-                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', flex: 1, backgroundColor: 'var(--bg-primary)' }}
+                style={{ padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', flex: 1, backgroundColor: 'var(--bg-primary)' }}
               >
                 <option value="texto">Texto</option>
                 <option value="numero">Número</option>

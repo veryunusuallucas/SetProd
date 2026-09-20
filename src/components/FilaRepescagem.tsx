@@ -112,7 +112,7 @@ export function FilaRepescagem({ projetoId }: { projetoId: string }) {
                     className="text-xs"
                     style={{
                       display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px',
-                      borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', whiteSpace: 'nowrap',
                       border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
                     }}
                   >
@@ -135,7 +135,7 @@ export function FilaRepescagem({ projetoId }: { projetoId: string }) {
                           onClick={() => reencaixar(r.cena_id, d.id)}
                           className="text-xs"
                           style={{
-                            padding: '5px 10px', borderRadius: '8px', cursor: 'pointer',
+                            padding: '5px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                             border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
                             color: 'var(--text-primary)',
                           }}

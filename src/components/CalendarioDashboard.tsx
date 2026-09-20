@@ -292,7 +292,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
       </div>
 
       {mostrarClima && !coords && (
-        <div className="text-xs text-muted" style={{ backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '8px' }}>
+        <div className="text-xs text-muted" style={{ backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
           Nenhuma locação com coordenadas cadastradas — sem isso não dá para buscar a previsão. Cadastre em Locações.
         </div>
       )}
@@ -379,7 +379,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                 onKeyDown={e => { if (!c.vazio && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setDiaAberto(c.iso); } }}
                 style={{
                   minWidth: 0,
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid',
                   ...estiloDoPeso(c.peso),
                   // Hoje ganha contorno por FORA da borda: assim ele não apaga a
@@ -803,7 +803,7 @@ function CartaoFlutuanteDoDia({ dia, c, clima, aoFechar, aoAbrirDiaria, aoVerTas
               {c.eventos.map(e => {
                 const t = tipoDoEvento(e.tipo);
                 return (
-                  <div key={e.id} style={{ backgroundColor: 'var(--bg-primary)', borderLeft: `3px solid ${t.cor}`, borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <div key={e.id} style={{ backgroundColor: 'var(--bg-primary)', borderLeft: `3px solid ${t.cor}`, borderRadius: 'var(--radius-sm)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
                       <span>{t.emoji}</span>
                       {e.hora_inicio && <strong className="text-sm">{e.hora_inicio}{e.hora_fim ? `–${e.hora_fim}` : ''}</strong>}

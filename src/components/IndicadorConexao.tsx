@@ -98,7 +98,7 @@ export function PilulaDeConexao({
         */
         className={`indicador-conexao${projetoId ? ' so-no-celular' : ''}`}
         style={{
-          padding: chama ? '6px 10px' : '6px', borderRadius: '999px',
+          padding: chama ? '6px 10px' : '6px', borderRadius: 'var(--radius-full)',
           background: chama ? 'var(--color-warning-bg)' : 'color-mix(in srgb, var(--bg-surface) 80%, transparent)',
           border: `1px solid ${chama ? 'color-mix(in srgb, var(--color-warning) 45%, transparent)' : 'var(--border-light)'}`,
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',

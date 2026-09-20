@@ -50,7 +50,7 @@ export function NotificacoesBell({ projetoId }: { projetoId?: string }) {
       <button ref={btnRef} onClick={toggle} className="btn-icon" title="Notificações" style={{ padding: 0, position: 'relative' }}>
         <Bell size={20} />
         {naoLidas.length > 0 && (
-          <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: 'var(--color-danger)', color: '#fff', borderRadius: '999px', minWidth: '16px', height: '16px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+          <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: 'var(--color-danger)', color: '#fff', borderRadius: 'var(--radius-full)', minWidth: '16px', height: '16px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
             {naoLidas.length}
           </span>
         )}
@@ -75,10 +75,10 @@ export function NotificacoesBell({ projetoId }: { projetoId?: string }) {
               <button
                 key={n.id}
                 onClick={() => abrirNotificacao(n.id, n.task_id)}
-                style={{ display: 'block', width: '100%', textAlign: 'left', background: n.lida ? 'transparent' : 'var(--bg-active)', border: 'none', borderRadius: '8px', padding: '10px 12px', marginTop: '4px', cursor: 'pointer', color: 'var(--text-primary)' }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', background: n.lida ? 'transparent' : 'var(--bg-active)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginTop: '4px', cursor: 'pointer', color: 'var(--text-primary)' }}
               >
                 <div style={{ fontSize: '13px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  {!n.lida && <span style={{ width: '6px', height: '6px', borderRadius: '999px', backgroundColor: 'var(--accent)', marginTop: '6px', flexShrink: 0 }} />}
+                  {!n.lida && <span style={{ width: '6px', height: '6px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--accent)', marginTop: '6px', flexShrink: 0 }} />}
                   <span>{n.texto}</span>
                 </div>
                 <div className="text-xs text-muted" style={{ marginTop: '2px' }}>{new Date(n.data).toLocaleString('pt-BR')}</div>

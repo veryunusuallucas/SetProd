@@ -68,7 +68,7 @@ export function TransporteModule() {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px', borderRadius: '8px',
+    width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)'
   };
 
@@ -76,7 +76,7 @@ export function TransporteModule() {
     <button
       onClick={() => setAba(alvo)}
       style={{
-        flex: 1, padding: '12px', borderRadius: '8px', border: 'none',
+        flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none',
         backgroundColor: aba === alvo ? 'var(--bg-active)' : 'transparent',
         color: aba === alvo ? 'var(--text-primary)' : 'var(--text-muted)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold'
@@ -96,7 +96,7 @@ export function TransporteModule() {
         <p className="text-sm text-secondary">Cadastre uma vez aqui e reaproveite nos comboios de cada diária.</p>
       </div>
 
-      <div style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
+      <div style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: 'var(--radius-md)', gap: '4px' }}>
         {abaBtn('veiculos', <Truck size={18} />, `Veículos (${veiculos.length})`)}
         {abaBtn('motoristas', <UserRound size={18} />, `Motoristas (${motoristas.length})`)}
       </div>

@@ -86,7 +86,7 @@ export function ControleFinanceiro({ projetoId }: { projetoId: string }) {
             </div>
           </div>
 
-          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
             <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Modo de Acerto</label>
             <p className="text-sm text-muted mb-4">Escolha como as dívidas e repasses serão calculados pelo sistema.</p>
             

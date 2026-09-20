@@ -133,7 +133,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="text-xs text-muted uppercase tracking-widest font-bold">1. A Receber (Pendências da Equipe)</span>
                   <span className="text-sm text-secondary">Soma do que as pessoas devem à Produção</span>
@@ -141,7 +141,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                 <div className="font-bold text-success text-lg">+ {dinheiro(aReceberPend)}</div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="text-xs text-muted uppercase tracking-widest font-bold">2. A Pagar (Dívidas da Produção)</span>
                   <span className="text-sm text-secondary">Soma do que a Produção deve repassar/reembolsar</span>
@@ -149,7 +149,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                 <div className="font-bold text-danger text-lg">- {dinheiro(aPagarPend)}</div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: '12px', border: '1px solid var(--accent)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: 'var(--radius-md)', border: '1px solid var(--accent)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="text-xs text-accent uppercase tracking-widest font-bold">3. Resultado Projetado</span>
                   <span className="text-sm text-secondary">Depois de receber tudo e pagar todos</span>
@@ -208,7 +208,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                   {/* Ficha rápida read-only (dinheiro, não cadastro) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', fontSize: '0.85rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="text-muted">Função</span><span>{p.funcao || '-'}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="text-muted">PIX</span>
@@ -234,7 +234,7 @@ export function ResumoList({ projetoId, onVerFicha }: { projetoId: string, onVer
                       {minhatransacoes.map((t, i) => {
                         const isPagar = t.de.id_ref === p.id;
                         return (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                             <div>
                               <div className="text-xs text-muted uppercase tracking-widest">{isPagar ? 'Deve à Produção' : 'A receber da Produção'}</div>
                               <div className={`text-lg font-bold ${isPagar ? 'text-danger' : 'text-success'}`}>{dinheiro(t.valor)}</div>

@@ -449,7 +449,7 @@ export function DiariasList() {
               onClick={() => navigate(`/projeto/${projetoId}/diaria/${d.id}`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ backgroundColor: 'var(--bg-surface)', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px', border: '1px solid var(--border-light)' }}>
+                <div style={{ backgroundColor: 'var(--bg-surface)', width: '48px', height: '48px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px', border: '1px solid var(--border-light)' }}>
                   {String(d.numero).padStart(2, '0')}
                 </div>
                 <div>

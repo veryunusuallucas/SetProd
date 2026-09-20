@@ -325,7 +325,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '520px', maxHeight: '86vh', overflowY: 'auto',
-          backgroundColor: 'var(--bg-surface)', borderRadius: '16px',
+          backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-color)', padding: '24px',
         }}
       >

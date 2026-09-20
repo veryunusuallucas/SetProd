@@ -192,7 +192,7 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
 
               {/* ---- perguntar ---- */}
               {podePerguntar && (
-                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-primary)' }}>
+                <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', background: 'var(--bg-primary)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '9px' }}>
                     <Sparkles size={14} style={{ color: 'var(--accent)' }} />
                     <span className="text-xs font-bold uppercase tracking-widest text-secondary">Pergunte</span>
