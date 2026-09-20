@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { lerConexao, frasesDaConexao } from '../lib/conexao';
+import { dataHora } from '../lib/formato';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cloud, CloudOff, RefreshCw, Check, X, History, AlertTriangle } from 'lucide-react';
@@ -27,17 +29,24 @@ export function StatusSync({ projetoId }: { projetoId: string }) {
   const aoVivo = estaAoVivo(projetoId);
 
   const { icone, texto, cor } = descrever(situacao.estado, situacao.pendentes);
+  const { longa } = frasesDaConexao(lerConexao(projetoId));
 
   return (
     <>
       <button
         className="sidebar-link"
         onClick={() => setAtaAberta(true)}
-        title={aoVivo ? 'Conectado ao vivo com a outra equipe' : 'Conferindo de tempos em tempos'}
+        title={longa}
         style={{ width: '100%' }}
       >
         <span style={{ color: cor, display: 'flex', alignItems: 'center' }}>{icone}</span>
-        <span style={{ flex: 1, textAlign: 'left' }}>{texto}</span>
+        {/*
+          Texto CURTO aqui. A barra tem 240px, e a frase inteira ("Sem conexão ·
+          tudo salvo") era cortada no meio — um rodapé que diz "Sem conexão ·
+          tudo sa…" assusta em vez de tranquilizar, que é o contrário do que ele
+          existe para fazer. A frase inteira está no título e na ata.
+        */}
+        <span style={{ flex: 1, textAlign: 'left', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texto}</span>
         <History size={14} className="text-muted" />
       </button>
 
@@ -59,8 +68,8 @@ function descrever(estado: string, pendentes: number) {
   */
   if (estado === 'offline') {
     return pendentes > 0
-      ? { icone: <CloudOff size={16} />, texto: `Sem conexão · ${pendentes} aguardando`, cor: 'var(--color-warning)' }
-      : { icone: <CloudOff size={16} />, texto: 'Sem conexão · tudo salvo', cor: 'var(--text-secondary)' };
+      ? { icone: <CloudOff size={16} />, texto: `Sem conexão · ${pendentes}`, cor: 'var(--color-warning)' }
+      : { icone: <CloudOff size={16} />, texto: 'Salvo neste aparelho', cor: 'var(--text-secondary)' };
   }
   if (estado === 'erro') {
     return { icone: <AlertTriangle size={16} />, texto: 'Erro ao salvar', cor: 'var(--color-danger)' };
@@ -80,6 +89,7 @@ function descrever(estado: string, pendentes: number) {
 }
 
 function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: boolean; aoFechar: () => void }) {
+  const conexao = lerConexao(projetoId);
   const [linhas, setLinhas] = useState<LinhaDaAta[] | null>(null);
   const [tamanho, setTamanho] = useState<{ dados: number; anexos: number; total: number } | null>(null);
 
@@ -125,6 +135,32 @@ function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: 
             </p>
           </div>
           <button className="btn-icon" onClick={aoFechar} aria-label="Fechar"><X size={20} /></button>
+        </div>
+
+        {/*
+          O ESTADO DO SALVAMENTO, ANTES DA LISTA (pedido do Lucas, 20/09/2026).
+
+          A ata é o lugar onde a pessoa vem quando desconfia — "será que subiu?".
+          Chegar aqui e ler só o histórico não responde a pergunta que a trouxe.
+          Esta faixa responde, e responde também offline: a ata é montada do
+          banco deste aparelho, então ela existe inteira sem internet.
+        */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+          padding: '12px 14px', marginBottom: '16px', borderRadius: 'var(--radius-md)',
+          background: 'var(--bg-primary)', border: '1px solid var(--border-light)',
+        }}>
+          <span style={{ display: 'flex', color: conexao.estado === 'offline_sujo' ? 'var(--color-warning)' : 'var(--color-success, #4ade80)' }}>
+            {conexao.estado.startsWith('offline') ? <CloudOff size={18} /> : <Check size={18} />}
+          </span>
+          <span className="text-sm" style={{ flex: 1, minWidth: '180px', lineHeight: 1.45 }}>
+            {frasesDaConexao(conexao).longa}
+          </span>
+          {conexao.ultimaVez && (
+            <span className="text-xs text-muted">
+              última vez: {dataHora(conexao.ultimaVez)}
+            </span>
+          )}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
