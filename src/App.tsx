@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { IndicadorConexao } from './components/IndicadorConexao';
 import { Home } from './pages/Home';
 import { ProjectLayout } from './pages/ProjectLayout';
 import { CommandPalette } from './components/CommandPalette';
@@ -77,6 +78,10 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <CommandPaletteWrapper />
+        {/* Um só, aqui: um por tela garantiria que alguma ficasse sem. No
+            computador ele se esconde — lá quem responde é o rodapé da barra
+            lateral (PLANO-indicador-conexao). */}
+        <IndicadorConexao />
         <div className="app-container">
           {/* Rede de segurança das rotas de fora do projeto. As de dentro têm
               a própria, junto do Outlet, para a barra lateral não piscar a cada

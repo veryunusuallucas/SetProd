@@ -51,8 +51,16 @@ export function StatusSync({ projetoId }: { projetoId: string }) {
 }
 
 function descrever(estado: string, pendentes: number) {
+  /*
+    OFFLINE NÃO É UMA COISA SÓ (PLANO-indicador-conexao). "Offline" seco deixava
+    a pergunta que importa sem resposta: o que eu fiz está salvo? Sem pendência,
+    é sossego; com pendência, é a única hora em que a pessoa precisa agir — não
+    fechar o app e procurar sinal antes de sair da locação.
+  */
   if (estado === 'offline') {
-    return { icone: <CloudOff size={16} />, texto: 'Offline', cor: 'var(--text-secondary)' };
+    return pendentes > 0
+      ? { icone: <CloudOff size={16} />, texto: `Sem conexão · ${pendentes} aguardando`, cor: 'var(--color-warning)' }
+      : { icone: <CloudOff size={16} />, texto: 'Sem conexão · tudo salvo', cor: 'var(--text-secondary)' };
   }
   if (estado === 'erro') {
     return { icone: <AlertTriangle size={16} />, texto: 'Erro ao salvar', cor: 'var(--color-danger)' };
