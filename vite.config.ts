@@ -52,7 +52,12 @@ export default defineConfig({
         // As fontes base do pdf.js (.pfb/.ttf) entram no cache offline: sem
         // elas o roteiro abre com a camada de texto desalinhada, e no set não
         // há internet para buscá-las depois.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,pfb,ttf,gif,webp,jpg,jpeg,mp4}'],
+        // ⚠️ 'mjs' NÃO É DETALHE. O motor do pdf.js é um módulo .mjs, e sem ele
+        // na lista o arquivo ficava fora do cache: no navegador o roteiro abria
+        // (baixava na hora), e no app instalado, offline, dava "Erro ao ler
+        // PDF" — exatamente no set, que é onde não há internet. 'wasm' e
+        // 'woff2' entram pelo mesmo motivo, antes de morderem a gente.
+        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,pfb,ttf,woff,woff2,wasm,gif,webp,jpg,jpeg,mp4}'],
         // O padrão do Workbox é 2 MiB, e o pacote passou disso (o pdf.js sozinho
         // é a maior parte). Sem subir o teto, o arquivo principal fica FORA do
         // cache e o app deixa de abrir offline — que é justamente o cenário do

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db/db';
 import { useParams } from 'react-router-dom';
 import { pdfjs, Document, Page } from 'react-pdf';
-import { Trash2, Tag, CheckSquare, Plus, ChevronLeft, ChevronRight, FileDown, FileUp, Filter, Globe, History } from 'lucide-react';
+import { Trash2, Tag, CheckSquare, Plus, ChevronLeft, ChevronRight, FileDown, FileUp, Filter, Globe, History, RotateCw } from 'lucide-react';
 import type { RoteiroTag, Cena } from '../types';
 import { adicionarSubtarefasDecupagem } from '../lib/tasks';
 import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
@@ -122,6 +122,15 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState(1);
   const [pdfFile, setPdfFile] = useState<string | null>(null);
+  /*
+    Uma tentativa nova de ler o PDF, sem recarregar a página inteira.
+
+    A causa mais comum de "Erro ao ler PDF" era o motor do pdf.js ficar fora do
+    cache offline (corrigido no vite.config). Sobra o resto: memória curta num
+    celular fraco, leitura interrompida. Para esses, tentar de novo costuma
+    resolver — e é melhor que a pessoa achar que o roteiro se perdeu.
+  */
+  const [tentativaPdf, setTentativaPdf] = useState(0);
 
   /** Versões do roteiro, da mais nova para a mais antiga. */
   const versoes = useLiveQuery(
@@ -924,7 +933,19 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
               options={OPCOES_PDF}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
               loading={<div className="text-muted" style={{ padding: '40px' }}>Processando PDF...</div>}
-              error={<div className="text-danger" style={{ padding: '40px' }}>Erro ao ler PDF.</div>}
+              key={tentativaPdf}
+              error={
+                <div style={{ padding: '40px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                  <span className="text-danger">Não consegui abrir este PDF agora.</span>
+                  <span className="text-xs" style={{ color: '#666', maxWidth: '320px', lineHeight: 1.5 }}>
+                    O roteiro continua guardado. Se você estiver sem internet e o app tiver
+                    sido instalado há pouco, abra uma vez com rede para ele terminar de se instalar.
+                  </span>
+                  <button className="btn" onClick={() => setTentativaPdf(t => t + 1)}>
+                    <RotateCw size={14} style={{ marginRight: '6px' }} /> Tentar de novo
+                  </button>
+                </div>
+              }
             >
               <Page
                 pageNumber={pageNumber}
