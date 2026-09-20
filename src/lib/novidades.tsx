@@ -7,7 +7,7 @@ import {
   FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
   Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
   Camera, HardDrive, FileInput, Target, Image, Save,
-  Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning,
+  Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
 } from 'lucide-react';
 
 /**
@@ -225,6 +225,98 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.15.0',
+    resumo: <>Cada um passa a ver o dinheiro que é seu, o app diz o tempo todo se o seu trabalho está salvo, e as telas falam a mesma língua.</>,
+    grupos: [
+      {
+        id: 'dinheiro',
+        titulo: 'O dinheiro que é seu',
+        resumo: 'O caixa do filme é de quem administra; o seu departamento é seu.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <PieChart size={20} />,
+            titulo: 'O financeiro do seu departamento',
+            texto: 'Quem é da Fotografia abre o Financeiro e vê a Fotografia: quanto é o orçamento, quanto já foi gasto e quanto ainda dá para gastar, com as despesas e o extrato da própria área. No painel, o mesmo — no lugar do saldo do filme aparece o que sobra no seu departamento.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Eye size={20} />,
+            titulo: 'O caixa do filme é de quem administra',
+            texto: 'Saldo da produção, entradas, gasto por área e os acertos de toda a equipe ficam com quem administra. Quem é da equipe vê o próprio acerto — o que tem a receber ou a pagar.',
+          },
+        ],
+      },
+      {
+        id: 'salvo',
+        titulo: 'Saber que está salvo',
+        resumo: '',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <CloudOff size={20} />,
+            titulo: 'A conexão, em qualquer tela',
+            texto: 'Um indicador no alto responde a pergunta do set: sem sinal e com tudo salvo, ele fica quieto; sem sinal e com alterações esperando, avisa quantas são e pede para você não fechar o app. Toque para ver o detalhe e sincronizar na hora.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <History size={20} />,
+            titulo: '"O que andou acontecendo" diz se subiu',
+            texto: 'A ata abre dizendo se está tudo salvo e quando foi a última sincronização — antes ela só mostrava o histórico, sem responder a pergunta que levou você até lá. Funciona sem internet.',
+          },
+        ],
+      },
+      {
+        id: 'telas',
+        titulo: 'Telas mais calmas',
+        resumo: '',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <Bell size={20} />,
+            titulo: 'Um aviso por vez',
+            texto: 'Os avisos do topo da produção pararam de empilhar: aparece o mais urgente e, se houver outros, uma linha discreta com "mais 2 avisos" que abre. Nada some — o que muda é quem está disputando a sua atenção.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Rows3 size={20} />,
+            titulo: 'Listas vazias que explicam',
+            texto: 'No lugar de "Nenhuma despesa registrada", a lista vazia diz o que aparece ali, por que está vazia e o que fazer — e não oferece botão para quem não pode criar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <LayoutGrid size={20} />,
+            titulo: 'Janelas que respondem igual',
+            texto: 'Esc fecha, clicar fora fecha, e a página atrás para de rolar. Antes cada janela decidia sozinha: o que funcionava numa falhava na seguinte. Começou pelas mais usadas.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Columns3 size={20} />,
+            titulo: 'A barra lateral cabe sem rolar',
+            texto: 'Configurações, busca, acesso e sair ficam embaixo; Gestão de Dados ficou junto do Financeiro, onde se procura por ela; e o sino virou ícone no alto.',
+          },
+        ],
+      },
+      {
+        id: 'consertos',
+        titulo: '',
+        resumo: '',
+        cor: '#f87171',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <Users size={20} />,
+            titulo: 'Fichas que tinham sumido voltam',
+            texto: 'Em alguns aparelhos, pessoas cujos dados protegidos chegaram antes da ficha ficavam invisíveis no app — e apareciam como linha em branco na lista de créditos. O app agora vai buscar essas fichas sozinho.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.14.0',
     resumo: <>O que você escreve deixa de sumir quando duas pessoas mexem na mesma coisa — e o roteiro volta a abrir no set, sem internet.</>,
