@@ -1,4 +1,4 @@
-import { sincronizar, pendencias, aplicarLinhas, TABELA_ESPELHO } from './sincronizacao';
+import { sincronizar, pendencias, aplicarLinhas, TABELA_ESPELHO, completarEsbocos } from './sincronizacao';
 import { sincronizarAuditoria } from './audit';
 import { supabase } from './supabase';
 import { EVENTO_ALTERACAO } from '../db/db';
@@ -87,6 +87,10 @@ export async function rodada(projetoId: string): Promise<void> {
     const { enviadas } = await sincronizar(projetoId);
     // A ata vai por caminho próprio (tabela só de inserção) e nunca derruba a volta.
     await sincronizarAuditoria(projetoId);
+
+    // As fichas que ficaram só como esboço (camada sem a parte pública) são
+    // pessoas invisíveis no app — vão ser buscadas por id, fora do cursor.
+    await completarEsbocos(projetoId).catch(() => 0);
 
     await enviarPendentes(projetoId);
     anunciar(projetoId, {

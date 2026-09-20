@@ -592,6 +592,45 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
  * primeira carga de um projeto grande atravessa em várias voltas sem precisar
  * de `offset` — e uma queda no meio retoma de onde parou.
  */
+/**
+ * Vai buscar as fichas que só existem aqui como esboço.
+ *
+ * O ESTRAGO QUE ISTO CONSERTA (20/09/2026)
+ * Quando a camada protegida de uma ficha chega e a parte pública não está no
+ * aparelho, nasce um esboço sem nome à espera dela. Só que o cursor da descida
+ * anda: se a pública passou antes, ela não volta sozinha — e a pessoa fica
+ * INVISÍVEL no app, não só sem nome numa lista. Foi assim que o seletor dos
+ * créditos ganhou cinco linhas em branco.
+ *
+ * A busca é por id, fora do cursor, e roda junto da descida normal. Barata: só
+ * pergunta quando há esboço, e some quando não houver mais nenhum.
+ */
+export async function completarEsbocos(projetoId: string): Promise<number> {
+  if (!supabaseConfigurado) return 0;
+
+  const fichas = await db.perfis.where('projeto_id').equals(projetoId).toArray();
+  const orfas = fichas
+    .filter(f => !(f as { nome?: string }).nome?.trim())
+    .map(f => f.id)
+    .slice(0, 100); // um lote; o resto vem na próxima volta
+  if (!orfas.length) return 0;
+
+  const { data, error } = await supabase
+    .from(TABELA_ESPELHO)
+    .select('projeto_id, tabela, id, dados, atualizado_em, deletado')
+    .eq('projeto_id', projetoId)
+    .eq('tabela', 'perfis')
+    .in('id', orfas);
+
+  if (error) {
+    console.warn('[SetProd] Não consegui completar as fichas em esboço:', error.message);
+    return 0;
+  }
+  if (!data?.length) return 0;
+
+  return await aplicarLinhas(data as unknown as LinhaEspelho[]);
+}
+
 export async function puxar(projetoId: string): Promise<number> {
   if (!supabaseConfigurado) return 0;
 
