@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usarAviso, URGENCIA } from './avisos/CentralDeAvisos';
+import { FaixaDeAviso } from './avisos/FaixaDeAviso';
 import { UserCheck } from 'lucide-react';
 import { useRole } from '../hooks/useRole';
 import { EscolherMinhaFicha } from './EscolherMinhaFicha';
@@ -32,34 +34,33 @@ export function AvisoSemFicha({ projetoId, meuEmail }: { projetoId: string; meuE
   // Quem já pediu uma ficha está esperando quem administra — perguntar de
   // novo só faria a pessoa pedir outra.
   const pediu = !!participacaoLocal(projetoId)?.perfil_pedido;
-  if (!souMembro || perfilId || pediu || dispensado) return null;
+
+  /*
+    A condição vira a CHAVE do aviso, e não um `return` antes dele: hook que às
+    vezes roda e às vezes não é o jeito mais fácil de quebrar um componente
+    React — e a janela de escolher a ficha precisa continuar montada mesmo
+    depois de a faixa sumir, senão ela fecharia sozinha no meio.
+  */
+  const faltaResponder = souMembro && !perfilId && !pediu && !dispensado;
+
+  /*
+    O menos urgente dos três: é útil, não é urgente, e quem só quer consultar a
+    diária pode seguir sem responder. Por isso ele cede a vez na central.
+  */
+  usarAviso('sem-ficha', URGENCIA.faltaSeApresentar, faltaResponder ? 'falta' : null, () => (
+    <FaixaDeAviso
+      tom="neutro"
+      icone={<UserCheck size={18} />}
+      aoDispensar={() => setDispensado(true)}
+      acao={<button className="btn btn-primary" onClick={() => setEscolhendo(true)} style={{ flexShrink: 0 }}>Escolher</button>}
+    >
+      <strong>Diga quem você é nesta produção.</strong>{' '}
+      <span className="text-muted">Sem isso, “Minhas Tasks” vem vazia e você não enxerga a sua própria ficha.</span>
+    </FaixaDeAviso>
+  ));
 
   return (
     <>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-        padding: '12px 16px', margin: '0 0 16px', borderRadius: '12px',
-        backgroundColor: 'var(--bg-surface)', border: '1px solid var(--accent)',
-      }}>
-        <UserCheck size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <div className="text-sm font-bold">Diga quem você é nesta produção</div>
-          <div className="text-xs text-muted" style={{ lineHeight: 1.45 }}>
-            Sem isso, “Minhas Tasks” vem vazia e você não enxerga a sua própria ficha.
-          </div>
-        </div>
-        <button className="btn btn-primary" onClick={() => setEscolhendo(true)} style={{ flexShrink: 0 }}>
-          Escolher
-        </button>
-        <button
-          onClick={() => setDispensado(true)}
-          className="text-xs"
-          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline', flexShrink: 0 }}
-        >
-          agora não
-        </button>
-      </div>
-
       {escolhendo && (
         <EscolherMinhaFicha
           projetoId={projetoId}

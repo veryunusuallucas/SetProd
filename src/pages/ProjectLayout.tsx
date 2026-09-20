@@ -27,6 +27,7 @@ import { AvisoConflito } from '../components/AvisoConflito';
 import { AvisoSemFicha } from '../components/AvisoSemFicha';
 import { AvisoDeAcesso } from '../components/AvisoDeAcesso';
 import { ConflitosPanel } from '../components/ConflitosPanel';
+import { ProvedorDeAvisos } from '../components/avisos/CentralDeAvisos';
 import { useAuth } from '../hooks/useAuth';
 import { participacaoLocal, garantirParticipacao, sincronizarParticipacoes } from '../lib/membros';
 import { supabase, supabaseConfigurado } from '../lib/supabase';
@@ -653,9 +654,13 @@ export function ProjectLayout() {
               <div className="master-detail-master">
                 {/* Fora do Suspense: o aviso não depende da tela que está
                     carregando, e é o mesmo em todas as abas da produção. */}
-                <AvisoDeAcesso projetoId={id!} aoAbrirAcesso={() => setMostrarCompartilhar(true)} />
-                <ConflitosPanel projetoId={id!} />
-                <AvisoSemFicha projetoId={id!} meuEmail={user?.email} />
+                {/* Os três publicam na central, que decide quem aparece;
+                    nenhum deles desenha faixa por conta própria. */}
+                <ProvedorDeAvisos>
+                  <AvisoDeAcesso projetoId={id!} aoAbrirAcesso={() => setMostrarCompartilhar(true)} />
+                  <ConflitosPanel projetoId={id!} />
+                  <AvisoSemFicha projetoId={id!} meuEmail={user?.email} />
+                </ProvedorDeAvisos>
 
                 {/* Suspense aqui, e não só lá no App: as telas do projeto
                     carregam sob demanda, e sem esta fronteira mais interna a
