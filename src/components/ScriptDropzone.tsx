@@ -40,7 +40,7 @@ export function ScriptDropzone({ onArquivo, lendo, meta }: ScriptDropzoneProps) 
         transition={{ duration: 0.18 }}
         style={{
           border: '2px dashed var(--border-color)',
-          borderRadius: '16px',
+          borderRadius: 'var(--radius-lg)',
           padding: '48px 24px',
           textAlign: 'center',
           cursor: lendo ? 'wait' : 'pointer',

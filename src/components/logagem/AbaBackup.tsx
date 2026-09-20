@@ -152,7 +152,7 @@ function Veredito({ cartoes, seguros, semHd }: { cartoes: string[]; seguros: str
                 key={c}
                 className="text-xs font-bold"
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '999px',
+                  display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: 'var(--radius-full)',
                   fontVariantNumeric: 'tabular-nums',
                   color: ok ? 'var(--color-success)' : 'var(--color-warning)',
                   backgroundColor: ok ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
@@ -236,7 +236,7 @@ function Hds({ hds, projetoId, departamentoId, podeEditar, primeiraVez }: {
                     /* 44px de alvo com um X pequeno dentro: o dedo acerta sem
                        o chip do HD virar um botão gigante de remover. */
                     width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: 'none', borderRadius: '8px', background: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                    border: 'none', borderRadius: 'var(--radius-sm)', background: 'none', color: 'var(--text-muted)', cursor: 'pointer',
                   }}
                 >
                   <X size={14} />
@@ -479,7 +479,7 @@ function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, pod
           {nTakes} take{nTakes === 1 ? '' : 's'}{gb > 0 ? ` · ~${numero(gb, gb < 10 ? 1 : 0)} GB` : ''}
         </span>
         {naCamera && (
-          <span className="text-xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
+          <span className="text-xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
             <Camera size={12} /> na câmera
           </span>
         )}
@@ -638,7 +638,7 @@ function Passo({ numero: n, feito, titulo, children }: {
       <span
         aria-hidden
         style={{
-          width: '24px', height: '24px', borderRadius: '999px', flexShrink: 0, marginTop: '1px',
+          width: '24px', height: '24px', borderRadius: 'var(--radius-full)', flexShrink: 0, marginTop: '1px',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800,
           backgroundColor: feito ? 'var(--color-success)' : 'var(--bg-active)',
           color: feito ? '#0b0b0b' : 'var(--text-secondary)',

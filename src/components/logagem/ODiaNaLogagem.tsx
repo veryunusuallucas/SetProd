@@ -253,7 +253,7 @@ export function ODiaNaLogagem({ estado, bloqueado, aoEscolher, compacto }: {
           <span
             className="text-xs font-bold"
             style={aceso ? {
-              flexShrink: 0, padding: '6px 10px', borderRadius: '999px',
+              flexShrink: 0, padding: '6px 10px', borderRadius: 'var(--radius-full)',
               backgroundColor: 'var(--cor-criativo)', color: '#0b0b0b',
             } : { color: 'var(--cor-criativo)', flexShrink: 0 }}
           >
@@ -281,7 +281,7 @@ export function ODiaNaLogagem({ estado, bloqueado, aoEscolher, compacto }: {
               <span
                 className="text-xs font-bold"
                 style={{
-                  marginLeft: 'auto', padding: '3px 8px', borderRadius: '999px',
+                  marginLeft: 'auto', padding: '3px 8px', borderRadius: 'var(--radius-full)',
                   color: atraso.minutos > 0 ? 'var(--color-warning)' : 'var(--color-success)',
                   backgroundColor: atraso.minutos > 0 ? 'var(--color-warning-bg)' : 'var(--color-success-bg)',
                 }}

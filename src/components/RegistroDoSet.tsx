@@ -497,7 +497,7 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, cham
                 rows={2}
                 placeholder={EXEMPLO}
                 autoFocus
-                style={{ width: '100%', padding: '9px', borderRadius: '8px', fontSize: '14px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '9px', borderRadius: 'var(--radius-sm)', fontSize: '14px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit' }}
               />
 
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>

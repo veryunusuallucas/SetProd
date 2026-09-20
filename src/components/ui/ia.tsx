@@ -255,7 +255,7 @@ export function AIRecommendation({
       animate={{ opacity: 1, y: 0 }}
       transition={MOLA}
       style={{
-        position: 'relative', padding: '14px 16px', borderRadius: '12px',
+        position: 'relative', padding: '14px 16px', borderRadius: 'var(--radius-md)',
         backgroundColor: 'var(--bg-surface)',
         border: '1px solid transparent',
         backgroundImage: `linear-gradient(var(--bg-surface), var(--bg-surface)),

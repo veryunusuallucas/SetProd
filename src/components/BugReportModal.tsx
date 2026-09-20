@@ -234,7 +234,7 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
                     key={t.id}
                     onClick={() => setTipo(t.id)}
                     style={{
-                      flex: 1, padding: '12px 6px', borderRadius: '12px', cursor: 'pointer',
+                      flex: 1, padding: '12px 6px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
                       border: `1px solid ${ativo ? t.cor : 'var(--border-light)'}`,
                       /*
                         O fundo é a MESMA cor, quase transparente.
@@ -288,7 +288,7 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
             dizer também poupa trabalho de quem relata: lendo "vai a tela onde
             você está", a pessoa entende que não precisa descrever o caminho.
           */}
-          <div style={{ borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', padding: '12px 14px' }}>
+          <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', padding: '12px 14px' }}>
             {/*
               ⚠️ RECOLHIDO, MAS NUNCA ESCONDIDO.
 

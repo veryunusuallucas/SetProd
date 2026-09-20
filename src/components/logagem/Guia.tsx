@@ -64,7 +64,7 @@ export function Guia({ id, titulo, passos, fecho }: {
                 <span
                   aria-hidden
                   style={{
-                    width: '26px', height: '26px', borderRadius: '999px', flexShrink: 0,
+                    width: '26px', height: '26px', borderRadius: 'var(--radius-full)', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: 'var(--bg-active)', fontSize: '13px', fontWeight: 800,
                   }}

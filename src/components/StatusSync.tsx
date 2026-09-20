@@ -111,7 +111,7 @@ function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: 
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '480px', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
-          backgroundColor: 'var(--bg-surface)', borderRadius: '16px',
+          backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-color)', padding: '24px',
         }}
       >

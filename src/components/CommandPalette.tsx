@@ -94,7 +94,7 @@ export function CommandPalette({ projetoId }: { projetoId?: string }) {
               onMouseEnter={() => setAtivo(i)}
               onClick={() => executar(c)}
               className="sidebar-link"
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left', backgroundColor: i === ativo ? 'var(--bg-active)' : 'transparent', border: 'none', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', color: 'var(--text-primary)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left', backgroundColor: i === ativo ? 'var(--bg-active)' : 'transparent', border: 'none', borderRadius: 'var(--radius-sm)', padding: '10px 12px', cursor: 'pointer', color: 'var(--text-primary)' }}
             >
               <c.icon size={16} className="text-muted" />
               <span style={{ flex: 1 }}>{c.label}</span>

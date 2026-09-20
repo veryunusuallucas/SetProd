@@ -88,7 +88,7 @@ export function AnexoInput({ projetoId, onAddLink, onAddAnexo, accept, label = '
         <div style={{
           position: 'absolute', top: '100%', left: 0, marginTop: '8px',
           backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)',
-          borderRadius: '8px', padding: '8px', display: 'flex', flexDirection: 'column',
+          borderRadius: 'var(--radius-sm)', padding: '8px', display: 'flex', flexDirection: 'column',
           gap: '4px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '170px'
         }}>
           <button

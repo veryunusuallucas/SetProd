@@ -60,7 +60,7 @@ export function FormRenderer({
                       <select
                         {...register(campo.id, { required: campo.obrigatorio })}
                         style={{
-                          width: '100%', padding: '14px', borderRadius: '12px',
+                          width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
                           border: `1px solid ${erro ? 'var(--color-danger)' : 'var(--border-color)'}`,
                           backgroundColor: 'var(--bg-surface)'
                         }}

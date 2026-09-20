@@ -109,7 +109,7 @@ export function FechamentoDiaria({
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '540px', maxHeight: '88vh', overflowY: 'auto',
-          backgroundColor: 'var(--bg-surface)', borderRadius: '16px',
+          backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-color)', padding: '24px',
         }}
       >
@@ -152,7 +152,7 @@ export function FechamentoDiaria({
           uma fila em que não se confia é uma fila que ninguém olha.
         */}
         {r.semRegistro.length > 0 && (
-          <section style={{ marginBottom: '20px', padding: '14px', borderRadius: '12px', border: '1px solid var(--color-warning, #fbbf24)', background: 'rgba(251,191,36,0.06)' }}>
+          <section style={{ marginBottom: '20px', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-warning, #fbbf24)', background: 'rgba(251,191,36,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <AlertTriangle size={16} style={{ color: 'var(--color-warning, #fbbf24)' }} />
               <span className="text-sm font-bold">
@@ -266,7 +266,7 @@ export function FechamentoDiaria({
                       placeholder="Ex: adiada por problema de iluminação, será filmada amanhã de manhã"
                       className="text-xs"
                       style={{
-                        width: '100%', marginTop: '8px', padding: '6px 8px', borderRadius: '8px',
+                        width: '100%', marginTop: '8px', padding: '6px 8px', borderRadius: 'var(--radius-sm)',
                         border: `1px solid ${reg?.observacao?.trim() ? 'var(--border-light)' : 'var(--color-danger)'}`,
                         background: 'var(--bg-surface)',
                         color: 'var(--text-primary)',

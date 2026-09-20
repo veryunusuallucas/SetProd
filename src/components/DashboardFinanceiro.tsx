@@ -59,7 +59,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
       {/* KPIs */}
       <div className="kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         <div className="card kpi" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px' }}>
+          <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
             <Wallet size={24} className="text-secondary" />
           </div>
           <div>
@@ -69,7 +69,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
         </div>
         
         <div className="card kpi" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px' }}>
+          <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
             <TrendingUp size={24} className="text-danger" />
           </div>
           <div>
@@ -79,7 +79,7 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
         </div>
 
         <div className="card kpi" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px' }}>
+          <div style={{ padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
             <HandCoins size={24} className={saldoAtual >= 0 ? "text-accent" : "text-danger"} />
           </div>
           <div>

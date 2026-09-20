@@ -181,7 +181,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
               <button
                 onClick={() => editMode ? salvarPerfil() : setEditMode(true)}
                 className="text-xs font-bold"
-                style={{ backgroundColor: editMode ? 'var(--accent)' : 'var(--bg-surface)', color: editMode ? '#000' : 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '4px 12px' }}
+                style={{ backgroundColor: editMode ? 'var(--accent)' : 'var(--bg-surface)', color: editMode ? '#000' : 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '4px 12px' }}
               >
                 {editMode ? 'Salvar' : 'Editar'}
               </button>
@@ -259,7 +259,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                 <Pie data={dataGraficoCaixa} cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" dataKey="valor">
                   {dataGraficoCaixa.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }} formatter={(value) => `${dinheiro(Number(value))}`} />
+                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: 'var(--radius-sm)' }} formatter={(value) => `${dinheiro(Number(value))}`} />
               </PieChart>
             </ResponsiveContainer>
           </div>

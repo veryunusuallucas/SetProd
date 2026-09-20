@@ -376,7 +376,7 @@ export function Home() {
       {/* zIndex acima do fundo animado, que é fixo e cobre a tela toda. */}
       <div className="home-projects" style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 1 }}>
         {projetosFiltrados.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
             {/*
               "Buscando" e "não existe" são coisas diferentes, e o app dizia a
               segunda enquanto fazia a primeira.
@@ -517,7 +517,7 @@ export function Home() {
                 <Step>
                   <h2 style={{ marginBottom: '16px', fontSize: '20px', fontWeight: 'bold' }}>Modo de Acerto</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <label className="checkbox-label" style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: novoProjeto.modo_acerto === 'centralizado' ? 'var(--bg-active)' : 'transparent' }}>
+                    <label className="checkbox-label" style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: novoProjeto.modo_acerto === 'centralizado' ? 'var(--bg-active)' : 'transparent' }}>
                       <input type="checkbox" checked={novoProjeto.modo_acerto === 'centralizado'} onChange={() => setNovoProjeto({...novoProjeto, modo_acerto: 'centralizado'})} />
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span className="font-bold">Centralizado na Produção</span>
@@ -525,7 +525,7 @@ export function Home() {
                       </div>
                     </label>
                     
-                    <label className="checkbox-label" style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: novoProjeto.modo_acerto === 'direto' ? 'var(--bg-active)' : 'transparent' }}>
+                    <label className="checkbox-label" style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: novoProjeto.modo_acerto === 'direto' ? 'var(--bg-active)' : 'transparent' }}>
                       <input type="checkbox" checked={novoProjeto.modo_acerto === 'direto'} onChange={() => setNovoProjeto({...novoProjeto, modo_acerto: 'direto'})} />
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span className="font-bold">Direto entre Membros</span>

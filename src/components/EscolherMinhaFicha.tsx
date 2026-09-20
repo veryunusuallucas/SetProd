@@ -173,7 +173,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
         transition={MOLA}
         style={{
           width: '100%', maxWidth: '460px', maxHeight: '86vh', overflowY: 'auto',
-          backgroundColor: 'var(--bg-surface)', borderRadius: '16px',
+          backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-color)', padding: '24px',
         }}
       >

@@ -57,7 +57,7 @@ export function RelatorioTransversal({ perfis, projeto, onClose }: RelatorioTran
           <select 
             value={campoSelecionado}
             onChange={e => setCampoSelecionado(e.target.value)}
-            style={{ padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', width: '100%' }}
+            style={{ padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', width: '100%' }}
           >
             {todosCampos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>

@@ -398,7 +398,7 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
             
             <div>
               <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2">Selecionar Membros</div>
-              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--border-color)', padding: '12px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)' }}>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--border-color)', padding: '12px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-primary)' }}>
                 {perfis?.filter(naEquipe).map(p => (
                   <label key={p.id} className="checkbox-label" style={{ fontSize: '14px' }}>
                     <input 

@@ -149,7 +149,7 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-          borderRadius: '16px', padding: '20px', width: 'min(640px, 100%)',
+          borderRadius: 'var(--radius-lg)', padding: '20px', width: 'min(640px, 100%)',
           maxHeight: '85vh', overflowY: 'auto',
         }}
       >
@@ -174,7 +174,7 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
             const local = c.versao_local as Record<string, unknown>;
             const remota = c.versao_remota as Record<string, unknown> | null;
             return (
-              <div key={c.id} style={{ border: '1px solid var(--border-light)', borderRadius: '12px', padding: '14px' }}>
+              <div key={c.id} style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
                 <div className="text-sm font-bold" style={{ marginBottom: '2px' }}>
                   {ROTULO[c.tabela] || c.tabela} · {comoChamar(c.tabela, remota || local)}
                 </div>

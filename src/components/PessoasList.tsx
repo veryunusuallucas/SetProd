@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Vazio } from './ui/Vazio';
 import { vinculosDaPessoa } from '../lib/vinculos';
 import { naEquipe } from '../lib/vinculos';
 import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, SlidersHorizontal, Trash2, UserPlus } from 'lucide-react';
+import { Plus, Smartphone, Wallet, FileText, Link2, RefreshCw, Upload, Settings2, SlidersHorizontal, Trash2, UserPlus, Users } from 'lucide-react';
 import { syncPerfisDeCadastro, publicarFichaPublica } from '../lib/sync';
 import { useRole } from '../hooks/useRole';
 import { podeVerCamada } from '../lib/camposSensiveis';
@@ -48,7 +49,7 @@ function Menu({ children, onFechar }: { children: React.ReactNode; onFechar: () 
           position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 41,
           minWidth: '230px', padding: '6px',
           backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)',
-          borderRadius: '12px', boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
+          borderRadius: 'var(--radius-md)', boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
           display: 'flex', flexDirection: 'column', gap: '2px',
         }}
       >
@@ -75,7 +76,7 @@ function ItemMenu({
 
   const estilo: React.CSSProperties = {
     display: 'flex', gap: '10px', alignItems: 'flex-start', width: '100%',
-    padding: '10px 12px', borderRadius: '8px', border: 'none',
+    padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: 'none',
     background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer',
   };
 
@@ -579,7 +580,13 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '24px' }}>
             {perfis?.filter(naEquipe).length === 0 && (
-              <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum membro cadastrado.</div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Vazio
+                  icone={<Users size={28} />}
+                  titulo="Nenhuma pessoa na equipe ainda"
+                  ajuda="Cada pessoa aqui tem uma ficha: função, departamento, contato e dados de pagamento."
+                />
+              </div>
             )}
 
             {perfis?.filter(naEquipe).map(p => (
@@ -776,7 +783,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                     <select 
                       value={departamentoId} 
                       onChange={e => setDepartamentoId(e.target.value)}
-                      style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}
+                      style={{ padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}
                     >
                       <option value="">Nenhum Departamento</option>
                       {departamentos?.map(d => (
@@ -806,7 +813,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <input type="number" placeholder={ph('valor_diaria', 'Valor Diária (R$)')} value={valorDiaria} onChange={e => setValorDiaria(e.target.value)} style={{ flex: 1 }} />
-                      <select value={tipoVinculo} onChange={e => setTipoVinculo(e.target.value)} style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', flex: 1 }}>
+                      <select value={tipoVinculo} onChange={e => setTipoVinculo(e.target.value)} style={{ padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', flex: 1 }}>
                         <option value="">Tipo Vínculo...</option>
                         <option value="Diarista">Diarista</option>
                         <option value="Fixo">Fixo / Semanal</option>
@@ -835,7 +842,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                                 <select 
                                   value={customValues[c.id] || ''} 
                                   onChange={e => setCustomValues({ ...customValues, [c.id]: e.target.value })}
-                                  style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}
+                                  style={{ width: '100%', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}
                                 >
                                   <option value="">Selecione...</option>
                                   {(c.opcoes || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -890,7 +897,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                       else novo[campo.id] = Number(e.target.value);
                       setCsvMapa(novo);
                     }}
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontSize: '13px' }}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontSize: '13px' }}
                   >
                     <option value="">— não importar —</option>
                     {csvCabecalhos.map((h, i) => (

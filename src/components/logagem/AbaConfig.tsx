@@ -74,7 +74,7 @@ function AnotacoesRapidas() {
             key={n}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '2px', minHeight: '44px', paddingLeft: '14px',
-              borderRadius: '999px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)',
+              borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)',
               fontSize: '14px', fontWeight: 600,
             }}
           >
@@ -86,7 +86,7 @@ function AnotacoesRapidas() {
               onClick={() => lembrarNotas(notas.filter(x => x !== n))}
               style={{
                 width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '999px',
+                border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 'var(--radius-full)',
               }}
             >
               <X size={14} />
@@ -424,7 +424,7 @@ function Estado({ icone, tom, titulo, texto, children }: {
   return (
     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
       <span aria-hidden style={{
-        width: '36px', height: '36px', flexShrink: 0, borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '36px', height: '36px', flexShrink: 0, borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: COR_DO_TOM[tom], backgroundColor: `color-mix(in srgb, ${COR_DO_TOM[tom]} 14%, transparent)`,
       }}>
         {icone}

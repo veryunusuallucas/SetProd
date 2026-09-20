@@ -132,7 +132,7 @@ export function CriarConta() {
         ) : (
           <>
             {erro && (
-              <div style={{ padding: '12px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: '8px', fontSize: '14px', lineHeight: 1.5 }}>
+              <div style={{ padding: '12px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', fontSize: '14px', lineHeight: 1.5 }}>
                 {erro}
               </div>
             )}

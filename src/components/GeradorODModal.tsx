@@ -167,7 +167,7 @@ export function GeradorODModal({
           {od && (
             <>
               {problema && (
-                <div style={{ marginBottom: '14px', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <div style={{ marginBottom: '14px', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                   <AlertTriangle size={18} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: '2px' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="text-sm font-bold">A diagramação mexeu no conteúdo. Não imprima assim.</div>
@@ -200,7 +200,7 @@ export function GeradorODModal({
               )}
 
               <div
-                style={{ backgroundColor: '#fff', color: '#111', padding: '28px', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                style={{ backgroundColor: '#fff', color: '#111', padding: '28px', borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                 dangerouslySetInnerHTML={{ __html: htmlIA || od.html }}
               />
             </>

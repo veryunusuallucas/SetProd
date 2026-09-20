@@ -98,7 +98,7 @@ export function CadastroEquipe() {
         </div>
 
         {error && (
-          <div style={{ padding: '12px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+          <div style={{ padding: '12px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', fontSize: '14px', marginBottom: '16px' }}>
             {error}
           </div>
         )}

@@ -63,14 +63,14 @@ export function CardDaProducao({ projeto, resumo, papel, acao }: {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', minHeight: '34px' }}>
         <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '999px',
+          display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--radius-full)',
           fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
           color: fase.cor, backgroundColor: `color-mix(in srgb, ${fase.cor} 14%, transparent)`,
         }}>
           <span
             aria-hidden
             className={resumo.fase === 'hoje' ? 'pulso-ao-vivo' : undefined}
-            style={{ width: '6px', height: '6px', borderRadius: '999px', backgroundColor: fase.cor }}
+            style={{ width: '6px', height: '6px', borderRadius: 'var(--radius-full)', backgroundColor: fase.cor }}
           />
           {fase.rotulo}
         </span>
@@ -99,9 +99,9 @@ export function CardDaProducao({ projeto, resumo, papel, acao }: {
                   aria-valuemin={0}
                   aria-valuemax={resumo.total}
                   aria-valuenow={resumo.feitas}
-                  style={{ flex: 1, height: '4px', borderRadius: '999px', backgroundColor: 'var(--border-light)', overflow: 'hidden' }}
+                  style={{ flex: 1, height: '4px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--border-light)', overflow: 'hidden' }}
                 >
-                  <div style={{ width: `${progresso * 100}%`, height: '100%', borderRadius: '999px', backgroundColor: fase.cor, transition: 'width 0.4s ease' }} />
+                  <div style={{ width: `${progresso * 100}%`, height: '100%', borderRadius: 'var(--radius-full)', backgroundColor: fase.cor, transition: 'width 0.4s ease' }} />
                 </div>
                 <span className="text-xs text-muted" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                   {resumo.feitas} de {resumo.total} diária{resumo.total === 1 ? '' : 's'}
@@ -111,7 +111,7 @@ export function CardDaProducao({ projeto, resumo, papel, acao }: {
             {/* O papel de quem abre: dono, equipe, só leitura. */}
             {papel && (
               <span className="text-xs" style={{
-                padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border-light)',
+                padding: '2px 8px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)',
                 color: 'var(--text-secondary)', whiteSpace: 'nowrap',
               }}>
                 {DESCRICAO[papel].nome}

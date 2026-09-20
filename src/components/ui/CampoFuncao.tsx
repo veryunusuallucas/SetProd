@@ -165,7 +165,7 @@ export function CampoFuncao({
           style={{
             position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 40,
             backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-            borderRadius: '12px', padding: '5px', maxHeight: '260px', overflowY: 'auto',
+            borderRadius: 'var(--radius-md)', padding: '5px', maxHeight: '260px', overflowY: 'auto',
             boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
           }}
         >
@@ -176,7 +176,7 @@ export function CampoFuncao({
               onClick={() => escolher(s)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-                width: '100%', padding: '9px 11px', borderRadius: '8px', border: 'none',
+                width: '100%', padding: '9px 11px', borderRadius: 'var(--radius-sm)', border: 'none',
                 background: 'transparent', cursor: 'pointer', textAlign: 'left',
                 color: 'var(--text-primary)',
               }}

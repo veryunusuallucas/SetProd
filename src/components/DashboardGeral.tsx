@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Vazio } from './ui/Vazio';
 import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -182,13 +183,13 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
       <div style={{ display: 'flex', gap: '8px', padding: '0 4px' }}>
         <button 
           onClick={() => setSubAba('geral')}
-          style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAba === 'geral' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'geral' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-sm)', backgroundColor: subAba === 'geral' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'geral' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
         >
           Visão Geral
         </button>
         <button 
           onClick={() => setSubAba('calendario')}
-          style={{ flex: 1, padding: '8px', borderRadius: '8px', backgroundColor: subAba === 'calendario' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'calendario' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-sm)', backgroundColor: subAba === 'calendario' ? 'var(--accent)' : 'var(--bg-surface)', color: subAba === 'calendario' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
         >
           Calendário
         </button>
@@ -453,9 +454,10 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
             )}
 
             {urgentes.length === 0 ? (
-              <div className="text-sm text-secondary" style={{ textAlign: 'center', padding: '16px' }}>
-                Nenhuma tarefa pendente no momento.
-              </div>
+              <Vazio
+                titulo="Nada pendente agora"
+                ajuda="As tasks com prazo próximo aparecem aqui, primeiro as do seu departamento."
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {urgentes.map(({ task, urgencia }) => {
@@ -467,7 +469,7 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
                         backgroundColor: grave ? `color-mix(in srgb, ${urgencia.cor} 10%, var(--bg-primary))` : 'var(--bg-primary)',
-                        borderRadius: '12px', textAlign: 'left', cursor: 'pointer', width: '100%',
+                        borderRadius: 'var(--radius-md)', textAlign: 'left', cursor: 'pointer', width: '100%',
                         border: `1px solid ${grave ? urgencia.cor : 'var(--border-light)'}`,
                       }}
                     >

@@ -230,8 +230,8 @@ export function LocacoesModule() {
           <h2 className="text-sm font-bold uppercase tracking-widest text-muted">{editId ? 'Editar Locação' : 'Nova Locação'}</h2>
           
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <input required placeholder="Nome do Set (ex: Mansão do Vilão)" value={nome} onChange={e => setNome(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
-            <select value={status} onChange={e => setStatus(e.target.value as any)} style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontWeight: 'bold', color: status === 'conversa' ? 'var(--text-secondary)' : status === 'temos' ? 'var(--color-success)' : 'var(--color-danger)' }}>
+            <input required placeholder="Nome do Set (ex: Mansão do Vilão)" value={nome} onChange={e => setNome(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
+            <select value={status} onChange={e => setStatus(e.target.value as any)} style={{ padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontWeight: 'bold', color: status === 'conversa' ? 'var(--text-secondary)' : status === 'temos' ? 'var(--color-success)' : 'var(--color-danger)' }}>
               <option value="conversa">🟡 Em Conversa</option>
               <option value="temos">🟢 Temos a Locação</option>
               <option value="caiu">🔴 Caiu</option>
@@ -239,20 +239,20 @@ export function LocacoesModule() {
           </div>
           
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <input required placeholder="Endereço para buscar (ex: Av Paulista, 1000)" value={endereco} onChange={e => setEndereco(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
+            <input required placeholder="Endereço para buscar (ex: Av Paulista, 1000)" value={endereco} onChange={e => setEndereco(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }} />
             <button onClick={buscarOSM} disabled={buscandoOSM} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
               {buscandoOSM ? 'Buscando...' : 'Buscar OSM'}
             </button>
           </div>
 
           <div style={{ display: 'flex', gap: '16px' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
               <MapPin size={16} className="text-muted" />
               <input placeholder="Link Maps / Coordenadas" value={coordenadas} onChange={e => setCoordenadas(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
             </div>
             
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <Cross size={16} className="text-danger" />
                 <input placeholder="Hospital Mais Próximo" value={hospital} onChange={e => setHospital(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
               </div>
@@ -261,7 +261,7 @@ export function LocacoesModule() {
                   placeholder="Telefone do hospital"
                   value={hospitalTelefone}
                   onChange={e => setHospitalTelefone(e.target.value)}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px' }}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px' }}
                 />
                 {hospitalDistancia !== undefined && (
                   <span className="text-xs text-muted" style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}>
@@ -287,7 +287,7 @@ export function LocacoesModule() {
 
             Os papéis viram atalhos: no set ninguém quer digitar "Zelador".
           */}
-          <div style={{ border: '1px solid var(--border-light)', padding: '12px', borderRadius: '12px' }}>
+          <div style={{ border: '1px solid var(--border-light)', padding: '12px', borderRadius: 'var(--radius-md)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
               <div className="text-xs font-bold uppercase tracking-widest text-muted">Contatos da Locação</div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -363,7 +363,7 @@ export function LocacoesModule() {
 
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {candidatosHospital.map(h => (
-                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
                   <Cross size={18} className="text-danger" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="font-bold text-sm">{h.nome}</div>
@@ -469,13 +469,13 @@ export function LocacoesModule() {
             </div>
 
             {loc.obs && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '8px' }}>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: 'var(--radius-sm)' }}>
                 {loc.obs}
               </div>
             )}
             
             {loc.coordenadas && (
-              <a href={loc.coordenadas.startsWith('http') ? loc.coordenadas : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.coordenadas)}`} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: 'var(--accent)', textDecoration: 'none', border: '1px solid var(--accent)', borderRadius: '8px', padding: '6px', marginTop: '4px' }}>
+              <a href={loc.coordenadas.startsWith('http') ? loc.coordenadas : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.coordenadas)}`} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: 'var(--accent)', textDecoration: 'none', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '6px', marginTop: '4px' }}>
                 Abrir no Maps
               </a>
             )}

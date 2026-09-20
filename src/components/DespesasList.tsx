@@ -1,4 +1,5 @@
 import { dinheiro, dataCurta } from '../lib/formato';
+import { Vazio } from './ui/Vazio';
 import { dividirEmPartes } from '../core/dinheiro';
 import { naEquipe } from '../lib/vinculos';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
@@ -7,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { TipoDivisao, Despesa } from '../types';
-import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon } from 'lucide-react';
+import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon, Receipt } from 'lucide-react';
 import { useRole } from '../hooks/useRole';
 import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '../lib/documentos';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
@@ -471,7 +472,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
             
             <div className="text-xs text-secondary font-bold uppercase tracking-widest mt-2">Tipo de Despesa</div>
             
-            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
               <input type="radio" checked={tipoDespesa === 'producao'} onChange={() => { setTipoDespesa('producao'); setPagadorId(CAIXA_CENTRAL); }} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span className="text-sm font-bold">Gasto Direto da Produção (Caixa)</span>
@@ -488,7 +489,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
               </div>
             )}
 
-            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
+            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
               <input type="radio" checked={tipoDespesa === 'reembolsavel'} onChange={() => setTipoDespesa('reembolsavel')} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span className="text-sm font-bold">Despesa Reembolsável (Adiantamento)</span>
@@ -496,7 +497,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
               </div>
             </label>
 
-            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
+            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
               <input type="radio" checked={tipoDespesa === 'rateio'} onChange={() => setTipoDespesa('rateio')} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span className="text-sm font-bold">Divisão na Equipe (Rateio)</span>
@@ -504,7 +505,7 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
               </div>
             </label>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-light)', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', marginTop: '8px' }}>
               <span className="text-sm font-bold">Comprovante (Recibo / Nota)</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <input type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ fontSize: '12px' }} />
@@ -573,7 +574,13 @@ export function DespesasList({ projetoId }: { projetoId: string }) {
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {despesasFiltradas.length === 0 && <div className="text-muted text-sm text-center">Nenhuma despesa registrada.</div>}
+          {despesasFiltradas.length === 0 && (
+            <Vazio
+              icone={<Receipt size={28} />}
+              titulo="Nenhuma despesa lançada"
+              ajuda="Aqui entram os gastos da produção: quem pagou, quanto, e como se divide entre a equipe."
+            />
+          )}
 
           {despesasFiltradas.slice().reverse().map(d => {
             const pagador = perfis?.find(p => p.id === d.pagadores[0]?.id_ref) || { nome: 'Caixa', sobrenome: '' };

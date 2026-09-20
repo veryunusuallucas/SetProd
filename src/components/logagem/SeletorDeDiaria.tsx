@@ -112,7 +112,7 @@ export function SeletorDeDiaria({ diarias, valor, aoMudar, agoraId, alerta }: {
         }}
       >
         <span aria-hidden style={{
-          width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '32px', height: '32px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: alerta ? 'var(--color-warning)' : 'var(--cor-set)', flexShrink: 0,
           backgroundColor: `color-mix(in srgb, ${alerta ? 'var(--color-warning)' : 'var(--cor-set)'} 14%, transparent)`,
         }}>
@@ -210,7 +210,7 @@ export function SeletorDeDiaria({ diarias, valor, aoMudar, agoraId, alerta }: {
 function SeloHoje({ texto }: { texto: string }) {
   return (
     <span style={{
-      padding: '1px 6px', borderRadius: '999px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em',
+      padding: '1px 6px', borderRadius: 'var(--radius-full)', fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em',
       textTransform: 'uppercase', color: 'var(--color-success)',
       backgroundColor: 'color-mix(in srgb, var(--color-success) 14%, transparent)',
     }}>
