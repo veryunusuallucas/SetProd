@@ -1528,3 +1528,24 @@ input[type="radio"]:checked::before {
     -webkit-backdrop-filter: none;
   }
 }
+
+/*
+  O indicador de conexão (PLANO-indicador-conexao).
+
+  Fica acima de tudo, no alto à direita, onde não disputa espaço com a dock nem
+  com o botão de ajuda. No computador ele some: lá a resposta já está no rodapé
+  da barra lateral, e dois indicadores dizendo a mesma coisa é um a mais.
+*/
+.indicador-conexao {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: 12px;
+  z-index: 60;
+}
+
+@media (min-width: 1024px) {
+  .indicador-conexao.so-no-celular { display: none; }
+}
