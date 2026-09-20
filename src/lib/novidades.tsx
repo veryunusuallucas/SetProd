@@ -7,7 +7,7 @@ import {
   FileText, FolderOpen, PartyPopper, Copy, Columns3, Home, Timer, Pencil, Settings,
   Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
   Camera, HardDrive, FileInput, Target, Image, Save,
-  Archive, Crown, BadgeCheck, HeartPulse, UserCheck,
+  Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning,
 } from 'lucide-react';
 
 /**
@@ -225,6 +225,78 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.14.0',
+    resumo: <>O que você escreve deixa de sumir quando duas pessoas mexem na mesma coisa — e o roteiro volta a abrir no set, sem internet.</>,
+    grupos: [
+      {
+        id: 'conflitos',
+        titulo: 'Nada do que você escreve se perde',
+        resumo: 'Duas pessoas na mesma diária, cada uma no seu campo, e as duas alterações ficam.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <GitMerge size={20} />,
+            titulo: 'As duas alterações convivem',
+            texto: 'Se uma pessoa mexeu no transporte e a outra nos horários da mesma diária, as duas ficam — antes, uma delas sumia sem aviso. O app só pergunta quando as duas mexeram na mesma coisa, e aí mostra os dois valores lado a lado para você escolher.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Undo2 size={20} />,
+            titulo: 'A sua versão fica guardada',
+            texto: 'Quando a versão de outra pessoa passa por cima da sua, a sua não é mais descartada: uma faixa avisa, e numa janela você vê os dois lados campo a campo e decide se traz a sua de volta.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Trash2 size={20} />,
+            titulo: 'Apagar não vence no sorteio',
+            texto: 'Alguém apagou enquanto você editava? O registro fica, com a sua edição, e você decide depois se ele some de vez. Perder o que acabou de ser lançado é caro; ressuscitar custa trinta segundos.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <DollarSign size={20} />,
+            titulo: 'Em dinheiro, o app sempre pergunta',
+            texto: 'Valor de despesa, aporte ou acerto nunca é resolvido sozinho. Dois aparelhos mexendo no mesmo valor viram uma escolha sua, com os dois números em reais, lado a lado.',
+          },
+        ],
+      },
+      {
+        id: 'offline',
+        titulo: 'O set sem internet',
+        resumo: '',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <FileWarning size={20} />,
+            titulo: 'O roteiro abre offline de novo',
+            texto: 'No app instalado e sem rede, o PDF do roteiro dava erro — faltava guardar uma peça do leitor junto com o resto. Agora ela vai junto. E, se a leitura falhar por outro motivo, aparece um botão de tentar de novo em vez de uma linha vermelha.',
+          },
+        ],
+      },
+      {
+        id: 'acesso',
+        titulo: 'Saber o que você pode',
+        resumo: '',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'Tela "Seu acesso"',
+            texto: 'Em Configurações: seu papel, sua ficha, seu departamento e, numa lista só, o que você pode e o que não pode nesta produção.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Lock size={20} />,
+            titulo: 'Área fechada explica e dá o caminho',
+            texto: 'As áreas que o seu acesso não alcança abrem com o motivo na tela e um botão para pedir acesso a quem administra, em vez de sumirem do menu. Onde você só acompanha, uma faixa diz isso uma vez, no topo, e os botões de edição somem.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.13.2',
     itens: [
