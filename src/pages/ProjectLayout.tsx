@@ -393,9 +393,12 @@ export function ProjectLayout() {
       ]
     },
     {
+      // Dinheiro e dado andam juntos na cabeça de quem produz: relatório,
+      // exportação e backup saem daqui, não das configurações do app.
       title: 'FINANCEIRO',
       items: [
         { name: 'Financeiro', path: `/projeto/${id}/financeiro`, icon: Receipt, exact: false },
+        { name: 'Gestão de Dados', path: `/projeto/${id}/dados`, icon: Database, exact: false },
       ]
     }
   ];
@@ -451,21 +454,12 @@ export function ProjectLayout() {
       {/*
         O RODAPÉ É O QUE NÃO É O FILME (pedido do Lucas, 20/09/2026).
 
-        Gestão de Dados e Configurações estavam soltas no meio da lista, entre
-        os módulos do trabalho — e são de outra natureza: mexem no app, não na
-        produção. Descendo para cá, elas ficam com as suas vizinhas de verdade
-        (busca, acesso, sair) e a lista de cima volta a ser só "onde eu
-        trabalho", que é o que a pessoa procura correndo no set.
+        Configurações, busca, acesso e sair mexem no APP; o resto da lista é
+        onde se trabalha. Gestão de Dados ficou em cima, junto do Financeiro:
+        relatório, exportação e backup são trabalho da produção, e é lá que o
+        Lucas procura por eles.
       */}
       <div className="sidebar-footer">
-        <Link
-          to={`/projeto/${id}/dados`}
-          className={`sidebar-link ${isActive(`/projeto/${id}/dados`, false) ? 'active' : ''}`}
-          onClick={() => setMobileSidebarOpen(false)}
-        >
-          <Database size={18} />
-          <span>Gestão de Dados</span>
-        </Link>
         <Link
           to={`/projeto/${id}/config`}
           className={`sidebar-link ${isActive(`/projeto/${id}/config`, false) ? 'active' : ''}`}
