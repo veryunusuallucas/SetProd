@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Vazio } from './ui/Vazio';
 import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
+import { useRole } from '../hooks/useRole';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,7 @@ import { tipoDoEvento } from './EventosPanel';
 
 export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?: () => void }) {
   const minhaFuncao = useMinhaFuncao();
+  const { role } = useRole();
   const navigate = useNavigate();
   
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -62,6 +64,22 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
   const totalGasto = despesas.reduce((acc, d) => acc + d.valor_total, 0);
   const totalAportes = aportes.reduce((acc, a) => acc + a.valor, 0);
   const saldoAtual = totalAportes - totalGasto;
+
+  /*
+    O RECORTE DE QUEM VÊ O QUÊ. A matriz do `escopo.ts` já diz que dinheiro é
+    da produção; aqui é a tradução disso em tela — quem administra vê o caixa
+    do filme, quem é de um departamento vê o do seu departamento, e quem não é
+    nem um nem outro não vê número de dinheiro nenhum.
+  */
+  const administraDinheiro = role === 'dono' || role === 'admin';
+  const meuDepartamento = minhaFuncao.departamento;
+  const gastoNoMeu = meuDepartamento
+    ? (despesas || []).filter(d => d.departamento_id === meuDepartamento.id).reduce((soma, d) => soma + (d.valor_total || 0), 0)
+    : 0;
+  const orcamentoNoMeu = meuDepartamento?.orcamento_departamento || 0;
+  const temOrcamentoNoMeu = orcamentoNoMeu > 0;
+  const sobraNoMeu = orcamentoNoMeu - gastoNoMeu;
+  const estourouNoMeu = temOrcamentoNoMeu && gastoNoMeu > orcamentoNoMeu;
   const isEstourado = totalGasto > (projeto.limite_gasto || Infinity);
   const totalPlanejado = projeto.num_diarias || 0;
 
@@ -389,28 +407,71 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
               )}
             </div>
 
-            {/* RESUMO FINANCEIRO */}
-            <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', borderColor: isEstourado ? 'var(--color-danger)' : 'var(--border-color)' }}>
-              <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <DollarSign size={14} /> Resumo Financeiro
-              </span>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Saldo Disponível</span>
-                  <span className="text-2xl font-bold" style={{ color: saldoAtual < 0 ? 'var(--color-danger)' : 'var(--text-primary)', transition: 'color 0.3s ease' }}>
-                    <Numero valor={saldoAtual} moeda />
-                  </span>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px', color: isEstourado ? 'var(--color-danger)' : 'var(--text-secondary)' }}>Total Gasto</span>
-                  <span className="text-lg font-bold" style={{ color: isEstourado ? 'var(--color-danger)' : 'var(--text-primary)' }}>
-                    <Numero valor={totalGasto} moeda />
-                  </span>
+            {/*
+              DINHEIRO: CADA UM VÊ O SEU (pedido do Lucas, 20/09/2026).
+
+              O saldo da produção inteira é informação de quem administra. Para
+              quem é da Fotografia, o número que orienta o trabalho é outro: o
+              que sobra do orçamento DA FOTOGRAFIA. O caixa do filme mostrado
+              para a equipe inteira não ajuda ninguém a decidir nada — e é o
+              tipo de número que circula em conversa de set sem contexto.
+
+              Quem não administra e não tem departamento não vê cartão nenhum:
+              não há número que seja "o dele".
+            */}
+            {administraDinheiro ? (
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', borderColor: isEstourado ? 'var(--color-danger)' : 'var(--border-color)' }}>
+                <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <DollarSign size={14} /> Resumo Financeiro
+                </span>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Saldo Disponível</span>
+                    <span className="text-2xl font-bold" style={{ color: saldoAtual < 0 ? 'var(--color-danger)' : 'var(--text-primary)', transition: 'color 0.3s ease' }}>
+                      <Numero valor={saldoAtual} moeda />
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px', color: isEstourado ? 'var(--color-danger)' : 'var(--text-secondary)' }}>Total Gasto</span>
+                    <span className="text-lg font-bold" style={{ color: isEstourado ? 'var(--color-danger)' : 'var(--text-primary)' }}>
+                      <Numero valor={totalGasto} moeda />
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : meuDepartamento ? (
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', borderColor: estourouNoMeu ? 'var(--color-danger)' : 'var(--border-color)' }}>
+                <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <DollarSign size={14} /> {meuDepartamento.nome}
+                </span>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>
+                      {temOrcamentoNoMeu ? 'Sobra do seu departamento' : 'Gasto do seu departamento'}
+                    </span>
+                    <span className="text-2xl font-bold" style={{ color: estourouNoMeu ? 'var(--color-danger)' : 'var(--text-primary)' }}>
+                      <Numero valor={temOrcamentoNoMeu ? sobraNoMeu : gastoNoMeu} moeda />
+                    </span>
+                  </div>
+
+                  {temOrcamentoNoMeu && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '4px' }}>Gasto</span>
+                      <span className="text-lg font-bold"><Numero valor={gastoNoMeu} moeda /></span>
+                    </div>
+                  )}
+                </div>
+
+                <span className="text-xs text-muted" style={{ lineHeight: 1.45 }}>
+                  {temOrcamentoNoMeu
+                    ? 'O caixa do filme inteiro é de quem administra a produção.'
+                    : 'Seu departamento ainda não tem orçamento definido — quem administra define.'}
+                </span>
+              </div>
+            ) : null}
 
           </div>
 
