@@ -1,13 +1,11 @@
 import { useState } from 'react';
+import { Janela as JanelaBase } from './ui/Janela';
 import { usarAviso, URGENCIA } from './avisos/CentralDeAvisos';
 import { FaixaDeAviso } from './avisos/FaixaDeAviso';
-import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { motion } from 'framer-motion';
-import { GitMerge, X, Check, Trash2 } from 'lucide-react';
+import { GitMerge, Check, Trash2 } from 'lucide-react';
 import { db, escreverGanhandoDe } from '../db/db';
 import { dinheiro } from '../lib/formato';
-import { MOLA } from './ui/ia';
 import type { ConflitoGuardado } from '../types';
 
 /**
@@ -133,31 +131,8 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
     }
   };
 
-  return createPortal(
-    <div
-      onClick={aoFechar}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 3950, display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: '16px',
-        backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={MOLA}
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)', padding: '20px', width: 'min(640px, 100%)',
-          maxHeight: '85vh', overflowY: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-          <GitMerge size={20} style={{ color: 'var(--color-warning)' }} />
-          <h2 style={{ margin: 0, fontSize: '18px', flex: 1 }}>O que foi substituído</h2>
-          <button className="btn-icon" onClick={aoFechar} aria-label="Fechar"><X size={18} /></button>
-        </div>
+  return (
+    <JanelaBase titulo="O que foi substituído" icone={<GitMerge size={20} />} aoFechar={aoFechar} largura="640px">
         <p className="text-xs text-muted" style={{ marginBottom: '18px', lineHeight: 1.5 }}>
           Duas pessoas mexeram no mesmo registro. A versão de quem salvou por último
           ficou valendo, e a sua foi guardada aqui, neste aparelho.
@@ -235,8 +210,6 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
             );
           })}
         </div>
-      </motion.div>
-    </div>,
-    document.body
+    </JanelaBase>
   );
 }

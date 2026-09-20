@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Janela } from './ui/Janela';
 import { naEquipe } from '../lib/vinculos';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight, UserMinus, Crown } from 'lucide-react';
+import { Link2, Copy, Check, Trash2, Users, ShieldAlert, UserCheck, Package, Plus, ToggleLeft, ToggleRight, UserMinus, Crown } from 'lucide-react';
 import { db } from '../db/db';
 import {
   criarConvite, convitesDoProjeto, revogarConvite, linkDoConvite,
@@ -310,37 +311,11 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
   const administraAqui = minhaParticipacao?.papel === 'dono' || minhaParticipacao?.papel === 'admin';
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200, display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: '16px',
-        backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-      }}
-      onClick={aoFechar}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={MOLA}
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%', maxWidth: '520px', maxHeight: '86vh', overflowY: 'auto',
-          backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--border-color)', padding: '24px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '20px' }}>
-          <div style={{ flex: 1 }}>
-            <h2 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={20} /> Quem tem acesso
-            </h2>
-            <p className="text-sm text-muted" style={{ marginTop: '4px' }}>
-              Todo mundo aqui trabalha na <strong>mesma</strong> produção — não são cópias.
-              O que uma equipe muda, a outra vê.
-            </p>
-          </div>
-          <button className="btn-icon" onClick={aoFechar} aria-label="Fechar"><X size={20} /></button>
-        </div>
+    <Janela titulo="Quem tem acesso" icone={<Users size={20} />} aoFechar={aoFechar} largura="520px" fecharClicandoFora={false}>
+        <p className="text-sm text-muted" style={{ marginTop: 0, marginBottom: '20px' }}>
+          Todo mundo aqui trabalha na <strong>mesma</strong> produção — não são cópias.
+          O que uma equipe muda, a outra vê.
+        </p>
 
         {!supabaseConfigurado && (
           <div style={avisoEstilo}>
@@ -737,8 +712,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
             </p>
           </section>
         )}
-      </motion.div>
-    </div>
+    </Janela>
   );
 }
 
