@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { usarAviso, URGENCIA } from './avisos/CentralDeAvisos';
+import { FaixaDeAviso } from './avisos/FaixaDeAviso';
 import { ShieldCheck, RotateCw, UserCheck } from 'lucide-react';
 import { db } from '../db/db';
 import { membrosDoProjeto, participacaoLocal, sincronizarParticipacoes, type Participacao, type PapelMembro } from '../lib/membros';
@@ -124,73 +126,55 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
     };
   }, [projetoId]);
 
-  if (!recado && pedidos.length === 0 && pedidosDeAcesso.length === 0) return null;
-
-  const faixa: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-    padding: '12px 16px', margin: '0 0 16px', borderRadius: '12px',
-    background: 'var(--color-warning-bg)',
-    border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)',
-  };
-
-  return (
-    <>
-      {recado && (
-        <div style={faixa}>
-          <ShieldCheck size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-          <div className="text-sm" style={{ flex: 1, minWidth: '200px', lineHeight: 1.45 }}>
-            {recado.texto}
-            {recado.recarregar && ' Atualize a página para as telas acompanharem.'}
-          </div>
-          {recado.recarregar && (
-            <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ flexShrink: 0 }}>
-              <RotateCw size={14} style={{ marginRight: '6px' }} /> Atualizar
-            </button>
-          )}
-          <button
-            onClick={() => setRecado(null)}
-            className="text-xs"
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            agora não
-          </button>
-        </div>
+  /*
+    Três avisos, três urgências diferentes — e a central decide qual aparece
+    primeiro (leva de UI 3). Antes eles saíam empilhados, os três com o mesmo
+    fundo âmbar, competindo entre si.
+  */
+  usarAviso('acesso-recado', URGENCIA.meuAcessoMudou, recado?.texto ?? null, () => (
+    <FaixaDeAviso
+      icone={<ShieldCheck size={18} />}
+      aoDispensar={() => setRecado(null)}
+      acao={recado?.recarregar && (
+        <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ flexShrink: 0 }}>
+          <RotateCw size={14} style={{ marginRight: '6px' }} /> Atualizar
+        </button>
       )}
+    >
+      {recado?.texto}
+      {recado?.recarregar && ' Atualize a página para as telas acompanharem.'}
+    </FaixaDeAviso>
+  ));
 
-      {pedidosDeAcesso.map(linha => {
-        const [id, texto] = [linha.slice(0, linha.indexOf('|')), linha.slice(linha.indexOf('|') + 1)];
-        return (
-          <div key={id} style={faixa}>
-            <UserCheck size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-            <div className="text-sm" style={{ flex: 1, minWidth: '200px', lineHeight: 1.45 }}>{texto}</div>
-            <button className="btn btn-primary" onClick={aoAbrirAcesso} style={{ flexShrink: 0 }}>
-              Ver em Quem tem acesso
-            </button>
-            <button
-              onClick={() => { dispensar(id); setPedidosDeAcesso(a => a.filter(l => !l.startsWith(id))); }}
-              className="text-xs"
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}
-            >
-              já vi
-            </button>
-          </div>
-        );
-      })}
+  const pedidoDeAcesso = pedidosDeAcesso[0];
+  const idDoPedido = pedidoDeAcesso?.slice(0, pedidoDeAcesso.indexOf('|'));
+  usarAviso('acesso-pedido', URGENCIA.esperandoPorMim, pedidoDeAcesso ?? null, () => (
+    <FaixaDeAviso
+      icone={<UserCheck size={18} />}
+      acao={<button className="btn btn-primary" onClick={aoAbrirAcesso} style={{ flexShrink: 0 }}>Ver em Quem tem acesso</button>}
+      aoDispensar={() => {
+        if (!idDoPedido) return;
+        dispensar(idDoPedido);
+        setPedidosDeAcesso(a => a.filter(l => !l.startsWith(idDoPedido)));
+      }}
+    >
+      {pedidoDeAcesso?.slice(pedidoDeAcesso.indexOf('|') + 1)}
+      {pedidosDeAcesso.length > 1 && ` (e mais ${pedidosDeAcesso.length - 1})`}
+    </FaixaDeAviso>
+  ));
 
-      {pedidos.length > 0 && (
-        <div style={faixa}>
-          <UserCheck size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-          <div className="text-sm" style={{ flex: 1, minWidth: '200px', lineHeight: 1.45 }}>
-            {pedidos.length === 1
-              ? <>{pedidos[0].quem} pediu para ser <strong>{pedidos[0].ficha}</strong> nesta produção.</>
-              : <>{pedidos.length} pessoas pediram para ser uma ficha da equipe.</>}
-            {' '}Confirmar libera os dados protegidos daquela ficha.
-          </div>
-          <button className="btn btn-primary" onClick={aoAbrirAcesso} style={{ flexShrink: 0 }}>
-            Ver em Quem tem acesso
-          </button>
-        </div>
-      )}
-    </>
-  );
+  usarAviso('ficha-pedido', URGENCIA.esperandoPorMim, pedidos.length ? `${pedidos.length}` : null, () => (
+    <FaixaDeAviso
+      icone={<UserCheck size={18} />}
+      acao={<button className="btn btn-primary" onClick={aoAbrirAcesso} style={{ flexShrink: 0 }}>Ver em Quem tem acesso</button>}
+    >
+      {pedidos.length === 1
+        ? <>{pedidos[0].quem} pediu para ser <strong>{pedidos[0].ficha}</strong> nesta produção.</>
+        : <>{pedidos.length} pessoas pediram para ser uma ficha da equipe.</>}
+      {' '}Confirmar libera os dados protegidos daquela ficha.
+    </FaixaDeAviso>
+  ));
+
+  // Quem desenha é a central; aqui só se publica.
+  return null;
 }

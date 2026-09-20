@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usarAviso, URGENCIA } from './avisos/CentralDeAvisos';
+import { FaixaDeAviso } from './avisos/FaixaDeAviso';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
@@ -70,30 +72,22 @@ export function ConflitosPanel({ projetoId }: { projetoId: string }) {
     [projetoId]
   ) || [];
 
-  if (!conflitos.length) return null;
+  /*
+    O aviso vai para a central (leva de UI 3): ela decide quem aparece quando há
+    mais de um. Este é o mais urgente de todos — é dado do trabalho em risco.
+  */
+  usarAviso('conflitos', URGENCIA.dadoEmRisco, conflitos.length ? `${conflitos.length}` : null, () => (
+    <FaixaDeAviso
+      icone={<GitMerge size={18} />}
+      acao={<button className="btn btn-primary" onClick={() => setAberto(true)} style={{ flexShrink: 0 }}>Ver e escolher</button>}
+    >
+      {conflitos.length === 1
+        ? <>Uma alteração sua foi substituída pela de outra pessoa. <strong>Ela não se perdeu</strong> — dá para ver e escolher.</>
+        : <><strong>{conflitos.length} alterações suas</strong> foram substituídas pelas de outras pessoas. Elas não se perderam.</>}
+    </FaixaDeAviso>
+  ));
 
-  return (
-    <>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-        padding: '12px 16px', margin: '0 0 16px', borderRadius: '12px',
-        background: 'var(--color-warning-bg)',
-        border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)',
-      }}>
-        <GitMerge size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-        <div className="text-sm" style={{ flex: 1, minWidth: '200px', lineHeight: 1.45 }}>
-          {conflitos.length === 1
-            ? <>Uma alteração sua foi substituída pela de outra pessoa. <strong>Ela não se perdeu</strong> — dá para ver e escolher.</>
-            : <><strong>{conflitos.length} alterações suas</strong> foram substituídas pelas de outras pessoas. Elas não se perderam.</>}
-        </div>
-        <button className="btn btn-primary" onClick={() => setAberto(true)} style={{ flexShrink: 0 }}>
-          Ver e escolher
-        </button>
-      </div>
-
-      {aberto && <Janela conflitos={conflitos} aoFechar={() => setAberto(false)} />}
-    </>
-  );
+  return aberto ? <Janela conflitos={conflitos} aoFechar={() => setAberto(false)} /> : null;
 }
 
 function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFechar: () => void }) {
