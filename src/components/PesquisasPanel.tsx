@@ -322,7 +322,7 @@ function GraficoPergunta({ apuracao }: { apuracao: ApuracaoPergunta }) {
       {textos && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {textos.map((t, i) => (
-            <div key={i} className="text-sm" style={{ padding: '6px 10px', backgroundColor: 'var(--bg-primary)', borderRadius: '6px' }}>
+            <div key={i} className="text-sm" style={{ padding: '6px 10px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)' }}>
               {t.nome && <strong className="text-xs text-muted">{t.nome}: </strong>}
               {t.valor}
             </div>

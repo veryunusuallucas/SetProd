@@ -57,7 +57,7 @@ export function ResumoEquipamento({ projetoId, diariaId }: { projetoId: string; 
                 <span
                   className="text-xs"
                   style={{
-                    padding: '2px 9px', borderRadius: '20px', fontWeight: 700,
+                    padding: '2px 9px', borderRadius: 'var(--radius-full)', fontWeight: 700,
                     color: 'var(--color-danger)', border: '1px solid var(--color-danger)',
                   }}
                 >

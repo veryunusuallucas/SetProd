@@ -225,7 +225,7 @@ export function AceitarConvite() {
                 {/* Antes de qualquer botão: com QUAL conta isso vai acontecer.
                     Aceitar gasta o convite e não desfaz — se o link foi aberto
                     no computador de outra pessoa, o erro é definitivo. */}
-                <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', marginBottom: '14px' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)', marginBottom: '14px' }}>
                   <div className="text-xs text-muted">Entrando na produção como</div>
                   <div className="text-sm font-bold" style={{ wordBreak: 'break-all' }}>{contaAtual || 'conta desconhecida'}</div>
                   <button
@@ -247,7 +247,7 @@ export function AceitarConvite() {
                 */}
                 {convite?.email_esperado && contaAtual
                   && convite.email_esperado.trim().toLowerCase() !== contaAtual.trim().toLowerCase() && (
-                  <div role="alert" style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', marginBottom: '14px' }}>
+                  <div role="alert" style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', marginBottom: '14px' }}>
                     <p className="text-sm" style={{ margin: 0, lineHeight: 1.5 }}>
                       Este convite foi feito para <strong style={{ wordBreak: 'break-all' }}>{convite.email_esperado}</strong>.
                     </p>

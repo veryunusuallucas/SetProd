@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useComportamentoDeJanela } from './ui/Janela';
 import { lerConexao, frasesDaConexao } from '../lib/conexao';
 import { dataHora } from '../lib/formato';
 import { createPortal } from 'react-dom';
@@ -89,6 +90,8 @@ function descrever(estado: string, pendentes: number) {
 }
 
 function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: boolean; aoFechar: () => void }) {
+  // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
+  useComportamentoDeJanela(aoFechar);
   const conexao = lerConexao(projetoId);
   const [linhas, setLinhas] = useState<LinhaDaAta[] | null>(null);
   const [tamanho, setTamanho] = useState<{ dados: number; anexos: number; total: number } | null>(null);

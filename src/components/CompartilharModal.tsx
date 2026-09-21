@@ -422,7 +422,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                     {m.perfil_pedido && (
                       <div style={{
                         flexBasis: '100%', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-                        padding: '10px 12px', borderRadius: '10px',
+                        padding: '10px 12px', borderRadius: 'var(--radius-md)',
                         background: 'var(--color-warning-bg)',
                         border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)',
                       }}>
@@ -531,12 +531,12 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                   <div className="text-sm font-bold" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {c.apelido || 'Convite em aberto'}
                     {c.multiuso && (
-                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: '20px', fontWeight: 700, color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: 'var(--radius-full)', fontWeight: 700, color: 'var(--accent)', border: '1px solid var(--accent)' }}>
                         vários
                       </span>
                     )}
                     {c.ativo === false && (
-                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: '20px', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
+                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: 'var(--radius-full)', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
                         desligado
                       </span>
                     )}
@@ -724,19 +724,19 @@ const tituloSecao: React.CSSProperties = {
 
 const linhaEstilo: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '8px',
-  padding: '10px 12px', borderRadius: '10px',
+  padding: '10px 12px', borderRadius: 'var(--radius-md)',
   backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)',
 };
 
 const campoEstilo: React.CSSProperties = {
-  width: '100%', padding: '10px', borderRadius: '10px',
+  width: '100%', padding: '10px', borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
   fontSize: '14px', color: 'var(--text-primary)',
 };
 
 const avisoEstilo: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '8px',
-  padding: '10px 12px', borderRadius: '10px', marginBottom: '16px',
+  padding: '10px 12px', borderRadius: 'var(--radius-md)', marginBottom: '16px',
   backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)',
   fontSize: '13px',
 };

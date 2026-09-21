@@ -580,7 +580,7 @@ export function LinhaDoDia({
                         <select
                           value={c.item.locacao_id || ''}
                           onChange={e => mudarItem(c.item.id, { locacao_id: e.target.value || undefined })}
-                          style={{ padding: '4px 6px', fontSize: '13px', maxWidth: '170px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                          style={{ padding: '4px 6px', fontSize: '13px', maxWidth: '170px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }}
                         >
                           <option value="">para onde?</option>
                           {locacoes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
@@ -607,7 +607,7 @@ export function LinhaDoDia({
                       value={c.item.local || ''}
                       aoGravar={v => mudarItem(c.item.id, { local: v || undefined })}
                       placeholder="onde?"
-                      style={{ width: '130px', flexShrink: 0, padding: '4px 6px', fontSize: '13px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '6px' }}
+                      style={{ width: '130px', flexShrink: 0, padding: '4px 6px', fontSize: '13px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}
                     />
                   )}
 
@@ -622,7 +622,7 @@ export function LinhaDoDia({
                         step={5}
                         value={duracaoDoItem(c.item, c.cena)}
                         onChange={e => mudarItem(c.item.id, { duracao_min: Math.max(0, Number(e.target.value) || 0) })}
-                        style={{ width: '64px', padding: '4px 6px', fontSize: '13px', textAlign: 'right', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '6px' }}
+                        style={{ width: '64px', padding: '4px 6px', fontSize: '13px', textAlign: 'right', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}
                       />
                       <span className="text-xs text-muted">min</span>
                     </label>
@@ -1138,7 +1138,7 @@ function DestinoDoItem({ locacao }: { locacao: Locacao }) {
 }
 
 const campoCobertura: React.CSSProperties = {
-  width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px',
+  width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
   border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
 };
 

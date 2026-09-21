@@ -174,7 +174,7 @@ export function AISuggestion({
       transition={MOLA}
       style={{
         display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-        padding: '10px 12px', borderRadius: '10px',
+        padding: '10px 12px', borderRadius: 'var(--radius-md)',
         border: '1px solid var(--border-light)', borderLeft: `3px solid ${cor}`,
         backgroundColor: 'var(--bg-surface)',
       }}

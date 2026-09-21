@@ -124,7 +124,7 @@ export function PenseNisso() {
               whileHover={reduzido ? undefined : { y: -1, transition: MOLA_GESTO }}
               style={{
                 marginTop: '16px', width: '100%', padding: '10px',
-                borderRadius: '10px', border: 'none', cursor: 'pointer',
+                borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
                 background: 'linear-gradient(135deg, var(--accent), #ffd166)',
                 color: '#1a1508', fontWeight: 800, fontSize: '12px',
                 letterSpacing: '0.12em', textTransform: 'uppercase',

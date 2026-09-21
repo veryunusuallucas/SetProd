@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useComportamentoDeJanela } from './ui/Janela';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Archive, X, AlertTriangle, Check, CircleDashed, CircleSlash, Scissors } from 'lucide-react';
@@ -45,6 +46,8 @@ const ICONE: Record<StatusCena, React.ReactNode> = {
 export function FechamentoDiaria({
   numero, projetoId, diariaId, cenas, registros, meuPerfilId, aoFechar, aoCancelar,
 }: Props) {
+  // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
+  useComportamentoDeJanela(aoCancelar);
   const [notas, setNotas] = useState('');
   const [fechando, setFechando] = useState(false);
 
@@ -180,7 +183,7 @@ export function FechamentoDiaria({
                       className="text-xs"
                       style={{
                         display: 'flex', alignItems: 'center', gap: '4px',
-                        padding: '4px 9px', borderRadius: '20px', cursor: 'pointer',
+                        padding: '4px 9px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                         border: '1px solid var(--border-light)', background: 'transparent',
                         color: 'var(--text-secondary)',
                       }}
@@ -207,7 +210,7 @@ export function FechamentoDiaria({
                   <div
                     key={cena.id}
                     style={{
-                      padding: '10px 12px', borderRadius: '10px',
+                      padding: '10px 12px', borderRadius: 'var(--radius-md)',
                       background: 'var(--bg-primary)',
                       border: `1px solid ${reg?.motivo && reg?.observacao?.trim() ? 'var(--border-light)' : 'var(--color-danger)'}`,
                     }}
@@ -230,7 +233,7 @@ export function FechamentoDiaria({
                             onClick={() => definirMotivo(cena.id, m)}
                             className="text-xs"
                             style={{
-                              padding: '3px 10px', borderRadius: '20px', cursor: 'pointer',
+                              padding: '3px 10px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                               border: `1px solid ${escolhido ? 'var(--accent)' : 'var(--border-light)'}`,
                               background: escolhido ? 'var(--accent)' : 'transparent',
                               color: escolhido ? '#000' : 'var(--text-secondary)',
@@ -302,7 +305,7 @@ export function FechamentoDiaria({
             rows={3}
             placeholder="O que a produção precisa saber amanhã…"
             style={{
-              width: '100%', padding: '10px', borderRadius: '10px', fontSize: '14px',
+              width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', fontSize: '14px',
               border: '1px solid var(--border-color)', background: 'var(--bg-primary)',
               color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit',
             }}
@@ -338,7 +341,7 @@ export function FechamentoDiaria({
 function Numero({ rotulo, valor, alerta }: { rotulo: string; valor: string; alerta?: boolean }) {
   return (
     <div style={{
-      flex: '1 1 90px', padding: '10px 12px', borderRadius: '10px',
+      flex: '1 1 90px', padding: '10px 12px', borderRadius: 'var(--radius-md)',
       border: '1px solid var(--border-light)', background: 'var(--bg-primary)',
     }}>
       <div className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '10px' }}>

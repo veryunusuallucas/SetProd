@@ -211,7 +211,7 @@ export function DocumentosModule() {
                   <img
                     src={modalPreview}
                     alt="Pré-visualização"
-                    style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '6px' }}
+                    style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
                     onError={e => { e.currentTarget.style.display = 'none'; }}
                   />
                   <span className="text-xs text-muted">Miniatura do Drive (aparece só se o arquivo estiver compartilhado).</span>
@@ -362,7 +362,7 @@ export function DocumentosModule() {
                   <Edit2 size={12} />
                 </button>
                 {doc.origem && doc.origem !== 'manual' && (
-                  <span className="text-xs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-secondary)' }}>
+                  <span className="text-xs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', padding: '2px 8px', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)' }}>
                     via {ROTULO_ORIGEM[doc.origem] || doc.origem}
                   </span>
                 )}

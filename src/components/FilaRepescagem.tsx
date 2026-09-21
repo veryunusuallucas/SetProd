@@ -86,7 +86,7 @@ export function FilaRepescagem({ projetoId }: { projetoId: string }) {
           if (!cena) return null;
 
           return (
-            <div key={r.id} style={{ padding: '12px', borderRadius: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-light)' }}>
+            <div key={r.id} style={{ padding: '12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <span style={{ color: r.status === 'parcial' ? 'var(--color-warning, #fbbf24)' : 'var(--color-danger, #f87171)' }}>
                   {r.status === 'parcial' ? <CircleDashed size={15} /> : <CircleSlash size={15} />}

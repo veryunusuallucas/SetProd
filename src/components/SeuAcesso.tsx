@@ -96,7 +96,7 @@ export function SeuAcesso({ projetoId }: { projetoId: string }) {
 function Pilula({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) {
   return (
     <div style={{
-      padding: '8px 12px', borderRadius: '10px',
+      padding: '8px 12px', borderRadius: 'var(--radius-md)',
       background: 'var(--bg-surface)',
       border: `1px solid ${cor ? `color-mix(in srgb, ${cor} 45%, transparent)` : 'var(--border-light)'}`,
     }}>

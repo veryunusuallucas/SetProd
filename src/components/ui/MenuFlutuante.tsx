@@ -105,7 +105,7 @@ export function MenuFlutuante({ acoes, icone, rotulo, base = 96, z = 2000 }: Pro
                 whileTap={reduzido ? undefined : { scale: 0.95, transition: MOLA_GESTO }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '10px 16px', borderRadius: '50px', cursor: 'pointer',
+                  padding: '10px 16px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                   border: `1px solid ${a.destaque ? 'var(--accent)' : 'var(--border-color)'}`,
                   background: a.destaque ? 'var(--accent)' : 'var(--bg-surface)',
                   color: a.destaque ? '#1a1508' : 'var(--text-primary)',

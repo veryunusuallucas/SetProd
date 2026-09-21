@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useComportamentoDeJanela } from './ui/Janela';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles } from 'lucide-react';
 import { MOLA } from './ui/ia';
@@ -32,6 +33,8 @@ import { VERSOES, ETIQUETA, itensDa, type Grupo, type Item, type Versao } from '
  */
 
 export function ChangelogModal({ onClose }: { onClose: () => void }) {
+  // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
+  useComportamentoDeJanela(onClose);
   // Cresce do selo da versão que a abriu, e não do centro da tela.
   const ancora = useOrigemAncorada();
   const atual = VERSOES[0];
@@ -246,7 +249,7 @@ function Selo({ cor, fundo, texto }: { cor: string; fundo: string; texto: string
   return (
     <span style={{
       fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
-      textTransform: 'uppercase', padding: '3px 8px', borderRadius: '20px',
+      textTransform: 'uppercase', padding: '3px 8px', borderRadius: 'var(--radius-full)',
       color: cor, backgroundColor: fundo, border: `1px solid ${cor}33`,
       whiteSpace: 'nowrap',
     }}>

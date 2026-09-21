@@ -93,7 +93,7 @@ export function DadosDaOD({ diaria }: { diaria: Diaria }) {
   const estilo = {
     padding: '5px 7px', fontSize: '13px', width: '100%',
     backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)',
-    borderRadius: '6px', color: 'var(--text-primary)',
+    borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
   } as const;
 
   return (

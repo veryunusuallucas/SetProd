@@ -236,7 +236,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
       // pode interromper a rolagem suave em alguns navegadores.
       window.setTimeout(() => {
         alvo.animate(
-          [{ boxShadow: '0 0 0 2px var(--color-success)', borderRadius: '10px' }, { boxShadow: '0 0 0 2px transparent', borderRadius: '10px' }],
+          [{ boxShadow: '0 0 0 2px var(--color-success)', borderRadius: 'var(--radius-md)' }, { boxShadow: '0 0 0 2px transparent', borderRadius: '10px' }],
           { duration: 1400, easing: 'ease-out' },
         );
       }, 450);
@@ -265,7 +265,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
               <select
                 value={localEscolhido?.id || ''}
                 onChange={e => setLocalDoClima(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', maxWidth: '180px' }}
+                style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', maxWidth: '180px' }}
               >
                 {locaisComCoords.map(l => (
                   <option key={l.id} value={l.id}>{l.nome}</option>
@@ -279,7 +279,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
               <select
                 value={alcanceDias}
                 onChange={e => setAlcanceDias(Number(e.target.value))}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
               >
                 <option value={3}>3 dias</option>
                 <option value={7}>7 dias</option>
@@ -307,7 +307,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
           // ícone passavam 2px da tela.
           style={{
             display: 'inline-flex', padding: '4px', gap: '4px', maxWidth: '100%',
-            backgroundColor: 'var(--bg-primary)', borderRadius: '10px', border: '1px solid var(--border-light)',
+            backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)',
           }}
         >
           {([
@@ -325,7 +325,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                 onClick={() => setModo(m.id)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: '1 1 auto', minWidth: 0,
-                  padding: '8px 10px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+                  padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
                   fontWeight: 700, fontSize: '13px',
                   backgroundColor: ativo ? 'var(--bg-active)' : 'transparent',
                   color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -502,7 +502,7 @@ function Legenda() {
  */
 function ItensDoDia({ c, cheio, aoAbrirDiaria }: { c: ConteudoDoDia; cheio: boolean; aoAbrirDiaria: (d: Diaria) => void }) {
   const linha: React.CSSProperties = cheio
-    ? { fontSize: '13px', padding: '6px 8px', borderRadius: '6px', display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.35, minWidth: 0, overflowWrap: 'anywhere' }
+    ? { fontSize: '13px', padding: '6px 8px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.35, minWidth: 0, overflowWrap: 'anywhere' }
     : { fontSize: '10px', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 };
   const texto = cheio ? { minWidth: 0 } : TEXTO_DO_CHIP;
 
@@ -593,7 +593,7 @@ function CartaoDoDia({ dia, c, clima, aoAbrir, aoAbrirDiaria }: {
         borderLeft: `3px solid ${c.peso ? COR_DO_PESO[c.peso] : 'var(--border-light)'}`,
         outline: hoje ? `2px solid ${COR_DE_HOJE}` : 'none',
         outlineOffset: '-1px',
-        borderRadius: '10px', padding: '10px', minWidth: 0,
+        borderRadius: 'var(--radius-md)', padding: '10px', minWidth: 0,
         display: 'flex', flexDirection: 'column', gap: '8px',
         cursor: c.vazio ? 'default' : 'pointer',
       }}

@@ -161,7 +161,7 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
                     <span
                       title="Cast ID"
                       style={{
-                        minWidth: '24px', textAlign: 'center', padding: '2px 6px', borderRadius: '6px',
+                        minWidth: '24px', textAlign: 'center', padding: '2px 6px', borderRadius: 'var(--radius-sm)',
                         backgroundColor: cat.bg, color: cat.text, fontSize: '11px', fontWeight: 700,
                       }}
                     >

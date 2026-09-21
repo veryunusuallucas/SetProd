@@ -340,7 +340,7 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, cham
                                   disabled={!podeMarcar}
                                   title={herdado ? 'Vem da linha do dia. Digite para mudar só desta pessoa.' : undefined}
                                   style={{
-                                    padding: '5px 7px', fontSize: '13px', borderRadius: '6px',
+                                    padding: '5px 7px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
                                     border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
                                     // Herdado em cinza: o campo mostra o previsto, e ninguém
                                     // digitou aquilo. A cor é a diferença entre plano e registro.
@@ -357,7 +357,7 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, cham
                               onBlur={e => podeMarcar && (reg?.nota || '') !== e.target.value && mudarHorario(p.id, 'nota', e.target.value)}
                               disabled={!podeMarcar}
                               placeholder="Ex: liberado às 16h para outra produção"
-                              style={{ padding: '5px 7px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
+                              style={{ padding: '5px 7px', fontSize: '13px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)' }}
                             />
                           </label>
                         </div>
@@ -570,7 +570,7 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, cham
 }
 
 const entrada: React.CSSProperties = {
-  width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px',
+  width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
   border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)',
 };
 

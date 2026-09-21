@@ -287,13 +287,13 @@ export function TasksModule() {
           <h1 className="text-xl font-bold">Tasks</h1>
           <p className="text-sm text-secondary">O que a produção precisa fazer</p>
         </div>
-        <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
           {(['todas', 'minhas'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFiltro(f)}
               style={{
-                padding: '7px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 700,
+                padding: '7px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 700,
                 background: filtro === f ? 'var(--accent)' : 'transparent',
                 color: filtro === f ? '#000' : 'var(--text-secondary)',
                 border: 'none', cursor: 'pointer',
@@ -387,7 +387,7 @@ export function TasksModule() {
                   className="text-xs font-bold"
                   style={{
                     color: g.cor, backgroundColor: 'var(--bg-surface)',
-                    borderRadius: '20px', padding: '2px 9px', minWidth: '24px', textAlign: 'center',
+                    borderRadius: 'var(--radius-full)', padding: '2px 9px', minWidth: '24px', textAlign: 'center',
                   }}
                 >
                   {doGrupo.length}
@@ -482,7 +482,7 @@ export function TasksModule() {
                           onClick={e => mudarStatus(editando.id, g.status, e)}
                           disabled={travado}
                           style={{
-                            flex: 1, padding: '10px 6px', borderRadius: '10px', cursor: travado ? 'not-allowed' : 'pointer',
+                            flex: 1, padding: '10px 6px', borderRadius: 'var(--radius-md)', cursor: travado ? 'not-allowed' : 'pointer',
                             border: `1px solid ${ativo ? g.cor : 'var(--border-light)'}`,
                             background: ativo ? 'var(--bg-active)' : 'transparent',
                             color: ativo ? g.cor : 'var(--text-secondary)',

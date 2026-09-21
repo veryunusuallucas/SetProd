@@ -444,7 +444,7 @@ export function Home() {
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       width: '34px', height: '34px', flexShrink: 0,
-                      borderRadius: '10px', border: '1px solid var(--color-danger)',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-danger)',
                       backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)',
                       cursor: 'pointer', padding: 0,
                     }}
@@ -594,7 +594,7 @@ export function Home() {
               {naLixeira.map(p => {
                 const dias = diasRestantes(p);
                 return (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="font-bold text-sm truncate">{p.nome}</div>
                       <div className="text-xs" style={{ color: dias <= 1 ? 'var(--color-danger)' : 'var(--text-secondary)' }}>

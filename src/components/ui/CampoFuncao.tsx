@@ -211,7 +211,7 @@ export function CampoFuncao({
           className="text-xs"
           style={{
             display: 'flex', alignItems: 'flex-start', gap: '7px', lineHeight: 1.5,
-            padding: '8px 11px', borderRadius: '10px',
+            padding: '8px 11px', borderRadius: 'var(--radius-md)',
             backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
             border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
             color: 'var(--text-secondary)',
