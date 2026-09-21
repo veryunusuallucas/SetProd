@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Vazio } from '../components/ui/Vazio';
 import { naEquipe } from '../lib/vinculos';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -111,8 +112,12 @@ export function TransporteModule() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
             {veiculos.length === 0 && (
-              <div className="card text-muted text-center" style={{ gridColumn: '1 / -1', padding: '40px 16px' }}>
-                Nenhum veículo cadastrado.
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Vazio
+                  icone={<Truck size={28} />}
+                  titulo="Nenhum veículo cadastrado"
+                  ajuda="Os veículos daqui são os que aparecem nos comboios da diária, com motorista e passageiros."
+                />
               </div>
             )}
             {veiculos.map(v => {

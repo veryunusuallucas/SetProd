@@ -1448,7 +1448,7 @@ export function DiariaModule() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {(diaria.comboios || []).length === 0 && (
             <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '8px 0', lineHeight: 1.6 }}>
-              Nenhum veículo neste dia. Um comboio diz quem vai com quem, de onde e a que horas.
+              Nenhum comboio neste dia. Um comboio diz quem vai com quem, de onde e a que horas.
             </div>
           )}
 

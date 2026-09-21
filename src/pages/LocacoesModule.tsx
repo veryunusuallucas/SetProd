@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Vazio } from '../components/ui/Vazio';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -382,9 +383,11 @@ export function LocacoesModule() {
       )}
 
       {locacoes.length === 0 && !showForm && (
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Nenhuma locação cadastrada ainda.
-        </div>
+        <Vazio
+          icone={<MapPin size={28} />}
+          titulo="Nenhuma locação cadastrada"
+          ajuda="A locação guarda endereço, contato do responsável, autorização e as fotos do lugar — e é o que alimenta a Ordem do Dia."
+        />
       )}
 
       <div className="grade-cartoes" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '16px' }}>
