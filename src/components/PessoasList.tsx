@@ -929,6 +929,8 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
         <RelatorioTransversal
           perfis={perfis}
           projeto={projeto}
+          papel={role}
+          meuPerfilId={meuPerfilId}
           onClose={() => setShowRelatorio(false)}
         />
       )}

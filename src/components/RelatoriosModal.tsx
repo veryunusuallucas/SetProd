@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { X, Printer, Sheet, FileText, Users, CalendarDays, ListTree } from 'lucide-react';
+import { Printer, Sheet, FileText, Users, CalendarDays, ListTree } from 'lucide-react';
+import { Janela } from './ui/Janela';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import {
   breakdownSummary, elementList, doodHtml, shootingSchedule,
@@ -91,26 +91,15 @@ export function RelatoriosModal({ dados, onFechar }: Props) {
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
-    }}>
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card"
-        style={{
-          width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto',
-          backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '16px',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 className="font-bold text-lg">Relatórios</h3>
-            <p className="text-xs text-muted">Saem do que já está decupado — nunca ficam desatualizados.</p>
-          </div>
-          <button onClick={onFechar} className="btn-icon"><X size={18} /></button>
-        </div>
+    <Janela
+      titulo="Relatórios"
+      icone={<FileText size={18} />}
+      aoFechar={onFechar}
+      largura="560px"
+    >
+      <p className="text-xs text-muted" style={{ marginTop: 0, marginBottom: '16px' }}>
+        Saem do que já está decupado — nunca ficam desatualizados.
+      </p>
 
         {semDados && (
           <div className="text-sm text-muted" style={{ padding: '8px 0' }}>
@@ -158,7 +147,6 @@ export function RelatoriosModal({ dados, onFechar }: Props) {
             </div>
           ))}
         </div>
-      </motion.div>
-    </div>
+    </Janela>
   );
 }
