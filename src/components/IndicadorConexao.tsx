@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,7 @@ import { rodada } from '../lib/sincronizacaoAutomatica';
 import { useMovimentoReduzido } from './ui/movimento';
 import { MOLA } from './ui/ia';
 import { dataHora } from '../lib/formato';
+import { usarCantoDaConexao } from './ui/cantoDaConexao';
 
 /**
  * "Meu trabalho está salvo?" — em qualquer tela (PLANO-indicador-conexao).
@@ -38,6 +39,7 @@ export function IndicadorConexao() {
   const [conexao, setConexao] = useState<Conexao>({ estado: 'conectado', pendentes: 0, aoVivo: false });
   const [aberto, setAberto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const botao = useRef<HTMLButtonElement>(null);
   useEffect(() => ouvirConexao(projetoId, setConexao), [projetoId]);
 
   const { curta, longa } = frasesDaConexao(conexao);
@@ -50,7 +52,7 @@ export function IndicadorConexao() {
 
   return (
     <>
-      <PilulaDeConexao conexao={conexao} projetoId={projetoId} aoTocar={() => setAberto(a => !a)} />
+      <PilulaDeConexao conexao={conexao} projetoId={projetoId} refDoBotao={botao} aoTocar={() => setAberto(a => !a)} />
 
       {/* Para quem usa leitor de tela: a mudança é anunciada sem interromper. */}
       <span aria-live="polite" className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
@@ -60,6 +62,7 @@ export function IndicadorConexao() {
       <AnimatePresence>
         {aberto && (
           <Detalhe
+            ancora={botao}
             conexao={conexao}
             longa={longa}
             podeSincronizar={Boolean(projetoId)}
@@ -78,14 +81,26 @@ export function IndicadorConexao() {
  * cada estado sem precisar derrubar a internet de verdade.
  */
 export function PilulaDeConexao({
-  conexao, projetoId, aoTocar,
-}: { conexao: Conexao; projetoId?: string; aoTocar?: () => void }) {
+  conexao, projetoId, aoTocar, refDoBotao,
+}: {
+  conexao: Conexao;
+  projetoId?: string;
+  aoTocar?: () => void;
+  refDoBotao?: React.RefObject<HTMLButtonElement | null>;
+}) {
   const reduzido = useMovimentoReduzido();
   const { longa } = frasesDaConexao(conexao);
   const { Icone, cor, chama } = aparencia(conexao);
+  /*
+    A tela que tem cabeçalho próprio reserva um lugar (`CantoDaConexao`) e ele
+    se muda para lá: no celular, dentro da produção, aquele canto é o sino — o
+    indicador flutuante caía em cima dele.
+  */
+  const canto = usarCantoDaConexao();
 
-  return (
+  const botao = (
     <button
+      ref={refDoBotao}
       onClick={aoTocar}
         aria-label={longa}
         title={longa}
@@ -96,7 +111,7 @@ export function PilulaDeConexao({
           (E o `display` mora no CSS: escrito aqui, ele vencia a regra que
           esconde, porque estilo no elemento ganha de folha de estilo.)
         */
-        className={`indicador-conexao${projetoId ? ' so-no-celular' : ''}`}
+        className={canto ? 'indicador-conexao no-canto' : `indicador-conexao${projetoId ? ' so-no-celular' : ''}`}
         style={{
           padding: chama ? '6px 10px' : '6px', borderRadius: 'var(--radius-full)',
           background: chama ? 'var(--color-warning-bg)' : 'color-mix(in srgb, var(--bg-surface) 80%, transparent)',
@@ -119,6 +134,8 @@ export function PilulaDeConexao({
         {chama && <span className="text-xs font-bold">{conexao.pendentes}</span>}
       </button>
   );
+
+  return canto ? createPortal(botao, canto) : botao;
 }
 
 function aparencia(c: Conexao) {
@@ -130,8 +147,10 @@ function aparencia(c: Conexao) {
 }
 
 function Detalhe({
-  conexao, longa, podeSincronizar, sincronizando, aoSincronizar, aoFechar,
+  ancora, conexao, longa, podeSincronizar, sincronizando, aoSincronizar, aoFechar,
 }: {
+  /** O botão que abriu — o balão nasce embaixo dele, não num canto fixo. */
+  ancora: React.RefObject<HTMLButtonElement | null>;
   conexao: Conexao;
   longa: string;
   podeSincronizar: boolean;
@@ -139,6 +158,8 @@ function Detalhe({
   aoSincronizar: () => void;
   aoFechar: () => void;
 }) {
+  const r = ancora.current?.getBoundingClientRect();
+
   return createPortal(
     <div onClick={aoFechar} style={{ position: 'fixed', inset: 0, zIndex: 3960 }}>
       <motion.div
@@ -148,7 +169,9 @@ function Detalhe({
         transition={MOLA}
         onClick={e => e.stopPropagation()}
         style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 56px)', right: '12px',
+          position: 'absolute',
+          top: r ? `${r.bottom + 8}px` : 'calc(env(safe-area-inset-top, 0px) + 56px)',
+          right: r ? `${Math.max(12, window.innerWidth - r.right)}px` : '12px',
           width: 'min(300px, calc(100vw - 24px))',
           background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
           borderRadius: '14px', padding: '14px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
