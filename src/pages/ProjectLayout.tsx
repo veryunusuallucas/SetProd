@@ -15,6 +15,7 @@ import {
   lerUltima, guardarUltima, EVENTO_EDITAR_DOCK, type IdModulo,
 } from '../components/menu/modulosDaDock';
 import { NotificacoesBell } from '../components/NotificacoesBell';
+import { CantoDaConexao } from '../components/ui/cantoDaConexao';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
@@ -639,6 +640,9 @@ export function ProjectLayout() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 className="text-lg font-bold truncate">{projeto.nome}</h2>
           </div>
+          {/* O indicador de conexão vem morar aqui: solto, ele caía em cima
+              do sino. Ver `cantoDaConexao.tsx`. */}
+          <CantoDaConexao />
           <button className="btn-icon text-muted" onClick={() => window.dispatchEvent(new Event('open-command-palette'))}>
             <Search size={20} />
           </button>

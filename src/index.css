@@ -1549,3 +1549,15 @@ input[type="radio"]:checked::before {
 @media (min-width: 1024px) {
   .indicador-conexao.so-no-celular { display: none; }
 }
+
+/*
+  Quando a tela reserva um lugar para ele no próprio cabeçalho, ele deixa de
+  flutuar e vira mais um botão da linha — senão cairia em cima do sino de
+  notificações, que mora no mesmo canto no celular. Ver `cantoDaConexao.tsx`.
+*/
+.indicador-conexao.no-canto {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+}
