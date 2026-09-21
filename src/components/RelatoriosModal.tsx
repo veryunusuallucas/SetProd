@@ -124,7 +124,7 @@ export function RelatoriosModal({ dados, onFechar }: Props) {
               key={def.chave}
               style={{
                 display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 14px',
-                border: '1px solid var(--border-light)', borderRadius: '10px',
+                border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)',
                 opacity: semDados ? 0.5 : 1,
               }}
             >

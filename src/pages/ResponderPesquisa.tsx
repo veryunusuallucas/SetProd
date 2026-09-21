@@ -191,7 +191,7 @@ function CampoPergunta({ pergunta, valor, onTexto, onAlternar }: {
                 onClick={() => (multipla ? onAlternar(o) : onTexto(o))}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left',
-                  padding: '11px 14px', borderRadius: '10px',
+                  padding: '11px 14px', borderRadius: 'var(--radius-md)',
                   border: `1px solid ${marcada ? 'var(--accent)' : 'var(--border-light)'}`,
                   backgroundColor: marcada ? 'var(--bg-active)' : 'var(--bg-surface)',
                   color: 'var(--text-primary)', fontSize: '14px',

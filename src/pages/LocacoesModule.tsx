@@ -298,7 +298,7 @@ export function LocacoesModule() {
                     className="text-xs"
                     style={{
                       display: 'flex', alignItems: 'center', gap: '4px',
-                      padding: '4px 10px', borderRadius: '20px', cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                       border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
                       color: 'var(--text-secondary)',
                     }}
@@ -412,7 +412,7 @@ export function LocacoesModule() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', marginBottom: '4px' }}>
                 <div className="text-xs text-muted font-bold uppercase tracking-widest">Contatos</div>
                 {loc.contatos.map((c: LocacaoContato) => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: 'var(--bg-surface)', padding: '6px', borderRadius: '6px' }}>
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: 'var(--bg-surface)', padding: '6px', borderRadius: 'var(--radius-sm)' }}>
                     <span><strong>{c.papel}:</strong> {c.nome}</span>
                     <span className="text-muted">{c.telefone}</span>
                   </div>

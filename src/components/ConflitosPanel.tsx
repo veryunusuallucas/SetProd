@@ -139,7 +139,7 @@ function Janela({ conflitos, aoFechar }: { conflitos: ConflitoGuardado[]; aoFech
         </p>
 
         {erro && (
-          <div style={{ padding: '10px 12px', borderRadius: '10px', marginBottom: '14px', fontSize: '13px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', marginBottom: '14px', fontSize: '13px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
             {erro}
           </div>
         )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useComportamentoDeJanela } from './ui/Janela';
 import { X, Printer, AlertTriangle, FileText, Download, Sparkles, FolderOpen, Loader } from 'lucide-react';
 import { gerarOrdemDoDia } from '../lib/gemini';
 import { AIThinking } from './ui/ia';
@@ -49,6 +50,8 @@ interface GeradorODModalProps {
 export function GeradorODModal({
   onClose, aoExportar, versao, diariaId, numeroDiaria, climas, aoAbrirDocumentos,
 }: GeradorODModalProps) {
+  // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
+  useComportamentoDeJanela(onClose);
   const [od, setOd] = useState<ODPronta | null>(null);
   const [etapa, setEtapa] = useState<Etapa>('previa');
   const [erro, setErro] = useState('');

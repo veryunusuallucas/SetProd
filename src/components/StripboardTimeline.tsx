@@ -488,7 +488,7 @@ function TiraCena({ cena, locacao, alca, onVerNoRoteiro, onApagar, gravacao }: {
         <span
           className="desktop-only"
           style={{
-            flexShrink: 0, padding: '2px 8px', borderRadius: '20px',
+            flexShrink: 0, padding: '2px 8px', borderRadius: 'var(--radius-full)',
             fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.06em',
             backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffb4b4', whiteSpace: 'nowrap',
           }}
@@ -666,7 +666,7 @@ function Marcador({ item, alca, resumo, onExportar }: {
             title="Mandar as cenas deste dia para uma Ordem do Dia"
             style={{
               display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px',
-              borderRadius: '6px', border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.3)',
               backgroundColor: 'rgba(255,255,255,0.12)', color: cor.text,
               fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
             }}

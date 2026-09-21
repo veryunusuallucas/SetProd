@@ -192,7 +192,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
         </div>
 
         {pedido !== null && (
-          <div style={{ padding: '12px 14px', borderRadius: '10px', marginBottom: '14px', fontSize: '14px', lineHeight: 1.5, backgroundColor: 'var(--color-warning-bg)', color: 'var(--text-primary)' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', marginBottom: '14px', fontSize: '14px', lineHeight: 1.5, backgroundColor: 'var(--color-warning-bg)', color: 'var(--text-primary)' }}>
             Pedido enviado: você pediu para ser <strong>{`${pedido.nome} ${pedido.sobrenome || ''}`.trim()}</strong>.
             Quem administra a produção confirma — até lá, a ficha completa fica fechada para você.
             <div style={{ marginTop: '10px' }}>
@@ -202,7 +202,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
         )}
 
         {erro && (
-          <div style={{ padding: '10px 12px', borderRadius: '10px', marginBottom: '14px', fontSize: '13px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', marginBottom: '14px', fontSize: '13px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
             {erro}
           </div>
         )}
@@ -249,7 +249,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
                       disabled={salvando}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left',
-                        padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                        padding: '12px 14px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
                         backgroundColor: 'var(--bg-primary)',
                         border: `1px solid ${ehMeuEmail ? 'var(--accent)' : 'var(--border-light)'}`,
                         color: 'var(--text-primary)',
@@ -299,7 +299,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
 }
 
 const campo: React.CSSProperties = {
-  width: '100%', padding: '10px', borderRadius: '10px',
+  width: '100%', padding: '10px', borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
   fontSize: '14px', color: 'var(--text-primary)',
 };

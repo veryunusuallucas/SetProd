@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useComportamentoDeJanela } from './ui/Janela';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bug, Lightbulb, HelpCircle, X, Send, Copy, CheckCircle2, FileText, ChevronRight } from 'lucide-react';
@@ -25,6 +26,8 @@ interface Props {
 type Tipo = 'bug' | 'sugestao' | 'duvida';
 
 export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = 'bug' }: Props) {
+  // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
+  useComportamentoDeJanela(onClose);
   /*
     QUEM RELATOU — faltava, e a falta transformava relato bom em beco.
 
@@ -430,7 +433,7 @@ function Etiqueta({ texto, titulo, cor }: { texto: string; titulo?: string; cor?
       title={titulo}
       className="text-xs"
       style={{
-        padding: '3px 9px', borderRadius: '20px',
+        padding: '3px 9px', borderRadius: 'var(--radius-full)',
         backgroundColor: 'var(--bg-surface)',
         border: '1px solid var(--border-light)',
         color: cor || 'var(--text-muted)',

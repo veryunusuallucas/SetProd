@@ -15,7 +15,7 @@ export function SoQuemPode({ motivo, style }: { motivo: string; style?: React.CS
       role="note"
       style={{
         display: 'flex', alignItems: 'flex-start', gap: '10px', margin: 0,
-        padding: '10px 14px', borderRadius: '10px',
+        padding: '10px 14px', borderRadius: 'var(--radius-md)',
         background: 'var(--color-warning-bg)',
         border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)',
         color: 'var(--text-primary)', fontSize: '14px', lineHeight: 1.45,

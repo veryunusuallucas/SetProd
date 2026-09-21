@@ -58,7 +58,7 @@ export function ResumoDaLogagem({ projetoId, diariaId, compacto }: {
           <span
             key={o.status}
             className="text-xs"
-            style={{ padding: '2px 9px', borderRadius: '20px', fontWeight: 700, color: o.cor, border: `1px solid ${o.cor}` }}
+            style={{ padding: '2px 9px', borderRadius: 'var(--radius-full)', fontWeight: 700, color: o.cor, border: `1px solid ${o.cor}` }}
           >
             {n} {n === 1 ? o.rotulo : o.plural}
           </span>

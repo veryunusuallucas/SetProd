@@ -145,7 +145,7 @@ export function AiSetupPanel({ totalPaginas, processando, progresso, onProcessar
                       whileTap={{ scale: 0.95 }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '7px 12px', borderRadius: '20px', cursor: 'pointer',
+                        padding: '7px 12px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                         fontSize: '12px', fontWeight: 700,
                         border: `1px solid ${ligado ? d.border : 'var(--border-light)'}`,
                         backgroundColor: ligado ? d.bg : 'transparent',

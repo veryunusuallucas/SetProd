@@ -31,7 +31,7 @@ const botaoBarra: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: '10px',
+  borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border-color)',
   backgroundColor: 'var(--bg-surface)',
   color: 'var(--text-primary)',
@@ -692,7 +692,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
               {verArquivados && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
                   {arquivados.map(p => (
-                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-light)' }}>
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                       <span className="text-sm text-secondary">
                         {`${p.nome} ${p.sobrenome || ''}`.trim()}
                         {p.funcao && <span className="text-muted"> · {p.funcao}</span>}

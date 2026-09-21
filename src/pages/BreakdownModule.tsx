@@ -983,7 +983,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
                       onClick={() => addTag(d.chave)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 8px',
-                        borderRadius: '6px', border: `1px solid ${d.border}`, backgroundColor: 'transparent',
+                        borderRadius: 'var(--radius-sm)', border: `1px solid ${d.border}`, backgroundColor: 'transparent',
                         color: 'var(--text-primary)', fontSize: '11px', cursor: 'pointer', textAlign: 'left',
                       }}
                     >

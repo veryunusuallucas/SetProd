@@ -6,6 +6,41 @@ import { MOLA } from './ia';
 import { useMovimentoReduzido } from './movimento';
 
 /**
+ * O COMPORTAMENTO de uma janela, sem a aparência dela.
+ *
+ * Existe porque migrar 34 janelas para o componente `Janela` de uma vez seria
+ * mexer em 34 telas no mesmo dia — e a parte que mais falta nelas não é a
+ * moldura, é o comportamento: Esc, rolagem do fundo travada e o foco voltando
+ * para onde estava. Isto dá as três coisas com uma linha, e a moldura converge
+ * depois, quando cada tela for tocada.
+ *
+ * O clique fora fica de fora de propósito: ele depende da estrutura do JSX
+ * (qual div é o fundo), e um palpite errado fecharia a janela no meio do
+ * formulário.
+ */
+export function useComportamentoDeJanela(aoFechar: () => void) {
+  const focoAnterior = useRef<Element | null>(null);
+
+  useEffect(() => {
+    focoAnterior.current = document.activeElement;
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); aoFechar(); }
+    };
+    document.addEventListener("keydown", aoTeclar);
+
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = antes;
+      (focoAnterior.current as HTMLElement | null)?.focus?.();
+    };
+  }, [aoFechar]);
+}
+
+/**
  * A base de toda janela do app.
  *
  * O QUE ISTO CONSERTA (leva de UI 3, item 3)
@@ -42,36 +77,19 @@ export function Janela({
   fecharClicandoFora?: boolean;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
-  const focoAnterior = useRef<Element | null>(null);
   const reduzido = useMovimentoReduzido();
 
+  // Esc, rolagem travada e foco de volta vêm do hook — é o mesmo comportamento
+  // que as janelas ainda não migradas já usam.
+  useComportamentoDeJanela(aoFechar);
+
   useEffect(() => {
-    focoAnterior.current = document.activeElement;
-
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); aoFechar(); }
-    };
-    document.addEventListener('keydown', aoTeclar);
-
-    // A rolagem do fundo: sem isto, rolar dentro da janela leva a página atrás
-    // junto, e no celular a pessoa perde o lugar onde estava.
-    const antes = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    // O foco entra na janela — no primeiro campo, se houver, senão nela mesma.
+    // O que é só daqui: o foco ENTRA na janela, no primeiro campo se houver.
     const alvo = caixa.current?.querySelector<HTMLElement>(
       'input:not([type="hidden"]), textarea, select, button:not([data-fechar])'
     );
     (alvo ?? caixa.current)?.focus?.();
-
-    return () => {
-      document.removeEventListener('keydown', aoTeclar);
-      document.body.style.overflow = antes;
-      // Devolve o foco para o botão que abriu: sem isto, quem navega por
-      // teclado volta para o começo da página a cada janela fechada.
-      (focoAnterior.current as HTMLElement | null)?.focus?.();
-    };
-  }, [aoFechar]);
+  }, []);
 
   return createPortal(
     <div

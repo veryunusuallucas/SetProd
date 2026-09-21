@@ -24,7 +24,7 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
 
 const ESTILO_MIDIA: React.CSSProperties = {
   maxWidth: '100%', maxHeight: '200px', objectFit: 'contain',
-  borderRadius: '10px', margin: '16px auto 0', display: 'block',
+  borderRadius: 'var(--radius-md)', margin: '16px auto 0', display: 'block',
 };
 
 export interface CartaDeWrapProps {

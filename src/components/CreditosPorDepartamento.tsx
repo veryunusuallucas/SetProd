@@ -221,7 +221,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
   };
 
   const selectStyle: React.CSSProperties = {
-    padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-light)',
+    padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)',
     backgroundColor: 'var(--bg-surface)', fontSize: '13px', minWidth: 0, width: '100%',
     color: 'var(--text-primary)',
   };
@@ -360,7 +360,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                       alignItems: 'center',
                       padding: '9px 12px',
                       backgroundColor: 'var(--bg-primary)',
-                      borderRadius: '10px',
+                      borderRadius: 'var(--radius-md)',
                       // Só quem está preenchido recebe a cor do departamento na
                       // borda: o olho corre pela coluna e vê o que falta.
                       border: '1px solid var(--border-light)',
@@ -371,7 +371,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                       <div className="text-sm font-bold" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         {linha.papel}
                         {ehChefe && (
-                          <span className="text-xs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '10px', padding: '1px 8px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
+                          <span className="text-xs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '1px 8px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
                             chefia
                           </span>
                         )}
@@ -393,7 +393,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                             title="O que distingue esta pessoa da outra na mesma função"
                             style={{
                               width: '86px', padding: '1px 8px', fontSize: '11px', fontWeight: 'bold',
-                              borderRadius: '10px', border: `1px solid ${cor}`, backgroundColor: 'transparent',
+                              borderRadius: 'var(--radius-md)', border: `1px solid ${cor}`, backgroundColor: 'transparent',
                               color: cor, textAlign: 'center',
                             }}
                           />
@@ -572,7 +572,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
               <div
                 style={{
                   display: 'flex', alignItems: 'center', flex: 1, minWidth: 0,
-                  backgroundColor: 'var(--bg-primary)', borderRadius: '10px',
+                  backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-light)', overflow: 'hidden',
                 }}
               >

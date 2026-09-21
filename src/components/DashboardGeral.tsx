@@ -280,7 +280,7 @@ export function DashboardGeral({ projetoId }: { projetoId: string, onNovaDiaria?
                     className="semana-frente-dia"
                     onClick={() => temDiaria && navigate(`diaria/${d.diarias[0].id}`)}
                     style={{
-                      borderRadius: '10px', minWidth: 0,
+                      borderRadius: 'var(--radius-md)', minWidth: 0,
                       border: '1px solid',
                       ...estiloDoPeso(peso),
                       outline: d.hoje ? `2px solid ${COR_DE_HOJE}` : 'none',

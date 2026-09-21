@@ -102,7 +102,7 @@ export function EmergenciaMedica({ projetoId, diaria, escalados, meuPerfilId, ja
       {erro && <p className="text-xs" style={{ margin: 0, color: 'var(--color-danger)' }}>{erro}</p>}
 
       {aberta && (
-        <div role="dialog" aria-label={`Ficha médica de ${aberta.perfil.nome}`} style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)' }}>
+        <div role="dialog" aria-label={`Ficha médica de ${aberta.perfil.nome}`} style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-light)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <strong className="text-sm">{`${aberta.perfil.nome} ${aberta.perfil.sobrenome || ''}`.trim()}</strong>
             <button type="button" className="btn-icon" onClick={() => setAberta(null)} aria-label="Fechar">

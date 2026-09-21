@@ -432,7 +432,7 @@ export function DecupagemModule() {
               key={modo}
               onClick={() => setViewMode(modo)}
               style={{
-                position: 'relative', padding: '8px 16px', borderRadius: '10px', border: 'none',
+                position: 'relative', padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none',
                 background: 'transparent', color: viewMode === modo ? '#000' : 'var(--text-primary)',
                 fontWeight: 700, fontSize: '14px', cursor: 'pointer',
               }}
@@ -441,7 +441,7 @@ export function DecupagemModule() {
                 <motion.span
                   layoutId="aba-decupagem"
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                  style={{ position: 'absolute', inset: 0, borderRadius: '10px', backgroundColor: 'var(--accent)', zIndex: 0 }}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)', backgroundColor: 'var(--accent)', zIndex: 0 }}
                 />
               )}
               <span style={{ position: 'relative', zIndex: 1 }}>{rotulo}</span>

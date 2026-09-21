@@ -321,7 +321,7 @@ export function DiariasList() {
           aria-label="Como ver as diárias"
           style={{
             display: 'inline-flex', alignSelf: 'flex-start', padding: '4px', gap: '4px',
-            backgroundColor: 'var(--bg-surface)', borderRadius: '10px', border: '1px solid var(--border-light)',
+            backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)',
           }}
         >
           {([
@@ -338,7 +338,7 @@ export function DiariasList() {
                 onClick={() => setModo(m.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '7px',
-                  padding: '8px 14px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+                  padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
                   fontWeight: 700, fontSize: '13px',
                   backgroundColor: ativo ? 'var(--bg-active)' : 'transparent',
                   color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',

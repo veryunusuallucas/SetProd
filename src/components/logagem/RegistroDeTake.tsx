@@ -306,7 +306,7 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
         <ImagemAnexo
           valor={take.foto}
           alt={`Referência do take ${take.cena}/${take.plano}/${take.take}`}
-          estiloLink={{ display: 'block', width: '56px', height: '38px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-light)', flexShrink: 0 }}
+          estiloLink={{ display: 'block', width: '56px', height: '38px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-light)', flexShrink: 0 }}
           estiloImagem={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       )}

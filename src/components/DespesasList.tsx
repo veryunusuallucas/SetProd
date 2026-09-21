@@ -45,7 +45,7 @@ const CATEGORIAS = [
 
 /** O chip de escolha, num lugar só — eram cinco cópias do mesmo style inline. */
 const chipEstilo = (ativo: boolean): React.CSSProperties => ({
-  padding: '8px 14px', borderRadius: '20px', cursor: 'pointer',
+  padding: '8px 14px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
   display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap',
   fontSize: '0.85rem', fontWeight: ativo ? 'bold' : 'normal',
   border: `1px solid ${ativo ? 'var(--accent)' : 'var(--border-light)'}`,
@@ -395,7 +395,7 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {CATEGORIAS.map(c => (
                   <div key={c.id} onClick={() => setCategoria(c.id)}
-                    style={{ padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', border: `1px solid ${categoria === c.id ? 'var(--accent)' : 'var(--border-light)'}`, backgroundColor: categoria === c.id ? 'var(--bg-active)' : 'var(--bg-surface)', color: categoria === c.id ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: categoria === c.id ? 'bold' : 'normal', fontSize: '0.85rem' }}>
+                    style={{ padding: '8px 14px', borderRadius: 'var(--radius-full)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', border: `1px solid ${categoria === c.id ? 'var(--accent)' : 'var(--border-light)'}`, backgroundColor: categoria === c.id ? 'var(--bg-active)' : 'var(--bg-surface)', color: categoria === c.id ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: categoria === c.id ? 'bold' : 'normal', fontSize: '0.85rem' }}>
                     <span>{c.emoji}</span> {c.label}
                   </div>
                 ))}
@@ -448,7 +448,7 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }} className="hide-scrollbar">
                 {listaDiarias.map(d => (
                   <div key={d.val} onClick={() => setDiariaSelecionadaId(d.val)}
-                    style={{ padding: '8px 16px', borderRadius: '20px', whiteSpace: 'nowrap', cursor: 'pointer', border: `1px solid ${diariaSelecionadaId === d.val ? 'var(--accent)' : 'var(--border-light)'}`, backgroundColor: diariaSelecionadaId === d.val ? 'var(--bg-active)' : 'var(--bg-surface)', color: diariaSelecionadaId === d.val ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: diariaSelecionadaId === d.val ? 'bold' : 'normal' }}>
+                    style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap', cursor: 'pointer', border: `1px solid ${diariaSelecionadaId === d.val ? 'var(--accent)' : 'var(--border-light)'}`, backgroundColor: diariaSelecionadaId === d.val ? 'var(--bg-active)' : 'var(--bg-surface)', color: diariaSelecionadaId === d.val ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: diariaSelecionadaId === d.val ? 'bold' : 'normal' }}>
                     {d.label}
                   </div>
                 ))}

@@ -91,7 +91,7 @@ export function Segmentado({ nome, opcoes, valor, bloqueado, aoMudar }: {
             disabled={bloqueado}
             onClick={() => aoMudar(o.id)}
             style={{
-              position: 'relative', flex: 1, minWidth: 0, minHeight: '38px', border: 'none', borderRadius: '6px', background: 'none',
+              position: 'relative', flex: 1, minWidth: 0, minHeight: '38px', border: 'none', borderRadius: 'var(--radius-sm)', background: 'none',
               color: ativa ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: '14px',
               cursor: bloqueado ? 'default' : 'pointer',
             }}
@@ -100,7 +100,7 @@ export function Segmentado({ nome, opcoes, valor, bloqueado, aoMudar }: {
               <motion.span
                 layoutId={nome}
                 transition={reduzido ? { duration: 0 } : MOLA}
-                style={{ position: 'absolute', inset: 0, borderRadius: '6px', backgroundColor: 'var(--bg-active)' }}
+                style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-active)' }}
               />
             )}
             <span style={{ position: 'relative' }}>{o.nome}</span>
