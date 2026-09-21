@@ -1,6 +1,5 @@
-import { motion } from 'framer-motion';
 import { GitCompare, FileText, AlertTriangle } from 'lucide-react';
-import { MOLA, useMovimentoReduzido } from './ui/movimento';
+import { Janela } from './ui/Janela';
 
 /**
  * A pergunta que o app faz antes de reescrever as cenas de um projeto.
@@ -33,32 +32,24 @@ export function EscolhaDeRoteiro({ batem, total, mesmaHistoria, aoEscolher, aoCa
   aoEscolher: (versaoNova: boolean) => void;
   aoCancelar: () => void;
 }) {
-  const reduzido = useMovimentoReduzido();
-
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.72)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-      onClick={aoCancelar}
+    <Janela
+      titulo="Este roteiro é uma versão nova?"
+      icone={<GitCompare size={18} />}
+      aoFechar={aoCancelar}
+      largura="460px"
+      rodape={
+        <button onClick={aoCancelar} className="text-sm text-muted" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+          Cancelar
+        </button>
+      }
     >
-      <motion.div
-        initial={reduzido ? undefined : { opacity: 0, scale: 0.97, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={MOLA}
-        className="card"
-        onClick={e => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: '460px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-          <GitCompare size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
-          <div>
-            <h2 className="text-lg font-bold">Este roteiro é uma versão nova?</h2>
-            <p className="text-sm text-secondary" style={{ lineHeight: 1.5, marginTop: '4px' }}>
-              {batem > 0
-                ? <><strong>{batem} das {total} cenas</strong> têm o mesmo número de cenas que já estão no projeto.</>
-                : <>Nenhuma das <strong>{total} cenas</strong> tem número que já exista no projeto.</>}
-            </p>
-          </div>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <p className="text-sm text-secondary" style={{ lineHeight: 1.5, margin: 0 }}>
+          {batem > 0
+            ? <><strong>{batem} das {total} cenas</strong> têm número que já existe no projeto.</>
+            : <>Nenhuma das <strong>{total} cenas</strong> tem número que já exista no projeto.</>}
+        </p>
 
         <button
           onClick={() => aoEscolher(true)}
@@ -100,10 +91,7 @@ export function EscolhaDeRoteiro({ batem, total, mesmaHistoria, aoEscolher, aoCa
           </span>
         </button>
 
-        <button onClick={aoCancelar} className="text-sm text-muted" style={{ background: 'none', border: 'none', cursor: 'pointer', alignSelf: 'flex-end', padding: '4px 8px' }}>
-          Cancelar
-        </button>
-      </motion.div>
-    </div>
+      </div>
+    </Janela>
   );
 }
