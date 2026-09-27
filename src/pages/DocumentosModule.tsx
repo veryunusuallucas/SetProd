@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Vazio } from '../components/ui/Vazio';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -301,8 +302,12 @@ export function DocumentosModule() {
             );
           })}
           {pastas?.length === 0 && (
-            <div className="text-muted" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0' }}>
-              Nenhuma pasta criada.
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Vazio
+                icone={<Folder size={28} />}
+                titulo="Nenhuma pasta criada"
+                ajuda="Pastas organizam os papéis da produção — contratos, autorizações, plantas, referências."
+              />
             </div>
           )}
         </div>

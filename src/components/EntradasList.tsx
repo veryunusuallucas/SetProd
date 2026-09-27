@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { Vazio } from './ui/Vazio';
 import { useAcesso } from '../hooks/useAcesso';
 import { dinheiro } from '../lib/formato';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Wallet } from 'lucide-react';
 import { confirmar } from './ui/Confirmacao';
 
 export function EntradasList({ projetoId }: { projetoId: string }) {
@@ -88,7 +89,11 @@ export function EntradasList({ projetoId }: { projetoId: string }) {
             </div>
           ))}
           {(!projeto.saldo_inicial && aportes.length === 0) && (
-            <div className="text-center text-muted py-4">Nenhum aporte registrado. O projeto não possui fundos iniciais.</div>
+            <Vazio
+              icone={<Wallet size={28} />}
+              titulo="Nenhum aporte registrado"
+              ajuda="Aporte é o dinheiro que entra na produção — patrocínio, edital, investimento. Sem nenhum, o saldo começa em zero."
+            />
           )}
         </div>
       </div>

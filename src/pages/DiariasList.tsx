@@ -1,4 +1,5 @@
 import { dinheiro } from '../lib/formato';
+import { Vazio } from '../components/ui/Vazio';
 import { useAcesso } from '../hooks/useAcesso';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useState } from 'react';
@@ -419,9 +420,16 @@ export function DiariasList() {
       )}
 
       {diarias.length === 0 && !showForm && (
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Nenhuma diária cadastrada. Comece o seu plano de filmagem criando a Diária 01.
-        </div>
+        <Vazio
+          icone={<Calendar size={28} />}
+          titulo="Nenhuma diária ainda"
+          ajuda="Cada diária é um dia de filmagem: as cenas, a equipe escalada, a locação e a Ordem do Dia que vai para o set."
+          acao={administra && (
+            <button onClick={abrirFormulario} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Plus size={16} /> Criar a Diária 01
+            </button>
+          )}
+        />
       )}
 
       {/*

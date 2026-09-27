@@ -237,7 +237,7 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
                   </div>
 
                   {minhatransacoes.length === 0 && detalhe.linhas.length === 0 ? (
-                    <div className="text-muted text-sm text-center">Nenhuma pendência. Tudo quite! 🎉</div>
+                    <div className="text-muted text-sm text-center">Nenhuma pendência — tudo quite.</div>
                   ) : (
                     <>
                       {/* Transação a acertar (saldo já compensado) */}

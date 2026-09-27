@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Vazio } from './ui/Vazio';
 import { dinheiro, paraData } from '../lib/formato';
 import { db } from '../db/db';
 import { ArrowDownToLine, ArrowUpToLine, Calendar, FileText } from 'lucide-react';
@@ -80,7 +81,11 @@ export function MovimentoList({ projetoId, soDoDepartamento }: { projetoId: stri
         </div>
 
         {movimentos.length === 0 ? (
-          <div className="text-center text-muted py-8">Nenhuma movimentação registrada no projeto ainda.</div>
+          <Vazio
+            icone={<FileText size={28} />}
+            titulo="Nenhuma movimentação ainda"
+            ajuda="O extrato mostra, em ordem, todo dinheiro que entrou e saiu da produção: aportes, despesas e acertos."
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {movimentos.map(m => (

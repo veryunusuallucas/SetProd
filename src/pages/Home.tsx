@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Vazio } from '../components/ui/Vazio';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -399,10 +400,27 @@ export function Home() {
                 </p>
               </>
             ) : (
-              <>
-                <Film size={40} style={{ margin: '0 auto 16px', color: 'var(--text-muted)' }} />
-                <p className="text-secondary">Nenhuma produção encontrada.</p>
-              </>
+              /*
+                "Não achei na busca" e "você ainda não tem nenhuma" são coisas
+                diferentes, e as duas diziam "Nenhuma produção encontrada". Para
+                quem acabou de criar a conta, isso soava como erro.
+              */
+              termoBusca.trim()
+                ? <Vazio
+                    icone={<Film size={32} />}
+                    titulo={`Nenhuma produção com “${termoBusca.trim()}”`}
+                    ajuda="A busca olha o nome da produção e o do diretor."
+                  />
+                : <Vazio
+                    icone={<Film size={32} />}
+                    titulo="Você ainda não tem nenhuma produção"
+                    ajuda="Crie a primeira aqui — ou, se alguém te convidou, abra o link do convite e ela aparece nesta tela."
+                    acao={
+                      <button onClick={() => setMostrarStepper(true)} className="btn-primary">
+                        Criar produção
+                      </button>
+                    }
+                  />
             )}
           </div>
         ) : (

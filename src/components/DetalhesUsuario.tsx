@@ -329,7 +329,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
           )}
 
           {minhatransacoes.length === 0 && detalhe.linhas.length === 0 ? (
-            <div className="text-muted" style={{ textAlign: 'center', padding: '24px' }}>Nenhuma pendência. Tudo quite! 🎉</div>
+            <div className="text-muted" style={{ textAlign: 'center', padding: '24px' }}>Nenhuma pendência — tudo quite.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Resumo do saldo líquido / transação a acertar */}
