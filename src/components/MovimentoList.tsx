@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { areaDaDespesa } from '../core/areaDaDespesa';
 import { Vazio } from './ui/Vazio';
 import { dinheiro, paraData } from '../lib/formato';
 import { db } from '../db/db';
@@ -15,7 +16,7 @@ export function MovimentoList({ projetoId, soDoDepartamento }: { projetoId: stri
   const todasDespesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
   const aportes = soDoDepartamento ? [] : todosAportes;
   const despesas = soDoDepartamento
-    ? todasDespesas.filter(d => d.departamento_id === soDoDepartamento)
+    ? todasDespesas.filter(d => areaDaDespesa(d) === soDoDepartamento)
     : todasDespesas;
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
 

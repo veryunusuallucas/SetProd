@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { areaDaDespesa } from '../core/areaDaDespesa';
 import { PieChart, Receipt } from 'lucide-react';
 import { db } from '../db/db';
 import { dinheiro } from '../lib/formato';
@@ -25,7 +26,7 @@ export function PainelDoDepartamento({
     [projetoId]
   ) || [];
 
-  const minhas = despesas.filter(d => d.departamento_id === departamento.id);
+  const minhas = despesas.filter(d => areaDaDespesa(d) === departamento.id);
   const gasto = minhas.reduce((soma, d) => soma + (d.valor_total || 0), 0);
   const orcamento = departamento.orcamento_departamento || 0;
   const temOrcamento = orcamento > 0;
