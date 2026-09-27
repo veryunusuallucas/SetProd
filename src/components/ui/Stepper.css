@@ -159,3 +159,25 @@
   width: 1rem;
   color: #000;
 }
+
+/*
+  Stepper DENTRO de uma janela (leva de UI 3).
+
+  O Stepper veio com moldura própria — borda, fundo, sombra e 2rem de respiro
+  —, feita para flutuar sozinho numa página. Dentro de uma `Janela` isso vira
+  cartão dentro de cartão: duas bordas, dois cantos arredondados e a ficha
+  espremida em 28rem no meio de uma janela de 600px. Aqui a janela já é a
+  moldura; o Stepper só traz os passos.
+*/
+.outer-container:has(> .step-circle-container.sem-moldura) { padding: 0; max-width: none; }
+.step-circle-container.sem-moldura {
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none;
+  border-radius: 0;
+  max-width: none;
+}
+.sem-moldura .step-indicator-row { padding: 4px 0 20px; }
+.sem-moldura .step-default { padding-left: 0; padding-right: 0; }
+.sem-moldura .footer-container { padding: 0; }
+.sem-moldura .footer-nav { margin-top: 24px; }
