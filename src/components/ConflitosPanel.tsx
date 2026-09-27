@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { rotuloDaCategoria } from '../core/categoriasDespesa';
 import { Janela as JanelaBase } from './ui/Janela';
 import { usarAviso, URGENCIA } from './avisos/CentralDeAvisos';
 import { FaixaDeAviso } from './avisos/FaixaDeAviso';
@@ -42,6 +43,7 @@ const CAMPO: Record<string, string> = {
   funcao: "Função", departamento_id: "Departamento", responsavel_id: "Responsável",
   responsaveis_ids: "Responsáveis", prazo: "Prazo", hora_inicio: "Início",
   hora_fim: "Fim", endereco: "Endereço", telefone: "Telefone", email: "E-mail",
+  metas_categoria: "Metas por categoria", limite_gasto: "Orçamento máximo",
 };
 const nomeDoCampo = (c: string) => CAMPO[c] || c.replace(/_/g, " ");
 
@@ -50,6 +52,14 @@ const EH_DINHEIRO = new Set(['valor', 'valor_total', 'valor_ideal', 'limite_gast
 
 /** Um valor de campo em uma linha legível. */
 function mostrar(v: unknown, campo?: string): string {
+  // "Alimentação R$ 3.000,00 · Transporte R$ 800,00" — e não "(dados)", que
+  // não deixaria ninguém escolher entre as duas versões.
+  if (campo === 'metas_categoria' && v && typeof v === 'object') {
+    const partes = Object.entries(v as Record<string, number>)
+      .filter(([, n]) => n > 0)
+      .map(([id, n]) => `${rotuloDaCategoria(id)} ${dinheiro(n)}`);
+    return partes.length ? partes.join(' · ') : 'nenhuma';
+  }
   if (campo && EH_DINHEIRO.has(campo) && typeof v === "number") return dinheiro(v);
   if (v === null || v === undefined || v === '') return '—';
   if (Array.isArray(v)) return v.length ? `${v.length} item(ns)` : 'vazio';

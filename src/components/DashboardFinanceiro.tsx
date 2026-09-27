@@ -1,6 +1,7 @@
 import { dinheiro } from '../lib/formato';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import { rotuloDaCategoria } from '../core/categoriasDespesa';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { Wallet, TrendingUp, HandCoins } from 'lucide-react';
 
@@ -31,7 +32,9 @@ export function DashboardFinanceiro({ projetoId }: DashboardProps) {
   }, {} as Record<string, number>);
 
   const dataCategoria = Object.keys(gastosPorCategoria).map(cat => ({
-    name: cat,
+    // O nome como a tela de despesas mostra ("Alimentação"), não o id guardado
+    // ("alimentacao"), que era o que aparecia na legenda do gráfico.
+    name: cat && cat !== 'undefined' ? rotuloDaCategoria(cat) : 'Sem categoria',
     value: gastosPorCategoria[cat]
   })).sort((a, b) => b.value - a.value);
 

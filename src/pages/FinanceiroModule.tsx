@@ -12,6 +12,7 @@ import { EntradasList } from '../components/EntradasList';
 import { ControleFinanceiro } from '../components/ControleFinanceiro';
 import { MovimentoList } from '../components/MovimentoList';
 import { GastoPorArea } from '../components/GastoPorArea';
+import { MetasPorCategoria } from '../components/MetasPorCategoria';
 import { LayoutDashboard, HandCoins, List, Settings, ArrowDownToLine, ArrowUpToLine } from 'lucide-react';
 import { useLayoutContext } from './ProjectLayout';
 import { DetalhesUsuario } from '../components/DetalhesUsuario';
@@ -108,9 +109,15 @@ export function FinanceiroModule() {
           {/* "Quanto cada área gastou" é a segunda pergunta de qualquer reunião,
               depois de "quanto gastamos" — e é pergunta de quem administra. Para
               quem é de uma área, o painel acima já respondeu a dela. */}
-          {!soMinhaArea && (
-            <div style={{ marginTop: '16px' }}>
+          {/*
+            `administra`, e não `!soMinhaArea`: quem não administra e ainda não
+            tem departamento também não é "da minha área", e via estes quadros
+            do caixa do filme. A regra da v4.15 é "o caixa é de quem administra".
+          */}
+          {administra && (
+            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <GastoPorArea projetoId={id} />
+              <MetasPorCategoria projetoId={id} aoDefinir={() => setAbaAtiva('controle')} />
             </div>
           )}
         </>
