@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { Vazio } from './ui/Vazio';
 import { vinculosDoDepartamento } from '../lib/vinculos';
 import { naEquipe } from '../lib/vinculos';
 import { preencherCoresDosDepartamentos } from '../lib/creditos';
 import { useAcesso } from '../hooks/useAcesso';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Plus, Download, Edit2, Trash2, Check } from 'lucide-react';
+import { Plus, Download, Edit2, Trash2, Check, Layers, Users } from 'lucide-react';
 import { ProfileCard } from './ui/ProfileCard';
 import { dinheiro } from '../lib/formato';
 import { contrasteSobre } from '../lib/contraste';
@@ -317,7 +318,13 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
       {abaAtiva === 'depto' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '24px' }}>
           {departamentos?.length === 0 && (
-            <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum departamento criado.</div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Vazio
+                icone={<Layers size={28} />}
+                titulo="Nenhum departamento criado"
+                ajuda="Departamento separa a equipe e o orçamento — Fotografia, Arte, Som. Cada pessoa da equipe pertence a um."
+              />
+            </div>
           )}
           
           {departamentos?.map(d => {
@@ -426,7 +433,13 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
       {abaAtiva === 'grupos' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '24px' }}>
           {(projeto?.grupos || []).length === 0 && (
-            <div className="text-muted text-sm text-center" style={{ width: '100%', padding: '24px' }}>Nenhum grupo criado. Crie grupos para escalar várias pessoas de uma vez.</div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Vazio
+                icone={<Users size={28} />}
+                titulo="Nenhum grupo criado"
+                ajuda="Grupo junta quem sempre vai junto — a equipe de elétrica, o elenco de uma cena — para escalar todo mundo de uma vez na diária."
+              />
+            </div>
           )}
           
           {(projeto?.grupos || []).map(g => (
