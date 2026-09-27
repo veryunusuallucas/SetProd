@@ -458,7 +458,15 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
             if (campo.id === 'email') return hl.includes('mail');
             if (campo.id === 'telefone') return hl.includes('telefone') || hl.includes('celular') || hl.includes('whatsapp');
             if (campo.id === 'funcao') return hl.includes('funç') || hl.includes('func') || hl.includes('cargo');
-            return hl.includes(alvo);
+            /*
+              PALAVRA INTEIRA, não pedaço de texto. Com `includes` o RG casava
+              com a coluna "Cargo" (ca-RG-o), e a função de cada pessoa ia parar
+              no campo de documento da ficha. Nome de campo com mais de uma
+              palavra ainda pode aparecer no meio do cabeçalho; nome de uma
+              palavra só precisa ser uma palavra do cabeçalho.
+            */
+            if (/\s/.test(alvo)) return hl.includes(alvo);
+            return hl.split(/[^\p{L}\p{N}]+/u).includes(alvo);
           });
           if (idx >= 0) palpite[campo.id] = idx;
         });
@@ -473,6 +481,19 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
     };
     reader.readAsText(file, 'utf-8');
   };
+
+  const cancelarImportacao = () => { setCsvCabecalhos(null); setCsvLinhas([]); setCsvMapa({}); };
+
+  /*
+    O número do botão é o que VAI entrar, não o tamanho do arquivo.
+    Antes o botão dizia "Importar 40 membro(s)" contando também as linhas sem
+    nome — que são ignoradas —, e o aviso do fim desmentia o botão. Muda na
+    hora em que a pessoa troca a coluna do Nome.
+  */
+  const colunaDoNome = csvMapa['nome'];
+  const linhasComNome = colunaDoNome === undefined
+    ? 0
+    : csvLinhas.filter(l => l[colunaDoNome]?.trim()).length;
 
   const confirmarImportacao = async () => {
     const schema = montarSchemaFicha(projeto);
@@ -909,56 +930,61 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
 
       {/* MODAL: MAPEAMENTO DA IMPORTAÇÃO CSV */}
       {csvCabecalhos && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ width: '100%', maxWidth: '640px', backgroundColor: 'var(--bg-primary)', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
-            <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)' }}>
-              <h2 className="text-lg font-bold">Importar equipe</h2>
-              <p className="text-xs text-secondary mt-1">
-                {csvLinhas.length} linha(s) encontradas. Confira para qual campo vai cada coluna do arquivo.
-              </p>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {montarSchemaFicha(projeto).map(campo => (
-                <div key={campo.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="text-sm font-bold">
-                      {campo.nome} {campo.id === 'nome' && <span className="text-danger">*</span>}
-                    </div>
-                  </div>
-                  <select
-                    value={csvMapa[campo.id] ?? ''}
-                    onChange={e => {
-                      const novo = { ...csvMapa };
-                      if (e.target.value === '') delete novo[campo.id];
-                      else novo[campo.id] = Number(e.target.value);
-                      setCsvMapa(novo);
-                    }}
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontSize: '13px' }}
-                  >
-                    <option value="">— não importar —</option>
-                    {csvCabecalhos.map((h, i) => (
-                      <option key={i} value={i}>{h || `Coluna ${i + 1}`}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ padding: '24px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => { setCsvCabecalhos(null); setCsvLinhas([]); setCsvMapa({}); }}
-                className="btn-secondary"
-                style={{ backgroundColor: 'var(--bg-surface)' }}
-              >
+        // Clique fora não fecha: o mapeamento ajustado à mão se perderia num
+        // toque no fundo. Esc e X cancelam — nada foi criado ainda.
+        <Janela
+          titulo="Importar equipe"
+          icone={<Upload size={18} />}
+          aoFechar={cancelarImportacao}
+          largura="640px"
+          fecharClicandoFora={false}
+          rodape={
+            <>
+              <button onClick={cancelarImportacao} className="btn-secondary" style={{ backgroundColor: 'var(--bg-surface)' }}>
                 Cancelar
               </button>
-              <button onClick={confirmarImportacao} className="btn-primary">
-                Importar {csvLinhas.length} membro(s)
+              <button onClick={confirmarImportacao} className="btn-primary" disabled={linhasComNome === 0}>
+                {linhasComNome === 0
+                  ? 'Importar'
+                  : `Importar ${linhasComNome} ${linhasComNome === 1 ? 'membro' : 'membros'}`}
               </button>
-            </div>
+            </>
+          }
+        >
+          <p className="text-xs text-secondary" style={{ margin: '0 0 16px', lineHeight: 1.5 }}>
+            {csvLinhas.length} {csvLinhas.length === 1 ? 'linha encontrada' : 'linhas encontradas'}. Confira para qual campo vai cada coluna do arquivo.
+            {colunaDoNome === undefined
+              ? <> <strong className="text-danger">Escolha a coluna do Nome</strong> — sem ela ninguém entra.</>
+              : linhasComNome < csvLinhas.length && <> {csvLinhas.length - linhasComNome} sem nome {csvLinhas.length - linhasComNome === 1 ? 'fica' : 'ficam'} de fora.</>}
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {montarSchemaFicha(projeto).map(campo => (
+              <div key={campo.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="text-sm font-bold">
+                    {campo.nome} {campo.id === 'nome' && <span className="text-danger">*</span>}
+                  </div>
+                </div>
+                <select
+                  value={csvMapa[campo.id] ?? ''}
+                  onChange={e => {
+                    const novo = { ...csvMapa };
+                    if (e.target.value === '') delete novo[campo.id];
+                    else novo[campo.id] = Number(e.target.value);
+                    setCsvMapa(novo);
+                  }}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', fontSize: '13px' }}
+                >
+                  <option value="">— não importar —</option>
+                  {csvCabecalhos.map((h, i) => (
+                    <option key={i} value={i}>{h || `Coluna ${i + 1}`}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
           </div>
-        </div>
+        </Janela>
       )}
 
       {/* MODAL: RELATÓRIO TRANSVERSAL */}
