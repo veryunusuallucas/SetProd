@@ -247,7 +247,7 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1;
   background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   outline-offset: -1.5px;
   cursor: pointer;
 }
@@ -337,7 +337,7 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 /* Tablet: os sete numa linha, apertando só o respiro e o espaçamento das
    letras. Em 768px cada atalho tem ~92px, e "DOCUMENTOS" cabe. */
@@ -357,7 +357,7 @@ h1, h2, h3, h4, h5, h6 {
     gap: 10px;
     padding: 12px 14px;
     min-height: 48px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
   .btn-primary.atalho svg { width: 20px; height: 20px; flex-shrink: 0; }
   .atalhos > .atalho:last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -778,7 +778,7 @@ input[type="radio"]:checked::before {
     justify-content: flex-start;
     gap: 14px;
     padding: 14px 16px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     width: 100%;
   }
   .glass-nav .nav-item span {
@@ -1180,7 +1180,7 @@ input[type="radio"]:checked::before {
   flex-direction: column;
   background-color: var(--bg-surface);
   border-top: 1px solid var(--border-color);
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.5);
   animation: folha-sobe 0.26s cubic-bezier(0.22, 0.8, 0.3, 1);

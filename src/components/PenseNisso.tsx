@@ -83,7 +83,7 @@ export function PenseNisso() {
           style={{
             position: 'fixed', top: '20px', right: '20px', zIndex: 4000,
             width: 'min(340px, calc(100vw - 40px))',
-            borderRadius: '18px', overflow: 'hidden',
+            borderRadius: 'var(--radius-lg)', overflow: 'hidden',
             // Vidro: deixa o fundo do app viver atrás do aviso, para ele
             // parecer pousado na tela e não colado por cima.
             background: 'linear-gradient(150deg, rgba(32,28,52,0.94), rgba(18,16,30,0.94))',

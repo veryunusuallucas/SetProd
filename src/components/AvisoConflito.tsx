@@ -180,7 +180,7 @@ export function AvisoConflito({ projetoId }: { projetoId?: string }) {
             transition={MOLA}
             style={{
               pointerEvents: 'auto',
-              borderRadius: '14px', overflow: 'hidden',
+              borderRadius: 'var(--radius-lg)', overflow: 'hidden',
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-color)',
               boxShadow: '0 12px 32px rgba(0,0,0,0.5)',

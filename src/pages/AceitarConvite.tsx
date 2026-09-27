@@ -150,7 +150,7 @@ export function AceitarConvite() {
         style={{
           position: 'relative', zIndex: 1, width: '100%', maxWidth: '440px',
           backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-          borderRadius: '18px', padding: '32px',
+          borderRadius: 'var(--radius-lg)', padding: '32px',
         }}
       >
         <div style={{ marginBottom: '20px' }}>
