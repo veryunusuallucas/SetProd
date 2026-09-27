@@ -8,6 +8,7 @@ import {
   Rows3, MousePointerClick, Smartphone, Tablet, LayoutGrid,
   Camera, HardDrive, FileInput, Target, Image, Save,
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
+  CloudCheck, SquareRoundCorner, Upload, AppWindow,
 } from 'lucide-react';
 
 /**
@@ -225,6 +226,104 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.16.0',
+    resumo: <>Os cadastros da equipe ficaram só com quem administra, as janelas passaram a se comportar do mesmo jeito em todo o app, e a importação por planilha parou de trocar campos.</>,
+    grupos: [
+      {
+        id: 'dados',
+        titulo: 'Os dados de cada um',
+        resumo: 'O que a tela escondia, o servidor também esconde.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'Cadastros do link só para quem administra',
+            texto: 'As fichas enviadas pelo link de cadastro — com CPF, PIX e ficha médica — podiam ser lidas por qualquer conta do SetProd, de qualquer produção, fora da tela. Agora o servidor só entrega para quem administra aquela produção. O link continua funcionando igual para quem preenche.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Lock size={20} />,
+            titulo: 'O relatório por campo só oferece o que você vê',
+            texto: 'Ele listava "Alergias" e "Tipo Sanguíneo" para qualquer pessoa e respondia "ninguém preencheu" — quando o certo era "você não vê isto". Agora o campo que você não pode ver não aparece na escolha, e a tabela diz o nome do campo no cabeçalho.',
+          },
+        ],
+      },
+      {
+        id: 'janelas',
+        titulo: 'Janelas que se comportam igual',
+        resumo: '',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <AppWindow size={20} />,
+            titulo: 'Esc fecha, e a página de trás para',
+            texto: 'Criar produção, novo membro, importar equipe, relatórios, escolha de roteiro, relatar problema, novidades, a ata, o gerador de Ordem do Dia e o fechamento de diária: todas fecham no Esc e no X, e a página atrás delas não rola mais junto.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <UserPlus size={20} />,
+            titulo: 'A ficha não some num toque errado',
+            texto: 'Nos formulários longos — novo membro, criar produção, importar equipe — clicar fora não fecha mais. E fechar uma ficha já preenchida pergunta antes de descartar.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'Um Esc fecha uma coisa só',
+            texto: 'Com uma pergunta de confirmação aberta por cima de uma janela, o Esc fechava as duas. Agora ele responde só a pergunta.',
+          },
+        ],
+      },
+      {
+        id: 'planilha',
+        titulo: 'Importar a equipe por planilha',
+        resumo: '',
+        cor: '#60a5fa',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <Upload size={20} />,
+            titulo: 'O RG parou de receber o cargo',
+            texto: 'Ao ler a planilha, o app ligava sozinho o campo RG à coluna "Cargo" — porque "cargo" contém "rg" — e a função de cada pessoa ia parar no documento. Agora ele casa as colunas por palavra inteira.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Users size={20} />,
+            titulo: 'O botão diz quantos entram de verdade',
+            texto: 'Ele contava também as linhas sem nome, que ficam de fora. Agora mostra quantas pessoas vão entrar, avisa quantas ficam de fora, e sem a coluna do Nome ele explica o que falta em vez de deixar clicar.',
+          },
+        ],
+      },
+      {
+        id: 'acabamento',
+        titulo: 'Acabamento',
+        resumo: '',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <CloudCheck size={20} />,
+            titulo: 'Uma nuvem só',
+            texto: 'No computador e no tablet, o "Salvo" do rodapé da barra lateral ganhou a nuvem e a nuvem solta do canto de cima saiu — eram duas dizendo a mesma coisa. No celular ela mora no cabeçalho, ao lado da busca e do sino, e parou de cair em cima do sino. O botão de prender a barra ficou alinhado com o "Salvo".',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Rows3 size={20} />,
+            titulo: 'Mais listas vazias que explicam',
+            texto: 'Diárias (com o botão para criar a primeira), Documentos, Extrato, Aportes, Departamentos, Grupos, Locações e Transporte. Na tela inicial, quem ainda não tem produção vê como começar, e "nenhuma produção encontrada" ficou só para busca sem resultado.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <SquareRoundCorner size={20} />,
+            titulo: 'Os mesmos cantos em todo lugar',
+            texto: 'Janelas, cartões, avisos e a folha de baixo do celular tinham cinco arredondamentos diferentes para a mesma coisa. Agora é um só — e as janelas deixaram de ter um cartão dentro de outro.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.15.0',
     resumo: <>Cada um passa a ver o dinheiro que é seu, o app diz o tempo todo se o seu trabalho está salvo, e as telas falam a mesma língua.</>,
