@@ -75,9 +75,11 @@ create policy "ficha: atualizacao autenticada" on public.fichas_publicas
 -- correção que o produtor fez na ficha.
 
 create table if not exists public.perfis (
-  id         text primary key,
+  -- uuid, como no banco de produção (conferido em 27/09/2026). O app gera o id
+  -- com `crypto.randomUUID()`.
+  id         uuid primary key,
   projeto_id text not null,
-  nome       text,
+  nome       text not null,
   criado_em  timestamptz not null default now()
 );
 
