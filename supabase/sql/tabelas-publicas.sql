@@ -129,6 +129,7 @@ create table if not exists public.bug_reports (
   tipo          text not null default 'bug',
   descricao     text,
   url_atual     text,
+  -- A resolução da TELA de quem relatou (ex. 1920x990). Não é "resolvido".
   resolucao     text,
   user_agent    text,
   -- Os eventos capturados do console. jsonb porque o formato muda conforme o
@@ -136,8 +137,15 @@ create table if not exists public.bug_reports (
   erros_console jsonb default '[]'::jsonb,
   -- Tudo que não tem coluna própria: ambiente, versão do app, contagens do
   -- banco local, resumo do log. O app monta este objeto em `montarPacote()`.
-  stats         jsonb default '{}'::jsonb
+  stats         jsonb default '{}'::jsonb,
+  -- Quem relatou, quando estava logado. O banco preenche sozinho com a sessão
+  -- (`auth.uid()`); vazio para quem relatou sem entrar na conta. Existia em
+  -- produção e faltava aqui (conferido em 27/09/2026).
+  usuario_id    uuid default auth.uid()
 );
+
+-- Para banco que já tem a tabela sem a coluna.
+alter table public.bug_reports add column if not exists usuario_id uuid default auth.uid();
 
 alter table public.bug_reports enable row level security;
 
