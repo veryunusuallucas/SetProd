@@ -119,8 +119,28 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
     };
     document.addEventListener('visibilitychange', aoVoltar);
     window.addEventListener('setprod-participacoes', conferir);
+
+    /*
+      E DE TEMPOS EM TEMPOS, COM A ABA NA FRENTE.
+
+      Só com os gatilhos acima, a mudança feita do OUTRO lado nunca chegava a
+      uma tela parada: quem administra confirmava a ficha (ou mudava o papel)
+      e a pessoa só via "Seu pedido foi confirmado — atualize a página" DEPOIS
+      de apertar F5 — ou seja, precisava atualizar para ler que devia
+      atualizar. Do lado de quem administra, o pedido de quem acabou de aceitar
+      o convite também só aparecia no F5. (Relato do Lucas, 27/09/2026.)
+
+      A tabela de membros não está no tempo real do Supabase (só `registros`
+      está), e pôr ali seria mudar o banco. Uma consulta pequena a cada 30s, só
+      com a aba visível e com rede, resolve sem isso.
+    */
+    const relogio = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) aoVoltar();
+    }, 30_000);
+
     return () => {
       vivo = false;
+      window.clearInterval(relogio);
       document.removeEventListener('visibilitychange', aoVoltar);
       window.removeEventListener('setprod-participacoes', conferir);
     };
