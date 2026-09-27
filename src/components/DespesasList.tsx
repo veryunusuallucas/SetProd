@@ -5,12 +5,14 @@ import { dividirEmPartes } from '../core/dinheiro';
 import { naEquipe } from '../lib/vinculos';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { CATEGORIAS_DESPESA } from '../core/categoriasDespesa';
+import { Janela } from './ui/Janela';
+import { confirmar } from './ui/Confirmacao';
 import { useAcesso } from '../hooks/useAcesso';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { TipoDivisao, Despesa } from '../types';
-import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon, Receipt } from 'lucide-react';
+import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon, Receipt, Plus, ChevronDown } from 'lucide-react';
 import { useRole } from '../hooks/useRole';
 import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '../lib/documentos';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
@@ -108,7 +110,15 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [filtroDiaria, setFiltroDiaria] = useState<string>('todas');
   
-  const [tipoDespesa, setTipoDespesa] = useState<'producao' | 'reembolsavel' | 'rateio'>('rateio');
+  /*
+    Começa SEM escolha. Era 'rateio' por padrão — e "quem pagou" é justamente a
+    pergunta que muda tudo no acerto: um gasto do caixa lançado sem mexer aqui
+    virava dívida da equipe inteira. Escolher é um toque; errar calado custa o
+    acerto do mês.
+  */
+  const [tipoDespesa, setTipoDespesa] = useState<'producao' | 'reembolsavel' | 'rateio' | null>(null);
+  const [janelaAberta, setJanelaAberta] = useState(false);
+  const [maisDetalhes, setMaisDetalhes] = useState(false);
   const [comprovanteBase64, setComprovanteBase64] = useState<string | undefined>();
 
   const [toastUndo, setToastUndo] = useState<{ id: string, despesa: any, timer: any } | null>(null);
@@ -164,6 +174,48 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
     setDepartamentoId(administraTudo ? '' : meuDepartamento);
     setSelecionados([]); setDividirComTodos(true);
     setComprovanteBase64(undefined); setComprovanteNome('');
+    setTipoDespesa(null); setDiariaSelecionadaId('geral'); setMaisDetalhes(false);
+    setDataOcorrencia(new Date().toISOString().split('T')[0]);
+  };
+
+  /*
+    O FORMULÁRIO NUMA JANELA (leva 4, passo 1).
+
+    Ele ficava sempre aberto no topo de Saídas, com seis blocos: para ver a
+    lista era preciso rolar o formulário inteiro, e editar uma despesa levava
+    a tela lá para cima — a pessoa perdia o lugar onde estava. Agora um botão
+    abre a janela comum, e editar abre a mesma janela POR CIMA da lista.
+
+    Fechar uma despesa já mexida pergunta antes, como a ficha de membro.
+  */
+  const retratoDoForm = () => JSON.stringify([
+    descricao, valor, categoria, pagadorId, departamentoId, dataOcorrencia, diariaSelecionadaId,
+    dividirComTodos, selecionados, tipoDespesa, comprovanteBase64,
+  ]);
+  const retratoAoAbrir = useRef('');
+  useEffect(() => {
+    if (janelaAberta) retratoAoAbrir.current = retratoDoForm();
+    // Só na abertura: depois disso, mudar é o que se quer detectar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [janelaAberta]);
+
+  const abrirNova = () => { limparForm(); setJanelaAberta(true); };
+
+  const fecharJanela = async () => {
+    if (retratoDoForm() !== retratoAoAbrir.current) {
+      const descartar = await confirmar({
+        titulo: editandoId ? 'Descartar as alterações?' : 'Descartar esta despesa?',
+        detalhe: editandoId
+          ? 'O que você mudou ainda não foi salvo. A despesa continua como estava.'
+          : 'O que você preencheu ainda não foi salvo e vai se perder.',
+        confirmar: 'Descartar',
+        cancelar: 'Continuar editando',
+        perigo: true,
+      });
+      if (!descartar) return;
+    }
+    setJanelaAberta(false);
+    limparForm();
   };
 
   const iniciarEdicao = (d: any) => {
@@ -201,13 +253,18 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
     const cobreTodos = naoCaixa.length > 0 && naoCaixa.every(id => devedoresIds.includes(id));
     setDividirComTodos(cobreTodos);
     setSelecionados(devedoresIds);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // "Mais detalhes" já aberto quando há algo lá dentro: esconder a diária ou
+    // o comprovante de uma despesa que os tem faria parecer que sumiram.
+    setMaisDetalhes(selId !== 'geral' || Boolean(d.comprovante));
+    setJanelaAberta(true);
   };
 
   const salvarDespesa = async (e: React.FormEvent) => {
     e.preventDefault();
     const valorNum = parseCurrency(valor);
-    if (!descricao || valorNum <= 0 || !pagadorId || !perfis) return;
+    if (!descricao || valorNum <= 0 || !perfis) return;
+    if (!tipoDespesa) { alert('Diga quem pagou: a produção, alguém que vai ser reembolsado, ou alguém que divide com a equipe.'); return; }
+    if (tipoDespesa !== 'producao' && (!pagadorId || pagadorId === CAIXA_CENTRAL)) { alert('Escolha a pessoa que pagou.'); return; }
 
     /*
       O CAIXA_CENTRAL é sentinela, não pessoa — e a linha dele no banco é uma
@@ -311,6 +368,7 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
       }
     }
 
+    setJanelaAberta(false);
     limparForm();
   };
 
@@ -358,203 +416,215 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
         </div>
       )}
 
-      {podeLancar ? (
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 className="text-lg font-bold">{editandoId ? 'Editar Despesa' : 'Lançar Nova Despesa'}</h3>
-          {editandoId && (
-            <button onClick={limparForm} className="btn-icon" title="Cancelar edição"><X size={16} /></button>
-          )}
-        </div>
-        <form onSubmit={salvarDespesa} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {janelaAberta && podeLancar && (
+        <Janela
+          titulo={editandoId ? 'Editar despesa' : 'Lançar despesa'}
+          icone={<Receipt size={18} />}
+          aoFechar={fecharJanela}
+          largura="620px"
+          // Formulário longo: um toque no fundo não pode custar a despesa.
+          fecharClicandoFora={false}
+          rodape={
+            <button type="submit" form="form-despesa" className="btn-primary" style={{ width: '100%' }}>
+              {editandoId ? 'Salvar alterações' : 'Registrar despesa'}
+            </button>
+          }
+        >
+        <form id="form-despesa" onSubmit={salvarDespesa} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input placeholder="Descrição (ex: Almoço da Equipe)" value={descricao} onChange={e => setDescricao(e.target.value)} required />
-            <input type="text" placeholder="Valor (R$)" value={valor} onChange={e => setValor(formatCurrency(e.target.value))} required />
-            <CampoData value={dataOcorrencia} onChange={setDataOcorrencia} />
+          {/* 1. O quê, quanto, quando */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input placeholder="Descrição (ex: Almoço da equipe)" value={descricao} onChange={e => setDescricao(e.target.value)} required />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap: '10px' }}>
+              <input type="text" inputMode="numeric" placeholder="Valor (R$)" value={valor} onChange={e => setValor(formatCurrency(e.target.value))} required />
+              <CampoData value={dataOcorrencia} onChange={setDataOcorrencia} />
+            </div>
+          </div>
 
-            {/* Categoria em chips */}
+          {/*
+            2. Quem pagou — ANTES de qualquer outra escolha, porque é ela que
+            decide o resto. Antes o "Quem pagou?" vinha primeiro, desligado e
+            com "A Produção (Caixa)", e o tipo só depois.
+          */}
+          <div>
+            <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Quem pagou</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {([
+                ['producao', 'A produção pagou', 'Saiu do caixa do filme. Ninguém fica devendo.'],
+                ['reembolsavel', 'Alguém adiantou, a produção devolve', 'A pessoa pagou do próprio bolso e a produção deve a ela.'],
+                ['rateio', 'Alguém pagou, a equipe divide', 'Quem entra na divisão deve a sua parte a quem pagou.'],
+              ] as const).map(([id, titulo, ajuda]) => (
+                <label key={id} className="checkbox-label" style={{
+                  padding: '12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  border: `1px solid ${tipoDespesa === id ? 'var(--accent)' : 'var(--border-light)'}`,
+                  backgroundColor: tipoDespesa === id ? 'var(--bg-active)' : 'var(--bg-primary)',
+                }}>
+                  <input
+                    type="radio"
+                    name="quem-pagou"
+                    checked={tipoDespesa === id}
+                    onChange={() => {
+                      setTipoDespesa(id);
+                      setPagadorId(id === 'producao' ? CAIXA_CENTRAL : (pagadorId === CAIXA_CENTRAL ? '' : pagadorId));
+                    }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="text-sm font-bold">{titulo}</span>
+                    <span className="text-xs text-muted">{ajuda}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* A pessoa só é perguntada quando existe uma pessoa na história. */}
+            {(tipoDespesa === 'reembolsavel' || tipoDespesa === 'rateio') && (
+              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <select value={pagadorId === CAIXA_CENTRAL ? '' : pagadorId} onChange={e => setPagadorId(e.target.value)}>
+                  <option value="">Quem pagou?</option>
+                  {equipe.map(p => (<option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>))}
+                </select>
+                {/*
+                  Sem ninguém cadastrado, a lista fica vazia — e sem dizer por
+                  quê, parecia quebrada (relato: "cliquei em Reembolsável e não
+                  apareceu a pessoa da equipe").
+                */}
+                {equipe.length === 0 && (
+                  <p className="text-xs text-muted" style={{ margin: 0, lineHeight: 1.5 }}>
+                    Ninguém cadastrado na equipe ainda. Adicione as pessoas em <strong>Produção → Equipe</strong> para lançar reembolso e divisão.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {tipoDespesa === 'rateio' && (
+              <div style={{ marginTop: '10px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={dividirComTodos} onChange={e => setDividirComTodos(e.target.checked)} />
+                  <span className="text-sm">Dividir igualmente com toda a equipe</span>
+                </label>
+                {!dividirComTodos && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px', marginTop: '12px', borderTop: '1px solid var(--border-light)' }}>
+                    <div className="text-xs text-muted">Quem entra na divisão:</div>
+                    {equipe.map(p => (
+                      <label key={p.id} className="checkbox-label">
+                        <input type="checkbox" checked={selecionados.includes(p.id)} onChange={() => toggleSelecionado(p.id)} />
+                        <span className="text-sm">{p.nome} {p.sobrenome}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/*
+            3. De qual departamento é — o gasto é DE QUEM, não de quem pagou.
+            A Arte pode comprar uma lente da Fotografia; o produtor pode pagar a
+            tinta da Arte. É este campo que o painel de cada departamento lê.
+          */}
+          {(departamentos || []).length > 0 && (
             <div>
-              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Categoria</div>
+              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>De qual departamento é</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {CATEGORIAS.map(c => (
-                  <div key={c.id} onClick={() => setCategoria(c.id)}
-                    style={{ padding: '8px 14px', borderRadius: 'var(--radius-full)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', border: `1px solid ${categoria === c.id ? 'var(--accent)' : 'var(--border-light)'}`, backgroundColor: categoria === c.id ? 'var(--bg-active)' : 'var(--bg-surface)', color: categoria === c.id ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: categoria === c.id ? 'bold' : 'normal', fontSize: '0.85rem' }}>
-                    <span>{c.emoji}</span> {c.label}
-                  </div>
+                <div onClick={() => setDepartamentoId('')} style={chipEstilo(departamentoId === '')}>Da produção</div>
+                {(departamentos || []).map(d => (
+                  <div key={d.id} onClick={() => setDepartamentoId(d.id)} style={chipEstilo(departamentoId === d.id)}>{d.nome}</div>
                 ))}
               </div>
-            </div>
-
-            {/*
-              DE QUEM É a despesa — a área que gastou.
-
-              Diferente de "quem pagou", logo abaixo. A Arte pode comprar uma
-              lente que é da Fotografia, e o produtor pode pagar a tinta que é da
-              Arte. Confundir as duas coisas é o que impede o orçamento por área
-              de existir.
-
-              Vem preenchido com o SEU departamento quando o app sabe quem você
-              é: quem lança quase sempre lança o do próprio setor, e uma escolha
-              já feita é uma escolha a menos no fim do dia.
-            */}
-            {(departamentos || []).length > 0 && (
-              <div>
-                <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>
-                  De qual área é este gasto
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <div
-                    onClick={() => setDepartamentoId('')}
-                    style={chipEstilo(departamentoId === '')}
-                  >
-                    Da produção
-                  </div>
-                  {(departamentos || []).map(d => (
-                    <div
-                      key={d.id}
-                      onClick={() => setDepartamentoId(d.id)}
-                      style={chipEstilo(departamentoId === d.id)}
-                    >
-                      {d.nome}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-xs text-muted" style={{ marginTop: '6px' }}>
-                  É de quem o gasto é, não de quem pagou. Seguro, taxa e caixa geral ficam em “Da produção”.
-                </div>
+              <div className="text-xs text-muted" style={{ marginTop: '6px' }}>
+                É o departamento que vê este gasto no painel dele. Seguro, taxa e caixa geral ficam em “Da produção”.
               </div>
-            )}
-
-            {/* Diária em chips */}
-            <div>
-              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Diária</div>
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }} className="hide-scrollbar">
-                {listaDiarias.map(d => (
-                  <div key={d.val} onClick={() => setDiariaSelecionadaId(d.val)}
-                    style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap', cursor: 'pointer', border: `1px solid ${diariaSelecionadaId === d.val ? 'var(--accent)' : 'var(--border-light)'}`, backgroundColor: diariaSelecionadaId === d.val ? 'var(--bg-active)' : 'var(--bg-surface)', color: diariaSelecionadaId === d.val ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: diariaSelecionadaId === d.val ? 'bold' : 'normal' }}>
-                    {d.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <select value={pagadorId} onChange={e => setPagadorId(e.target.value)} required disabled={tipoDespesa === 'producao'}>
-              <option value="">Quem pagou?</option>
-              <option value="caixa_central">A Produção (Caixa)</option>
-              {equipe.map(p => (<option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>))}
-            </select>
-
-            {/*
-              Sem ninguém cadastrado, a lista só oferecia "A Produção" e ficava
-              parecendo quebrada — o relatório de bug foi exatamente esse:
-              "clicamos em Reembolsável e não apareceu a pessoa da equipe".
-              A lista não estava com defeito; estava vazia, e não dizia.
-            */}
-            {equipe.length === 0 && (
-              <p className="text-xs text-muted" style={{ marginTop: '-4px', lineHeight: 1.5 }}>
-                Ninguém cadastrado na equipe ainda — por isso só aparece a Produção.
-                Adicione as pessoas em <strong>Produção → Equipe</strong> para poder
-                lançar reembolso e rateio.
-              </p>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-            
-            <div className="text-xs text-secondary font-bold uppercase tracking-widest mt-2">Tipo de Despesa</div>
-            
-            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-              <input type="radio" checked={tipoDespesa === 'producao'} onChange={() => { setTipoDespesa('producao'); setPagadorId(CAIXA_CENTRAL); }} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span className="text-sm font-bold">Gasto Direto da Produção (Caixa)</span>
-                <span className="text-xs text-muted">Dinheiro já saiu direto da conta do projeto. Ninguém deve a ninguém.</span>
-              </div>
-            </label>
-
-            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
-              <input type="radio" checked={tipoDespesa === 'reembolsavel'} onChange={() => setTipoDespesa('reembolsavel')} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span className="text-sm font-bold">Despesa Reembolsável (Adiantamento)</span>
-                <span className="text-xs text-muted">Alguém pagou do próprio bolso. A Produção deve reembolsar.</span>
-              </div>
-            </label>
-
-            <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
-              <input type="radio" checked={tipoDespesa === 'rateio'} onChange={() => setTipoDespesa('rateio')} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span className="text-sm font-bold">Divisão na Equipe (Rateio)</span>
-                <span className="text-xs text-muted">Alguém pagou por vários e a equipe deve repassar sua parte.</span>
-              </div>
-            </label>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', marginTop: '8px' }}>
-              <span className="text-sm font-bold">Comprovante (Recibo / Nota)</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <input type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ fontSize: '12px' }} />
-                {/* `.btn-chip`, não `.btn-icon`: o .btn-icon é 40x40 fixo, e o
-                    rótulo quebrava em três linhas dentro do quadrado. */}
-                <button
-                  type="button"
-                  onClick={anexarLinkComprovante}
-                  className="btn-chip"
-                  style={{ fontSize: '12px', whiteSpace: 'nowrap' }}
-                >
-                  <LinkIcon size={14} /> Link do Drive
-                </button>
-              </div>
-              {comprovanteBase64 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                  <span className="text-xs text-accent">Anexado: {comprovanteNome || 'comprovante'}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setComprovanteBase64(undefined); setComprovanteNome(''); }}
-                    className="btn-icon text-muted"
-                    style={{ padding: '2px' }}
-                    title="Remover comprovante"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {tipoDespesa === 'rateio' && (
-            <div style={{ padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '12px' }}>Como dividir?</div>
-              <label className="checkbox-label" style={{ marginBottom: !dividirComTodos ? '16px' : '0' }}>
-                <input type="checkbox" checked={dividirComTodos} onChange={e => setDividirComTodos(e.target.checked)} />
-                <span className="text-sm font-medium">Dividir igualmente com todos da produção</span>
-              </label>
-              {!dividirComTodos && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
-                  <div className="text-xs text-muted" style={{ marginBottom: '4px' }}>Selecione quem participou da despesa:</div>
-                  {equipe.map(p => (
-                    <label key={p.id} className="checkbox-label">
-                      <input type="checkbox" checked={selecionados.includes(p.id)} onChange={() => toggleSelecionado(p.id)} />
-                      <span className="text-sm">{p.nome} {p.sobrenome}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
-          <button type="submit" className="btn-primary">{editandoId ? 'Salvar Alterações' : 'Registrar Despesa'}</button>
+          {/*
+            4. Tipo de gasto (era "Categoria"). Os tipos com nome de departamento
+            saíram da escolha (`aposentada`). Uma despesa antiga com um deles
+            continua mostrando o dela, para a edição não trocar calada.
+          */}
+          <div>
+            <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Tipo de gasto</div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {CATEGORIAS_DESPESA.filter(c => !c.aposentada || c.id === categoria).map(c => (
+                <div key={c.id} onClick={() => setCategoria(c.id)} style={chipEstilo(categoria === c.id)}>
+                  <span>{c.emoji}</span> {c.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 5. Mais detalhes: diária e comprovante */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setMaisDetalhes(m => !m)}
+              aria-expanded={maisDetalhes}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}
+              className="text-xs font-bold uppercase tracking-widest"
+            >
+              <ChevronDown size={14} style={{ transform: maisDetalhes ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              Mais detalhes
+              {!maisDetalhes && (diariaSelecionadaId !== 'geral' || comprovanteBase64) && (
+                <span className="text-accent" style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>· preenchido</span>
+              )}
+            </button>
+
+            {maisDetalhes && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                <div>
+                  <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Diária</div>
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }} className="hide-scrollbar">
+                    {listaDiarias.map(d => (
+                      <div key={d.val} onClick={() => setDiariaSelecionadaId(d.val)} style={chipEstilo(diariaSelecionadaId === d.val)}>
+                        {d.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '8px' }}>Comprovante (recibo ou nota)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <input type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ fontSize: '12px' }} />
+                    {/* `.btn-chip`, não `.btn-icon`: o .btn-icon é 40x40 fixo, e o
+                        rótulo quebrava em três linhas dentro do quadrado. */}
+                    <button type="button" onClick={anexarLinkComprovante} className="btn-chip" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <LinkIcon size={14} /> Link do Drive
+                    </button>
+                  </div>
+                  {comprovanteBase64 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                      <span className="text-xs text-accent">Anexado: {comprovanteNome || 'comprovante'}</span>
+                      <button type="button" onClick={() => { setComprovanteBase64(undefined); setComprovanteNome(''); }} className="btn-icon text-muted" style={{ padding: '2px' }} title="Remover comprovante">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </form>
-      </div>
-      ) : null /* o aviso de quem pode já está no topo do Financeiro */}
+        </Janela>
+      )}
+
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
-          <div className="text-xs text-secondary font-bold uppercase tracking-widest">Últimas Despesas</div>
+          <div className="text-xs text-secondary font-bold uppercase tracking-widest">Últimas despesas</div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {podeLancar && (
+            <button onClick={abrirNova} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Plus size={16} /> Lançar despesa
+            </button>
+          )}
           {diariasExistentes.length > 0 && (
             <select value={filtroDiaria} onChange={e => setFiltroDiaria(e.target.value)} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}>
               <option value="todas">Todas as diárias</option>
               {diariasExistentes.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
+          </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {despesasFiltradas.length === 0 && (
@@ -562,6 +632,11 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
               icone={<Receipt size={28} />}
               titulo="Nenhuma despesa lançada"
               ajuda="Aqui entram os gastos da produção: quem pagou, quanto, e como se divide entre a equipe."
+              acao={podeLancar ? (
+                <button onClick={abrirNova} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Plus size={16} /> Lançar a primeira
+                </button>
+              ) : undefined}
             />
           )}
 
