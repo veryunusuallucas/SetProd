@@ -1,4 +1,5 @@
 import { db } from '../db/db';
+import { areaDaDespesa } from '../core/areaDaDespesa';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
 
 /**
@@ -78,7 +79,9 @@ export async function vinculosDoDepartamento(projetoId: string, departamentoId: 
     [perfis.filter(p => p.departamento_id === departamentoId && !p.arquivado_em).length, 'pessoa', 'pessoas'],
     [tasks.filter(t => t.departamento_id === departamentoId).length, 'task', 'tasks'],
     [diariaTasks.length, 'tarefa de diária', 'tarefas de diária'],
-    [despesas.filter(d => [...(d.pagadores || []), ...(d.devedores || [])]
+    // A área da despesa, OU o departamento como quem paga/deve: apagar o
+    // departamento deixaria qualquer um dos dois apontando para ninguém.
+    [despesas.filter(d => areaDaDespesa(d) === departamentoId || [...(d.pagadores || []), ...(d.devedores || [])]
       .some(q => q.tipo === 'departamento' && q.id_ref === departamentoId)).length, 'despesa', 'despesas'],
     [(projeto?.creditos || []).filter(c => c.departamento_id === departamentoId).length, 'crédito', 'créditos'],
   ]);

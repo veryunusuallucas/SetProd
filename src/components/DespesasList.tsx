@@ -1,4 +1,5 @@
 import { dinheiro, dataCurta } from '../lib/formato';
+import { areaDaDespesa } from '../core/areaDaDespesa';
 import { Vazio } from './ui/Vazio';
 import { dividirEmPartes } from '../core/dinheiro';
 import { naEquipe } from '../lib/vinculos';
@@ -80,16 +81,24 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
   const { podeEscrever } = useAcesso();
   const podeLancar = podeEscrever('despesas');
   const meuDepartamento = (perfis || []).find(p => p.id === meuPerfilId)?.departamento_id || '';
+  /*
+    QUEM ADMINISTRA NÃO GANHA PALPITE. Para quem é de um departamento, pré-marcar
+    o dele é certo: é onde ele lança. Quem administra lança para TODAS as áreas,
+    e o departamento da própria ficha ali é um palpite errado com cara de
+    escolha — foi assim que um microfone do Som foi parar na Fotografia
+    (27/09/2026). Começa em "Da produção", e a área é escolhida de propósito.
+  */
+  const administraTudo = podeEscrever('projetos');
   const [departamentoId, setDepartamentoId] = useState('');
 
   // Só na primeira vez que o perfil aparece: refazer isso a cada render
   // apagaria a escolha da pessoa no meio do preenchimento.
   const [palpitePronto, setPalpitePronto] = useState(false);
   useEffect(() => {
-    if (palpitePronto || !meuDepartamento || editandoId) return;
+    if (palpitePronto || !meuDepartamento || editandoId || administraTudo) return;
     setDepartamentoId(meuDepartamento);
     setPalpitePronto(true);
-  }, [meuDepartamento, palpitePronto, editandoId]);
+  }, [meuDepartamento, palpitePronto, editandoId, administraTudo]);
 
   const [dataOcorrencia, setDataOcorrencia] = useState(() => new Date().toISOString().split('T')[0]);
 
@@ -101,7 +110,6 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
   
   const [tipoDespesa, setTipoDespesa] = useState<'producao' | 'reembolsavel' | 'rateio'>('rateio');
   const [comprovanteBase64, setComprovanteBase64] = useState<string | undefined>();
-  const [deptoVinculado, setDeptoVinculado] = useState<string>('');
 
   const [toastUndo, setToastUndo] = useState<{ id: string, despesa: any, timer: any } | null>(null);
 
@@ -153,7 +161,7 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
     // O departamento volta ao SEU, não a vazio: quem lança dez gastos da Arte
     // seguidos não deveria reescolher "Arte" dez vezes.
     setDescricao(''); setValor(''); setCategoria('outro'); setPagadorId('');
-    setDepartamentoId(meuDepartamento);
+    setDepartamentoId(administraTudo ? '' : meuDepartamento);
     setSelecionados([]); setDividirComTodos(true);
     setComprovanteBase64(undefined); setComprovanteNome('');
   };
@@ -163,7 +171,7 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
     setDescricao(d.descricao);
     setValor(d.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
     setCategoria(d.categoria || 'outro');
-    setDepartamentoId(d.departamento_id || '');
+    setDepartamentoId(areaDaDespesa(d) || '');
     setPagadorId(d.pagadores[0]?.id_ref || '');
     setDataOcorrencia(d.data_ocorrencia || new Date(d.data).toISOString().split('T')[0]);
     
@@ -178,7 +186,6 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
     
     setComprovanteBase64(d.comprovante);
     setComprovanteNome(d.comprovante ? `Comprovante — ${d.descricao}` : '');
-    setDeptoVinculado(d.devedores?.find((x: any) => x.tipo === 'departamento')?.id_ref || '');
     // Find ID of the official diaria by name, or use 'geral' / 'pre'
     let selId = 'geral';
     if (d.diaria === 'Pré-produção') selId = 'pre';
@@ -246,8 +253,10 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
     if (tipoDespesa === 'producao') {
       // Sai do caixa, morre no projeto (departamento se tiver)
       pagadores = [{ tipo: 'pessoa' as const, id_ref: CAIXA_CENTRAL, valor: valorNum }];
-      if (deptoVinculado) {
-        devedores = [{ tipo: 'departamento' as const, id_ref: deptoVinculado, valor: valorNum }];
+      // O departamento que "deve" o gasto direto é a ÁREA escolhida acima — um
+      // campo só. Antes havia um seletor próprio aqui, que podia discordar dela.
+      if (departamentoId) {
+        devedores = [{ tipo: 'departamento' as const, id_ref: departamentoId, valor: valorNum }];
       } else {
         devedores = [{ tipo: 'pessoa' as const, id_ref: CAIXA_CENTRAL, valor: valorNum }]; // custo cego
       }
@@ -334,7 +343,7 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
   // Diárias existentes para o filtro
   const diariasExistentes = Array.from(new Set((despesas || []).map(d => d.diaria).filter(Boolean))) as string[];
   const despesasFiltradas = (despesas || [])
-    .filter(d => !soDoDepartamento || d.departamento_id === soDoDepartamento)
+    .filter(d => !soDoDepartamento || areaDaDespesa(d) === soDoDepartamento)
     .filter(d => filtroDiaria === 'todas' || d.diaria === filtroDiaria);
 
   return (
@@ -462,15 +471,6 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
                 <span className="text-xs text-muted">Dinheiro já saiu direto da conta do projeto. Ninguém deve a ninguém.</span>
               </div>
             </label>
-
-            {tipoDespesa === 'producao' && (
-              <div style={{ padding: '0 12px 12px 32px' }}>
-                <select value={deptoVinculado} onChange={e => setDeptoVinculado(e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }}>
-                  <option value="">(Opcional) Vincular a um Departamento</option>
-                  {departamentos?.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                </select>
-              </div>
-            )}
 
             <label className="checkbox-label" style={{ backgroundColor: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', opacity: tipoDespesa === 'producao' ? 0.6 : 1 }}>
               <input type="radio" checked={tipoDespesa === 'reembolsavel'} onChange={() => setTipoDespesa('reembolsavel')} />

@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { areaDaDespesa } from '../core/areaDaDespesa';
 import { dinheiro } from '../lib/formato';
 import { db } from '../db/db';
 import { PieChart } from 'lucide-react';
@@ -29,7 +30,7 @@ export function GastoPorArea({ projetoId }: { projetoId: string }) {
 
   const porArea = new Map<string, number>();
   for (const d of despesas) {
-    const chave = d.departamento_id || '__producao__';
+    const chave = areaDaDespesa(d) || '__producao__';
     porArea.set(chave, (porArea.get(chave) || 0) + d.valor_total);
   }
 
@@ -55,7 +56,7 @@ export function GastoPorArea({ projetoId }: { projetoId: string }) {
 
   if (linhas.length === 0) return null;
 
-  const naoClassificado = despesas.filter(d => !d.departamento_id).length;
+  const naoClassificado = despesas.filter(d => !areaDaDespesa(d)).length;
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
