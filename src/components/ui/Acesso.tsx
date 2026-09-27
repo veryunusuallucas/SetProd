@@ -140,14 +140,26 @@ function useAcessoDaArea(): { podeVer: boolean; motivo: string } {
  * pedido morreria no celular de quem pediu. A ata sobe, não se apaga, e é onde
  * quem administra já olha — e o `AvisoDeAcesso` mostra o pedido na tela dela.
  */
-function PedirAcesso({ projetoId, area }: { projetoId: string; area: string }) {
+export function PedirAcesso({ projetoId, area, pedido, rotulo }: {
+  projetoId: string;
+  area: string;
+  /**
+   * O que entra na ata depois do nome de quem pediu. Por padrão, "pediu acesso
+   * a <área>" — mas quando o que falta não é acesso (ex.: um departamento na
+   * ficha), dizer "acesso" mandaria quem administra mexer no lugar errado.
+   */
+  pedido?: string;
+  rotulo?: string;
+}) {
   const { role, apelido } = useRole();
   const [estado, setEstado] = useState<'parado' | 'indo' | 'feito'>('parado');
 
   const pedir = async () => {
     setEstado('indo');
     await logAction(projetoId, 'editar', 'acesso', 'pedido',
-      `${apelido || 'Alguém'} pediu acesso a ${area} (hoje: ${DESCRICAO[role as 'leitura']?.nome ?? role}).`);
+      pedido
+        ? `${apelido || 'Alguém'} ${pedido}`
+        : `${apelido || 'Alguém'} pediu acesso a ${area} (hoje: ${DESCRICAO[role as 'leitura']?.nome ?? role}).`);
     setEstado('feito');
   };
 
@@ -161,7 +173,7 @@ function PedirAcesso({ projetoId, area }: { projetoId: string; area: string }) {
 
   return (
     <button className="btn btn-primary" onClick={pedir} disabled={estado === 'indo'}>
-      <Send size={14} style={{ marginRight: '6px' }} /> Pedir acesso a quem administra
+      <Send size={14} style={{ marginRight: '6px' }} /> {rotulo ?? 'Pedir acesso a quem administra'}
     </button>
   );
 }

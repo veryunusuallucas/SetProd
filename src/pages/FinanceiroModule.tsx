@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
 import { PainelDoDepartamento } from '../components/PainelDoDepartamento';
-import { AreaProtegida, ModoLeitura } from '../components/ui/Acesso';
+import { AreaProtegida, ModoLeitura, PedirAcesso } from '../components/ui/Acesso';
+import { Vazio } from '../components/ui/Vazio';
 import { useAcesso } from '../hooks/useAcesso';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
 import { useParams } from 'react-router-dom';
@@ -13,7 +14,7 @@ import { ControleFinanceiro } from '../components/ControleFinanceiro';
 import { MovimentoList } from '../components/MovimentoList';
 import { GastoPorArea } from '../components/GastoPorArea';
 import { MetasPorCategoria } from '../components/MetasPorCategoria';
-import { LayoutDashboard, HandCoins, List, Settings, ArrowDownToLine, ArrowUpToLine } from 'lucide-react';
+import { LayoutDashboard, HandCoins, List, Settings, ArrowDownToLine, ArrowUpToLine, Users } from 'lucide-react';
 import { useLayoutContext } from './ProjectLayout';
 import { DetalhesUsuario } from '../components/DetalhesUsuario';
 
@@ -45,6 +46,20 @@ export function FinanceiroModule() {
   const minhaFichaId = minhaFicha?.id;
   const recorte = administra ? undefined : meuDepartamento?.id;
   const soMinhaArea = Boolean(recorte);
+  /*
+    SEM DEPARTAMENTO, SEM O CAIXA DO FILME (decisão do Lucas, 27/09/2026).
+
+    Antes, quem não administra e ainda não tem departamento na ficha caía no
+    "else" de tudo: Dashboard com o saldo do filme, Entradas, o Extrato e as
+    Saídas inteiros, e o acerto de CADA pessoa da equipe. Não era escolha — era
+    o `recorte` vazio, que para quem administra significa "tudo", valendo para
+    quem não devia.
+
+    Agora essa pessoa vê o próprio acerto (se já tem ficha) e um aviso: o que
+    falta é um departamento, e só quem administra coloca (o `escopo.sql` barra
+    trocar o próprio). O pedido vai pela ata, como o de acesso.
+  */
+  const semArea = !administra && !meuDepartamento;
 
   if (!id) return <div>ID do projeto não encontrado.</div>;
 
@@ -66,30 +81,30 @@ export function FinanceiroModule() {
         >
           <LayoutDashboard size={18} /> <span style={{ fontSize: '12px' }}>Dashboard</span>
         </button>
-        <button 
+        {!semArea && <button 
           onClick={() => setAbaAtiva('movimento')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'movimento' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'movimento' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <List size={18} /> <span style={{ fontSize: '12px' }}>Extrato</span>
-        </button>
+        </button>}
         {administra && <button 
           onClick={() => setAbaAtiva('controle')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'controle' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'controle' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <Settings size={18} /> <span style={{ fontSize: '12px' }}>Controle</span>
         </button>}
-        {!soMinhaArea && <button 
+        {administra && <button 
           onClick={() => setAbaAtiva('entradas')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'entradas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'entradas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <ArrowDownToLine size={18} /> <span style={{ fontSize: '12px' }}>Entradas</span>
         </button>}
-        <button 
+        {!semArea && <button 
           onClick={() => setAbaAtiva('saidas')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'saidas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'saidas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <ArrowUpToLine size={18} /> <span style={{ fontSize: '12px' }}>Saídas</span>
-        </button>
+        </button>}
         <button 
           onClick={() => setAbaAtiva('distribuicao')}
           style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'distribuicao' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'distribuicao' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
@@ -103,7 +118,24 @@ export function FinanceiroModule() {
       {/* Conteúdo Dinâmico */}
       {abaAtiva === 'visao' && (
         <>
-          {soMinhaArea
+          {semArea ? (
+            <div className="card">
+              <Vazio
+                icone={<Users size={28} />}
+                titulo="Você ainda não está num departamento"
+                paraQuemAcompanha
+                ajuda="O caixa do filme fica com quem administra. Quando sua ficha tiver um departamento, aqui aparece quanto a sua área tem, já gastou e ainda pode gastar — e quem coloca você num departamento é quem administra a produção."
+                acao={
+                  <PedirAcesso
+                    projetoId={id}
+                    area="Financeiro"
+                    pedido="pediu para ser colocado num departamento (é na ficha, em Equipe) — sem isso, o Financeiro não mostra a área dele."
+                    rotulo="Pedir um departamento"
+                  />
+                }
+              />
+            </div>
+          ) : soMinhaArea
             ? <PainelDoDepartamento projetoId={id} departamento={meuDepartamento!} />
             : <DashboardFinanceiro projetoId={id} />}
           {/* "Quanto cada área gastou" é a segunda pergunta de qualquer reunião,
@@ -122,14 +154,17 @@ export function FinanceiroModule() {
           )}
         </>
       )}
-      {abaAtiva === 'movimento' && <MovimentoList projetoId={id} soDoDepartamento={recorte} />}
+      {abaAtiva === 'movimento' && !semArea && <MovimentoList projetoId={id} soDoDepartamento={recorte} />}
       {abaAtiva === 'controle' && administra && <ControleFinanceiro projetoId={id} />}
-      {abaAtiva === 'entradas' && !soMinhaArea && <EntradasList projetoId={id} />}
-      {abaAtiva === 'saidas' && <DespesasList projetoId={id} soDoDepartamento={recorte} />}
+      {abaAtiva === 'entradas' && administra && <EntradasList projetoId={id} />}
+      {abaAtiva === 'saidas' && !semArea && <DespesasList projetoId={id} soDoDepartamento={recorte} />}
       {abaAtiva === 'distribuicao' && (
         <ResumoList 
           projetoId={id} 
-          soEstePerfil={soMinhaArea ? minhaFichaId : undefined}
+          // Quem não administra vê só o PRÓPRIO acerto — com ou sem
+          // departamento. Sem ficha ainda, não há acerto dele: `'__ninguem__'`
+          // não casa com ninguém, e a lista sai vazia em vez de sair inteira.
+          soEstePerfil={administra ? undefined : (minhaFichaId ?? '__ninguem__')}
           onVerFicha={(uid) => {
             openPanel(
               <DetalhesUsuario 
