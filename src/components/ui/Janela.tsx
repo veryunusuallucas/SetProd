@@ -5,6 +5,9 @@ import { X } from 'lucide-react';
 import { MOLA } from './ia';
 import { useMovimentoReduzido } from './movimento';
 
+/** As janelas abertas, da mais antiga para a mais nova. */
+const pilhaDeJanelas: object[] = [];
+
 /**
  * O COMPORTAMENTO de uma janela, sem a aparência dela.
  *
@@ -20,12 +23,36 @@ import { useMovimentoReduzido } from './movimento';
  */
 export function useComportamentoDeJanela(aoFechar: () => void) {
   const focoAnterior = useRef<Element | null>(null);
+  const eu = useRef({});
+  /*
+    O `aoFechar` vai por ref, e o efeito roda UMA vez, ao abrir.
+    Quem abre costuma passar uma função nova a cada render
+    (`() => setAberto(false)`). Com ela na lista de dependências, cada tecla
+    digitada num formulário da janela desmontava e remontava o efeito — e a
+    limpeza devolve o foco ao botão que abriu: o campo perdia o cursor a cada
+    letra.
+  */
+  const fechar = useRef(aoFechar);
+  fechar.current = aoFechar;
 
   useEffect(() => {
     focoAnterior.current = document.activeElement;
+    const minha = eu.current;
+    pilhaDeJanelas.push(minha);
 
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.stopPropagation(); aoFechar(); }
+      if (e.key !== "Escape") return;
+      /*
+        UM Esc fecha UMA coisa, a de cima.
+        · Uma confirmação aberta por cima ("descartar a ficha?") responde o Esc
+          ela mesma — se a janela de baixo fechasse também, o "não" viraria
+          "sim, feche".
+        · Janela aberta de dentro de outra: só a mais recente fecha.
+      */
+      if (document.querySelector("[data-confirmacao]")) return;
+      if (pilhaDeJanelas[pilhaDeJanelas.length - 1] !== minha) return;
+      e.stopPropagation();
+      fechar.current();
     };
     document.addEventListener("keydown", aoTeclar);
 
@@ -33,11 +60,13 @@ export function useComportamentoDeJanela(aoFechar: () => void) {
     document.body.style.overflow = "hidden";
 
     return () => {
+      const i = pilhaDeJanelas.lastIndexOf(minha);
+      if (i >= 0) pilhaDeJanelas.splice(i, 1);
       document.removeEventListener("keydown", aoTeclar);
       document.body.style.overflow = antes;
       (focoAnterior.current as HTMLElement | null)?.focus?.();
     };
-  }, [aoFechar]);
+  }, []);
 }
 
 /**

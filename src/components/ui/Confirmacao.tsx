@@ -104,6 +104,9 @@ export function Confirmacoes() {
     <AnimatePresence>
       {pedido && (
         <div
+          // As janelas conferem esta marca antes de fechar no Esc: o Esc aqui
+          // é "não" para a pergunta, não "feche a janela de baixo".
+          data-confirmacao
           style={{
             position: 'fixed', inset: 0,
             // Acima de tudo: ela é chamada de dentro de modais que já estão no

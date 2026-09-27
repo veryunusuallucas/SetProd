@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Vazio } from './ui/Vazio';
 import { vinculosDaPessoa } from '../lib/vinculos';
 import { naEquipe } from '../lib/vinculos';
@@ -22,6 +22,7 @@ import { montarSchemaFicha, validarObrigatorios, valoresParaPerfil } from '../li
 import { confirmar } from './ui/Confirmacao';
 import { CampoData } from './ui/CampoData';
 import { CampoFuncao } from './ui/CampoFuncao';
+import { Janela } from './ui/Janela';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -209,6 +210,43 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const [cnpj, setCnpj] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
   const [customValues, setCustomValues] = useState<Record<string, string>>({});
+
+  /*
+    FECHAR UMA FICHA MEXIDA PERGUNTA ANTES.
+    Com a janela comum o formulário ganhou o Esc — e o Esc, o X e um toque
+    errado no fundo apagavam, calados, meia ficha digitada. O retrato é tirado
+    quando a janela abre (vazio no "novo", a ficha como estava no "editar"), e
+    só pergunta se algo mudou desde então: abrir e fechar sem mexer continua
+    sendo um gesto só.
+  */
+  const retratoDoForm = () => JSON.stringify([
+    nome, sobrenome, nomeSocial, cpf, rg, nascimento, telefone, email, endereco, instagram,
+    contatoEmergencia, infoMedica, tipoSanguineo, alergias, medicamentos, restricaoAlimentar, planoSaude,
+    funcao, departamentoId, drt, experiencia, valorDiaria, tipoVinculo, chavePix,
+    banco, agencia, conta, cnpj, razaoSocial, customValues,
+  ]);
+  const retratoAoAbrir = useRef('');
+  useEffect(() => {
+    if (showForm) retratoAoAbrir.current = retratoDoForm();
+    // Só na abertura: depois disso, mudar é justamente o que se quer detectar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm]);
+
+  const fecharForm = async () => {
+    if (retratoDoForm() !== retratoAoAbrir.current) {
+      const descartar = await confirmar({
+        titulo: editId ? 'Descartar as alterações?' : 'Descartar esta ficha?',
+        detalhe: editId
+          ? 'O que você mudou nesta ficha ainda não foi salvo. A ficha continua como estava.'
+          : 'O que você preencheu ainda não foi salvo e vai se perder.',
+        confirmar: 'Descartar',
+        cancelar: 'Continuar editando',
+        perigo: true,
+      });
+      if (!descartar) return;
+    }
+    setShowForm(false);
+  };
 
   // Marca no formulário os campos que o Construtor de Ficha exige.
   const schemaFicha = montarSchemaFicha(projeto);
@@ -724,18 +762,19 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
       )}
 
       {showForm && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ width: '100%', maxWidth: '600px', backgroundColor: 'var(--bg-primary)', borderRadius: '24px', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            
-            <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 className="text-lg font-bold">{editId ? 'Editar Membro' : 'Novo Membro'}</h2>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+        // Clique fora NÃO fecha: é um formulário longo, e um toque no fundo não
+        // pode custar a ficha. O Esc e o X passam pela pergunta de descartar.
+        <Janela
+          titulo={editId ? 'Editar membro' : 'Novo membro'}
+          icone={<UserPlus size={18} />}
+          aoFechar={fecharForm}
+          largura="600px"
+          fecharClicandoFora={false}
+        >
               <Stepper
                 initialStep={1}
                 onFinalStepCompleted={adicionarPessoa}
+                stepCircleContainerClassName="sem-moldura"
                 backButtonText="Voltar"
                 nextButtonText="Avançar"
               >
@@ -865,9 +904,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                   </div>
                 </Step>
               </Stepper>
-            </div>
-          </div>
-        </div>
+        </Janela>
       )}
 
       {/* MODAL: MAPEAMENTO DA IMPORTAÇÃO CSV */}
