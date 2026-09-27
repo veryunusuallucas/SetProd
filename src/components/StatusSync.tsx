@@ -4,7 +4,7 @@ import { lerConexao, frasesDaConexao } from '../lib/conexao';
 import { dataHora } from '../lib/formato';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cloud, CloudOff, RefreshCw, Check, X, History, AlertTriangle } from 'lucide-react';
+import { Cloud, CloudCheck, CloudOff, RefreshCw, Check, X, History, AlertTriangle } from 'lucide-react';
 import { ouvirSync, situacaoDe, estaAoVivo, rodada } from '../lib/sincronizacaoAutomatica';
 import { tamanhoAproximado } from '../lib/sincronizacao';
 import { montarAta, quandoFoi, type LinhaDaAta } from '../lib/ata';
@@ -86,7 +86,9 @@ function descrever(estado: string, pendentes: number) {
   if (pendentes > 0) {
     return { icone: <Cloud size={16} />, texto: `${pendentes} para enviar`, cor: 'var(--text-secondary)' };
   }
-  return { icone: <Check size={16} />, texto: 'Salvo', cor: 'var(--color-success, #4ade80)' };
+  // A nuvem com check é a mesma do cabeçalho do celular: é UM indicador, que
+  // mora no cabeçalho lá e aqui no rodapé.
+  return { icone: <CloudCheck size={16} />, texto: 'Salvo', cor: 'var(--color-success, #4ade80)' };
 }
 
 function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: boolean; aoFechar: () => void }) {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cloud, CloudOff, RefreshCw, AlertTriangle, Check } from 'lucide-react';
+import { CloudCheck, CloudOff, RefreshCw, AlertTriangle, Check } from 'lucide-react';
 import { ouvirConexao, frasesDaConexao, type Conexao } from '../lib/conexao';
 import { rodada } from '../lib/sincronizacaoAutomatica';
 import { useMovimentoReduzido } from './ui/movimento';
@@ -98,6 +98,14 @@ export function PilulaDeConexao({
   */
   const canto = usarCantoDaConexao();
 
+  /*
+    Dentro de uma produção ela NUNCA flutua. Ou há o cabeçalho do celular (e
+    ela mora nele), ou há a barra lateral — e aí quem responde é o "Salvo" do
+    rodapé, com a mesma nuvem. Antes ela sumia só a partir de 1024px, mas a
+    barra lateral aparece já em 768px: entre os dois, eram duas nuvens na tela.
+  */
+  if (projetoId && !canto) return null;
+
   const botao = (
     <button
       ref={refDoBotao}
@@ -111,7 +119,7 @@ export function PilulaDeConexao({
           (E o `display` mora no CSS: escrito aqui, ele vencia a regra que
           esconde, porque estilo no elemento ganha de folha de estilo.)
         */
-        className={canto ? 'indicador-conexao no-canto' : `indicador-conexao${projetoId ? ' so-no-celular' : ''}`}
+        className={canto ? 'indicador-conexao no-canto' : 'indicador-conexao'}
         style={{
           padding: chama ? '6px 10px' : '6px', borderRadius: 'var(--radius-full)',
           background: chama ? 'var(--color-warning-bg)' : 'color-mix(in srgb, var(--bg-surface) 80%, transparent)',
@@ -143,7 +151,8 @@ function aparencia(c: Conexao) {
   if (c.estado === 'offline_sujo') return { Icone: CloudOff, cor: 'var(--color-warning)', chama: true };
   if (c.estado === 'offline_limpo') return { Icone: CloudOff, cor: 'var(--text-secondary)', chama: false };
   if (c.estado === 'salvando') return { Icone: RefreshCw, cor: 'var(--text-secondary)', chama: false };
-  return { Icone: Cloud, cor: 'var(--text-secondary)', chama: false };
+  // A mesma nuvem com check do "Salvo" da barra lateral: um ícone só no app.
+  return { Icone: CloudCheck, cor: 'var(--text-secondary)', chama: false };
 }
 
 function Detalhe({
