@@ -13,6 +13,14 @@ export interface Projeto {
   info_equipe?: string;
   saldo_inicial?: number;
   limite_gasto?: number;
+  /**
+   * Meta de gasto por categoria de despesa, em reais: `{ alimentacao: 3000 }`.
+   *
+   * Diferente do orçamento de departamento: alimentação, transporte e moradia
+   * são de todo mundo, não de uma área. Só quem administra define e vê (pedido
+   * do Lucas, 27/09/2026). A chave é o `id` de `CATEGORIAS_DESPESA`.
+   */
+  metas_categoria?: Record<string, number>;
   num_diarias?: number;
   modo_diaria?: 'automatico' | 'manual';
   pix_caixa?: string;

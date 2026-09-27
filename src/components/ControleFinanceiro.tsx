@@ -2,7 +2,22 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { Projeto } from '../types';
-import { Settings, Save } from 'lucide-react';
+import { Settings, Save, Target } from 'lucide-react';
+import { CATEGORIAS_DESPESA } from '../core/categoriasDespesa';
+
+/**
+ * Só as metas de verdade: campo apagado ou zero sai do objeto.
+ *
+ * Guardar `{ transporte: 0 }` faria a categoria aparecer no quadro de metas
+ * com "0% de R$ 0,00" — e uma meta de zero não é meta, é ausência de meta.
+ */
+function metasLimpas(metas?: Record<string, number>): Record<string, number> {
+  const saida: Record<string, number> = {};
+  for (const [id, valor] of Object.entries(metas || {})) {
+    if (Number.isFinite(valor) && valor > 0) saida[id] = valor;
+  }
+  return saida;
+}
 
 export function ControleFinanceiro({ projetoId }: { projetoId: string }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
@@ -25,7 +40,8 @@ export function ControleFinanceiro({ projetoId }: { projetoId: string }) {
       limite_gasto: form.limite_gasto,
       pix_caixa: form.pix_caixa,
       modo_acerto: form.modo_acerto,
-      moeda: form.moeda || 'BRL'
+      moeda: form.moeda || 'BRL',
+      metas_categoria: metasLimpas(form.metas_categoria),
     });
     setSalvando(false);
     alert('Configurações salvas com sucesso!');
@@ -108,6 +124,44 @@ export function ControleFinanceiro({ projetoId }: { projetoId: string }) {
                 <strong>Compensado (Líquido):</strong> O sistema calculará o mínimo de transferências possíveis cruzando quem deve com quem precisa receber diretamente. Ideal para grupos pequenos.
               </div>
             )}
+          </div>
+
+          {/*
+            METAS POR CATEGORIA (sugestão do botão de relatar, 16/09/2026).
+            "Para alimentação precisamos de X, até agora temos Y." Orçamento de
+            departamento não responde isso: alimentação é de todo mundo. Esta
+            aba só abre para quem administra, e o quadro que acompanha as metas
+            na Visão geral também — decisão do Lucas, 27/09/2026.
+          */}
+          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+            <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Target size={14} /> Metas por categoria
+            </label>
+            <p className="text-sm text-muted mb-4">
+              Quanto a produção pretende gastar em cada tipo de despesa. Deixe em branco o que não tem meta. Só quem administra vê.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '10px' }}>
+              {CATEGORIAS_DESPESA.map(c => (
+                <label key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span className="text-xs text-secondary">{c.emoji} {c.label}</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    placeholder="R$ —"
+                    value={form.metas_categoria?.[c.id] ?? ''}
+                    onChange={e => {
+                      const n = parseFloat(e.target.value);
+                      const metas = { ...(form.metas_categoria || {}) };
+                      if (Number.isFinite(n)) metas[c.id] = n; else delete metas[c.id];
+                      setForm({ ...form, metas_categoria: metas });
+                    }}
+                    style={{ width: '100%' }}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>

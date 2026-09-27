@@ -3,6 +3,7 @@ import { Vazio } from './ui/Vazio';
 import { dividirEmPartes } from '../core/dinheiro';
 import { naEquipe } from '../lib/vinculos';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
+import { CATEGORIAS_DESPESA } from '../core/categoriasDespesa';
 import { useAcesso } from '../hooks/useAcesso';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -15,33 +16,7 @@ import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { useArquivo } from '../hooks/useArquivo';
 import { CampoData } from './ui/CampoData';
 
-/**
- * As categorias de gasto de uma produção.
- *
- * As seis primeiras são as antigas e ficam no começo de propósito: são as mais
- * lançadas, e mudar a ordem obrigaria a reaprender onde cada uma está. As
- * novas cobrem o que antes caía tudo em "Outro" — e "Outro" continua por
- * último, como saída para o que não se encaixa.
- */
-const CATEGORIAS = [
-  { id: 'transporte', label: 'Transporte', emoji: '🚗' },
-  { id: 'alimentacao', label: 'Alimentação', emoji: '🍔' },
-  { id: 'moradia', label: 'Moradia', emoji: '🏨' },
-  { id: 'equipamento', label: 'Equipamento', emoji: '🎥' },
-  { id: 'arte', label: 'Arte', emoji: '🎨' },
-  { id: 'elenco', label: 'Elenco', emoji: '🎭' },
-  { id: 'equipe', label: 'Cachês', emoji: '💼' },
-  { id: 'locacao', label: 'Locação', emoji: '🏠' },
-  { id: 'figurino', label: 'Figurino', emoji: '👗' },
-  { id: 'maquiagem', label: 'Maquiagem', emoji: '💄' },
-  { id: 'som', label: 'Som', emoji: '🎙️' },
-  { id: 'luz', label: 'Luz e Elétrica', emoji: '💡' },
-  { id: 'pos', label: 'Pós-produção', emoji: '🎞️' },
-  { id: 'combustivel', label: 'Combustível', emoji: '⛽' },
-  { id: 'seguro', label: 'Seguro e Taxas', emoji: '📋' },
-  { id: 'producao', label: 'Produção', emoji: '📌' },
-  { id: 'outro', label: 'Outro', emoji: '📄' },
-];
+const CATEGORIAS = CATEGORIAS_DESPESA;
 
 /** O chip de escolha, num lugar só — eram cinco cópias do mesmo style inline. */
 const chipEstilo = (ativo: boolean): React.CSSProperties => ({

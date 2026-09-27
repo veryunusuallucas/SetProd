@@ -82,7 +82,7 @@ export function GastoPorArea({ projetoId }: { projetoId: string }) {
                 <span className="text-sm" style={{ whiteSpace: 'nowrap', color: estourou ? 'var(--color-danger)' : 'var(--text-primary)' }}>
                   {dinheiro(l.gasto)}
                   {l.orcamento > 0 && (
-                    <span className="text-muted" style={{ fontWeight: 400 }}> de {l.orcamento.toFixed(2)}</span>
+                    <span className="text-muted" style={{ fontWeight: 400 }}> de {dinheiro(l.orcamento)}</span>
                   )}
                 </span>
               </div>

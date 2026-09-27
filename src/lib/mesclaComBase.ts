@@ -45,7 +45,7 @@ const SEM_UNIAO = new Set(['pagadores', 'devedores', 'planos', 'ordem', 'takes']
  */
 const DINHEIRO = new Set([
   'valor', 'valor_total', 'valor_ideal', 'limite_gasto', 'valor_diaria',
-  'orcamento_departamento', 'pagadores', 'devedores', 'aportes',
+  'orcamento_departamento', 'pagadores', 'devedores', 'aportes', 'metas_categoria',
 ]);
 
 /** Onde a regra do dinheiro vale. Fora daqui, um campo "valor" é só um número. */
