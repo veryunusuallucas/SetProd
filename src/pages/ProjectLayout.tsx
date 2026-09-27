@@ -498,7 +498,24 @@ export function ProjectLayout() {
         )}
       </button>
 
-      <StatusSync projetoId={id!} />
+      {/*
+        O alfinete mora NA LINHA do "Salvo". Antes ele era `position: absolute`
+        no pé do menu, com altura própria — ficava entre uma linha e outra, sem
+        pertencer a nenhuma.
+      */}
+      <div className="rodape-do-menu">
+        <StatusSync projetoId={id!} />
+        <button
+          type="button"
+          className="alfinete-menu"
+          onClick={e => { e.stopPropagation(); trocarMenuPreso(); setMenuAberto(false); }}
+          aria-pressed={menuPreso}
+          title={menuPreso ? 'Encolher o menu (só ícones)' : 'Prender o menu aberto'}
+          aria-label={menuPreso ? 'Encolher o menu' : 'Prender o menu aberto'}
+        >
+          {menuPreso ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+        </button>
+      </div>
     </>
   );
 
@@ -527,16 +544,6 @@ export function ProjectLayout() {
         }}
       >
         {renderSidebarContent()}
-        <button
-          type="button"
-          className="alfinete-menu"
-          onClick={e => { e.stopPropagation(); trocarMenuPreso(); setMenuAberto(false); }}
-          aria-pressed={menuPreso}
-          title={menuPreso ? 'Encolher o menu (só ícones)' : 'Prender o menu aberto'}
-          aria-label={menuPreso ? 'Encolher o menu' : 'Prender o menu aberto'}
-        >
-          {menuPreso ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-        </button>
       </aside>
 
       {/*

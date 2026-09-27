@@ -1546,9 +1546,6 @@ input[type="radio"]:checked::before {
   z-index: 60;
 }
 
-@media (min-width: 1024px) {
-  .indicador-conexao.so-no-celular { display: none; }
-}
 
 /*
   Quando a tela reserva um lugar para ele no próprio cabeçalho, ele deixa de

@@ -255,12 +255,19 @@
 .menu-lateral .sidebar-nav::-webkit-scrollbar { display: none; }
 
 /* O alfinete: prende a barra aberta, ou encolhe de volta ao trilho. */
+/* O "Salvo" e o alfinete dividem a mesma linha, centrados no mesmo eixo. */
+.rodape-do-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+.rodape-do-menu > .sidebar-link { flex: 1; min-width: 0; }
+
 .alfinete-menu {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 36px;
-  height: 36px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -271,7 +278,6 @@
   cursor: pointer;
 }
 .alfinete-menu:hover { color: var(--text-primary); }
-.menu-lateral.trilho:not(.aberto) .alfinete-menu { right: 11px; }
 
 @media (prefers-reduced-motion: reduce) {
   .menu-lateral, .project-layout .main-content { transition: none; }
@@ -287,7 +293,8 @@
 */
 /* Os que ficam soltos no fim ("Quem tem acesso", o estado do sync) não têm o
    recuo da lista em volta, então ganham o eixo aqui. */
-.menu-lateral > .sidebar-link { padding-left: 20px; }
+.menu-lateral > .sidebar-link,
+.menu-lateral > .rodape-do-menu > .sidebar-link { padding-left: 20px; }
 
 /* O rodapé usa o mesmo recuo da lista, para os ícones ficarem num eixo só. */
 .menu-lateral .sidebar-footer { padding-left: 8px; padding-right: 8px; }
