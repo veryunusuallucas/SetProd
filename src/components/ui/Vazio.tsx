@@ -20,7 +20,7 @@ import { useEdicao } from './Acesso';
  * em recusa do servidor.
  */
 export function Vazio({
-  icone, titulo, ajuda, acao,
+  icone, titulo, ajuda, acao, paraQuemAcompanha = false,
 }: {
   icone?: React.ReactNode;
   /** O que não existe ainda. Curto, e no vocabulário da produção. */
@@ -29,8 +29,16 @@ export function Vazio({
   ajuda?: string;
   /** O botão que resolve. Some sozinho para quem só acompanha. */
   acao?: React.ReactNode;
+  /**
+   * O vazio É para quem só acompanha — a ação é pedir, não criar. Aí o texto e
+   * o botão ficam: trocar pela frase de "somente leitura" esconderia
+   * justamente a saída dessa pessoa.
+   */
+  paraQuemAcompanha?: boolean;
 }) {
-  const { somenteLeitura, motivo } = useEdicao();
+  const edicao = useEdicao();
+  const somenteLeitura = edicao.somenteLeitura && !paraQuemAcompanha;
+  const { motivo } = edicao;
 
   return (
     <div
