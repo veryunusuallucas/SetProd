@@ -44,6 +44,10 @@ alter table public.fichas_publicas enable row level security;
 
 -- Quem preenche o link NÃO está logado — por isso a leitura é pública. A linha
 -- não carrega nada além do nome do projeto e da lista de campos.
+-- As antigas, do painel, com a mesma condição: saem para não confundir auditoria.
+drop policy if exists "public_select_fichas" on public.fichas_publicas;
+drop policy if exists "auth_insert_fichas"   on public.fichas_publicas;
+drop policy if exists "auth_update_fichas"   on public.fichas_publicas;
 drop policy if exists "ficha: leitura publica" on public.fichas_publicas;
 create policy "ficha: leitura publica" on public.fichas_publicas
   for select to anon, authenticated using (true);
@@ -84,11 +88,21 @@ drop policy if exists "perfis: cadastro publico" on public.perfis;
 create policy "perfis: cadastro publico" on public.perfis
   for insert to anon, authenticated with check (true);
 
--- Leitura só para quem está logado. O cadastro traz CPF, PIX e ficha médica —
--- deixar a leitura pública transformaria o link num vazamento.
+-- LEITURA: só quem administra AQUELA produção. O cadastro traz CPF, PIX e
+-- ficha médica.
+--
+-- ⚠️ Este arquivo criava aqui "perfis: leitura autenticada" com `using (true)`
+-- — qualquer conta logada lia a caixa de TODAS as produções. O `fichas.sql`
+-- trocava depois, mas rodar ESTE arquivo de novo reabria o vazamento em
+-- silêncio. Agora ele cria a política certa e tira as antigas (as em inglês,
+-- que eram do painel, foram achadas pela auditoria de 27/09/2026 — ver
+-- `limpar-politicas-antigas.sql`). `pode_gerir` vem do `papeis.sql` — num banco novo, rode ele antes deste.
 drop policy if exists "perfis: leitura autenticada" on public.perfis;
-create policy "perfis: leitura autenticada" on public.perfis
-  for select to authenticated using (true);
+drop policy if exists "auth_select_perfis"         on public.perfis;
+drop policy if exists "public_insert_perfis"       on public.perfis;
+drop policy if exists "perfis: quem administra le" on public.perfis;
+create policy "perfis: quem administra le" on public.perfis
+  for select to authenticated using (public.pode_gerir(projeto_id));
 
 -- ⚠️ Esta tabela aceita colunas extras conforme os campos customizados da ficha.
 -- Se um campo novo do Construtor não estiver aqui, o insert falha com "column
@@ -127,6 +141,8 @@ alter table public.bug_reports enable row level security;
 
 -- Qualquer um relata — inclusive quem nem entrou na conta, que é justamente
 -- quem mais precisa relatar quando o login está quebrado.
+drop policy if exists "auth_select_bug_reports"   on public.bug_reports;
+drop policy if exists "public_insert_bug_reports" on public.bug_reports;
 drop policy if exists "bugs: qualquer um relata" on public.bug_reports;
 create policy "bugs: qualquer um relata" on public.bug_reports
   for insert to anon, authenticated with check (true);
