@@ -776,7 +776,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
       </div>
 
       {bulkMode && selectedIds.size > 0 && (
-        <div style={{ position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)', zIndex: 50, backgroundColor: 'var(--color-danger)', color: '#fff', padding: '12px 24px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+        <div style={{ position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)', zIndex: 50, backgroundColor: 'var(--color-danger)', color: '#fff', padding: '12px 24px', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
           <span className="font-bold">{selectedIds.size} selecionados</span>
           <button onClick={handleBulkDelete} style={{ background: 'none', border: 'none', color: '#fff', fontWeight: 'bold', textDecoration: 'underline' }}>Apagar Todos</button>
         </div>

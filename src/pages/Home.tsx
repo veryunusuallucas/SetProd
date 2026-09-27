@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Vazio } from '../components/ui/Vazio';
+import { Janela } from '../components/ui/Janela';
 import { CAIXA_CENTRAL } from '../core/caixaCentral';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -492,17 +493,19 @@ export function Home() {
 
       {/* MODAL STEPPER (CRIAR PROJETO) */}
       {mostrarStepper && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--bg-primary)', borderRadius: '24px', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            
-            <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 className="text-lg font-bold">Nova Produção</h2>
-              <button onClick={() => setMostrarStepper(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+        // Janela comum: era a única com canto de 24px, e sem Esc nem rolagem
+        // travada. Clique fora não fecha — três passos preenchidos não podem
+        // sumir num toque no fundo.
+        <Janela
+          titulo="Nova produção"
+          icone={<Film size={18} />}
+          aoFechar={() => setMostrarStepper(false)}
+          largura="500px"
+          fecharClicandoFora={false}
+        >
               <Stepper
                 initialStep={1}
+                stepCircleContainerClassName="sem-moldura"
                 onFinalStepCompleted={criarProjeto}
                 backButtonText="Voltar"
                 nextButtonText="Avançar"
@@ -556,10 +559,7 @@ export function Home() {
                   </div>
                 </Step>
               </Stepper>
-            </div>
-
-          </div>
-        </div>
+        </Janela>
       )}
 
 

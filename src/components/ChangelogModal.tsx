@@ -151,7 +151,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
   o card a encolher — por isso o defeito não parecia ter relação com layout.
 */
 const CARTAO: React.CSSProperties = {
-  borderRadius: '14px', overflow: 'hidden', flexShrink: 0,
+  borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0,
   border: '1px solid var(--border-light)',
   backgroundColor: 'var(--bg-primary)',
 };

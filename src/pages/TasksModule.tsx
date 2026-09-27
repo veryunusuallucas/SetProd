@@ -370,7 +370,7 @@ export function TasksModule() {
                 // vez de espremer três colunas ilegíveis na mesma tela.
                 flex: '1 0 280px', minWidth: '280px',
                 backgroundColor: 'var(--bg-primary)',
-                borderRadius: '14px', padding: '12px',
+                borderRadius: 'var(--radius-lg)', padding: '12px',
                 display: 'flex', flexDirection: 'column', gap: '10px',
                 border: `1px solid ${recebendo ? g.cor : 'var(--border-light)'}`,
                 // O destaque ao arrastar por cima diz ONDE vai cair, antes de
@@ -689,7 +689,7 @@ export function TasksModule() {
       </AnimatePresence>
 
       {toastMsg && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'var(--color-danger)', color: 'white', padding: '12px 24px', borderRadius: '24px', zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', fontWeight: 'bold' }}>
+        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'var(--color-danger)', color: 'white', padding: '12px 24px', borderRadius: 'var(--radius-full)', zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', fontWeight: 'bold' }}>
           {toastMsg}
         </div>
       )}

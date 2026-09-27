@@ -183,7 +183,7 @@ function Detalhe({
           right: r ? `${Math.max(12, window.innerWidth - r.right)}px` : '12px',
           width: 'min(300px, calc(100vw - 24px))',
           background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-          borderRadius: '14px', padding: '14px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+          borderRadius: 'var(--radius-lg)', padding: '14px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
         }}
       >
         <p className="text-sm" style={{ margin: 0, lineHeight: 1.5 }}>{longa}</p>

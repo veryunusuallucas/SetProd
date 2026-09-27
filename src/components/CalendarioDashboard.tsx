@@ -236,7 +236,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
       // pode interromper a rolagem suave em alguns navegadores.
       window.setTimeout(() => {
         alvo.animate(
-          [{ boxShadow: '0 0 0 2px var(--color-success)', borderRadius: 'var(--radius-md)' }, { boxShadow: '0 0 0 2px transparent', borderRadius: '10px' }],
+          [{ boxShadow: '0 0 0 2px var(--color-success)', borderRadius: 'var(--radius-md)' }, { boxShadow: '0 0 0 2px transparent', borderRadius: 'var(--radius-md)' }],
           { duration: 1400, easing: 'ease-out' },
         );
       }, 450);

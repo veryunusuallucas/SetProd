@@ -95,7 +95,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--accent);
   color: #000;
   font-weight: 600;
@@ -121,14 +121,14 @@
   width: 2rem;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-weight: 600;
 }
 
 .active-dot {
   height: 0.75rem;
   width: 0.75rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: #000;
 }
 

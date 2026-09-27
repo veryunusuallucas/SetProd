@@ -133,7 +133,7 @@ export function AvisoDeVersao() {
             // linha, a tela estreita quebrava o título no meio e o aviso ficava
             // com cara de erro de layout.
             display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 12px',
-            padding: '12px 14px', borderRadius: '14px',
+            padding: '12px 14px', borderRadius: 'var(--radius-lg)',
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
             borderLeft: '3px solid var(--accent)',

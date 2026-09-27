@@ -8,7 +8,7 @@
   position: relative;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 16px;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -78,7 +78,7 @@
   background-color: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
