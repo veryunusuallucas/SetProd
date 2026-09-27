@@ -141,7 +141,8 @@ export function ControleFinanceiro({ projetoId }: { projetoId: string }) {
               Quanto a produção pretende gastar em cada tipo de despesa. Deixe em branco o que não tem meta. Só quem administra vê.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))', gap: '10px' }}>
-              {CATEGORIAS_DESPESA.map(c => (
+              {/* Tipos aposentados só aparecem se já tinham meta — para dar para zerar. */}
+              {CATEGORIAS_DESPESA.filter(c => !c.aposentada || (form.metas_categoria?.[c.id] ?? 0) > 0).map(c => (
                 <label key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span className="text-xs text-secondary">{c.emoji} {c.label}</span>
                   <input
