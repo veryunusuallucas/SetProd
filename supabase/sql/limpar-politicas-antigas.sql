@@ -25,6 +25,13 @@
 --     não desta tabela.
 --   · as Edge Functions usam a chave secreta, que passa por cima da RLS.
 --
+-- ✅ EXECUTADO em 27/09/2026, pela conexão com o Supabase, com o ok do Lucas.
+-- Antes: cada antiga tinha uma nova com os MESMOS papéis e a mesma condição
+-- (as de `anon` inclusive), e a `auditoria` sem update/delete para ninguém.
+-- Depois: sobraram exatamente as sete esperadas. Testado numa transação
+-- desfeita: `anon` ainda insere na caixa de cadastro; uma conta logada que não
+-- administra nada lê 0 perfis e 0 relatos (antes, todos).
+--
 -- COMO RODAR
 -- SQL Editor. PRIMEIRO só a PARTE 1 e confira o resultado. Depois a PARTE 2.
 -- Idempotente: rodar de novo não quebra nada.
