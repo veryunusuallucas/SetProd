@@ -236,9 +236,9 @@ export function linhasDoDepartamento(departamento: Departamento, creditos: Credi
 }
 
 /**
- * Atribui alguém a uma função de crédito. Se for um membro da equipe, o vínculo é
- * de mão dupla: o perfil passa a pertencer àquele departamento com aquela função —
- * é o que faz "Lucas em Fotografia como Operador de Câmera" valer nos dois lugares.
+ * Atribui alguém a uma função de crédito. Se for um membro da equipe cuja ficha
+ * ainda não tem departamento ou função, o crédito preenche — e só isso: a ficha
+ * não troca de departamento por causa de um crédito (ver o fim da função).
  */
 export async function salvarCredito(params: {
   projeto: Projeto;
@@ -280,16 +280,53 @@ export async function salvarCredito(params: {
 
   await db.projetos.update(projeto.id, { creditos: atualizados });
 
-  // Reflexo no cadastro da equipe: o membro herda departamento e função.
+  /*
+    Reflexo no cadastro da equipe — SÓ PARA PREENCHER O QUE ESTÁ VAZIO.
+
+    Antes, todo crédito copiava departamento e função para a ficha, e o último
+    ganhava: a diretora que também faz a trilha, posta nos créditos da Trilha
+    Sonora, saía de Direção (relato do Lucas, 28/09/2026). Uma pessoa pode ter
+    várias funções no set — cada crédito é uma linha, e isso já funcionava —,
+    mas a ficha tem UM departamento, e ele não é só um rótulo: é o que decide o
+    que a pessoa edita, o que ela vê no Financeiro e o que o servidor deixa ela
+    gravar (`escopo.sql`). Isso não pode mudar como efeito colateral de um
+    crédito. Mudar o departamento é na ficha, de propósito.
+
+    As outras funções aparecem na equipe e na ficha por `outrasFuncoes`.
+  */
   if (sincronizarPerfil && perfilId) {
     const perfil = await db.perfis.get(perfilId);
     if (perfil) {
       const mudancas: Partial<Perfil> = {};
-      if (perfil.departamento_id !== departamentoId) mudancas.departamento_id = departamentoId;
-      if (!perfil.funcao || normalizar(perfil.funcao) !== normalizar(papel)) mudancas.funcao = papel;
+      if (!perfil.departamento_id) mudancas.departamento_id = departamentoId;
+      if (!perfil.funcao?.trim()) mudancas.funcao = papel;
       if (Object.keys(mudancas).length > 0) await db.perfis.update(perfilId, mudancas);
     }
   }
+}
+
+/**
+ * As funções que a pessoa tem nos créditos ALÉM da da ficha.
+ *
+ * "Diretora" na ficha e "Trilha Sonora" nos créditos → `[{ papel: 'Trilha
+ * Sonora', departamentoId }]`. O crédito igual à ficha (mesma função no mesmo
+ * departamento) não conta: já está dito.
+ */
+export function outrasFuncoes(
+  perfil: Pick<Perfil, 'id' | 'funcao' | 'departamento_id'>,
+  creditos: Credito[] = [],
+): { papel: string; departamentoId?: string }[] {
+  const vistas = new Set<string>();
+  const saida: { papel: string; departamentoId?: string }[] = [];
+  for (const c of creditos) {
+    if (c.perfil_id !== perfil.id) continue;
+    const mesmaDaFicha = c.departamento_id === perfil.departamento_id && normalizar(c.papel) === normalizar(perfil.funcao || '');
+    const chave = `${c.departamento_id}::${normalizar(c.papel)}`;
+    if (mesmaDaFicha || vistas.has(chave)) continue;
+    vistas.add(chave);
+    saida.push({ papel: c.papel, departamentoId: c.departamento_id });
+  }
+  return saida;
 }
 
 /** Remove um crédito (não mexe no cadastro do membro). */
@@ -329,8 +366,8 @@ export interface SugestaoDeCredito {
 /**
  * O que a ficha da equipe já sabe e a tela de créditos ainda não mostrava.
  *
- * O vínculo sempre foi de mão dupla no PAPEL — atribuir alguém a uma função
- * grava departamento e função no cadastro dele (ver `salvarCredito`). Só que a
+ * Atribuir alguém a uma função preenche o departamento e a função da ficha
+ * quando ela ainda não tem (ver `salvarCredito`). Só que a
  * volta nunca existiu: quem preencheu a função de cada pessoa na hora de criar
  * a ficha chegava aqui e via três selects em "— vazio —", tendo que dizer de
  * novo o que já tinha dito.
