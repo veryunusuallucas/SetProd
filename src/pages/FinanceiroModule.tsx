@@ -33,7 +33,7 @@ export function FinanceiroModule() {
   const { openPanel, closePanel } = useLayoutContext();
   /*
     Quem não administra VÊ o financeiro inteiro — ler é global — mas não lança.
-    A aba Controle (saldo inicial, limites) é só configuração, então some; nas
+    A aba Ajustes (orçamento, metas, PIX) é só configuração, então some; nas
     outras, os botões de lançar somem e fica a linha dizendo quem pode.
   */
   const { podeEscrever, motivo } = useAcesso();

@@ -16,12 +16,12 @@ import { CATEGORIAS_DESPESA } from '../core/categoriasDespesa';
  * decide: este componente não se esconde sozinho, porque quem o usa já sabe o
  * papel de quem está olhando — ver `FinanceiroModule`.
  *
- * As metas são definidas na aba Controle. A conta é em centavos
+ * As metas são definidas na aba Ajustes (o antigo Controle). A conta é em centavos
  * (`core/dinheiro.ts`): somar reais em ponto flutuante dá R$ 0,30000000000000004.
  */
 export function MetasPorCategoria({ projetoId, aoDefinir }: {
   projetoId: string;
-  /** Leva para onde as metas se editam (a aba Controle). */
+  /** Leva para onde as metas se editam (a aba Ajustes). */
   aoDefinir: () => void;
 }) {
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
