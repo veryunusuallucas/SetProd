@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Vazio } from './ui/Vazio';
 import { vinculosDaPessoa } from '../lib/vinculos';
 import { naEquipe } from '../lib/vinculos';
@@ -23,6 +23,7 @@ import { confirmar } from './ui/Confirmacao';
 import { CampoData } from './ui/CampoData';
 import { CampoFuncao } from './ui/CampoFuncao';
 import { Janela } from './ui/Janela';
+import { outrasFuncoes } from '../lib/creditos';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -383,6 +384,39 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
     return d ? d.nome : 'S/ Depto';
   };
 
+  /*
+    A ORDEM DA EQUIPE (pedido do Lucas, 28/09/2026). A lista vinha na ordem do
+    banco — que, com id aleatório, não é ordem nenhuma: quem procurava alguém
+    tinha que ler todos os cartões. Agora é alfabética por padrão, ou agrupada
+    por departamento. A escolha fica neste aparelho (conveniência de quem olha,
+    não dado da produção).
+  */
+  const [ordem, setOrdemEstado] = useState<'az' | 'departamento'>(() => {
+    try { return localStorage.getItem('setprod:equipe:ordem') === 'departamento' ? 'departamento' : 'az'; } catch { return 'az'; }
+  });
+  const setOrdem = (o: 'az' | 'departamento') => {
+    setOrdemEstado(o);
+    try { localStorage.setItem('setprod:equipe:ordem', o); } catch { /* aba privada */ }
+  };
+  const nomeCompleto = (p: { nome: string; sobrenome?: string }) => `${p.nome} ${p.sobrenome || ''}`.trim();
+  const porNome = (a: { nome: string; sobrenome?: string }, b: { nome: string; sobrenome?: string }) =>
+    nomeCompleto(a).localeCompare(nomeCompleto(b), 'pt-BR', { sensitivity: 'base' });
+  const equipeOrdenada = (perfis || []).filter(naEquipe).sort((a, b) => {
+    if (ordem === 'departamento') {
+      // Sem departamento vai para o fim, e não para o começo por ser "vazio".
+      const da = a.departamento_id ? getDeptoNome(a.departamento_id) : '\uffff';
+      const db_ = b.departamento_id ? getDeptoNome(b.departamento_id) : '\uffff';
+      const porDepto = da.localeCompare(db_, 'pt-BR', { sensitivity: 'base' });
+      if (porDepto !== 0) return porDepto;
+    }
+    return porNome(a, b);
+  });
+
+  /** "Trilha Sonora (Som)" — as funções dos créditos além da da ficha. */
+  const outrasDe = (p: Parameters<typeof outrasFuncoes>[0]) =>
+    outrasFuncoes(p, projeto?.creditos).map(f =>
+      f.departamentoId && f.departamentoId !== p.departamento_id ? `${f.papel} (${getDeptoNome(f.departamentoId)})` : f.papel);
+
   /**
    * Publica a ficha antes de copiar: o link é inútil se quem abrir receber
    * uma versão antiga dos campos.
@@ -530,7 +564,18 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-        <span className="text-xs text-secondary font-bold uppercase tracking-widest">Equipe {!podeAdicionar && '(Somente Leitura)'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span className="text-xs text-secondary font-bold uppercase tracking-widest">Equipe {!podeAdicionar && '(Somente Leitura)'}</span>
+          <select
+            value={ordem}
+            onChange={e => setOrdem(e.target.value as 'az' | 'departamento')}
+            aria-label="Ordem da equipe"
+            style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }}
+          >
+            <option value="az">Nome (A–Z)</option>
+            <option value="departamento">Por departamento</option>
+          </select>
+        </div>
 
         {/* Barra de ações: todos os botões com o mesmo tamanho.
             Ficha + link viram um menu só; importar + criar manualmente, outro. */}
@@ -648,7 +693,14 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
               </div>
             )}
 
-            {perfis?.filter(naEquipe).map(p => (
+            {equipeOrdenada.map((p, i) => (
+              <Fragment key={p.id}>
+              {/* Por departamento: um título onde o grupo começa. */}
+              {ordem === 'departamento' && (i === 0 || equipeOrdenada[i - 1].departamento_id !== p.departamento_id) && (
+                <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ gridColumn: '1 / -1', marginTop: i === 0 ? 0 : '8px' }}>
+                  {p.departamento_id ? getDeptoNome(p.departamento_id) : 'Sem departamento'}
+                </div>
+              )}
               <div 
                 key={p.id} 
                 onClick={() => {
@@ -660,6 +712,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                         perfil={p}
                         projeto={projeto!}
                         departamentoNome={getDeptoNome(p.departamento_id)}
+                        outrasFuncoes={outrasDe(p)}
                         canEdit={podeEscrever('perfis', p)}
                         verRestrito={podeVerCamada('restrita', { papel: role, meuPerfilId, perfilId: p.id })}
                         verMedico={podeVerCamada('medica', { papel: role, meuPerfilId, perfilId: p.id })}
@@ -691,7 +744,9 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                 <div style={{ opacity: bulkMode && !selectedIds.has(p.id) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
                   <ProfileCard
                     name={`${p.nome} ${p.sobrenome || ''}`}
-                    title={p.funcao || 'Membro'}
+                    // "Diretora · Trilha Sonora (Som)": a função da ficha e as
+                    // outras que a pessoa tem nos créditos.
+                    title={[p.funcao || 'Membro', ...outrasDe(p)].join(' · ')}
                     status={getDeptoNome(p.departamento_id)}
                     handle={p.nome_social || p.nome.toLowerCase()}
                     avatarUrl={`https://ui-avatars.com/api/?name=${p.nome}+${p.sobrenome || ''}&background=random`}
@@ -733,6 +788,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                   </ProfileCard>
                 </div>
               </div>
+              </Fragment>
             ))}
           </div>
 

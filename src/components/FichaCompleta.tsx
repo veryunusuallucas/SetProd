@@ -5,6 +5,8 @@ interface FichaCompletaProps {
   perfil: Perfil;
   projeto: Projeto;
   departamentoNome: string;
+  /** Funções que a pessoa tem nos créditos além da da ficha. */
+  outrasFuncoes?: string[];
   onClose: () => void;
   onEdit: (p: Perfil) => void;
   onDelete: (id: string, nome: string) => void;
@@ -16,7 +18,7 @@ interface FichaCompletaProps {
   verMedico: boolean;
 }
 
-export function FichaCompleta({ perfil: p, projeto, departamentoNome, onClose, onEdit, onDelete, onViewTransacoes, canEdit, verRestrito, verMedico }: FichaCompletaProps) {
+export function FichaCompleta({ perfil: p, projeto, departamentoNome, outrasFuncoes = [], onClose, onEdit, onDelete, onViewTransacoes, canEdit, verRestrito, verMedico }: FichaCompletaProps) {
 
   /**
    * O texto copiado segue as mesmas camadas da tela.
@@ -101,6 +103,11 @@ Plano Saúde: ${p.plano_saude || '-'}`);
           <div>
             <h1 className="text-2xl font-bold">{p.nome} {p.sobrenome || ''}</h1>
             <div className="text-sm text-secondary">{p.funcao || 'Membro'} • {departamentoNome}</div>
+            {outrasFuncoes.length > 0 && (
+              <div className="text-xs text-muted" style={{ marginTop: '2px' }}>
+                Também nos créditos: {outrasFuncoes.join(', ')}
+              </div>
+            )}
           </div>
         </div>
         
