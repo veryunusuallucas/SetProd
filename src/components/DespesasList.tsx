@@ -1,4 +1,5 @@
-import { dinheiro, dataCurta } from '../lib/formato';
+import { dinheiro, dataCurta, paraData } from '../lib/formato';
+import { emCentavos, emReais } from '../core/dinheiro';
 import { areaDaDespesa } from '../core/areaDaDespesa';
 import { Vazio } from './ui/Vazio';
 import { dividirEmPartes } from '../core/dinheiro';
@@ -11,8 +12,8 @@ import { useAcesso } from '../hooks/useAcesso';
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import type { TipoDivisao, Despesa } from '../types';
-import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon, Receipt, Plus, ChevronDown } from 'lucide-react';
+import type { TipoDivisao, Despesa, Aporte } from '../types';
+import { Calendar, Trash2, Edit2, RotateCcw, X, Link as LinkIcon, Receipt, Plus, ChevronDown, ArrowDownToLine } from 'lucide-react';
 import { useRole } from '../hooks/useRole';
 import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '../lib/documentos';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
@@ -50,7 +51,24 @@ const emojiCategoria = (cat?: string, descricao = '') => {
  * gastos da Fotografia, não o caixa do filme. Vazio = vê tudo, que é o caso de
  * quem administra.
  */
-export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: string; soDoDepartamento?: string }) {
+/**
+ * `comEntradas`: a aba LANÇAMENTOS de quem administra (leva 4, passo 3,
+ * decisão B do Lucas, 27/09/2026). Saídas e entradas numa lista só, em ordem de
+ * data, com filtros — no lugar de três abas (Extrato, Entradas, Saídas) que
+ * mostravam o mesmo dinheiro de três jeitos, cada uma com um filtro que as
+ * outras não tinham.
+ *
+ * Sem `comEntradas` é a lista de despesas de sempre — a da "Minha área".
+ */
+export function DespesasList({ projetoId, soDoDepartamento, comEntradas = false }: {
+  projetoId: string;
+  soDoDepartamento?: string;
+  comEntradas?: boolean;
+}) {
+  const aportes = useLiveQuery(
+    () => comEntradas ? db.aportes.where('projeto_id').equals(projetoId).toArray() : Promise.resolve([] as Aporte[]),
+    [projetoId, comEntradas]
+  ) || [];
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const diariasOficiais = useLiveQuery(async () => {
@@ -400,9 +418,72 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
 
   // Diárias existentes para o filtro
   const diariasExistentes = Array.from(new Set((despesas || []).map(d => d.diaria).filter(Boolean))) as string[];
+  const [filtroTipo, setFiltroTipo] = useState<'tudo' | 'saidas' | 'entradas'>('tudo');
+  const [filtroDepto, setFiltroDepto] = useState<string>('');
+
   const despesasFiltradas = (despesas || [])
     .filter(d => !soDoDepartamento || areaDaDespesa(d) === soDoDepartamento)
-    .filter(d => filtroDiaria === 'todas' || d.diaria === filtroDiaria);
+    .filter(d => filtroDiaria === 'todas' || d.diaria === filtroDiaria)
+    .filter(d => !filtroDepto || (filtroDepto === '__producao__' ? !areaDaDespesa(d) : areaDaDespesa(d) === filtroDepto));
+
+  /*
+    Entrada não tem diária nem departamento: é dinheiro que entra no caixa do
+    filme. Com um desses filtros ligado, ela sai da lista — mostrar "o Som" com
+    o patrocínio no meio seria mentir sobre o que é do Som.
+  */
+  const entradasFiltradas = comEntradas && filtroTipo !== 'saidas' && filtroDiaria === 'todas' && !filtroDepto
+    ? aportes
+    : [];
+
+  type Item = { tipo: 'saida'; quando: number; d: Despesa } | { tipo: 'entrada'; quando: number; a: Aporte };
+  const itens: Item[] = [
+    ...(filtroTipo === 'entradas' ? [] : despesasFiltradas.map(d => ({
+      tipo: 'saida' as const,
+      // `data_ocorrencia` é "AAAA-MM-DD": `paraData` monta em hora local, e não
+      // em UTC (que jogaria a despesa para o dia anterior).
+      quando: (paraData(d.data_ocorrencia) ?? paraData(d.data))?.getTime() ?? 0,
+      d,
+    }))),
+    ...entradasFiltradas.map(a => ({ tipo: 'entrada' as const, quando: a.data, a })),
+  ].sort((x, y) => y.quando - x.quando);
+
+  // Somas do que está na tela, em centavos.
+  const somaSaidas = emReais(itens.reduce((s, i) => s + (i.tipo === 'saida' ? emCentavos(i.d.valor_total) : 0), 0));
+  const somaEntradas = emReais(itens.reduce((s, i) => s + (i.tipo === 'entrada' ? emCentavos(i.a.valor) : 0), 0));
+
+  // ---- Entradas: registrar e editar numa janela, como a despesa
+  const podeLancarEntrada = comEntradas && podeEscrever('aportes');
+  const [entrada, setEntrada] = useState<{ id?: string; origem: string; valor: string; data: string; obs: string } | null>(null);
+  const hojeISO = () => new Date().toISOString().split('T')[0];
+  const abrirEntrada = (a?: Aporte) => setEntrada(a
+    ? {
+        id: a.id, origem: a.origem, obs: a.obs || '',
+        valor: a.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        data: (() => { const x = new Date(a.data); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; })(),
+      }
+    : { origem: '', valor: '', data: hojeISO(), obs: '' });
+
+  const salvarEntrada = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!entrada) return;
+    const valorNum = parseCurrency(entrada.valor);
+    if (!entrada.origem.trim() || valorNum <= 0) return;
+    const quando = paraData(entrada.data)?.getTime() ?? Date.now();
+    const dados = { projeto_id: projetoId, origem: entrada.origem.trim(), valor: valorNum, data: quando, obs: entrada.obs.trim() || undefined };
+    if (entrada.id) await db.aportes.put({ id: entrada.id, ...dados });
+    else await db.aportes.add({ id: crypto.randomUUID(), ...dados });
+    setEntrada(null);
+  };
+
+  const apagarEntrada = async (a: Aporte) => {
+    const ok = await confirmar({
+      titulo: 'Apagar esta entrada?',
+      detalhe: `${a.origem} · ${dinheiro(a.valor)}. O saldo da produção diminui neste valor.`,
+      confirmar: 'Apagar', perigo: true,
+    });
+    if (ok) await db.aportes.delete(a.id);
+  };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative' }}>
@@ -610,37 +691,77 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
 
 
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
-          <div className="text-xs text-secondary font-bold uppercase tracking-widest">Últimas despesas</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="text-xs text-secondary font-bold uppercase tracking-widest">{comEntradas ? 'Lançamentos' : 'Despesas'}</div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {podeLancar && (
-            <button onClick={abrirNova} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Plus size={16} /> Lançar despesa
-            </button>
+            {podeLancarEntrada && (
+              <button onClick={() => abrirEntrada()} className="btn-chip" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ArrowDownToLine size={14} /> Registrar entrada
+              </button>
+            )}
+            {podeLancar && (
+              <button onClick={abrirNova} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Plus size={16} /> Lançar despesa
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filtros: o que o Extrato, as Saídas e as Entradas tinham, cada um o seu. */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+          {comEntradas && (['tudo', 'saidas', 'entradas'] as const).map(f => (
+            <div key={f} onClick={() => setFiltroTipo(f)} style={chipEstilo(filtroTipo === f)}>
+              {f === 'tudo' ? 'Tudo' : f === 'saidas' ? 'Saídas' : 'Entradas'}
+            </div>
+          ))}
+          {!soDoDepartamento && (departamentos || []).length > 0 && filtroTipo !== 'entradas' && (
+            <select value={filtroDepto} onChange={e => setFiltroDepto(e.target.value)} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}>
+              <option value="">Todos os departamentos</option>
+              <option value="__producao__">Da produção</option>
+              {(departamentos || []).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+            </select>
           )}
-          {diariasExistentes.length > 0 && (
+          {diariasExistentes.length > 0 && filtroTipo !== 'entradas' && (
             <select value={filtroDiaria} onChange={e => setFiltroDiaria(e.target.value)} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}>
               <option value="todas">Todas as diárias</option>
               {diariasExistentes.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
-          </div>
         </div>
+
+        {itens.length > 0 && (
+          <div className="text-xs text-muted" style={{ marginBottom: '12px' }}>
+            {itens.length} {itens.length === 1 ? 'lançamento' : 'lançamentos'}
+            {somaSaidas > 0 && <> · saídas <strong className="text-danger">{dinheiro(somaSaidas)}</strong></>}
+            {somaEntradas > 0 && <> · entradas <strong className="text-success">{dinheiro(somaEntradas)}</strong></>}
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {despesasFiltradas.length === 0 && (
+          {/* Na Minha área o painel de cima já diz que não há despesa: não repetir. */}
+          {itens.length === 0 && !soDoDepartamento && (
+            (despesas || []).length + aportes.length > 0 ? (
+              // Busca sem resultado não é lista vazia (guia visual).
+              <p className="text-sm text-muted" style={{ margin: '8px 0' }}>Nada com esses filtros.</p>
+            ) : (
             <Vazio
               icone={<Receipt size={28} />}
-              titulo="Nenhuma despesa lançada"
-              ajuda="Aqui entram os gastos da produção: quem pagou, quanto, e como se divide entre a equipe."
+              titulo={comEntradas ? 'Nenhum lançamento ainda' : 'Nenhuma despesa lançada'}
+              ajuda={comEntradas
+                ? 'Aqui entra todo o dinheiro da produção: o que saiu (despesas) e o que entrou (patrocínio, edital, investimento).'
+                : 'Aqui entram os gastos da produção: quem pagou, quanto, e como se divide entre a equipe.'}
               acao={podeLancar ? (
                 <button onClick={abrirNova} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Plus size={16} /> Lançar a primeira
                 </button>
               ) : undefined}
             />
+            )
           )}
 
-          {despesasFiltradas.slice().reverse().map(d => {
+          {itens.map(item => {
+            if (item.tipo === 'entrada') return <LinhaDeEntrada key={'e-' + item.a.id} a={item.a} podeLancar={podeLancarEntrada} aoEditar={() => abrirEntrada(item.a)} aoApagar={() => apagarEntrada(item.a)} />;
+            const d = item.d;
             const pagador = perfis?.find(p => p.id === d.pagadores[0]?.id_ref) || { nome: 'Caixa', sobrenome: '' };
             const icon = emojiCategoria(d.categoria, d.descricao);
 
@@ -683,9 +804,69 @@ export function DespesasList({ projetoId, soDoDepartamento }: { projetoId: strin
         </div>
       </div>
 
+      {entrada && (
+        <Janela
+          titulo={entrada.id ? 'Editar entrada' : 'Registrar entrada'}
+          icone={<ArrowDownToLine size={18} />}
+          aoFechar={() => setEntrada(null)}
+          largura="480px"
+          fecharClicandoFora={false}
+          rodape={
+            <button type="submit" form="form-entrada" className="btn-primary" style={{ width: '100%' }}>
+              {entrada.id ? 'Salvar alterações' : 'Registrar entrada'}
+            </button>
+          }
+        >
+          <form id="form-entrada" onSubmit={salvarEntrada} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <p className="text-xs text-muted" style={{ margin: '0 0 4px', lineHeight: 1.5 }}>
+              Dinheiro que entra no caixa do filme: patrocínio, edital, investimento, sócio.
+            </p>
+            <input placeholder="De onde veio (ex: Edital, Patrocínio)" value={entrada.origem} onChange={e => setEntrada({ ...entrada, origem: e.target.value })} required />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: '10px' }}>
+              <input type="text" inputMode="numeric" placeholder="Valor (R$)" value={entrada.valor} onChange={e => setEntrada({ ...entrada, valor: formatCurrency(e.target.value) })} required />
+              <CampoData value={entrada.data} onChange={v => setEntrada({ ...entrada, data: v })} />
+            </div>
+            <input placeholder="Observação (opcional)" value={entrada.obs} onChange={e => setEntrada({ ...entrada, obs: e.target.value })} />
+          </form>
+        </Janela>
+      )}
+
     </div>
   );
 }
+
+/** Uma entrada de dinheiro na lista de Lançamentos. */
+function LinhaDeEntrada({ a, podeLancar, aoEditar, aoApagar }: {
+  a: Aporte;
+  podeLancar: boolean;
+  aoEditar: () => void;
+  aoApagar: () => void;
+}) {
+  return (
+    <div className="card" style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+      <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', backgroundColor: 'color-mix(in srgb, var(--color-success) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <ArrowDownToLine size={20} className="text-success" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <div className="text-base font-bold" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.origem}</div>
+          <div className="text-base font-bold text-success" style={{ whiteSpace: 'nowrap' }}>+ {dinheiro(a.valor)}</div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', alignItems: 'center', flexWrap: 'wrap', color: 'var(--text-muted)' }}>
+          <span className="badge badge-success">Entrada</span>
+          <Calendar size={12} />
+          <span className="text-xs">{dataCurta(a.data)}</span>
+        </div>
+        {a.obs && <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>{a.obs}</div>}
+      </div>
+      {podeLancar && <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <button onClick={aoEditar} className="btn-icon" style={{ padding: '6px' }} title="Editar"><Edit2 size={16} /></button>
+        <button onClick={aoApagar} className="btn-icon" style={{ padding: '6px', color: 'var(--color-danger)' }} title="Excluir"><Trash2 size={16} /></button>
+      </div>}
+    </div>
+  );
+}
+
 
 /**
  * Link "Ver Comprovante".
