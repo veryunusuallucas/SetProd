@@ -12,7 +12,7 @@ import { ResumoList } from '../components/ResumoList';
 import { DashboardFinanceiro } from '../components/DashboardFinanceiro';
 import { ControleFinanceiro } from '../components/ControleFinanceiro';
 import { GastoPorArea } from '../components/GastoPorArea';
-import { MetasPorCategoria } from '../components/MetasPorCategoria';
+import { GastoPorTipo } from '../components/GastoPorTipo';
 import { LayoutDashboard, HandCoins, List, Settings, Users } from 'lucide-react';
 import { useLayoutContext } from './ProjectLayout';
 import { DetalhesUsuario } from '../components/DetalhesUsuario';
@@ -118,10 +118,10 @@ export function FinanceiroModule() {
       {/* Quem administra: o filme inteiro. */}
       {abaAtiva === 'visao' && administra && (
         <>
-          <DashboardFinanceiro projetoId={id} />
+          <DashboardFinanceiro projetoId={id} aoDefinirOrcamento={() => setAbaAtiva('ajustes')} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <GastoPorArea projetoId={id} />
-            <MetasPorCategoria projetoId={id} aoDefinir={() => setAbaAtiva('ajustes')} />
+            <GastoPorTipo projetoId={id} aoDefinir={() => setAbaAtiva('ajustes')} />
           </div>
         </>
       )}

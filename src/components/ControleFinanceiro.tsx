@@ -83,7 +83,7 @@ export function ControleFinanceiro({ projetoId }: { projetoId: string }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
             <div>
-              <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Orçamento Máximo (R$)</label>
+              <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Orçamento do filme (R$)</label>
               <input 
                 type="number" 
                 value={form.limite_gasto ?? ''} 
