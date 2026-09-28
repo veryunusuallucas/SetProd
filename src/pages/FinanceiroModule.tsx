@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { converterSaldoInicial } from '../lib/saldoInicial';
 import { useMinhaFuncao } from '../hooks/useMinhaFuncao';
 import { PainelDoDepartamento } from '../components/PainelDoDepartamento';
 import { AreaProtegida, ModoLeitura, PedirAcesso } from '../components/ui/Acesso';
@@ -9,20 +10,26 @@ import { useParams } from 'react-router-dom';
 import { DespesasList } from '../components/DespesasList';
 import { ResumoList } from '../components/ResumoList';
 import { DashboardFinanceiro } from '../components/DashboardFinanceiro';
-import { EntradasList } from '../components/EntradasList';
 import { ControleFinanceiro } from '../components/ControleFinanceiro';
-import { MovimentoList } from '../components/MovimentoList';
 import { GastoPorArea } from '../components/GastoPorArea';
 import { MetasPorCategoria } from '../components/MetasPorCategoria';
-import { LayoutDashboard, HandCoins, List, Settings, ArrowDownToLine, ArrowUpToLine, Users } from 'lucide-react';
+import { LayoutDashboard, HandCoins, List, Settings, Users } from 'lucide-react';
 import { useLayoutContext } from './ProjectLayout';
 import { DetalhesUsuario } from '../components/DetalhesUsuario';
 
-type AbaFinanceiro = 'visao' | 'movimento' | 'controle' | 'entradas' | 'saidas' | 'distribuicao';
+/*
+  AS ABAS PELA PERGUNTA DE QUEM ABRE (leva 4, passo 3 — decisão B do Lucas,
+  27/09/2026). Eram seis: Dashboard, Extrato, Controle, Entradas, Saídas e
+  Acertos — um registro por aba, e o mesmo dinheiro em três delas.
+
+  Quem administra: Visão · Lançamentos · Acertos · Ajustes.
+  Quem é da equipe: Minha área · Meu acerto.
+*/
+type AbaFinanceiro = 'visao' | 'lancamentos' | 'acertos' | 'ajustes' | 'minha_area';
 
 export function FinanceiroModule() {
   const { id } = useParams<{ id: string }>();
-  const [abaAtiva, setAbaAtiva] = useState<AbaFinanceiro>('visao');
+  const [abaEscolhida, setAbaAtiva] = useState<AbaFinanceiro | null>(null);
   const { openPanel, closePanel } = useLayoutContext();
   /*
     Quem não administra VÊ o financeiro inteiro — ler é global — mas não lança.
@@ -45,7 +52,6 @@ export function FinanceiroModule() {
   const { departamento: meuDepartamento, perfil: minhaFicha } = useMinhaFuncao();
   const minhaFichaId = minhaFicha?.id;
   const recorte = administra ? undefined : meuDepartamento?.id;
-  const soMinhaArea = Boolean(recorte);
   /*
     SEM DEPARTAMENTO, SEM O CAIXA DO FILME (decisão do Lucas, 27/09/2026).
 
@@ -61,6 +67,27 @@ export function FinanceiroModule() {
   */
   const semArea = !administra && !meuDepartamento;
 
+  const abas: { id: AbaFinanceiro; nome: string; icone: React.ReactNode }[] = administra
+    ? [
+        { id: 'visao', nome: 'Visão', icone: <LayoutDashboard size={18} /> },
+        { id: 'lancamentos', nome: 'Lançamentos', icone: <List size={18} /> },
+        { id: 'acertos', nome: 'Acertos', icone: <HandCoins size={18} /> },
+        { id: 'ajustes', nome: 'Ajustes', icone: <Settings size={18} /> },
+      ]
+    : [
+        { id: 'minha_area', nome: 'Minha área', icone: <LayoutDashboard size={18} /> },
+        { id: 'acertos', nome: 'Meu acerto', icone: <HandCoins size={18} /> },
+      ];
+  // O papel chega depois do primeiro desenho (vem do servidor): a aba escolhida
+  // só vale se existir para o papel de agora — senão, a primeira.
+  const abaAtiva: AbaFinanceiro = abaEscolhida && abas.some(a => a.id === abaEscolhida) ? abaEscolhida : abas[0].id;
+
+  // Decisão C: o saldo inicial antigo vira uma entrada. Só quem administra
+  // escreve dinheiro — e a conversão é idempotente (ver saldoInicial.ts).
+  useEffect(() => {
+    if (administra && id) converterSaldoInicial(id).catch(() => { /* fica para a próxima abertura */ });
+  }, [administra, id]);
+
   if (!id) return <div>ID do projeto não encontrado.</div>;
 
   return (
@@ -73,92 +100,62 @@ export function FinanceiroModule() {
     <ModoLeitura tabela="despesas" complemento="Aqui você acompanha." faixa={false}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* Sub Navbar Financeiro */}
       <div className="tab-strip" style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', padding: '4px', borderRadius: 'var(--radius-md)', gap: '4px' }}>
-        <button 
-          onClick={() => setAbaAtiva('visao')}
-          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'visao' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'visao' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <LayoutDashboard size={18} /> <span style={{ fontSize: '12px' }}>Dashboard</span>
-        </button>
-        {!semArea && <button 
-          onClick={() => setAbaAtiva('movimento')}
-          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'movimento' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'movimento' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <List size={18} /> <span style={{ fontSize: '12px' }}>Extrato</span>
-        </button>}
-        {administra && <button 
-          onClick={() => setAbaAtiva('controle')}
-          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'controle' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'controle' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <Settings size={18} /> <span style={{ fontSize: '12px' }}>Controle</span>
-        </button>}
-        {administra && <button 
-          onClick={() => setAbaAtiva('entradas')}
-          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'entradas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'entradas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <ArrowDownToLine size={18} /> <span style={{ fontSize: '12px' }}>Entradas</span>
-        </button>}
-        {!semArea && <button 
-          onClick={() => setAbaAtiva('saidas')}
-          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'saidas' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'saidas' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <ArrowUpToLine size={18} /> <span style={{ fontSize: '12px' }}>Saídas</span>
-        </button>}
-        <button 
-          onClick={() => setAbaAtiva('distribuicao')}
-          style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === 'distribuicao' ? 'var(--bg-active)' : 'transparent', color: abaAtiva === 'distribuicao' ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <HandCoins size={18} /> <span style={{ fontSize: '12px' }}>Acertos</span>
-        </button>
+        {abas.map(a => (
+          <button
+            key={a.id}
+            onClick={() => setAbaAtiva(a.id)}
+            aria-pressed={abaAtiva === a.id}
+            style={{ flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: abaAtiva === a.id ? 'var(--bg-active)' : 'transparent', color: abaAtiva === a.id ? 'var(--text-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold' }}
+          >
+            {a.icone} <span style={{ fontSize: '12px' }}>{a.nome}</span>
+          </button>
+        ))}
       </div>
 
       {!administra && <SoQuemPode motivo={`Somente leitura. ${motivo('despesas')} Aqui você acompanha.`} />}
 
-      {/* Conteúdo Dinâmico */}
-      {abaAtiva === 'visao' && (
+      {/* Quem administra: o filme inteiro. */}
+      {abaAtiva === 'visao' && administra && (
         <>
-          {semArea ? (
-            <div className="card">
-              <Vazio
-                icone={<Users size={28} />}
-                titulo="Você ainda não está num departamento"
-                paraQuemAcompanha
-                ajuda="O caixa do filme fica com quem administra. Quando sua ficha tiver um departamento, aqui aparece quanto a sua área tem, já gastou e ainda pode gastar — e quem coloca você num departamento é quem administra a produção."
-                acao={
-                  <PedirAcesso
-                    projetoId={id}
-                    area="Financeiro"
-                    pedido="pediu para ser colocado num departamento (é na ficha, em Equipe) — sem isso, o Financeiro não mostra a área dele."
-                    rotulo="Pedir um departamento"
-                  />
-                }
-              />
-            </div>
-          ) : soMinhaArea
-            ? <PainelDoDepartamento projetoId={id} departamento={meuDepartamento!} />
-            : <DashboardFinanceiro projetoId={id} />}
-          {/* "Quanto cada área gastou" é a segunda pergunta de qualquer reunião,
-              depois de "quanto gastamos" — e é pergunta de quem administra. Para
-              quem é de uma área, o painel acima já respondeu a dela. */}
-          {/*
-            `administra`, e não `!soMinhaArea`: quem não administra e ainda não
-            tem departamento também não é "da minha área", e via estes quadros
-            do caixa do filme. A regra da v4.15 é "o caixa é de quem administra".
-          */}
-          {administra && (
-            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <GastoPorArea projetoId={id} />
-              <MetasPorCategoria projetoId={id} aoDefinir={() => setAbaAtiva('controle')} />
-            </div>
-          )}
+          <DashboardFinanceiro projetoId={id} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <GastoPorArea projetoId={id} />
+            <MetasPorCategoria projetoId={id} aoDefinir={() => setAbaAtiva('ajustes')} />
+          </div>
         </>
       )}
-      {abaAtiva === 'movimento' && !semArea && <MovimentoList projetoId={id} soDoDepartamento={recorte} />}
-      {abaAtiva === 'controle' && administra && <ControleFinanceiro projetoId={id} />}
-      {abaAtiva === 'entradas' && administra && <EntradasList projetoId={id} />}
-      {abaAtiva === 'saidas' && !semArea && <DespesasList projetoId={id} soDoDepartamento={recorte} />}
-      {abaAtiva === 'distribuicao' && (
+      {abaAtiva === 'lancamentos' && administra && <DespesasList projetoId={id} comEntradas />}
+      {abaAtiva === 'ajustes' && administra && <ControleFinanceiro projetoId={id} />}
+
+      {/* Quem é da equipe: a própria área — ou o aviso de que ainda não tem uma. */}
+      {abaAtiva === 'minha_area' && !administra && (
+        semArea ? (
+          <div className="card">
+            <Vazio
+              icone={<Users size={28} />}
+              titulo="Você ainda não está num departamento"
+              paraQuemAcompanha
+              ajuda="O caixa do filme fica com quem administra. Quando sua ficha tiver um departamento, aqui aparece quanto a sua área tem, já gastou e ainda pode gastar — e quem coloca você num departamento é quem administra a produção."
+              acao={
+                <PedirAcesso
+                  projetoId={id}
+                  area="Financeiro"
+                  pedido="pediu para ser colocado num departamento (é na ficha, em Equipe) — sem isso, o Financeiro não mostra a área dele."
+                  rotulo="Pedir um departamento"
+                />
+              }
+            />
+          </div>
+        ) : (
+          <>
+            <PainelDoDepartamento projetoId={id} departamento={meuDepartamento!} />
+            <DespesasList projetoId={id} soDoDepartamento={recorte} />
+          </>
+        )
+      )}
+
+      {abaAtiva === 'acertos' && (
         <ResumoList 
           projetoId={id} 
           // Quem não administra vê só o PRÓPRIO acerto — com ou sem
