@@ -9,6 +9,7 @@ import {
   Camera, HardDrive, FileInput, Target, Image, Save,
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
   CloudCheck, SquareRoundCorner, Upload, AppWindow,
+  Flag, Wallet, ArrowDownUp, ArrowDownAZ,
 } from 'lucide-react';
 
 /**
@@ -226,6 +227,88 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '4.17.0',
+    resumo: <>O Financeiro foi reorganizado pela pergunta de quem abre, o orçamento do filme apareceu, e a equipe entrou em ordem — sem que um crédito tire mais ninguém do departamento.</>,
+    grupos: [
+      {
+        id: 'financeiro',
+        titulo: 'O Financeiro, arrumado',
+        resumo: 'Cada aba responde uma pergunta, e o mesmo dinheiro não aparece em três lugares.',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <LayoutGrid size={20} />,
+            titulo: 'Menos abas',
+            texto: 'Eram seis. Quem administra agora tem Visão · Lançamentos · Acertos · Ajustes. Quem é da equipe tem Minha área (o painel e as despesas do seu departamento) e Meu acerto.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Flag size={20} />,
+            titulo: 'O orçamento do filme na Visão',
+            texto: 'O orçamento se definia na configuração e não aparecia em lugar nenhum. Agora está no topo da Visão, com barra: quanto já foi, quanto falta, e em vermelho quando passa. As contas passaram a ser feitas em centavos.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Target size={20} />,
+            titulo: 'Metas por tipo de gasto',
+            texto: 'Quem administra define quanto pretende gastar em alimentação, transporte, moradia (na aba Ajustes) e acompanha no quadro "Por tipo de gasto", que substituiu o gráfico de pizza: o valor escrito em cada linha, quanto falta e quando passou. Só quem administra vê. A ideia chegou pelo botão de relatar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Wallet size={20} />,
+            titulo: 'Lançar despesa ficou mais simples',
+            texto: 'O formulário abre numa janela, na ordem certa: o quê e quanto → quem pagou (três opções que já dizem o que acontece no acerto) → de qual departamento é → tipo de gasto → mais detalhes. Os tipos que repetiam nome de departamento (Arte, Som, Figurino…) saíram da lista; as despesas antigas continuam como estavam.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ArrowDownUp size={20} />,
+            titulo: 'Saídas e entradas numa lista só',
+            texto: 'Em Lançamentos, tudo em ordem de data, com filtros (saídas ou entradas, departamento, diária) e a soma do que está na tela. Entrada agora se registra e se edita numa janela, com data — e o antigo "saldo inicial" virou uma entrada como as outras.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <AlertTriangle size={20} />,
+            titulo: 'A despesa do departamento aparece no painel dele',
+            texto: 'O formulário tinha dois campos de departamento que podiam discordar, e para quem administra ele já vinha marcado com o próprio departamento. Uma despesa de Som ia parar em outro lugar. Agora é um campo só, que começa vazio, e o app inteiro lê a área do mesmo jeito.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Lock size={20} />,
+            titulo: 'Sem departamento, sem o caixa do filme',
+            texto: 'Quem não administra e ainda não tinha departamento na ficha via o Financeiro inteiro — saldo, entradas e o acerto de cada um. Agora vê só o próprio acerto, e um botão "Pedir um departamento" que chega a quem administra.',
+          },
+        ],
+      },
+      {
+        id: 'equipe',
+        titulo: 'A equipe',
+        resumo: '',
+        cor: '#60a5fa',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <IdCard size={20} />,
+            titulo: 'O crédito não tira mais ninguém do departamento',
+            texto: 'Pôr alguém nos créditos de outra função mudava o departamento da ficha: a diretora que também faz a trilha ia parar na Pós. Agora o crédito só preenche a ficha de quem ainda não tem departamento, e as outras funções aparecem no cartão e na ficha da pessoa.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ArrowDownAZ size={20} />,
+            titulo: 'A equipe em ordem',
+            texto: 'Em ordem alfabética, ou por departamento — na ordem da ficha técnica (Direção, Produção, Roteiro…), com o chefe antes dos assistentes. Quem tem mais de uma função aparece nessa mesma ordem: "Diretora · Montadora". O aparelho lembra a escolha.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Bell size={20} />,
+            titulo: 'Avisos de acesso chegam sozinhos',
+            texto: 'Quando quem administra confirma sua ficha ou muda seu papel, o aviso aparece em até meio minuto — não precisa mais apertar F5.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '4.16.0',
     resumo: <>Os cadastros da equipe ficaram só com quem administra, as janelas passaram a se comportar do mesmo jeito em todo o app, e a importação por planilha parou de trocar campos.</>,
