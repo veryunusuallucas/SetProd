@@ -292,7 +292,7 @@ export async function salvarCredito(params: {
     gravar (`escopo.sql`). Isso não pode mudar como efeito colateral de um
     crédito. Mudar o departamento é na ficha, de propósito.
 
-    As outras funções aparecem na equipe e na ficha por `outrasFuncoes`.
+    As outras funções aparecem na equipe e na ficha por `funcoesPorHierarquia`.
   */
   if (sincronizarPerfil && perfilId) {
     const perfil = await db.perfis.get(perfilId);
@@ -305,28 +305,58 @@ export async function salvarCredito(params: {
   }
 }
 
+/*
+  A HIERARQUIA DOS CRÉDITOS (pedido do Lucas, 30/09/2026)
+
+  A ficha técnica tem uma ordem que o set inteiro conhece: Direção antes de
+  Produção, Produção antes de Roteiro... e, dentro de cada departamento, o
+  chefe antes dos assistentes. É a ordem do catálogo acima. A equipe segue a
+  mesma: quem é diretora e montadora aparece "Diretora · Montadora", ainda que
+  a ficha diga Montadora — a ficha decide o acesso, a hierarquia decide a ordem.
+*/
+
+/** Posição do departamento na ficha técnica. Fora do catálogo, no fim. */
+export function ordemDoDepartamento(departamento?: Pick<Departamento, 'nome'>): number {
+  if (!departamento) return 9999;
+  const i = DEPARTAMENTOS_PADRAO.findIndex(d => normalizar(d.nome) === normalizar(departamento.nome));
+  return i === -1 ? 999 : i;
+}
+
 /**
- * As funções que a pessoa tem nos créditos ALÉM da da ficha.
- *
- * "Diretora" na ficha e "Trilha Sonora" nos créditos → `[{ papel: 'Trilha
- * Sonora', departamentoId }]`. O crédito igual à ficha (mesma função no mesmo
- * departamento) não conta: já está dito.
+ * Posição de uma função na ficha técnica: o departamento primeiro, a função
+ * dentro dele depois. Função fora do catálogo vem depois das do catálogo.
  */
-export function outrasFuncoes(
+export function ordemDaFuncao(departamento: Pick<Departamento, 'nome'> | undefined, papel: string): number {
+  const catalogo = departamento && DEPARTAMENTOS_PADRAO.find(d => normalizar(d.nome) === normalizar(departamento.nome));
+  const i = catalogo ? catalogo.funcoes.findIndex(f => normalizar(f) === normalizar(papel)) : -1;
+  return ordemDoDepartamento(departamento) * 1000 + (i === -1 ? 500 : i);
+}
+
+/**
+ * Todas as funções da pessoa — a da ficha e as dos créditos —, na ordem da
+ * ficha técnica e sem repetir. Funções iguais em departamentos diferentes
+ * contam uma vez só para a tela, que mostra o nome da função.
+ */
+export function funcoesPorHierarquia(
   perfil: Pick<Perfil, 'id' | 'funcao' | 'departamento_id'>,
   creditos: Credito[] = [],
-): { papel: string; departamentoId?: string }[] {
+  departamentos: Departamento[] = [],
+): { papel: string; departamentoId?: string; daFicha: boolean }[] {
+  const deptoPorId = new Map(departamentos.map(d => [d.id, d]));
+  const todas: { papel: string; departamentoId?: string; daFicha: boolean; pos: number }[] = [];
   const vistas = new Set<string>();
-  const saida: { papel: string; departamentoId?: string }[] = [];
-  for (const c of creditos) {
-    if (c.perfil_id !== perfil.id) continue;
-    const mesmaDaFicha = c.departamento_id === perfil.departamento_id && normalizar(c.papel) === normalizar(perfil.funcao || '');
-    const chave = `${c.departamento_id}::${normalizar(c.papel)}`;
-    if (mesmaDaFicha || vistas.has(chave)) continue;
+  const junta = (papel: string, departamentoId: string | undefined, daFicha: boolean, desempate: number) => {
+    const chave = `${departamentoId || ''}::${normalizar(papel)}`;
+    if (!papel.trim() || vistas.has(chave)) return;
     vistas.add(chave);
-    saida.push({ papel: c.papel, departamentoId: c.departamento_id });
+    todas.push({ papel, departamentoId, daFicha, pos: ordemDaFuncao(deptoPorId.get(departamentoId || ''), papel) + desempate });
+  };
+
+  if (perfil.funcao) junta(perfil.funcao, perfil.departamento_id, true, 0);
+  for (const c of creditos) {
+    if (c.perfil_id === perfil.id) junta(c.papel, c.departamento_id, false, (c.ordem ?? 0) / 100000);
   }
-  return saida;
+  return todas.sort((a, b) => a.pos - b.pos).map(f => ({ papel: f.papel, departamentoId: f.departamentoId, daFicha: f.daFicha }));
 }
 
 /** Remove um crédito (não mexe no cadastro do membro). */

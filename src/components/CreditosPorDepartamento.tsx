@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Plus, Trash2, Link2, Users, LayoutGrid, Wand2, UserPlus, IdCard } from 'lucide-react';
-import type { Projeto, Departamento, Credito } from '../types';
+import type { Projeto, Credito } from '../types';
 import {
   DEPARTAMENTOS_PADRAO,
   criarDepartamentosPadrao,
@@ -13,6 +13,7 @@ import {
   sugestoesPelaFicha,
   proximaVariante,
   normalizar,
+  ordemDoDepartamento,
 } from '../lib/creditos';
 import { CampoTexto } from './ui/CampoTexto';
 
@@ -63,11 +64,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
   const creditos = projeto.creditos || [];
 
   // Departamentos na ordem do catálogo; os criados pelo usuário vão para o fim.
-  const ordemCatalogo = (d: Departamento) => {
-    const i = DEPARTAMENTOS_PADRAO.findIndex(x => normalizar(x.nome) === normalizar(d.nome));
-    return i === -1 ? 999 : i;
-  };
-  const ordenados = [...departamentos].sort((a, b) => ordemCatalogo(a) - ordemCatalogo(b) || a.nome.localeCompare(b.nome));
+  const ordenados = [...departamentos].sort((a, b) => ordemDoDepartamento(a) - ordemDoDepartamento(b) || a.nome.localeCompare(b.nome));
 
   const faltamPadrao = DEPARTAMENTOS_PADRAO.some(
     p => !departamentos.some(d => normalizar(d.nome) === normalizar(p.nome))
