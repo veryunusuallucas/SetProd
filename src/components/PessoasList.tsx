@@ -23,7 +23,7 @@ import { confirmar } from './ui/Confirmacao';
 import { CampoData } from './ui/CampoData';
 import { CampoFuncao } from './ui/CampoFuncao';
 import { Janela } from './ui/Janela';
-import { outrasFuncoes } from '../lib/creditos';
+import { funcoesPorHierarquia, ordemDaFuncao, ordemDoDepartamento } from '../lib/creditos';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -401,21 +401,38 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const nomeCompleto = (p: { nome: string; sobrenome?: string }) => `${p.nome} ${p.sobrenome || ''}`.trim();
   const porNome = (a: { nome: string; sobrenome?: string }, b: { nome: string; sobrenome?: string }) =>
     nomeCompleto(a).localeCompare(nomeCompleto(b), 'pt-BR', { sensitivity: 'base' });
+  const deptoDe = (id?: string) => departamentos?.find(d => d.id === id);
+  /*
+    "Por departamento" segue a HIERARQUIA DOS CRÉDITOS (pedido do Lucas,
+    30/09/2026): os departamentos na ordem da ficha técnica — Direção, Produção,
+    Roteiro... — e, dentro de cada um, o chefe antes dos assistentes. Quem não
+    tem departamento vai para o fim, e não para o começo por ser "vazio".
+  */
   const equipeOrdenada = (perfis || []).filter(naEquipe).sort((a, b) => {
     if (ordem === 'departamento') {
-      // Sem departamento vai para o fim, e não para o começo por ser "vazio".
-      const da = a.departamento_id ? getDeptoNome(a.departamento_id) : '\uffff';
-      const db_ = b.departamento_id ? getDeptoNome(b.departamento_id) : '\uffff';
-      const porDepto = da.localeCompare(db_, 'pt-BR', { sensitivity: 'base' });
+      const porDepto = ordemDoDepartamento(deptoDe(a.departamento_id)) - ordemDoDepartamento(deptoDe(b.departamento_id))
+        || getDeptoNome(a.departamento_id).localeCompare(getDeptoNome(b.departamento_id), 'pt-BR', { sensitivity: 'base' });
       if (porDepto !== 0) return porDepto;
+      const porFuncao = ordemDaFuncao(deptoDe(a.departamento_id), a.funcao || '') - ordemDaFuncao(deptoDe(b.departamento_id), b.funcao || '');
+      if (porFuncao !== 0) return porFuncao;
     }
     return porNome(a, b);
   });
 
-  /** "Trilha Sonora (Som)" — as funções dos créditos além da da ficha. */
-  const outrasDe = (p: Parameters<typeof outrasFuncoes>[0]) =>
-    outrasFuncoes(p, projeto?.creditos).map(f =>
-      f.departamentoId && f.departamentoId !== p.departamento_id ? `${f.papel} (${getDeptoNome(f.departamentoId)})` : f.papel);
+  /**
+   * As funções da pessoa na ordem da ficha técnica: "Diretora · Montadora",
+   * mesmo que a ficha diga Montadora. A função de outro departamento leva o
+   * nome dele entre parênteses — "Trilha Sonora (Pós-produção)".
+   */
+  const funcoesDe = (p: Perfil) => {
+    const todas = funcoesPorHierarquia(p, projeto?.creditos, departamentos);
+    const rotulo = (f: (typeof todas)[number]) =>
+      f.departamentoId && f.departamentoId !== p.departamento_id ? `${f.papel} (${getDeptoNome(f.departamentoId)})` : f.papel;
+    return {
+      todas: todas.length > 0 ? todas.map(rotulo) : ['Membro'],
+      outras: todas.filter(f => !f.daFicha).map(rotulo),
+    };
+  };
 
   /**
    * Publica a ficha antes de copiar: o link é inútil se quem abrir receber
@@ -712,7 +729,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                         perfil={p}
                         projeto={projeto!}
                         departamentoNome={getDeptoNome(p.departamento_id)}
-                        outrasFuncoes={outrasDe(p)}
+                        outrasFuncoes={funcoesDe(p).outras}
                         canEdit={podeEscrever('perfis', p)}
                         verRestrito={podeVerCamada('restrita', { papel: role, meuPerfilId, perfilId: p.id })}
                         verMedico={podeVerCamada('medica', { papel: role, meuPerfilId, perfilId: p.id })}
@@ -744,9 +761,9 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                 <div style={{ opacity: bulkMode && !selectedIds.has(p.id) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
                   <ProfileCard
                     name={`${p.nome} ${p.sobrenome || ''}`}
-                    // "Diretora · Trilha Sonora (Som)": a função da ficha e as
-                    // outras que a pessoa tem nos créditos.
-                    title={[p.funcao || 'Membro', ...outrasDe(p)].join(' · ')}
+                    // "Diretora · Montadora": todas as funções da pessoa, na
+                    // ordem da ficha técnica (lib/creditos, funcoesPorHierarquia).
+                    title={funcoesDe(p).todas.join(' · ')}
                     status={getDeptoNome(p.departamento_id)}
                     handle={p.nome_social || p.nome.toLowerCase()}
                     avatarUrl={`https://ui-avatars.com/api/?name=${p.nome}+${p.sobrenome || ''}&background=random`}
