@@ -21,6 +21,7 @@ import { diagramarRelatorio } from '../lib/gemini';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import { confirmar } from '../components/ui/Confirmacao';
 import { MOMENTOS } from '../lib/gifs';
+import { GifDoMomento } from '../components/ui/GifDoMomento';
 
 type Grupo = (typeof CONJUNTOS)[number]['grupo'];
 const ORDEM_GRUPOS: Grupo[] = ['Produção', 'Financeiro', 'Set', 'Criativo', 'Logística'];
@@ -457,6 +458,8 @@ export function GestaoDados() {
                 Esta produção já existe aqui. Substituir apaga o estado atual e coloca o do backup —
                 e, como o conteúdo restaurado é mais recente, ele vence e chega na outra equipe.
               </p>
+              {/* Substituir a produção inteira não tem volta (lib/gifs, MOMENTOS). */}
+              <div style={{ marginBottom: '10px' }}><GifDoMomento humor={MOMENTOS.semVolta} altura={120} /></div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => restaurar(arquivoParaRestaurar, true)}

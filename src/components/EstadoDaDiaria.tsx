@@ -6,6 +6,8 @@ import {
   estadoDa, travarDiaria, despublicarDiaria, ROTULO_ESTADO, type EstadoDiaria,
 } from '../lib/sincronizaOD';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
+import { GifDoMomento } from './ui/GifDoMomento';
+import { MOMENTOS } from '../lib/gifs';
 
 /**
  * Em que ponto do ciclo a diária está, e como sair dele.
@@ -147,6 +149,8 @@ export function EstadoDaDiaria({ diaria, podeMexer }: { diaria: Diaria; podeMexe
                 <b>Depois de corrigir, exporte de novo</b>: a nova sai marcada v
                 {(diaria.versao_od || 1) + 1}, e aí sim avise a equipe.
               </div>
+              {/* "Tem certeza?" de verdade: o papel já pode estar com a equipe. */}
+              <div style={{ marginTop: '10px' }}><GifDoMomento humor={MOMENTOS.pergunta} altura={120} /></div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
                 <button onClick={confirmarVolta} className="btn-primary text-xs" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--color-danger)', border: 'none', color: '#fff' }}>
                   <Undo2 size={13} /> Voltar para rascunho mesmo assim

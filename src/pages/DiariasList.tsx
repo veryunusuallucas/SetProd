@@ -19,6 +19,8 @@ import { paraData, dataCurta } from '../lib/formato';
 import { PlanoDaSemana } from '../components/PlanoDaSemana';
 import { Janela } from '../components/ui/Janela';
 import { PadraoDaOD } from '../components/PadraoDaOD';
+import { GifDoMomento } from '../components/ui/GifDoMomento';
+import { MOMENTOS } from '../lib/gifs';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -635,6 +637,9 @@ export function DiariasList() {
                   são apagados</b> — eles só deixam de estar ligados a esta diária e
                   continuam no financeiro do projeto.
                 </div>
+                {/* Apagar uma diária some com a OD e as marcações: é das sérias — o
+                    mesmo gif de "sem volta" de apagar uma produção (Lucas, 03/10/2026). */}
+                <GifDoMomento humor={MOMENTOS.semVolta} altura={130} />
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => setConfirmandoExclusao(false)} className="btn-secondary" style={{ flex: 1, backgroundColor: 'var(--bg-surface)' }}>
                     Não apagar
