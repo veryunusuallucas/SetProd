@@ -39,6 +39,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const [showTermos, setShowTermos] = useState(false);
   const mensagensDivertidas = usePreferencia('mensagensDivertidas');
   const wrapFestivo = usePreferencia('wrapFestivo');
+  const gifsLigados = usePreferencia('gifs');
 
   // Edição dos dados do projeto (movidos da aba Créditos)
   const [editandoProjeto, setEditandoProjeto] = useState(false);
@@ -176,6 +177,12 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
           ajuda="Fogos, frase e gif no fim da diária. Desligado, o wrap mostra só os números do dia."
           ligado={wrapFestivo}
           aoMudar={v => mudarPreferencia('wrapFestivo', v)}
+        />
+        <Interruptor
+          titulo="Gifs pelo app"
+          ajuda="Um gif triste quando você vai apagar algo, um feliz quando o acerto de alguém zera."
+          ligado={gifsLigados}
+          aoMudar={v => mudarPreferencia('gifs', v)}
         />
       </div>
 

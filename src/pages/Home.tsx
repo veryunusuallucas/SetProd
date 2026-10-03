@@ -31,6 +31,7 @@ import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../compon
 import { LogOut } from 'lucide-react';
 import { rotuloCurto } from '../lib/versao';
 import { BotaoDoTema } from '../components/BotaoDoTema';
+import { GifDoMomento } from '../components/ui/GifDoMomento';
 
 /**
  * Como cada um é recebido na porta.
@@ -570,10 +571,17 @@ export function Home() {
       {projetoParaDeletar && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
           <div className="card" style={{ width: '100%', maxWidth: '360px', borderColor: 'var(--color-danger)', backgroundColor: 'var(--bg-primary)' }}>
+            {/* O gif triste no lugar do ícone; sem gif, o ícone volta. */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Trash2 size={26} className="text-danger" />
-              </div>
+              <GifDoMomento
+                humor="triste"
+                altura={130}
+                reserva={
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Trash2 size={26} className="text-danger" />
+                  </div>
+                }
+              />
             </div>
             <h3 className="text-lg font-bold" style={{ textAlign: 'center', marginBottom: '8px' }}>Mandar "{projetoParaDeletar.nome}" para a lixeira?</h3>
             <p className="text-sm text-secondary" style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -651,10 +659,17 @@ export function Home() {
       {projetoParaDestruir && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
           <div className="card" style={{ width: '100%', maxWidth: '400px', borderColor: 'var(--color-danger)', backgroundColor: 'var(--bg-primary)' }}>
+            {/* O gif triste no lugar do ícone; sem gif, o ícone volta. */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <AlertTriangle size={26} className="text-danger" />
-              </div>
+              <GifDoMomento
+                humor="triste"
+                altura={130}
+                reserva={
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AlertTriangle size={26} className="text-danger" />
+                  </div>
+                }
+              />
             </div>
 
             {posso ? (

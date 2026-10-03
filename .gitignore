@@ -31,3 +31,6 @@ dist-ssr
 # Custom Ignored Folders
 .md/
 .claude/
+
+# Gifs originais (pesados). No app vão as versões leves de src/conteudo/gifs/.
+gifs-originais/

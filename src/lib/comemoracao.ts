@@ -25,7 +25,7 @@ import { oitavosParaPaginas } from './decupagem';
   ⚠️ AS FRASES E OS GIFS NÃO MORAM NO BANCO. Moram em arquivos do repositório:
 
       src/conteudo/wrap/frases.md     uma frase por linha
-      src/conteudo/wrap/gifs/         jogue os arquivos aqui
+      src/conteudo/gifs/feliz/        os gifs (ver lib/gifs.ts)
 
   Foi um pedido, e é melhor mesmo: escrever vinte frases num formulário do app,
   uma caixinha por vez, é trabalho; num arquivo de texto é escrever. E arrastar
@@ -39,35 +39,15 @@ import { oitavosParaPaginas } from './decupagem';
 */
 
 import textoDasFrases from '../conteudo/wrap/frases.md?raw';
+import { GIFS, type Midia } from './gifs';
 
-/**
- * Os arquivos da pasta, resolvidos na build.
- *
- * `import.meta.glob` é o que permite uma PASTA funcionar como lista: o Vite
- * varre o diretório ao montar e transforma cada arquivo num endereço com hash,
- * que o service worker guarda para o modo offline. Não há como listar um
- * diretório pelo HTTP em tempo de execução — é por isso que a leitura é na
- * build, e é por isso que só aparece depois do push.
- */
-const ARQUIVOS = import.meta.glob(
-  '../conteudo/wrap/gifs/*.{gif,GIF,webp,WEBP,png,PNG,jpg,JPG,jpeg,JPEG,mp4,MP4}',
-  { eager: true, query: '?url', import: 'default' }
-) as Record<string, string>;
-
-export interface MidiaDoWrap {
-  url: string;
-  /**
-   * É vídeo, e vai num `<video>` mudo em laço em vez de num `<img>`.
-   *
-   * Existe porque um mp4 de três segundos pesa cerca de um décimo do mesmo
-   * trecho em gif — e o que está na pasta viaja no pacote de todo mundo.
-   */
-  video: boolean;
-}
-
-export const MIDIAS_WRAP: MidiaDoWrap[] = Object.keys(ARQUIVOS)
-  .sort()
-  .map(caminho => ({ url: ARQUIVOS[caminho], video: /\.mp4$/i.test(caminho) }));
+/*
+  Os gifs do wrap são os da pasta FELIZ da coleção do app (`lib/gifs.ts`,
+  `src/conteudo/gifs/feliz/`). Eram uma pasta só do wrap até 02/10/2026,
+  quando os gifs passaram a aparecer em outras partes do app, por humor.
+*/
+export type MidiaDoWrap = Midia;
+export const MIDIAS_WRAP: MidiaDoWrap[] = GIFS.feliz || [];
 
 /**
  * Lê o `.md` como duas listas.

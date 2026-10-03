@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
+import { GifDoMomento } from './GifDoMomento';
 
 /**
  * A pergunta de "tem certeza?", feita pelo app e não pelo navegador.
@@ -144,6 +145,10 @@ export function Confirmacoes() {
                 )}
               </div>
             </div>
+
+            {/* Pergunta de perigo (apagar, desfazer) ganha um gif triste — pedido do
+                Lucas, 02/10/2026. Some sozinho se a pessoa desligou os gifs. */}
+            {pedido.perigo && <GifDoMomento humor="triste" altura={130} />}
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => responder(false)} className="btn-secondary" style={{ flex: 1 }}>

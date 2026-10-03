@@ -19,9 +19,11 @@ export interface Preferencias {
   mensagensDivertidas: boolean;
   /** Fogos, frase e gif no wrap. Desligado, o wrap mostra só os números. */
   wrapFestivo: boolean;
+  /** Gifs pelo app: o choro ao apagar, a festa ao concluir (lib/gifs.ts). */
+  gifs: boolean;
 }
 
-const PADRAO: Preferencias = { tema: 'escuro', mensagensDivertidas: true, wrapFestivo: true };
+const PADRAO: Preferencias = { tema: 'escuro', mensagensDivertidas: true, wrapFestivo: true, gifs: true };
 const CHAVE = 'setprod:preferencias';
 
 function ler(): Preferencias {

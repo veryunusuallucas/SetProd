@@ -9,6 +9,7 @@ import type { StatusAcerto, ModoAcerto } from '../types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, Check, Copy, ArrowRight, RotateCcw } from 'lucide-react';
 import { MODELO_COBRANCA_PADRAO, MODELO_REPASSE_PADRAO, preencherMensagem } from '../lib/mensagensDeAcerto';
+import { GifDoMomento } from './ui/GifDoMomento';
 
 type Origem = 'producao' | 'acertos';
 
@@ -322,7 +323,10 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
           )}
 
           {minhatransacoes.length === 0 && detalhe.linhas.length === 0 ? (
-            <div className="text-muted" style={{ textAlign: 'center', padding: '24px' }}>Nenhuma pendência — tudo quite.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', padding: '24px' }}>
+              <GifDoMomento humor="feliz" altura={110} />
+              <div className="text-muted" style={{ textAlign: 'center' }}>Nenhuma pendência — tudo quite.</div>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Resumo do saldo líquido / transação a acertar */}
