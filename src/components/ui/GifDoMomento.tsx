@@ -16,7 +16,8 @@ import { useMovimentoReduzido } from './ia';
  * debaixo dos olhos de quem está lendo.
  */
 export function GifDoMomento({ humor, altura = 140, reserva = null }: {
-  humor: Humor;
+  /** Um humor, ou uma lista em ordem de preferência (["medo", "triste"]). */
+  humor: Humor | Humor[];
   altura?: number;
   /** O que aparece quando não há gif (desligado, movimento reduzido, pasta vazia). */
   reserva?: React.ReactNode;

@@ -6,7 +6,9 @@
  *
  *     src/conteudo/gifs/feliz/    o wrap, as comemorações
  *     src/conteudo/gifs/triste/   apagar, desfazer, o que dá pena
- *     src/conteudo/gifs/duvida/   "tem certeza?" — as outras confirmações
+ *     src/conteudo/gifs/duvida/   "tem certeza?", "você leu?" — as perguntas comuns
+ *     src/conteudo/gifs/medo/     o que não tem volta (apagar de vez, arquivar tudo)
+ *     src/conteudo/gifs/vazio/    "tem nada aí" (membro novo sem dados)
  *
  * PASTA NOVA = HUMOR NOVO. Criar `src/conteudo/gifs/susto/` e jogar arquivos
  * lá já faz `sortearGif('susto')` funcionar — falta só usar em algum lugar.
@@ -37,7 +39,7 @@ for (const caminho of Object.keys(ARQUIVOS).sort()) {
   (GIFS[humor] ||= []).push({ url: ARQUIVOS[caminho], video: /\.mp4$/i.test(caminho), nome });
 }
 
-export type Humor = 'feliz' | 'triste' | (string & {});
+export type Humor = 'feliz' | 'triste' | 'duvida' | 'medo' | 'vazio' | (string & {});
 
 /**
  * Um gif do humor, sem repetir o último mostrado daquele humor.
@@ -45,8 +47,12 @@ export type Humor = 'feliz' | 'triste' | (string & {});
  * A memória é por humor e por aparelho: quem apaga três coisas seguidas não vê
  * o mesmo choro três vezes — a repetição é a única que a pessoa percebe.
  */
-export function sortearGif(humor: Humor): Midia | null {
-  const lista = GIFS[humor] || [];
+export function sortearGif(humores: Humor | Humor[]): Midia | null {
+  // Uma lista é uma ordem de preferência: "medo", e se a pasta estiver vazia,
+  // "triste". Assim um humor novo pode ser usado antes de ter arquivos.
+  const humor = ([] as Humor[]).concat(humores).find(h => (GIFS[h] || []).length > 0);
+  if (!humor) return null;
+  const lista = GIFS[humor];
   if (lista.length === 0) return null;
   const chave = `setprod:gif-anterior:${humor}`;
   let anterior: string | null = null;

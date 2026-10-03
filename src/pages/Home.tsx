@@ -662,7 +662,7 @@ export function Home() {
             {/* O gif triste no lugar do ícone; sem gif, o ícone volta. */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <GifDoMomento
-                humor="triste"
+                humor={['medo', 'triste']}
                 altura={130}
                 reserva={
                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

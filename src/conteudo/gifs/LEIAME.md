@@ -7,7 +7,8 @@ nada nem mexer em código: o app varre as pastas sozinho na hora de montar.
 |---|---|
 | `feliz/` | a carta do wrap no fim da diária; o acerto de alguém que zerou ("tudo quite") |
 | `triste/` | toda pergunta de "apagar"/"desfazer"; apagar uma produção na tela inicial |
-| `duvida/` | as outras perguntas de "tem certeza?" (sair sem salvar, trocar algo, publicar) |
+| `duvida/` | as perguntas comuns: "tem certeza?", "sair sem salvar?", "você leu?" |
+| `medo/` | o que não tem volta: apagar produção de vez, arquivar o financeiro — vazia, usa um de `triste/` |
 | `vazio/` | salvar um membro novo só com o nome ("tem quase nada aí") — vazia, usa um de `duvida/` |
 
 **Pasta nova = humor novo.** Criar `susto/` e encher de arquivos já deixa o

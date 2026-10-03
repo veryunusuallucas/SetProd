@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
 import { GifDoMomento } from './GifDoMomento';
-import { GIFS, type Humor } from '../../lib/gifs';
+import type { Humor } from '../../lib/gifs';
 
 /**
  * A pergunta de "tem certeza?", feita pelo app e não pelo navegador.
@@ -156,7 +156,7 @@ export function Confirmacoes() {
                 ("tem certeza?"), um de dúvida — pedido do Lucas, 02/10/2026.
                 Some sozinho se a pessoa desligou os gifs ou a pasta está vazia. */}
             <GifDoMomento
-              humor={pedido.humor && GIFS[pedido.humor]?.length ? pedido.humor : pedido.perigo ? "triste" : "duvida"}
+              humor={[...(pedido.humor ? [pedido.humor] : []), pedido.perigo ? "triste" : "duvida"]}
               altura={130}
             />
 

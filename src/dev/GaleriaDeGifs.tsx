@@ -21,8 +21,12 @@ const ONDE: Record<string, { onde: string; exemplo?: OpcoesConfirmacao }> = {
     exemplo: { titulo: 'Apagar a Diária 03?', detalhe: 'Some a OD e as marcações dela.', confirmar: 'Apagar', perigo: true },
   },
   duvida: {
-    onde: 'As outras perguntas de "tem certeza?" — sair sem salvar, trocar algo, publicar.',
+    onde: 'As perguntas comuns — "tem certeza?", "sair sem salvar?", "você leu?".',
     exemplo: { titulo: 'Sair sem salvar?', detalhe: 'O que você digitou nesta ficha se perde.', confirmar: 'Sair' },
+  },
+  medo: {
+    onde: 'O que não tem volta: apagar uma produção de vez, arquivar o financeiro inteiro. Pasta vazia usa um triste.',
+    exemplo: { titulo: 'Apagar "Canção de Outono" de vez?', detalhe: 'Isto não tem volta.', confirmar: 'Apagar de vez', perigo: true, humor: 'medo' },
   },
   vazio: {
     onde: 'Salvar um membro novo só com o nome. Pasta vazia usa um gif de dúvida.',

@@ -230,6 +230,8 @@ export function GestaoDados() {
       detalhe: 'O projeto e a equipe são mantidos. Exporte os dados antes — isto não tem volta.',
       confirmar: 'Arquivar mesmo assim',
       perigo: true,
+      // Não tem volta: gif de medo, não de tristeza (lib/gifs).
+      humor: 'medo',
     });
     if (!ok) return;
 
