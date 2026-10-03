@@ -1,37 +1,48 @@
-# Os gifs do app
+# A biblioteca de gifs
 
-Uma pasta por **humor**. Jogue o arquivo na pasta certa — não precisa cadastrar
-nada nem mexer em código: o app varre as pastas sozinho na hora de montar.
+Tudo numa pasta só. **O nome do arquivo é o cadastro:** as tags vêm primeiro,
+separadas por `_`, e o último pedaço é o filme ou a cena.
 
-| Pasta | Onde aparece |
-|---|---|
-| `feliz/` | a carta do wrap no fim da diária; o acerto de alguém que zerou ("tudo quite") |
-| `triste/` | toda pergunta de "apagar"/"desfazer"; apagar uma produção na tela inicial |
-| `duvida/` | as perguntas comuns: "tem certeza?", "sair sem salvar?", "você leu?" |
-| `medo/` | o que não tem volta: apagar produção de vez, arquivar o financeiro — vazia, usa um de `triste/` |
-| `vazio/` | salvar um membro novo só com o nome ("tem quase nada aí") — vazia, usa um de `duvida/` |
+    certeza_medo_pulp-fiction-jules.mp4
+    abertura_comemorar_rocky-horror.mp4
+    triste_interstellar.mp4
 
-**Pasta nova = humor novo.** Criar `susto/` e encher de arquivos já deixa o
-humor pronto — falta só dizer ao Claude onde usar.
+Um gif pode ter quantas tags quiser — o Jules apontando a arma serve para
+"tem certeza?" e para "medo". Pode escrever em inglês (`happy`, `sad`,
+`scared`, `fun`) ou com acento: o app entende.
 
-## Formato: prefira MP4
+## Onde cada tag aparece
 
-Aceita `.gif`, `.webp`, `.png`, `.jpg` e `.mp4`. **Jogou gif? Rode `npm run gifs`**: ele converte tudo para mp4 leve e guarda o original em `gifs-originais/`. **Prefira mp4**: o mesmo
-trecho pesa dez vezes menos e o app o toca mudo, em laço, igual a um gif. No
-Giphy, troque o fim do link por `giphy.mp4`:
+| Momento | Tags que ele procura (na ordem) | Onde |
+|---|---|---|
+| Abertura | `abertura` → `comemorar` | logo depois de criar uma produção |
+| Wrap | `comemorar` → `feliz` | a carta do fim da diária |
+| Tudo quite | `feliz` → `comemorar` | o acerto de alguém que zerou |
+| Apagar | `triste` | toda pergunta de apagar ou desfazer |
+| Sem volta | `certeza` → `medo` → `triste` | apagar uma produção de vez; arquivar o financeiro |
+| Tem certeza? | `duvida` → `certeza` | as outras perguntas (sair sem salvar, trocar algo) |
+| Tem nada aí | `vazio` → `duvida` | salvar um membro novo só com o nome |
 
-    https://media1.giphy.com/media/<código>/giphy.mp4
+Se a primeira tag não tiver nenhum gif, vale a próxima. Tag nova (`dinheiro`,
+`susto`...) não quebra nada: só não aparece até dizer ao Claude onde usar. A
+tabela de verdade está em `src/lib/gifs.ts` (`MOMENTOS`).
 
-Os gifs de 02/10/2026 chegaram com 12 MB e viraram mp4 de 1,8 MB no total. Os
-originais ficaram em `gifs-originais/`, na raiz do projeto, fora do app (e
-fora do git).
+## Para ver como ficou
 
-## Antes de encher as pastas
+Com o setprod-dev rodando: **http://localhost:5173/galeria-gifs.html**. Mostra
+cada momento (com botão para abrir a tela de verdade) e a biblioteca inteira
+com as tags de cada arquivo. Não entra no app publicado.
 
-- **Tudo aqui viaja com o app**, para funcionar no set sem sinal. Cada megabyte
-  é um megabyte que todo mundo baixa na próxima atualização. Mantenha cada
-  arquivo abaixo de ~1 MB.
-- **Só aparece depois de publicar.** A pasta é lida quando o app é montado.
-- **O nome do arquivo não aparece na tela** — serve para você achar depois.
+## Jogou um .gif? `npm run gifs`
+
+Converte para mp4 leve (o mesmo trecho pesa dez vezes menos), mantém as tags do
+nome e guarda o original em `gifs-originais/`, fora do app e do git. No Giphy,
+dá para baixar o mp4 direto trocando o fim do link por `giphy.mp4`.
+
+## Antes de encher
+
+- **Tudo aqui viaja com o app**, para funcionar no set sem sinal. Meta: poucos
+  por tag (uns 5), cada um de 1 a 4 segundos.
+- **Só aparece depois de publicar.**
 - **Cada pessoa pode desligar** em Configurações → Diversão → "Gifs pelo app".
-  Com movimento reduzido ligado no aparelho, também não aparecem.
+  Com movimento reduzido no aparelho, também não aparecem.
