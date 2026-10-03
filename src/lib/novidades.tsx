@@ -9,7 +9,7 @@ import {
   Camera, HardDrive, FileInput, Target, Image, Save,
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
   CloudCheck, SquareRoundCorner, Upload, AppWindow,
-  Flag, Wallet, ArrowDownUp, ArrowDownAZ,
+  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun,
 } from 'lucide-react';
 
 /**
@@ -227,6 +227,110 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '0.18.0',
+    resumo: <>O SetProd assume que é beta, ganha o modo claro para o set de dia e uma biblioteca de gifs de filme — na abertura de cada produção, no wrap, e na hora de apagar alguma coisa.</>,
+    grupos: [
+      {
+        id: 'beta',
+        titulo: 'O SetProd é beta',
+        resumo: '',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Sparkles size={20} />,
+            titulo: 'De 4.17 para Beta 0.18',
+            texto: 'O app ainda muda toda semana, e "4.17" dava a ideia de algo pronto. A numeração passou a ser de beta — a antiga 4.17 é a Beta 0.17 — e chega a 1.0 quando o app sair do beta. Aparece no selo da tela inicial, na tela de entrada, nas Novidades e no "Sobre", que ainda dizia "v4.2".',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'Termos e condições (rascunho)',
+            texto: 'No "Sobre o SetProd" há um link para os termos, com índice por seção. Ainda é rascunho, e a tela avisa: o texto não vale até ser revisado.',
+          },
+        ],
+      },
+      {
+        id: 'claro',
+        titulo: 'Modo claro',
+        resumo: 'Para o set ao meio-dia, com sol batendo na tela.',
+        cor: '#fb923c',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Sun size={20} />,
+            titulo: 'Um botão de sol e lua',
+            texto: 'Troca o app inteiro entre escuro e claro. Fica na barra lateral, junto de Configurações e Busca; no celular, no topo da produção, no lugar da lupa (a busca continua no "Mais"); e no topo da tela inicial. Cada aparelho lembra a sua escolha.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Eye size={20} />,
+            titulo: 'Feito para ler no sol',
+            texto: 'Os textos de apoio, o verde, o vermelho e as cores de cada área foram escurecidos no claro até passar no teste de contraste. Botões amarelos ganharam contorno, cartões ganharam sombra e a aba escolhida aparece. A tela inicial também tem a sua versão clara.',
+          },
+        ],
+      },
+      {
+        id: 'gifs',
+        titulo: 'Gifs de filme',
+        resumo: 'Desligáveis em Configurações → Diversão.',
+        cor: '#a78bfa',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'Cena 1, Take 1',
+            texto: 'Criar uma produção agora tem uma carta de abertura — fogos, o nome da produção e um gif — antes de entrar nela.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Film size={20} />,
+            titulo: 'Um gif para cada momento',
+            texto: 'Perguntar se quer apagar algo vem com um gif triste; apagar uma diária ou uma produção de vez, com um dos sérios ("tem certeza?"); o acerto de alguém que zerou, com um de festa; o wrap, com os de comemoração. São 31 gifs de filmes, convertidos em vídeo leve — 1,4 MB no total, guardados no aparelho para funcionar no set sem sinal.',
+          },
+          {
+            tipo: 'novo',
+            icone: <UserPlus size={20} />,
+            titulo: '"Tem quase nada aí 👀"',
+            texto: 'Salvar um membro novo só com o nome pergunta, com um gif, se é isso mesmo — e lembra que dá para completar depois ou mandar o link de cadastro. Não impede de salvar.',
+          },
+          {
+            tipo: 'novo',
+            icone: <PartyPopper size={20} />,
+            titulo: 'Diversão, do seu jeito',
+            texto: 'Em Configurações → Diversão, três interruptores: as mensagens do J. Martins, o wrap com festa (desligado, ele mostra só os números do dia) e os gifs pelo app. Valem para o seu aparelho.',
+          },
+        ],
+      },
+      {
+        id: 'lugar',
+        titulo: 'Cada ajuste perto de onde faz efeito',
+        resumo: '',
+        cor: '#4ade80',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <Settings size={20} />,
+            titulo: 'Mensagens e diária no Acertos',
+            texto: 'As mensagens de cobrança e repasse e o modo de diária saíram das Configurações e foram para o botão "Mensagens e diária" do Acertos. As informações da mensagem — nome, valor, produção, função, PIX — viraram botões: um toque põe no texto, sem digitar chaves. E o valor sai "19,22", não mais "19.22".',
+          },
+          {
+            tipo: 'melhor',
+            icone: <CalendarDays size={20} />,
+            titulo: 'Ajustes da OD na tela de Diárias',
+            texto: 'O logo e as observações que saem em toda Ordem do Dia ficam no botão "Ajustes da OD", ao lado de "Criar Diária".',
+          },
+          {
+            tipo: 'melhor',
+            icone: <History size={20} />,
+            titulo: 'A versão do roteiro é a do arquivo',
+            texto: 'Na Decupagem, "Canção de Outono_v6.pdf" aparece como v6 — a versão do roteirista —, e não como v2, a contagem de envios do app. A lista de versões usa o mesmo nome para escolher qual roteiro usar.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '0.17.0',
     resumo: <>O Financeiro foi reorganizado pela pergunta de quem abre, o orçamento do filme apareceu, e a equipe entrou em ordem — sem que um crédito tire mais ninguém do departamento.</>,
