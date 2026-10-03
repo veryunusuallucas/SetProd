@@ -1558,3 +1558,6 @@ input[type="radio"]:checked::before {
   right: auto;
   z-index: auto;
 }
+
+/* Termos e condições: o espaço entre parágrafos vem do gap do contêiner. */
+.termos-corpo p { margin: 0; }

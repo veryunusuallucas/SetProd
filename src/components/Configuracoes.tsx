@@ -6,7 +6,7 @@ import { SoQuemPode } from './ui/SoQuemPode';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom } from 'lucide-react';
+import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom, FileText } from 'lucide-react';
 import { abrirEditorDaDock, moduloPorId, useFixosDaDock } from './menu/modulosDaDock';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
@@ -15,6 +15,7 @@ import { CampoData } from './ui/CampoData';
 import { PadraoDaOD } from './PadraoDaOD';
 import { ComemoracaoDoWrap } from './ComemoracaoDoWrap';
 import { rotuloCurto } from '../lib/versao';
+import { TermosDeUso } from './TermosDeUso';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const [confirmNome, setConfirmNome] = useState('');
   const [showBug, setShowBug] = useState(false);
   const [showSobre, setShowSobre] = useState(false);
+  const [showTermos, setShowTermos] = useState(false);
 
   // Edição dos dados do projeto (movidos da aba Créditos)
   const [editandoProjeto, setEditandoProjeto] = useState(false);
@@ -296,8 +298,15 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
                 </p>
               </div>
 
-              <div className="text-xs text-muted">
-                SetProd {rotuloCurto()} · Feito para produção audiovisual.
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                <span className="text-xs text-muted">SetProd {rotuloCurto()} · Feito para produção audiovisual.</span>
+                <button
+                  onClick={() => setShowTermos(true)}
+                  className="text-xs"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: 0, color: 'var(--text-secondary)', textDecoration: 'underline', textUnderlineOffset: '3px', cursor: 'pointer' }}
+                >
+                  <FileText size={13} /> Termos e condições
+                </button>
               </div>
             </div>
 
@@ -312,6 +321,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
         </div>
       )}
 
+      {showTermos && <TermosDeUso aoFechar={() => setShowTermos(false)} />}
       {showBug && <BugReportModal onClose={() => setShowBug(false)} />}
     </div>
   );
