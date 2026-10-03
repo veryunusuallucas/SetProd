@@ -50,6 +50,52 @@
   --radius-full: 9999px;
   
   --shadow-glow: 0 0 20px var(--accent-glow);
+
+  /* O amarelo como COR DE TEXTO. No escuro é o próprio --accent; no claro,
+     amarelo em fundo branco não se lê, e o texto pede um ocre. Fundo de botão
+     continua em --accent nos dois temas. */
+  --accent-texto: var(--accent);
+  /* O realce de passar o mouse num item de menu. */
+  --realce: rgba(255, 255, 255, 0.05);
+}
+
+/*
+  MODO CLARO (pedido do Lucas, 02/10/2026) — para o set de dia, com sol na
+  tela. O app foi desenhado no escuro e continua nascendo nele; o claro é a
+  troca destes tokens, e por isso cor nova no app entra como token, nunca como
+  hex solto num style. O botão mora no app (ver BotaoDoTema), não nas
+  Configurações: quem precisa dele está no meio do set, sob o sol.
+*/
+:root[data-tema="claro"] {
+  color-scheme: light;
+  --bg-primary: #f4f4f2;
+  --bg-surface: #ffffff;
+  --bg-active: #e9e9e6;
+
+  --border-color: #d4d4d0;
+  --border-light: rgba(0, 0, 0, 0.09);
+
+  --accent-glow: rgba(214, 170, 0, 0.25);
+  --accent-texto: #8a6500;
+
+  --text-primary: #18181b;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+
+  --color-success: #15803d;
+  --color-success-bg: rgba(21, 128, 61, 0.1);
+  --color-danger: #dc2626;
+  --color-danger-bg: rgba(220, 38, 38, 0.08);
+  --color-warning: #c2410c;
+  --color-warning-bg: rgba(194, 65, 12, 0.08);
+
+  --cor-set: var(--accent-texto);
+  --cor-financeiro: #16a34a;
+  --cor-criativo: #7c3aed;
+  --cor-logistica: #0284c7;
+  --cor-equipe: #0d9488;
+
+  --realce: rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -104,7 +150,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }
-.text-accent { color: var(--accent); }
+.text-accent { color: var(--accent-texto); }
 .text-success { color: var(--color-success); }
 .text-danger { color: var(--color-danger); }
 
@@ -608,7 +654,7 @@ button {
   gap: 4px;
 }
 .nav-item.active {
-  color: var(--accent);
+  color: var(--accent-texto);
 }
 .nav-item:active {
   transform: scale(0.90);
@@ -1500,7 +1546,7 @@ input[type="radio"]:checked::before {
   border-radius: var(--radius-full);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   background-color: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--accent);
+  color: var(--accent-texto);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;

@@ -160,7 +160,7 @@ export function PlanoDaSemana({ projetoId, diarias, aoEditar }: {
                   {/* `diaDaSemana` já vem com o dia e o mês ("ter, 08/09"). O
                       ano completo só entra quando a produção atravessa a
                       virada — antes disso ele é ruído em toda coluna. */}
-                  <div className="text-xs" style={{ color: ehHoje ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                  <div className="text-xs" style={{ color: ehHoje ? 'var(--accent-texto)' : 'var(--text-secondary)' }}>
                     {diaDaSemana(d.data)}{atravessaAno ? `/${(d.data || '').slice(2, 4)}` : ''}
                     {ehHoje && ' · é hoje'}
                   </div>

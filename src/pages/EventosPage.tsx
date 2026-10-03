@@ -24,7 +24,7 @@ export default function EventosPage() {
     <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
         <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CalendarClock size={24} color="var(--accent)" /> Eventos
+          <CalendarClock size={24} color="var(--accent-texto)" /> Eventos
         </h1>
         <p className="text-sm text-secondary">Visita de locação, teste, reunião — o que está marcado fora das diárias</p>
       </div>

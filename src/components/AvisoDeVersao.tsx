@@ -140,7 +140,7 @@ export function AvisoDeVersao() {
             boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
           }}
         >
-          <Sparkles size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+          <Sparkles size={16} style={{ color: 'var(--accent-texto)', flexShrink: 0 }} />
 
           <div style={{ flex: '1 1 190px', minWidth: 0 }}>
             <div className="text-sm font-bold">Tem versão nova do SetProd</div>

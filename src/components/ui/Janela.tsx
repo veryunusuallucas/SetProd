@@ -146,7 +146,7 @@ export function Janela({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 18px 12px' }}>
-          {icone && <span style={{ display: 'flex', color: 'var(--accent)' }}>{icone}</span>}
+          {icone && <span style={{ display: 'flex', color: 'var(--accent-texto)' }}>{icone}</span>}
           <h2 style={{ margin: 0, fontSize: '18px', flex: 1, minWidth: 0 }}>{titulo}</h2>
           <button className="btn-icon" onClick={aoFechar} aria-label="Fechar" data-fechar>
             <X size={18} />

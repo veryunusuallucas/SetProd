@@ -62,7 +62,7 @@ export function EscolhaDeRoteiro({ batem, total, mesmaHistoria, aoEscolher, aoCa
         >
           <span className="font-bold text-sm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileText size={15} /> É uma versão nova do mesmo roteiro
-            {mesmaHistoria && <span className="text-xs" style={{ color: 'var(--accent)' }}>· sugerido</span>}
+            {mesmaHistoria && <span className="text-xs" style={{ color: 'var(--accent-texto)' }}>· sugerido</span>}
           </span>
           <span className="text-xs text-muted" style={{ lineHeight: 1.5 }}>
             A cena 42 continua sendo a 42, com o texto atualizado. A ordem do stripboard, as

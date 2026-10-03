@@ -118,7 +118,7 @@ export function Login() {
         <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
           <div className="text-sm">
             <span className="text-muted">Ainda não tem conta? </span>
-            <Link to="/criar-conta" state={{ voltarPara }} style={{ color: 'var(--accent)' }}>
+            <Link to="/criar-conta" state={{ voltarPara }} style={{ color: 'var(--accent-texto)' }}>
               Criar conta
             </Link>
           </div>

@@ -198,13 +198,13 @@ export function DepartamentosList({ projetoId }: { projetoId: string, onSelectDe
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
         <button 
           onClick={() => setAbaAtiva('depto')}
-          style={{ flex: 1, padding: '12px', border: 'none', background: 'none', color: abaAtiva === 'depto' ? 'var(--accent)' : 'var(--text-muted)', borderBottom: abaAtiva === 'depto' ? '2px solid var(--accent)' : '2px solid transparent', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '12px', border: 'none', background: 'none', color: abaAtiva === 'depto' ? 'var(--accent-texto)' : 'var(--text-muted)', borderBottom: abaAtiva === 'depto' ? '2px solid var(--accent)' : '2px solid transparent', fontWeight: 'bold' }}
         >
           Departamentos
         </button>
         <button 
           onClick={() => setAbaAtiva('grupos')}
-          style={{ flex: 1, padding: '12px', border: 'none', background: 'none', color: abaAtiva === 'grupos' ? 'var(--accent)' : 'var(--text-muted)', borderBottom: abaAtiva === 'grupos' ? '2px solid var(--accent)' : '2px solid transparent', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '12px', border: 'none', background: 'none', color: abaAtiva === 'grupos' ? 'var(--accent-texto)' : 'var(--text-muted)', borderBottom: abaAtiva === 'grupos' ? '2px solid var(--accent)' : '2px solid transparent', fontWeight: 'bold' }}
         >
           Grupos & Times
         </button>

@@ -156,7 +156,7 @@ export function CardDeLocacao({
                     <div className="text-xs text-muted">{c.papel}</div>
                   </div>
                   {c.telefone && (
-                    <a href={`tel:${c.telefone}`} className="text-xs" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                    <a href={`tel:${c.telefone}`} className="text-xs" style={{ color: 'var(--accent-texto)', textDecoration: 'none' }}>
                       {c.telefone}
                     </a>
                   )}

@@ -16,6 +16,7 @@ import {
 } from '../components/menu/modulosDaDock';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { CantoDaConexao } from '../components/ui/cantoDaConexao';
+import { BotaoDoTema, useItemDoTema } from '../components/BotaoDoTema';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
@@ -239,6 +240,7 @@ export function ProjectLayout() {
     sempre mostra onde você está. Ver `modulosDaDock.ts`.
   */
   const fixos = useFixosDaDock();
+  const itemDoTema = useItemDoTema();
   const moduloAtual = moduloDoCaminho(currentPath, id!);
   const [ultima, setUltima] = useState<IdModulo | null>(() => lerUltima(id!));
   useEffect(() => { setUltima(lerUltima(id!)); }, [id]);
@@ -505,6 +507,7 @@ export function ProjectLayout() {
       */}
       <div className="rodape-do-menu">
         <StatusSync projetoId={id!} />
+        <BotaoDoTema />
         <button
           type="button"
           className="alfinete-menu"
@@ -590,6 +593,7 @@ export function ProjectLayout() {
           }),
           // Produção virou fixo: o Acesso fica sem vizinho e vai para o fim.
           ...(fixos.includes('producao') ? [quadroDoAcesso] : []),
+          itemDoTema,
           { nome: 'Como funciona', icone: HelpCircle, cor: 'var(--text-secondary)', aoTocar: abrirAjuda },
           { nome: 'Relatar problema', icone: Bug, cor: 'var(--color-danger)', aoTocar: abrirRelatarProblema },
         ]}

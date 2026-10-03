@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Calendar, Plus, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle, List, Columns3, Copy } from 'lucide-react';
+import { Calendar, Plus, Settings2, FileText, ChevronRight, Users, CheckSquare, Edit2, Trash2, X, AlertTriangle, List, Columns3, Copy } from 'lucide-react';
 import type { Diaria } from '../types';
 import { logAction } from '../lib/audit';
 import { estadoDa, ROTULO_ESTADO, type EstadoDiaria } from '../lib/sincronizaOD';
@@ -17,6 +17,8 @@ import { CampoData } from '../components/ui/CampoData';
 import { despesasDaDiaria, totalDaDiaria } from '../lib/despesasDaDiaria';
 import { paraData, dataCurta } from '../lib/formato';
 import { PlanoDaSemana } from '../components/PlanoDaSemana';
+import { Janela } from '../components/ui/Janela';
+import { PadraoDaOD } from '../components/PadraoDaOD';
 
 /**
  * Hoje em `YYYY-MM-DD`, montado a partir do relógio local.
@@ -42,6 +44,9 @@ export function DiariasList() {
   // Criar, mudar a data, duplicar e apagar diária é ato de produção (escopo.ts).
   const { podeEscrever, motivo } = useAcesso();
   const administra = podeEscrever('diarias');
+  // O padrão da OD grava no projeto: quem administra a produção.
+  const ajustaOD = podeEscrever('projetos');
+  const [ajustesOD, setAjustesOD] = useState(false);
 
   /**
    * As diárias NA ORDEM EM QUE ACONTECEM. Só isso.
@@ -299,10 +304,21 @@ export function DiariasList() {
       <div className="cabecalho-pagina" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={24} color="var(--accent)" /> Diárias
+            <Calendar size={24} color="var(--accent-texto)" /> Diárias
           </h1>
           <p className="text-sm text-secondary">Os dias de filmagem e a Ordem do Dia de cada um</p>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {ajustaOD && (
+          <button
+            onClick={() => setAjustesOD(true)}
+            className="btn-icon"
+            title="Logo e observações que saem em toda Ordem do Dia"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', border: '1px solid var(--border-color)', width: 'auto', fontSize: '13px' }}
+          >
+            <Settings2 size={16} /> Ajustes da OD
+          </button>
+        )}
         {administra ? (
         <button
           onClick={() => (showForm ? fecharFormulario() : abrirFormulario())}
@@ -314,7 +330,23 @@ export function DiariasList() {
         ) : (
           <SoQuemPode motivo={motivo('diarias')} style={{ maxWidth: '320px' }} />
         )}
+        </div>
       </div>
+
+      {ajustesOD && projetoId && (
+        <Janela
+          titulo="Ajustes da Ordem do Dia"
+          icone={<FileText size={18} />}
+          aoFechar={() => setAjustesOD(false)}
+          largura="620px"
+          rodape={<button onClick={() => setAjustesOD(false)} className="btn-primary" style={{ width: '100%' }}>Pronto</button>}
+        >
+          <p className="text-xs text-muted" style={{ margin: '0 0 16px', lineHeight: 1.5 }}>
+            O que sai em toda Ordem do Dia desta produção. Grava sozinho.
+          </p>
+          <PadraoDaOD projetoId={projetoId} />
+        </Janela>
+      )}
 
       {diarias.length > 0 && (
         <div
@@ -345,7 +377,7 @@ export function DiariasList() {
                   color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
                 }}
               >
-                <Icone size={15} style={{ color: ativo ? 'var(--accent)' : 'inherit' }} /> {m.nome}
+                <Icone size={15} style={{ color: ativo ? 'var(--accent-texto)' : 'inherit' }} /> {m.nome}
               </button>
             );
           })}
@@ -400,7 +432,7 @@ export function DiariasList() {
           */}
           <div style={{ minWidth: '150px' }}>
             <div className="text-xs text-secondary font-bold uppercase tracking-widest mb-2">Vai ser a</div>
-            <div className="font-bold" style={{ fontSize: '22px', color: data ? 'var(--accent)' : 'var(--text-muted)' }}>
+            <div className="font-bold" style={{ fontSize: '22px', color: data ? 'var(--accent-texto)' : 'var(--text-muted)' }}>
               {data ? `Diária ${String(numeroPrevisto(diarias, data)).padStart(2, '0')}` : '—'}
             </div>
           </div>
@@ -550,7 +582,7 @@ export function DiariasList() {
             {dataDaCopia !== null ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--accent)', backgroundColor: 'var(--bg-surface)' }}>
                 <div className="text-sm font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Copy size={15} style={{ color: 'var(--accent)' }} />
+                  <Copy size={15} style={{ color: 'var(--accent-texto)' }} />
                   Duplicar a Diária {String(editModal.diaria.numero).padStart(2, '0')}
                 </div>
 

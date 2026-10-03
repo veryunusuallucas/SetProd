@@ -78,7 +78,7 @@ export function CadastroEquipe() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
         <div className="card" style={{ textAlign: 'center', maxWidth: '400px', width: '100%' }}>
-          <h2 className="text-xl font-bold" style={{ color: 'var(--accent)', marginBottom: '16px' }}>Cadastro Enviado!</h2>
+          <h2 className="text-xl font-bold" style={{ color: 'var(--accent-texto)', marginBottom: '16px' }}>Cadastro Enviado!</h2>
           <p className="text-secondary">Obrigado! Seus dados foram enviados para a equipe de produção.</p>
         </div>
       </div>

@@ -12,10 +12,10 @@ import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
 import type { Projeto } from '../types';
 import { CampoData } from './ui/CampoData';
-import { PadraoDaOD } from './PadraoDaOD';
-import { ComemoracaoDoWrap } from './ComemoracaoDoWrap';
 import { rotuloCurto } from '../lib/versao';
 import { TermosDeUso } from './TermosDeUso';
+import { Interruptor } from './ui/Interruptor';
+import { mudarPreferencia, usePreferencia } from '../lib/preferencias';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
@@ -37,6 +37,8 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const [showBug, setShowBug] = useState(false);
   const [showSobre, setShowSobre] = useState(false);
   const [showTermos, setShowTermos] = useState(false);
+  const mensagensDivertidas = usePreferencia('mensagensDivertidas');
+  const wrapFestivo = usePreferencia('wrapFestivo');
 
   // Edição dos dados do projeto (movidos da aba Créditos)
   const [editandoProjeto, setEditandoProjeto] = useState(false);
@@ -147,19 +149,35 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
         )}
       </div>
 
-      {/*
-        Os ajustes da Ordem do Dia e do fim do dia moram aqui, e não na lista de
-        diárias, onde nasceram.
-
-        Lá eles ficavam ENTRE o cabeçalho e os dias, empurrando para baixo a
-        coisa que a pessoa abriu a tela para ver. São decisões que se tomam uma
-        vez por produção — o logo, os avisos fixos, as frases do wrap — e
-        configuração é o lugar de quem vai mudar algo uma vez, não de quem
-        entra todo dia.
-      */}
-      <PadraoDaOD projetoId={projetoId} />
       </>}
-      <ComemoracaoDoWrap />
+
+      {/*
+        O PADRÃO DA OD FOI PARA A TELA DE DIÁRIAS (pedido do Lucas, 02/10/2026),
+        num botão de ajustes ao lado do título — perto de onde a OD é feita, e
+        numa janela, para não voltar a empurrar a lista de dias para baixo.
+
+        A "Comemoração do wrap" virou estes dois interruptores. O cartão explicava
+        de onde vinham as frases e os gifs — informação de quem mexe no código,
+        não de quem usa o app. O que a pessoa quer decidir é se quer a festa.
+      */}
+      <div className="card" style={{ flexDirection: 'column', gap: '10px' }}>
+        <div>
+          <h3 className="text-lg font-bold" style={{ marginBottom: '4px' }}>Diversão</h3>
+          <p className="text-xs text-secondary" style={{ margin: 0 }}>Vale só para este aparelho.</p>
+        </div>
+        <Interruptor
+          titulo="Mensagens do J. Martins"
+          ajuda="De vez em quando, uma frase aparece no canto da tela."
+          ligado={mensagensDivertidas}
+          aoMudar={v => mudarPreferencia('mensagensDivertidas', v)}
+        />
+        <Interruptor
+          titulo="Wrap com festa"
+          ajuda="Fogos, frase e gif no fim da diária. Desligado, o wrap mostra só os números do dia."
+          ligado={wrapFestivo}
+          aoMudar={v => mudarPreferencia('wrapFestivo', v)}
+        />
+      </div>
 
       {/* Só no celular: é o único lugar onde a barra de baixo existe. O mesmo
           editor abre segurando um item da barra ou no lápis do "Mais". */}

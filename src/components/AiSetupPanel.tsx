@@ -88,7 +88,7 @@ export function AiSetupPanel({ totalPaginas, processando, progresso, onProcessar
                 color: 'var(--text-primary)',
               }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: ativo ? 'var(--accent)' : 'var(--text-muted)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: ativo ? 'var(--accent-texto)' : 'var(--text-muted)' }}>
                 {m.icone}
                 <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{m.titulo}</span>
               </span>

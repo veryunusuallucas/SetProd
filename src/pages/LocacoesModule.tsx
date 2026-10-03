@@ -217,7 +217,7 @@ export function LocacoesModule() {
       <div className="cabecalho-pagina" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MapPin size={24} color="var(--accent)" /> Locações
+            <MapPin size={24} color="var(--accent-texto)" /> Locações
           </h1>
           <p className="text-sm text-secondary">Base de dados dos sets de filmagem</p>
         </div>
@@ -478,7 +478,7 @@ export function LocacoesModule() {
             )}
             
             {loc.coordenadas && (
-              <a href={loc.coordenadas.startsWith('http') ? loc.coordenadas : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.coordenadas)}`} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: 'var(--accent)', textDecoration: 'none', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '6px', marginTop: '4px' }}>
+              <a href={loc.coordenadas.startsWith('http') ? loc.coordenadas : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.coordenadas)}`} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', fontSize: '12px', color: 'var(--accent-texto)', textDecoration: 'none', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '6px', marginTop: '4px' }}>
                 Abrir no Maps
               </a>
             )}

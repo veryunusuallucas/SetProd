@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, FileText, Settings2 } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { Fogos } from './ui/Fogos';
+import { usePreferencia } from '../lib/preferencias';
 import {
   FRASES_FIM, FRASES_WRAP, MIDIAS_WRAP, lembrar, numerosDoWrap, ondeEstamos, sortear, ultima,
   type DadosDoWrap, type MidiaDoWrap,
@@ -40,15 +41,19 @@ export interface CartaDeWrapProps {
   aoFechar: () => void;
   /** Abre o relatório do dia. É a ação seguinte natural do wrap. */
   aoVerRelatorio?: () => void;
-  /** Leva para onde se editam as frases e os gifs. */
-  aoEditar?: () => void;
 }
 
 export function CartaDeWrap({
   projetoId, numero, totalDiarias, ultimaDoFilme, dados, totaisDoFilme,
-  aoFechar, aoVerRelatorio, aoEditar,
+  aoFechar, aoVerRelatorio,
 }: CartaDeWrapProps) {
   const reduzido = useMovimentoReduzido();
+  /*
+    "Wrap bonitinho ou wrap chato" (Lucas, 02/10/2026): desligado nas
+    Configurações, a carta sai sem fogos, sem frase e sem gif — só os números
+    do dia. É gosto de quem segura o aparelho (lib/preferencias).
+  */
+  const festivo = usePreferencia('wrapFestivo');
 
   /*
     Frase e gif são sorteados UMA vez, na montagem.
@@ -90,10 +95,10 @@ export function CartaDeWrap({
 
   return createPortal(
     <>
-      <Fogos
+      {festivo && <Fogos
         duracaoMs={ultimaDoFilme ? 5200 : 2600}
         quantidade={ultimaDoFilme ? 11 : 5}
-      />
+      />}
 
       <div
         onClick={aoFechar}
@@ -128,13 +133,13 @@ export function CartaDeWrap({
             {ultimaDoFilme ? 'Fim da filmagem' : ondeEstamos(numero, totalDiarias)}
           </div>
 
-          {frase && <h2
+          {festivo && frase && <h2
             className="font-bold"
             style={{
               fontSize: ultimaDoFilme ? 'clamp(28px, 6vw, 40px)' : 'clamp(22px, 5vw, 30px)',
               lineHeight: 1.15, margin: '8px 0 0',
               // O texto é o protagonista; os fogos só acontecem em volta dele.
-              color: ultimaDoFilme ? 'var(--accent)' : 'var(--text-primary)',
+              color: ultimaDoFilme ? 'var(--accent-texto)' : 'var(--text-primary)',
             }}
           >
             {frase}
@@ -143,7 +148,7 @@ export function CartaDeWrap({
           {/* O gif entra DEPOIS do texto e com altura limitada. Ele é o tempero,
               e um gif de tela cheia empurraria os números para fora da vista —
               que são a parte que a pessoa vai querer ler. */}
-          {midia && (
+          {festivo && midia && (
             midia.video
               /* mp4 entra como vídeo mudo em laço — um gif que pesa um décimo. */
               ? <video src={midia.url} autoPlay loop muted playsInline style={ESTILO_MIDIA} />
@@ -220,22 +225,6 @@ export function CartaDeWrap({
             </button>
           </div>
 
-          {/* ⚠️ O CAMINHO PARA EDITAR MORA AQUI, e não só numa tela de ajustes.
-              É lendo a frase que a pessoa pensa "essa eu trocaria" — e um
-              atalho a dois toques do pensamento é o que faz a lista virar dela
-              de verdade em vez de continuar sendo a que veio de fábrica. */}
-          {aoEditar && (
-            <button
-              onClick={() => { aoEditar(); aoFechar(); }}
-              className="text-xs text-muted"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '14px',
-                background: 'none', border: 'none', cursor: 'pointer',
-              }}
-            >
-              <Settings2 size={12} /> de onde vêm estas frases e estes gifs
-            </button>
-          )}
         </motion.div>
       </div>
     </>,

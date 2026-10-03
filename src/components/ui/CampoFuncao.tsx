@@ -217,7 +217,7 @@ export function CampoFuncao({
             color: 'var(--text-secondary)',
           }}
         >
-          <Users size={13} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
+          <Users size={13} style={{ color: 'var(--accent-texto)', flexShrink: 0, marginTop: '2px' }} />
           <span>
             {jaOcupam.length === 1 ? 'Já tem ' : 'Já têm '}
             <b>{jaOcupam.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}</b> nesta função.{' '}

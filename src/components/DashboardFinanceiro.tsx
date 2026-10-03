@@ -60,7 +60,7 @@ export function DashboardFinanceiro({ projetoId, aoDefinirOrcamento }: Dashboard
           <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
             <Flag size={16} /> Orçamento
           </h2>
-          <button className="text-xs" onClick={aoDefinirOrcamento} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0 }}>
+          <button className="text-xs" onClick={aoDefinirOrcamento} style={{ background: 'none', border: 'none', color: 'var(--accent-texto)', cursor: 'pointer', padding: 0 }}>
             {orcamentoC > 0 ? 'Editar' : 'Definir'}
           </button>
         </div>

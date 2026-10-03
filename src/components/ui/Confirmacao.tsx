@@ -133,7 +133,7 @@ export function Confirmacoes() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
               <AlertTriangle
                 size={20}
-                style={{ color: pedido.perigo ? 'var(--color-danger)' : 'var(--accent)', flexShrink: 0, marginTop: '2px' }}
+                style={{ color: pedido.perigo ? 'var(--color-danger)' : 'var(--accent-texto)', flexShrink: 0, marginTop: '2px' }}
               />
               <div style={{ minWidth: 0 }}>
                 <div className="text-sm font-bold" style={{ lineHeight: 1.45 }}>{pedido.titulo}</div>

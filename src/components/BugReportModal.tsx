@@ -351,7 +351,7 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
 
             {eventos.length > 0 && (
               <details style={{ marginTop: '10px' }}>
-                <summary className="text-xs" style={{ cursor: 'pointer', color: 'var(--accent)' }}>
+                <summary className="text-xs" style={{ cursor: 'pointer', color: 'var(--accent-texto)' }}>
                   ver os últimos erros
                 </summary>
                 <div style={{ maxHeight: '120px', overflowY: 'auto', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>

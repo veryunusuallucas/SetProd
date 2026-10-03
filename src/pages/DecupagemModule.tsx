@@ -830,7 +830,7 @@ export function DecupagemModule() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     padding: '12px', width: '100%', fontSize: '13px',
                     border: `1px dashed ${diarias.length === 0 ? 'var(--accent)' : 'var(--border-color)'}`,
-                    color: diarias.length === 0 ? 'var(--accent)' : 'var(--text-secondary)',
+                    color: diarias.length === 0 ? 'var(--accent-texto)' : 'var(--text-secondary)',
                     backgroundColor: 'transparent',
                   }}
                 >

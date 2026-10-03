@@ -68,7 +68,7 @@ function ItemMenu({
 }) {
   const conteudo = (
     <>
-      <span style={{ color: 'var(--accent)', display: 'flex', marginTop: '2px' }}>{icone}</span>
+      <span style={{ color: 'var(--accent-texto)', display: 'flex', marginTop: '2px' }}>{icone}</span>
       <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
         <span className="text-sm font-bold">{titulo}</span>
         <span className="text-xs text-muted">{descricao}</span>

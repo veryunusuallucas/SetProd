@@ -268,7 +268,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
             onClick={preencherPelasFichas}
             disabled={preenchendo}
             className="btn-icon"
-            style={{ padding: '8px 14px', border: '1px solid var(--accent)', color: 'var(--accent)', gap: '6px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0, width: 'auto' }}
+            style={{ padding: '8px 14px', border: '1px solid var(--accent)', color: 'var(--accent-texto)', gap: '6px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0, width: 'auto' }}
             title="Usa o departamento e a função que estão no cadastro de cada pessoa"
           >
             <Wand2 size={14} />
@@ -400,8 +400,8 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                       {/* Quem ocupa: a linha de baixo é a que informa. */}
                       {perfil ? (
                         <div className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', color: 'var(--text-muted)' }}>
-                          <Link2 size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                          <span style={{ color: 'var(--accent)' }}>na equipe</span>
+                          <Link2 size={11} style={{ color: 'var(--accent-texto)', flexShrink: 0 }} />
+                          <span style={{ color: 'var(--accent-texto)' }}>na equipe</span>
                           {perfil.drt && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="DRT — o registro profissional, que a ficha técnica costuma exigir">
                               <IdCard size={11} /> {perfil.drt}
@@ -423,7 +423,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                           title="Está assim no cadastro desta pessoa"
                         >
                           <Wand2 size={11} style={{ flexShrink: 0 }} />
-                          <span>na ficha: <b style={{ color: 'var(--accent)' }}>{sugestao.perfil.nome} {sugestao.perfil.sobrenome || ''}</b></span>
+                          <span>na ficha: <b style={{ color: 'var(--accent-texto)' }}>{sugestao.perfil.nome} {sugestao.perfil.sobrenome || ''}</b></span>
                         </button>
                       ) : null}
                     </div>

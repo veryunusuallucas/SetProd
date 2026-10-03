@@ -218,7 +218,7 @@ function BotaoDecisao({ aoDecidir, icone, rotulo, destaque }: {
     <BotaoTatil
       onClick={aoDecidir}
       className="btn-chip"
-      style={destaque ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : undefined}
+      style={destaque ? { borderColor: 'var(--accent)', color: 'var(--accent-texto)' } : undefined}
     >
       {icone} {rotulo}
     </BotaoTatil>

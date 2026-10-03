@@ -613,7 +613,7 @@ export function TasksModule() {
                   <button
                     onClick={() => novaSub(editando)}
                     className="text-xs font-bold"
-                    style={{ background: 'none', border: 'none', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 8px', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-texto)', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 8px', cursor: 'pointer' }}
                   >
                     <Plus size={14} /> Adicionar item
                   </button>

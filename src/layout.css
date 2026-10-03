@@ -60,13 +60,13 @@
 }
 
 .sidebar-link:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--realce);
   color: var(--text-primary);
 }
 
 .sidebar-link.active {
   background-color: var(--bg-active);
-  color: var(--accent);
+  color: var(--accent-texto);
 }
 
 .sidebar-footer {
@@ -264,7 +264,7 @@
 }
 .rodape-do-menu > .sidebar-link { flex: 1; min-width: 0; }
 
-.alfinete-menu {
+.alfinete-menu, .tema-menu {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
@@ -277,7 +277,7 @@
   color: var(--text-muted);
   cursor: pointer;
 }
-.alfinete-menu:hover { color: var(--text-primary); }
+.alfinete-menu:hover, .tema-menu:hover { color: var(--text-primary); }
 
 @media (prefers-reduced-motion: reduce) {
   .menu-lateral, .project-layout .main-content { transition: none; }

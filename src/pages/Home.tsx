@@ -30,6 +30,7 @@ import { CantoDaConexao } from '../components/ui/cantoDaConexao';
 import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../components/ui/ia';
 import { LogOut } from 'lucide-react';
 import { rotuloCurto } from '../lib/versao';
+import { BotaoDoTema } from '../components/BotaoDoTema';
 
 /**
  * Como cada um é recebido na porta.
@@ -309,6 +310,7 @@ export function Home() {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {/* O indicador de conexão entra na linha em vez de pairar sobre ela. */}
           <CantoDaConexao />
+          <BotaoDoTema className="btn-icon text-muted" tamanho={20} />
           {/* O "?" mora no menu flutuante do canto de baixo, que existe em toda
               tela. Aqui em cima ele era um segundo botão para a mesma coisa. */}
           {/* Confirmação na própria tela, não no confirm() do navegador.

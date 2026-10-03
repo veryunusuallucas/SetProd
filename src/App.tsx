@@ -7,6 +7,7 @@ import { Login } from './pages/Login';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { BugReportModal } from './components/BugReportModal';
 import { PenseNisso } from './components/PenseNisso';
+import { usePreferencia } from './lib/preferencias';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Bug, HelpCircle } from 'lucide-react';
 import { MenuFlutuante } from './components/ui/MenuFlutuante';
@@ -256,11 +257,13 @@ function MenuGlobal() {
 function PenseNissoQuandoLogado() {
   const { user } = useAuth();
   const location = useLocation();
+  // Desligável nas Configurações: gosto de quem segura o aparelho.
+  const ligado = usePreferencia('mensagensDivertidas');
 
   // `nova-senha` entra nesta lista mesmo tendo sessão: o link de recuperação
   // já loga a pessoa, e o aviso apareceria por cima da troca de senha.
   const publica = /^\/(login|cadastro|criar-conta|esqueci-senha|nova-senha|pesquisa|convite)(\/|$)/.test(location.pathname);
-  if (!user || publica) return null;
+  if (!user || publica || !ligado) return null;
 
   return <PenseNisso />;
 }

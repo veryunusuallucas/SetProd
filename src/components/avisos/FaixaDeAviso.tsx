@@ -36,7 +36,7 @@ export function FaixaDeAviso({
           : 'var(--border-light)'}`,
       }}
     >
-      <span style={{ display: 'flex', flexShrink: 0, color: atencao ? 'var(--color-warning)' : 'var(--accent)' }}>
+      <span style={{ display: 'flex', flexShrink: 0, color: atencao ? 'var(--color-warning)' : 'var(--accent-texto)' }}>
         {icone}
       </span>
 

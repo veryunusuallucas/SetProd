@@ -113,7 +113,7 @@ export function FilaRepescagem({ projetoId }: { projetoId: string }) {
                     style={{
                       display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px',
                       borderRadius: 'var(--radius-sm)', cursor: 'pointer', whiteSpace: 'nowrap',
-                      border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
+                      border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent-texto)',
                     }}
                   >
                     <CalendarPlus size={13} /> reencaixar

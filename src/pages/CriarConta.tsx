@@ -109,7 +109,7 @@ export function CriarConta() {
         {confiraEmail ? (
           <>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <MailCheck size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
+              <MailCheck size={20} style={{ color: 'var(--accent-texto)', flexShrink: 0, marginTop: '2px' }} />
               <p className="text-sm" style={{ margin: 0, lineHeight: 1.55 }}>
                 Mandamos um link de confirmação para <strong style={{ wordBreak: 'break-all' }}>{email}</strong>.
                 Abra o link e depois volte para entrar.
@@ -187,7 +187,7 @@ export function CriarConta() {
 
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', textAlign: 'center' }}>
               <span className="text-sm text-muted">Já tem conta? </span>
-              <Link to="/login" state={{ voltarPara }} className="text-sm" style={{ color: 'var(--accent)' }}>
+              <Link to="/login" state={{ voltarPara }} className="text-sm" style={{ color: 'var(--accent-texto)' }}>
                 Entrar
               </Link>
             </div>

@@ -129,7 +129,7 @@ export function SincroniaStripboard({ diaria }: { diaria: Diaria }) {
   // ---- publicada E o stripboard mudou ----
   return (
     <Faixa cor="var(--accent)">
-      <GitCompare size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+      <GitCompare size={16} style={{ color: 'var(--accent-texto)', flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: '200px' }}>
         <div className="text-sm font-bold">O stripboard mudou depois da publicação</div>
         <div className="text-xs" style={{ lineHeight: 1.5, marginTop: '2px' }}>

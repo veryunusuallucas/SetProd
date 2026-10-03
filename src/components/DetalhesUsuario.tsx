@@ -285,7 +285,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
             <button
               onClick={() => onVerFicha(usuarioId)}
               className="text-xs font-bold"
-              style={{ marginTop: '14px', background: 'none', border: 'none', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+              style={{ marginTop: '14px', background: 'none', border: 'none', color: 'var(--accent-texto)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
             >
               Ver ficha completa <ArrowRight size={14} />
             </button>

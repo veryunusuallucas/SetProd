@@ -18,6 +18,7 @@ import { formatarDuracao } from '../lib/stripboard';
 import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO } from '../lib/registroSet';
 import { faiscar } from './ui/Faisca';
 import { Fogos } from './ui/Fogos';
+import { usePreferencia } from '../lib/preferencias';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { CampoTexto } from './ui/CampoTexto';
 import { partirItemDeCena, juntarTrechos, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
@@ -183,6 +184,8 @@ export function LinhaDoDia({
   const [ajustandoHora, setAjustandoHora] = useState<string | null>(null);
   /** Fogos curtos: a desprodução acabou de ser marcada. */
   const [festejando, setFestejando] = useState(false);
+  // Wrap sem festa, se quem segura o aparelho desligou (lib/preferencias).
+  const festivo = usePreferencia('wrapFestivo');
   /** Qual cena está escolhida no seletor do "acrescentar cena". */
   const [cenaEscolhida, setCenaEscolhida] = useState('');
 
@@ -305,7 +308,7 @@ export function LinhaDoDia({
       Só ao MARCAR. Desmarcar por engano e receber fogos seria o app
       comemorando o próprio erro.
     */
-    if (marcando && item.tipo === 'wrap') {
+    if (marcando && item.tipo === 'wrap' && festivo) {
       setFestejando(true);
       setTimeout(() => setFestejando(false), 3200);
     }
@@ -350,7 +353,7 @@ export function LinhaDoDia({
           style={{
             padding: '4px 12px', borderRadius: 'var(--radius-full)',
             border: `1px solid ${modo === 'interativo' ? 'var(--accent)' : 'var(--border-light)'}`,
-            color: modo === 'interativo' ? 'var(--accent)' : 'var(--text-muted)',
+            color: modo === 'interativo' ? 'var(--accent-texto)' : 'var(--text-muted)',
           }}
           title={modo === 'criacao'
             ? 'A OD ainda não saiu — o plano está livre'
@@ -367,7 +370,7 @@ export function LinhaDoDia({
             type="time"
             value={chamada || ''}
             onChange={e => aoMudarChamada(e.target.value)}
-            style={{ padding: '4px 0', width: '104px', fontSize: '20px', fontWeight: 'bold', backgroundColor: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', borderRadius: 0, color: 'var(--accent)' }}
+            style={{ padding: '4px 0', width: '104px', fontSize: '20px', fontWeight: 'bold', backgroundColor: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', borderRadius: 0, color: 'var(--accent-texto)' }}
           />
         </div>
         <div>
@@ -465,7 +468,7 @@ export function LinhaDoDia({
                     style={{
                       display: 'flex', alignItems: 'center', gap: '3px', padding: '6px 0',
                       background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px',
-                      color: c.travado ? 'var(--accent)' : 'var(--text-secondary)',
+                      color: c.travado ? 'var(--accent-texto)' : 'var(--text-secondary)',
                     }}
                   >
                     {c.hora}
@@ -520,7 +523,7 @@ export function LinhaDoDia({
                               className="text-xs font-bold"
                               style={{
                                 padding: '1px 8px', borderRadius: 'var(--radius-full)',
-                                border: '1px solid var(--accent)', color: 'var(--accent)',
+                                border: '1px solid var(--accent)', color: 'var(--accent-texto)',
                               }}
                             >
                               {rotulo}
@@ -663,7 +666,7 @@ export function LinhaDoDia({
                           style={{
                             padding: '5px 9px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
                             border: '1px solid var(--border-light)', background: 'transparent',
-                            color: coberturaPreenchida(registro) ? 'var(--accent)' : 'var(--text-muted)',
+                            color: coberturaPreenchida(registro) ? 'var(--accent-texto)' : 'var(--text-muted)',
                           }}
                           title="Páginas, setups e o que exatamente saiu da cena"
                         >
@@ -739,7 +742,7 @@ export function LinhaDoDia({
                           className="text-xs font-bold"
                           style={{
                             padding: '7px 11px', borderRadius: 'var(--radius-full)', cursor: podeMarcar ? 'pointer' : 'not-allowed',
-                            border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
+                            border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent-texto)',
                           }}
                         >
                           começou no previsto · {c.hora}
@@ -924,7 +927,7 @@ export function LinhaDoDia({
                           style={{
                             alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px',
                             padding: '7px 13px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
-                            border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
+                            border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent-texto)',
                           }}
                         >
                           <Scissors size={12} /> Partir em {c.cena.numero}A e {c.cena.numero}B
@@ -1035,7 +1038,7 @@ export function LinhaDoDia({
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 13px',
                         borderRadius: 'var(--radius-full)', border: '1px solid var(--accent)',
                         backgroundColor: cenaEscolhida ? 'var(--accent)' : 'transparent',
-                        color: cenaEscolhida ? '#000' : 'var(--accent)',
+                        color: cenaEscolhida ? '#000' : 'var(--accent-texto)',
                         cursor: cenaEscolhida ? 'pointer' : 'not-allowed',
                         opacity: cenaEscolhida ? 1 : 0.5,
                       }}

@@ -531,7 +531,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                   <div className="text-sm font-bold" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {c.apelido || 'Convite em aberto'}
                     {c.multiuso && (
-                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: 'var(--radius-full)', fontWeight: 700, color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                      <span className="text-xs" style={{ padding: '1px 7px', borderRadius: 'var(--radius-full)', fontWeight: 700, color: 'var(--accent-texto)', border: '1px solid var(--accent)' }}>
                         vários
                       </span>
                     )}
@@ -559,7 +559,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                     onClick={() => alternarLink(c)}
                     title={c.ativo === false ? 'Religar este link' : 'Desligar este link'}
                   >
-                    {c.ativo === false ? <ToggleLeft size={18} /> : <ToggleRight size={18} color="var(--accent)" />}
+                    {c.ativo === false ? <ToggleLeft size={18} /> : <ToggleRight size={18} color="var(--accent-texto)" />}
                   </button>
                 )}
 

@@ -231,7 +231,7 @@ export function AceitarConvite() {
                   <button
                     onClick={trocarDeConta}
                     className="text-xs"
-                    style={{ marginTop: '6px', background: 'none', border: 'none', padding: 0, color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+                    style={{ marginTop: '6px', background: 'none', border: 'none', padding: 0, color: 'var(--accent-texto)', cursor: 'pointer', textDecoration: 'underline' }}
                   >
                     Não é você? Entrar com outra conta
                   </button>

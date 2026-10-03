@@ -73,7 +73,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <Sparkles size={18} color="var(--accent)" />
+                <Sparkles size={18} color="var(--accent-texto)" />
                 <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da {rotuloCurto(atual.versao)}</h2>
               </div>
               {atual.resumo && (

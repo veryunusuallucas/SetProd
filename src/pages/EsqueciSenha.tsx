@@ -66,7 +66,7 @@ export function EsqueciSenha() {
         {enviado ? (
           <>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <MailCheck size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
+              <MailCheck size={20} style={{ color: 'var(--accent-texto)', flexShrink: 0, marginTop: '2px' }} />
               <p className="text-sm" style={{ margin: 0, lineHeight: 1.55 }}>
                 Se houver uma conta com <strong style={{ wordBreak: 'break-all' }}>{email}</strong>, o
                 link para trocar a senha já está a caminho.
@@ -103,7 +103,7 @@ export function EsqueciSenha() {
             </form>
 
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', textAlign: 'center' }}>
-              <Link to="/login" className="text-sm" style={{ color: 'var(--accent)' }}>
+              <Link to="/login" className="text-sm" style={{ color: 'var(--accent-texto)' }}>
                 Voltar para o login
               </Link>
             </div>

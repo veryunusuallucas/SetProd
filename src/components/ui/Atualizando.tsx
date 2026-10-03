@@ -176,7 +176,7 @@ export function Atualizando({ versao, pronto = false }: { versao?: string; pront
           style={{
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--accent)',
+            color: 'var(--accent-texto)',
           }}
         >
           <Sparkles size={26} />

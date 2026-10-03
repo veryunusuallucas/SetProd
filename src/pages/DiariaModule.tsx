@@ -683,7 +683,6 @@ export function DiariaModule() {
       totaisDoFilme: totais,
       aoFechar: () => setCarta(null),
       aoVerRelatorio: gerarDPR,
-      aoEditar: () => navigate(`/projeto/${projetoId}/config`),
     };
   };
 

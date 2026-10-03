@@ -114,7 +114,7 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
 
       {/* ===== SELO DO MODO DE ACERTO ATIVO ===== */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <span className="badge" style={{ backgroundColor: modoBanco ? 'rgba(255,215,0,0.15)' : 'var(--color-success-bg)', color: modoBanco ? 'var(--accent)' : 'var(--color-success)', border: `1px solid ${modoBanco ? 'var(--accent)' : 'var(--color-success)'}`, padding: '4px 10px', fontSize: '11px' }}>
+        <span className="badge" style={{ backgroundColor: modoBanco ? 'rgba(255,215,0,0.15)' : 'var(--color-success-bg)', color: modoBanco ? 'var(--accent-texto)' : 'var(--color-success)', border: `1px solid ${modoBanco ? 'var(--accent)' : 'var(--color-success)'}`, padding: '4px 10px', fontSize: '11px' }}>
           MODO: {modoBanco ? 'Banco do Projeto' : 'Compensado (direto)'}
         </span>
         <span className="text-xs text-muted">
@@ -240,7 +240,7 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
                       </span>
                     </div>
                     {onVerFicha && (
-                      <button onClick={(e) => { e.stopPropagation(); onVerFicha(p.id); }} className="text-xs font-bold" style={{ marginTop: '4px', background: 'none', border: 'none', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}>
+                      <button onClick={(e) => { e.stopPropagation(); onVerFicha(p.id); }} className="text-xs font-bold" style={{ marginTop: '4px', background: 'none', border: 'none', color: 'var(--accent-texto)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}>
                         Ver ficha completa <ArrowRight size={13} />
                       </button>
                     )}

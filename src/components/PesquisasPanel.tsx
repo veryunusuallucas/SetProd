@@ -424,7 +424,7 @@ function EditorPesquisa({ pesquisa, onSalvar, onCancelar }: {
                   key={t.id}
                   onClick={() => mudarPergunta(p.id, { tipo: t.id })}
                   className="btn-chip"
-                  style={p.tipo === t.id ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : undefined}
+                  style={p.tipo === t.id ? { borderColor: 'var(--accent)', color: 'var(--accent-texto)' } : undefined}
                 >
                   {t.rotulo}
                 </button>

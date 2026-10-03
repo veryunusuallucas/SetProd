@@ -49,7 +49,7 @@ export function Guia({ id, titulo, passos, fecho }: {
           border: 'none', background: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left',
         }}
       >
-        <Lightbulb size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} aria-hidden />
+        <Lightbulb size={16} style={{ color: 'var(--accent-texto)', flexShrink: 0 }} aria-hidden />
         <span className="text-sm font-bold" style={{ flex: 1 }}>{titulo}</span>
         <motion.span animate={{ rotate: aberto ? 180 : 0 }} transition={reduzido ? { duration: 0 } : MOLA} style={{ display: 'flex' }}>
           <ChevronDown size={16} className="text-muted" />

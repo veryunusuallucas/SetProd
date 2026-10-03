@@ -263,7 +263,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
                         </div>
                       </div>
                       {ehMeuEmail && (
-                        <span className="text-xs" style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                        <span className="text-xs" style={{ color: 'var(--accent-texto)', fontWeight: 700 }}>
                           é o seu e-mail
                         </span>
                       )}

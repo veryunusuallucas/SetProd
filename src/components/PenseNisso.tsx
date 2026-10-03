@@ -102,10 +102,10 @@ export function PenseNisso() {
 
           <div style={{ padding: '18px 20px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <Quote size={13} style={{ color: 'var(--accent)' }} />
+              <Quote size={13} style={{ color: 'var(--accent-texto)' }} />
               <span style={{
                 fontSize: '10px', fontWeight: 800, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: 'var(--accent)',
+                textTransform: 'uppercase', color: 'var(--accent-texto)',
               }}>
                 J. Martins
               </span>

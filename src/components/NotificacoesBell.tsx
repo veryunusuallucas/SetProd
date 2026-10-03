@@ -63,7 +63,7 @@ export function NotificacoesBell({ projetoId }: { projetoId?: string }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderBottom: '1px solid var(--border-light)' }}>
               <span className="text-xs text-secondary font-bold uppercase tracking-widest">Notificações</span>
               {naoLidas.length > 0 && (
-                <button onClick={marcarTodasLidas} className="text-xs" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button onClick={marcarTodasLidas} className="text-xs" style={{ background: 'none', border: 'none', color: 'var(--accent-texto)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Check size={12} /> Marcar lidas
                 </button>
               )}

@@ -62,7 +62,7 @@ export function GastoPorTipo({ projetoId, aoDefinir }: {
         <h2 className="text-sm font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
           <Target size={16} /> Por tipo de gasto
         </h2>
-        <button className="text-xs" onClick={aoDefinir} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0 }}>
+        <button className="text-xs" onClick={aoDefinir} style={{ background: 'none', border: 'none', color: 'var(--accent-texto)', cursor: 'pointer', padding: 0 }}>
           {temMeta ? 'Editar metas' : 'Definir metas'}
         </button>
       </div>

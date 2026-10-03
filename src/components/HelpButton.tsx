@@ -183,7 +183,7 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
           >
             <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
               <h2 className="font-bold text-lg" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Info size={18} color="var(--accent)" /> Como funciona
+                <Info size={18} color="var(--accent-texto)" /> Como funciona
               </h2>
               <button onClick={fechar} className="btn-icon" aria-label="Fechar"><X size={20} /></button>
             </div>
@@ -194,7 +194,7 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
               {podePerguntar && (
                 <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', background: 'var(--bg-primary)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '9px' }}>
-                    <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+                    <Sparkles size={14} style={{ color: 'var(--accent-texto)' }} />
                     <span className="text-xs font-bold uppercase tracking-widest text-secondary">Pergunte</span>
                   </div>
 
@@ -268,7 +268,7 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
                     <button
                       onClick={() => { aoPerguntarAoDev(pergunta); fechar(); }}
                       className="text-xs"
-                      style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                      style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent-texto)', display: 'flex', alignItems: 'center', gap: '5px' }}
                     >
                       <MessageCircleQuestion size={13} />
                       {erroIA ? 'Mandar esta dúvida para o Viol' : 'Não era isso — mandar a dúvida para o Viol'}
@@ -324,7 +324,7 @@ export function HelpButton({ style, abertoExterno, aoFechar, mostrarBotao = true
                                 <div key={chave}>
                                   <button
                                     onClick={() => alternarTopico(chave)}
-                                    style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', padding: '5px 0', color: aberto ? 'var(--accent)' : 'var(--text-primary)' }}
+                                    style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', padding: '5px 0', color: aberto ? 'var(--accent-texto)' : 'var(--text-primary)' }}
                                   >
                                     {aberto ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                                     <span className="text-sm">{t.titulo}</span>

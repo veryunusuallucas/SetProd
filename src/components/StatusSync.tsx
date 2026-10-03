@@ -185,7 +185,7 @@ function ModalAta({ projetoId, aoVivo, aoFechar }: { projetoId: string; aoVivo: 
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="text-sm">
-                  <strong style={{ color: l.souEu ? 'var(--text-primary)' : 'var(--accent)' }}>{l.quem}</strong>
+                  <strong style={{ color: l.souEu ? 'var(--text-primary)' : 'var(--accent-texto)' }}>{l.quem}</strong>
                   {' '}{l.frase.slice(l.quem.length + 1)}
                 </div>
                 {l.detalhe && <div className="text-xs text-muted truncate">{l.detalhe}</div>}
