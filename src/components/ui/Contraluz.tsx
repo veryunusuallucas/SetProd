@@ -66,9 +66,18 @@ export function Contraluz({ perigo = false, parado = false }: Props) {
 
     const pintar = () => {
       const quente = perigoAgora.current;
-      const luz = quente ? [255, 190, 190] : [232, 236, 245];
+      /*
+        NO MODO CLARO a cena se inverte: papel no lugar do breu, e o feixe vira
+        uma sombra fria em vez de uma luz — luz branca sobre fundo claro não
+        aparece. Lido a cada quadro, para trocar de tema sem remontar a tela.
+      */
+      const claro = document.documentElement.dataset.tema === 'claro';
+      const luz = claro
+        ? (quente ? [150, 40, 40] : [40, 44, 60])
+        : (quente ? [255, 190, 190] : [232, 236, 245]);
+      const forca = claro ? 0.6 : 1;
 
-      ctx.fillStyle = quente ? '#140b0c' : '#0b0b0d';
+      ctx.fillStyle = claro ? (quente ? '#fbeeee' : '#f4f4f2') : (quente ? '#140b0c' : '#0b0b0d');
       ctx.fillRect(0, 0, largura, altura);
 
       /*
@@ -84,8 +93,8 @@ export function Contraluz({ perigo = false, parado = false }: Props) {
       ctx.translate(largura * 0.66, -altura * 0.12);
       ctx.rotate(0.42);
       const feixe = ctx.createLinearGradient(0, 0, 0, altura * 1.5);
-      feixe.addColorStop(0, `rgba(${luz[0]},${luz[1]},${luz[2]},0.10)`);
-      feixe.addColorStop(0.45, `rgba(${luz[0]},${luz[1]},${luz[2]},0.045)`);
+      feixe.addColorStop(0, `rgba(${luz[0]},${luz[1]},${luz[2]},${0.10 * forca})`);
+      feixe.addColorStop(0.45, `rgba(${luz[0]},${luz[1]},${luz[2]},${0.045 * forca})`);
       feixe.addColorStop(1, `rgba(${luz[0]},${luz[1]},${luz[2]},0)`);
       ctx.fillStyle = feixe;
       ctx.beginPath();
@@ -104,12 +113,12 @@ export function Contraluz({ perigo = false, parado = false }: Props) {
         const x = (g.x + Math.sin(t * 0.2 + g.f) * 0.006) * largura;
         ctx.beginPath();
         ctx.arc(x, g.y * altura, g.r, 0, 6.3);
-        ctx.fillStyle = `rgba(${luz[0]},${luz[1]},${luz[2]},0.22)`;
+        ctx.fillStyle = `rgba(${luz[0]},${luz[1]},${luz[2]},${claro ? 0.14 : 0.22})`;
         ctx.fill();
       }
 
       for (let i = 0; i < GRAO_DE_FILME; i++) {
-        const v = 200 + Math.random() * 55;
+        const v = claro ? 30 + Math.random() * 40 : 200 + Math.random() * 55;
         pixel.data[0] = pixel.data[1] = pixel.data[2] = v;
         pixel.data[3] = 10 + Math.random() * 14;
         ctx.putImageData(pixel, (Math.random() * largura) | 0, (Math.random() * altura) | 0);
@@ -120,7 +129,7 @@ export function Contraluz({ perigo = false, parado = false }: Props) {
         largura / 2, altura / 2, Math.max(largura, altura) * 0.75,
       );
       vinheta.addColorStop(0, 'rgba(0,0,0,0)');
-      vinheta.addColorStop(1, 'rgba(0,0,0,0.55)');
+      vinheta.addColorStop(1, claro ? 'rgba(0,0,0,0.07)' : 'rgba(0,0,0,0.55)');
       ctx.fillStyle = vinheta;
       ctx.fillRect(0, 0, largura, altura);
 
@@ -133,8 +142,12 @@ export function Contraluz({ perigo = false, parado = false }: Props) {
 
     const observador = new ResizeObserver(() => { medir(); if (parado) pintar(); });
     observador.observe(tela);
+    // Parado (movimento reduzido), o quadro só se repinta quando pedem: a
+    // troca de tema é um desses pedidos.
+    const doTema = new MutationObserver(() => { if (parado) pintar(); });
+    doTema.observe(document.documentElement, { attributes: true, attributeFilter: ['data-tema'] });
 
-    return () => { cancelAnimationFrame(pedido); observador.disconnect(); };
+    return () => { cancelAnimationFrame(pedido); observador.disconnect(); doTema.disconnect(); };
   }, [parado]);
 
   return (

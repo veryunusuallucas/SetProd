@@ -513,7 +513,13 @@ function ItensDoDia({ c, cheio, aoAbrirDiaria }: { c: ConteudoDoDia; cheio: bool
           key={d.id}
           onClick={e => { e.stopPropagation(); aoAbrirDiaria(d); }}
           title={`Abrir Diária ${d.numero}`}
-          style={{ ...linha, border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: 700, backgroundColor: 'var(--cor-set)', color: '#000' }}
+          style={{
+            ...linha, border: 'none', cursor: 'pointer', textAlign: 'left', fontWeight: 700,
+            // Fundo amarelo e não --cor-set: no claro a cor da área é ocre, e
+            // preto sobre ocre não se lê. Etiqueta com texto preto pede o
+            // amarelo da marca — com o contorno ocre que o claro precisa.
+            backgroundColor: 'var(--accent)', color: '#000', boxShadow: 'inset 0 0 0 1px var(--accent-glow)',
+          }}
         >
           {cheio && <Clapperboard size={14} style={{ flexShrink: 0, marginTop: '1px' }} />}
           <span style={texto}>Diária {String(d.numero).padStart(2, '0')}</span>

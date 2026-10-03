@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { movimentoReduzido } from './suporte';
+import { usePreferencia } from '../../../lib/preferencias';
 
 const Contraluz = lazy(() => import('../Contraluz').then(m => ({ default: m.Contraluz })));
 
@@ -26,6 +27,7 @@ interface Props {
 
 export function FundoEntrada({ perigo = false }: Props) {
   const [parado] = useState(() => movimentoReduzido());
+  const claro = usePreferencia('tema') === 'claro';
 
   return (
     <div
@@ -34,8 +36,8 @@ export function FundoEntrada({ perigo = false }: Props) {
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
         // Degradê que já sustenta a tela sozinho — o shader entra por cima.
         background: perigo
-          ? 'radial-gradient(120% 100% at 50% 0%, #2a0d11 0%, var(--bg-primary) 60%)'
-          : 'radial-gradient(120% 100% at 50% 0%, #101119 0%, var(--bg-primary) 60%)',
+          ? `radial-gradient(120% 100% at 50% 0%, ${claro ? '#f6dede' : '#2a0d11'} 0%, var(--bg-primary) 60%)`
+          : `radial-gradient(120% 100% at 50% 0%, ${claro ? '#e8e9ef' : '#101119'} 0%, var(--bg-primary) 60%)`,
         transition: 'background 0.45s ease',
       }}
     >

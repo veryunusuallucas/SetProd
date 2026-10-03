@@ -70,32 +70,54 @@
   color-scheme: light;
   --bg-primary: #f4f4f2;
   --bg-surface: #ffffff;
-  --bg-active: #e9e9e6;
+  /* Aba ativa, item escolhido: tom ocre leve. O cinza de antes (#e9e9e6)
+     ficava a 1,22:1 do card branco — a aba ativa sumia (TEMA-CLARO.md). */
+  --bg-active: rgba(138, 101, 0, 0.12);
 
   --border-color: #d4d4d0;
-  --border-light: rgba(0, 0, 0, 0.09);
+  --border-light: rgba(0, 0, 0, 0.12);
 
-  --accent-glow: rgba(214, 170, 0, 0.25);
+  --accent-glow: rgba(138, 101, 0, 0.45);
+  /* Brilho amarelo sobre branco não aparece: no claro o "glow" vira contorno ocre. */
+  --shadow-glow: 0 0 0 1px rgba(138, 101, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.12);
   --accent-texto: #8a6500;
 
   --text-primary: #18181b;
   --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+  /* Era o mesmo #6b7280 do escuro, herdado sem ajuste: 4,39:1 na página. */
+  --text-muted: #5b6471;
 
   --color-success: #15803d;
   --color-success-bg: rgba(21, 128, 61, 0.1);
-  --color-danger: #dc2626;
-  --color-danger-bg: rgba(220, 38, 38, 0.08);
+  --color-danger: #b91c1c;
+  --color-danger-bg: rgba(185, 28, 28, 0.08);
   --color-warning: #c2410c;
   --color-warning-bg: rgba(194, 65, 12, 0.08);
 
   --cor-set: var(--accent-texto);
-  --cor-financeiro: #16a34a;
+  /* Igual ao verde de "deu certo": eram dois verdes para a mesma ideia. */
+  --cor-financeiro: #15803d;
   --cor-criativo: #7c3aed;
-  --cor-logistica: #0284c7;
-  --cor-equipe: #0d9488;
+  --cor-logistica: #0369a1;
+  --cor-equipe: #0f766e;
 
   --realce: rgba(0, 0, 0, 0.05);
+}
+
+/*
+  DUAS REGRAS SÓ DO CLARO (.md/TEMA-CLARO.md, seção 3), com os contrastes
+  medidos lá.
+  · O amarelo do botão continua #ffd700 — escurecer mataria a marca —, mas
+    sobre branco ele fica a 1,4:1 e o botão não tem contorno. A borda ocre dá.
+  · No claro, elevação se faz com sombra: card branco sobre #f4f4f2 sozinho
+    não se separa do fundo.
+*/
+:root[data-tema="claro"] .btn-primary,
+:root[data-tema="claro"] .fab-button {
+  border: 1px solid rgba(138, 101, 0, 0.45);
+}
+:root[data-tema="claro"] .card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 * {

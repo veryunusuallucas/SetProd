@@ -142,7 +142,8 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
     ];
   }
 
-  const COLORS = ['#4ade80', '#f87171'];
+  // Tokens, e não hex: no modo claro o verde e o vermelho são outros.
+  const COLORS = ['var(--color-success)', 'var(--color-danger)'];
 
   const salvarPerfil = async () => {
     await db.perfis.put({ ...perfilEdit, projeto_id: projetoId });
@@ -251,7 +252,7 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
                 <Pie data={dataGraficoCaixa} cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" dataKey="valor">
                   {dataGraficoCaixa.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: 'var(--radius-sm)' }} formatter={(value) => `${dinheiro(Number(value))}`} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} formatter={(value) => `${dinheiro(Number(value))}`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
