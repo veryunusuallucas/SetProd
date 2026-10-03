@@ -28,8 +28,11 @@ const ARQUIVOS = import.meta.glob(
 /** O que se escreve em inglês, ou com acento, e a tag que o app entende. */
 const SINONIMOS: Record<string, string> = {
   happy: 'feliz', sad: 'triste', scared: 'medo', fear: 'medo', fun: 'engracado', funny: 'engracado',
-  doubt: 'duvida', sure: 'certeza', empty: 'vazio', party: 'comemorar', celebrar: 'comemorar',
-  comemoracao: 'comemorar', opening: 'abertura', inicio: 'abertura',
+  doubt: 'duvida', confused: 'duvida', sure: 'certeza', empty: 'vazio',
+  party: 'comemorar', celebrating: 'comemorar', celebrate: 'comemorar', congratulations: 'comemorar',
+  celebrar: 'comemorar', comemoracao: 'comemorar', dance: 'comemorar', danca: 'comemorar',
+  opening: 'abertura', inicio: 'abertura',
+  correct: 'aprovado', agree: 'aprovado', concordar: 'aprovado', certo: 'aprovado',
 };
 
 export interface Midia {
