@@ -6,9 +6,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { calcularSaldos, detalharParticipante, getChaveParticipante } from '../core/calculadora';
 import { simplificarDividas } from '../core/simplificador';
-import { Check, Copy, ArrowRight, RotateCcw, Wallet } from 'lucide-react';
+import { Check, Copy, ArrowRight, RotateCcw, Wallet, Settings2 } from 'lucide-react';
+import { AjustesDosAcertos } from './AjustesDosAcertos';
 import type { ModoAcerto, StatusAcerto, Perfil } from '../types';
 import { ProfileCard } from './ui/ProfileCard';
+import { MODELO_COBRANCA_PADRAO, MODELO_REPASSE_PADRAO, preencherMensagem } from '../lib/mensagensDeAcerto';
 
 /**
  * `soEstePerfil` mostra só a linha de quem está olhando (decisão do Lucas,
@@ -20,7 +22,11 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   // Confirmar e estornar pagamento é dinheiro da produção: quem administra.
-  const podeAcertar = useAcesso().podeEscrever('acertos');
+  const acesso = useAcesso();
+  const podeAcertar = acesso.podeEscrever('acertos');
+  // Mensagens e modo de diária gravam no projeto: quem administra.
+  const podeAjustar = acesso.podeEscrever('projetos');
+  const [ajustesAbertos, setAjustesAbertos] = useState(false);
   const despesas = useLiveQuery(() => db.despesas.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const acertos = useLiveQuery(() => db.acertos.where('projeto_id').equals(projetoId).toArray(), [projetoId]);
   const configuracao = useLiveQuery(() => db.configuracoes.get(projetoId), [projetoId]);
@@ -68,19 +74,13 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
     const t = minhatransacoes[0];
     const isDevedor = t.de.id_ref === perfil.id;
     const nomeUsuario = `${perfil.nome} ${perfil.sobrenome || ''}`.trim();
-    const pixCaixa = projeto.pix_caixa || '(PIX do caixa não definido)';
     const base = isDevedor
-      ? (configuracao?.template_cobranca || 'Olá {{nome}}! No projeto {{projeto}}, seu saldo ficou em R$ {{valor}} a pagar para a Produção.\nChave PIX para pagamento: {{pix}}')
-      : (configuracao?.template_pagamento || 'Olá {{nome}}! A Produção vai te repassar R$ {{valor}} referente ao projeto {{projeto}}.');
+      ? (configuracao?.template_cobranca || MODELO_COBRANCA_PADRAO)
+      : (configuracao?.template_pagamento || MODELO_REPASSE_PADRAO);
 
-    let msg = base
-      .replace(/\{\{\s*nome\s*\}\}/gi, nomeUsuario)
-      .replace(/\{\{\s*valor\s*\}\}/gi, t.valor.toFixed(2))
-      .replace(/\{\{\s*projeto\s*\}\}/gi, projeto.nome)
-      .replace(/\{\{\s*funcao\s*\}\}/gi, perfil.funcao || '')
-      .replace(/\{\{\s*pix\s*\}\}/gi, pixCaixa)
-      .replace(/\[nome\]/gi, nomeUsuario)
-      .replace(/\[valor\]/gi, t.valor.toFixed(2));
+    let msg = preencherMensagem(base, {
+      nome: nomeUsuario, valor: t.valor, projeto: projeto.nome, funcao: perfil.funcao, pix: projeto.pix_caixa,
+    });
 
     if (isDevedor) {
       const linhasDeve = detalharParticipante(despesas, 'pessoa', perfil.id).linhas.filter(l => l.tipo === 'deve');
@@ -120,6 +120,16 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
         <span className="text-xs text-muted">
           {modoBanco ? 'Todos acertam com o caixa central.' : 'Saldo já compensado; membros acertam entre si.'}
         </span>
+        {podeAjustar && (
+          <button
+            onClick={() => setAjustesAbertos(true)}
+            className="text-xs font-bold"
+            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer' }}
+          >
+            <Settings2 size={14} /> Mensagens e diária
+          </button>
+        )}
+        {ajustesAbertos && <AjustesDosAcertos projetoId={projetoId} aoFechar={() => setAjustesAbertos(false)} />}
       </div>
 
       {/* ===== CAIXA DA PRODUÇÃO — entidade, não membro =====

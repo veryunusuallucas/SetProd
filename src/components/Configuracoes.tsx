@@ -6,7 +6,7 @@ import { SoQuemPode } from './ui/SoQuemPode';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Save, Trash2, Bug, Info, X, ShieldCheck, PanelBottom } from 'lucide-react';
+import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom } from 'lucide-react';
 import { abrirEditorDaDock, moduloPorId, useFixosDaDock } from './menu/modulosDaDock';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
@@ -20,7 +20,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
   const fixosDaDock = useFixosDaDock();
   /*
-    Configuração é da produção: templates, dados do projeto, modo de diária e o
+    Configuração é da produção: dados do projeto e o
     padrão da OD gravam no projeto, que é de quem administra (escopo.ts). O que
     é do aparelho (barra de baixo, fim do dia) e o suporte ficam para todos.
     Apagar a produção é só do dono — ou de quem está com uma produção só local.
@@ -29,11 +29,8 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const administra = podeEscrever('projetos');
   const { role, podeAqui } = useRole();
   const podeApagar = role === 'desconhecido' || podeAqui('destruir');
-  const configuracao = useLiveQuery(() => db.configuracoes.get(projetoId), [projetoId]);
   const projeto = useLiveQuery(() => db.projetos.get(projetoId), [projetoId]);
 
-  const [templateCobranca, setTemplateCobranca] = useState('');
-  const [templatePagamento, setTemplatePagamento] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const [confirmNome, setConfirmNome] = useState('');
   const [showBug, setShowBug] = useState(false);
@@ -51,27 +48,6 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
     if (!form) return;
     await db.projetos.put(form);
     setEditandoProjeto(false);
-  };
-
-  useEffect(() => {
-    if (configuracao) {
-      setTemplateCobranca(configuracao.template_cobranca || '');
-      setTemplatePagamento(configuracao.template_pagamento || '');
-    } else {
-      setTemplateCobranca('Olá {{nome}}! No projeto {{projeto}}, seu saldo ficou em R$ {{valor}} a pagar para a Produção.\nChave PIX para pagamento: {{pix}}');
-      setTemplatePagamento('Olá {{nome}}! A Produção vai te repassar R$ {{valor}} referente ao projeto {{projeto}}.');
-    }
-  }, [configuracao]);
-
-  const salvar = async () => {
-    await db.configuracoes.put({
-      id: projetoId,
-      projeto_id: projetoId,
-      template_cobranca: templateCobranca,
-      template_pagamento: templatePagamento,
-      template_geral: configuracao?.template_geral || ''
-    });
-    alert('Configurações salvas!');
   };
 
   const deletarProjeto = async () => {
@@ -95,38 +71,16 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
           responde sozinha a maior parte das dúvidas de permissão. */}
       <SeuAcesso projetoId={projetoId} />
       {administra && <>
-      <div className="card">
-        <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Templates de Mensagem</h3>
-        <p className="text-xs text-muted" style={{ marginBottom: '8px' }}>
-          Variáveis: <code style={{ color: 'var(--accent)' }}>{'{{nome}}'}</code>, <code style={{ color: 'var(--accent)' }}>{'{{valor}}'}</code>, <code style={{ color: 'var(--accent)' }}>{'{{projeto}}'}</code>, <code style={{ color: 'var(--accent)' }}>{'{{funcao}}'}</code>, <code style={{ color: 'var(--accent)' }}>{'{{pix}}'}</code> (PIX do caixa)
+      {/*
+        As mensagens de cobrança/repasse e o modo de diária foram para o
+        Financeiro → Acertos, no botão "Mensagens e diária" (AjustesDosAcertos):
+        é lá que fazem efeito. Fica aqui só a placa apontando o caminho.
+      */}
+      <div className="card" style={{ flexDirection: 'column' }}>
+        <h3 className="text-lg font-bold" style={{ marginBottom: '6px' }}>Mensagens de cobrança e modo de diária</h3>
+        <p className="text-xs text-secondary" style={{ margin: 0, lineHeight: 1.5 }}>
+          Mudaram para o Financeiro: na aba <strong>Acertos</strong>, botão <strong>Mensagens e diária</strong>.
         </p>
-        <p className="text-xs text-muted" style={{ marginBottom: '24px', fontStyle: 'italic' }}>
-          Estes textos são a base. Ao gerar a mensagem de um membro você pode ajustar o texto na hora, sem alterar o template salvo aqui.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'block', marginBottom: '8px' }}>Mensagem de Cobrança (A Pagar)</label>
-            <textarea 
-              value={templateCobranca} 
-              onChange={e => setTemplateCobranca(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ display: 'block', marginBottom: '8px' }}>Mensagem de Repasse (A Receber)</label>
-            <textarea 
-              value={templatePagamento} 
-              onChange={e => setTemplatePagamento(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <button onClick={salvar} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '8px' }}>
-            <Save size={16} /> Salvar Configurações
-          </button>
-        </div>
       </div>
 
       {/* Dados da produção — veio da aba Créditos, onde não fazia mais sentido */}
@@ -189,29 +143,6 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
             )}
           </div>
         )}
-      </div>
-
-      <div className="card">
-        <h3 className="text-lg font-bold" style={{ marginBottom: '8px' }}>Modo de Diária</h3>
-        <p className="text-xs text-secondary" style={{ marginBottom: '16px' }}>
-          Como novas despesas escolhem a diária.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: (projeto?.modo_diaria || 'automatico') === 'automatico' ? 'var(--bg-active)' : 'transparent' }}>
-            <input type="checkbox" checked={(projeto?.modo_diaria || 'automatico') === 'automatico'} onChange={() => projeto && db.projetos.put({ ...projeto, modo_diaria: 'automatico' })} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className="font-bold">Automático</span>
-              <span className="text-xs text-muted">Novas despesas já vêm na diária atual da produção.</span>
-            </div>
-          </label>
-          <label className="checkbox-label" style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: projeto?.modo_diaria === 'manual' ? 'var(--bg-active)' : 'transparent' }}>
-            <input type="checkbox" checked={projeto?.modo_diaria === 'manual'} onChange={() => projeto && db.projetos.put({ ...projeto, modo_diaria: 'manual' })} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className="font-bold">Manual / Antecipado</span>
-              <span className="text-xs text-muted">Você escolhe livremente a diária de cada gasto (prepara diárias futuras).</span>
-            </div>
-          </label>
-        </div>
       </div>
 
       {/*

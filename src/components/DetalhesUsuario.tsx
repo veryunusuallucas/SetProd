@@ -8,6 +8,7 @@ import { simplificarDividas } from '../core/simplificador';
 import type { StatusAcerto, ModoAcerto } from '../types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, Check, Copy, ArrowRight, RotateCcw } from 'lucide-react';
+import { MODELO_COBRANCA_PADRAO, MODELO_REPASSE_PADRAO, preencherMensagem } from '../lib/mensagensDeAcerto';
 
 type Origem = 'producao' | 'acertos';
 
@@ -88,22 +89,13 @@ export function DetalhesUsuario({ projetoId, usuarioId, onVoltar, origem = 'acer
     }
     const t = minhatransacoes[0];
     const isDevedor = t.de.id_ref === usuarioId;
-    const pixCaixa = projeto.pix_caixa || '(PIX do caixa não definido)';
     const templateBase = isDevedor
-      ? (configuracao?.template_cobranca || 'Olá {{nome}}! No projeto {{projeto}}, seu saldo ficou em R$ {{valor}} a pagar para a Produção.\nChave PIX para pagamento: {{pix}}')
-      : (configuracao?.template_pagamento || 'Olá {{nome}}! A Produção vai te repassar R$ {{valor}} referente ao projeto {{projeto}}.');
+      ? (configuracao?.template_cobranca || MODELO_COBRANCA_PADRAO)
+      : (configuracao?.template_pagamento || MODELO_REPASSE_PADRAO);
 
-    // Preenche variáveis: aceita {{var}} (padrão) e [var] (legado)
-    const preencher = (tpl: string) => tpl
-      .replace(/\{\{\s*nome\s*\}\}/gi, nomeUsuario.trim())
-      .replace(/\{\{\s*valor\s*\}\}/gi, t.valor.toFixed(2))
-      .replace(/\{\{\s*projeto\s*\}\}/gi, projeto.nome)
-      .replace(/\{\{\s*funcao\s*\}\}/gi, perfil?.funcao || '')
-      .replace(/\{\{\s*pix\s*\}\}/gi, pixCaixa)
-      .replace(/\[nome\]/gi, nomeUsuario.trim())
-      .replace(/\[valor\]/gi, t.valor.toFixed(2));
-
-    msgFinal = preencher(templateBase);
+    msgFinal = preencherMensagem(templateBase, {
+      nome: nomeUsuario.trim(), valor: t.valor, projeto: projeto.nome, funcao: perfil?.funcao, pix: projeto.pix_caixa,
+    });
 
     // Cobrança detalhada: anexa de onde vem a dívida
     if (isDevedor && linhasDeve.length > 0) {
