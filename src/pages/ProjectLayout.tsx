@@ -16,7 +16,7 @@ import {
 } from '../components/menu/modulosDaDock';
 import { NotificacoesBell } from '../components/NotificacoesBell';
 import { CantoDaConexao } from '../components/ui/cantoDaConexao';
-import { BotaoDoTema, useItemDoTema } from '../components/BotaoDoTema';
+import { BotaoDoTema } from '../components/BotaoDoTema';
 import { 
   LayoutDashboard, Film, Receipt, Settings, 
   ChevronLeft, MapPin, CheckSquare, CalendarDays, CalendarClock, Search,
@@ -240,7 +240,6 @@ export function ProjectLayout() {
     sempre mostra onde você está. Ver `modulosDaDock.ts`.
   */
   const fixos = useFixosDaDock();
-  const itemDoTema = useItemDoTema();
   const moduloAtual = moduloDoCaminho(currentPath, id!);
   const [ultima, setUltima] = useState<IdModulo | null>(() => lerUltima(id!));
   useEffect(() => { setUltima(lerUltima(id!)); }, [id]);
@@ -593,7 +592,6 @@ export function ProjectLayout() {
           }),
           // Produção virou fixo: o Acesso fica sem vizinho e vai para o fim.
           ...(fixos.includes('producao') ? [quadroDoAcesso] : []),
-          itemDoTema,
           { nome: 'Como funciona', icone: HelpCircle, cor: 'var(--text-secondary)', aoTocar: abrirAjuda },
           { nome: 'Relatar problema', icone: Bug, cor: 'var(--color-danger)', aoTocar: abrirRelatarProblema },
         ]}
@@ -654,9 +652,10 @@ export function ProjectLayout() {
           {/* O indicador de conexão vem morar aqui: solto, ele caía em cima
               do sino. Ver `cantoDaConexao.tsx`. */}
           <CantoDaConexao />
-          <button className="btn-icon text-muted" onClick={() => window.dispatchEvent(new Event('open-command-palette'))}>
-            <Search size={20} />
-          </button>
+          {/* A lupa deu lugar ao tema (pedido do Lucas, 02/10/2026): no set, ao
+              sol, trocar para o claro é a coisa urgente. A busca continua no
+              rodapé do "Mais". */}
+          <BotaoDoTema className="btn-icon text-muted" tamanho={20} />
           <NotificacoesBell projetoId={id} />
           {/* Aqui havia um segundo "?". O menu flutuante do canto já abre a
               ajuda em toda tela, e os dois lado a lado espremiam o nome da
