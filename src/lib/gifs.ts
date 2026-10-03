@@ -6,6 +6,7 @@
  *
  *     src/conteudo/gifs/feliz/    o wrap, as comemorações
  *     src/conteudo/gifs/triste/   apagar, desfazer, o que dá pena
+ *     src/conteudo/gifs/duvida/   "tem certeza?" — as outras confirmações
  *
  * PASTA NOVA = HUMOR NOVO. Criar `src/conteudo/gifs/susto/` e jogar arquivos
  * lá já faz `sortearGif('susto')` funcionar — falta só usar em algum lugar.

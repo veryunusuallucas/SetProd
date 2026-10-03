@@ -474,6 +474,10 @@ export function ProjectLayout() {
           <Search size={18} />
           <span>Busca (Cmd+K)</span>
         </button>
+        {/* Ficava no pé do menu, ao lado do alfinete — e com o menu encolhido
+            caía para fora da vista (Lucas, 02/10/2026). Aqui é um item como
+            os outros: com o menu encolhido, sobra o ícone. */}
+        <BotaoDoTema className="sidebar-link" comRotulo />
         <button className="sidebar-link" onClick={() => navigate('/')}>
           <LogOut size={18} /> <span>Sair do Projeto</span>
         </button>
@@ -506,7 +510,6 @@ export function ProjectLayout() {
       */}
       <div className="rodape-do-menu">
         <StatusSync projetoId={id!} />
-        <BotaoDoTema />
         <button
           type="button"
           className="alfinete-menu"

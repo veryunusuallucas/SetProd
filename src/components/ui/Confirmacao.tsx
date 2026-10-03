@@ -146,9 +146,10 @@ export function Confirmacoes() {
               </div>
             </div>
 
-            {/* Pergunta de perigo (apagar, desfazer) ganha um gif triste — pedido do
-                Lucas, 02/10/2026. Some sozinho se a pessoa desligou os gifs. */}
-            {pedido.perigo && <GifDoMomento humor="triste" altura={130} />}
+            {/* Pergunta de perigo (apagar, desfazer) ganha um gif triste; as outras
+                ("tem certeza?"), um de dúvida — pedido do Lucas, 02/10/2026.
+                Some sozinho se a pessoa desligou os gifs ou a pasta está vazia. */}
+            <GifDoMomento humor={pedido.perigo ? "triste" : "duvida"} altura={130} />
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => responder(false)} className="btn-secondary" style={{ flex: 1 }}>
