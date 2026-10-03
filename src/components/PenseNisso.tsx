@@ -86,6 +86,10 @@ export function PenseNisso() {
             borderRadius: 'var(--radius-lg)', overflow: 'hidden',
             // Vidro: deixa o fundo do app viver atrás do aviso, para ele
             // parecer pousado na tela e não colado por cima.
+            //
+            // ⚠️ ESCURO NOS DOIS TEMAS, de propósito: é a cara do aviso. Por isso
+            // as cores de dentro são FIXAS, e não tokens — com tokens, no modo
+            // claro a frase saía em letra escura sobre este fundo escuro.
             background: 'linear-gradient(150deg, rgba(32,28,52,0.94), rgba(18,16,30,0.94))',
             backdropFilter: 'blur(14px)',
             border: '1px solid rgba(255,255,255,0.12)',
@@ -102,10 +106,10 @@ export function PenseNisso() {
 
           <div style={{ padding: '18px 20px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <Quote size={13} style={{ color: 'var(--accent-texto)' }} />
+              <Quote size={13} style={{ color: '#ffd700' }} />
               <span style={{
                 fontSize: '10px', fontWeight: 800, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: 'var(--accent-texto)',
+                textTransform: 'uppercase', color: '#ffd700',
               }}>
                 J. Martins
               </span>
@@ -113,7 +117,7 @@ export function PenseNisso() {
 
             <p style={{
               margin: 0, fontSize: '14px', lineHeight: 1.55,
-              color: 'var(--text-primary)', fontStyle: 'italic',
+              color: '#f4f4f5', fontStyle: 'italic',
             }}>
               {frase}
             </p>
