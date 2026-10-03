@@ -22,6 +22,7 @@ import { confirmar } from '../components/ui/Confirmacao';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { rotuloDaVersao, versaoNoNome } from '../lib/versaoDoRoteiro';
 
 /**
  * Worker empacotado junto com o app, não baixado do unpkg. O app é
@@ -835,7 +836,8 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div className="text-xs text-muted truncate" style={{ maxWidth: '320px' }}>
           {roteiro?.nome}
-          {(roteiro?.versao ?? 0) > 1 && <> · <strong>v{roteiro!.versao}</strong></>}
+          {/* A versão do nome do arquivo ("_v6"), quando há; senão a contagem de envios. */}
+          {roteiro && (versaoNoNome(roteiro.nome) || (roteiro.versao ?? 0) > 1) && <> · <strong>{rotuloDaVersao(roteiro)}</strong></>}
           {' '}· selecione um trecho no PDF para marcar
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -886,7 +888,7 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
                 return (
                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span className="text-sm" style={{ flex: 1, minWidth: '180px' }}>
-                      <strong>v{v.versao ?? 1}</strong> · {v.nome}
+                      <strong>{rotuloDaVersao(v)}</strong> · {v.nome}
                       <span className="text-muted text-xs">
                         {' '}· {new Date(v.data_upload).toLocaleDateString('pt-BR')} · {marcacoes} marcação(ões)
                       </span>
