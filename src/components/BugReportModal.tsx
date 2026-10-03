@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { useOrigemAncorada } from './ui/origemAncorada';
 import { BotaoTatil } from './ui/BotaoTatil';
+import { rotuloCompleto } from '../lib/versao';
 
 interface Props {
   onClose: () => void;
@@ -90,7 +91,7 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
         papel: localStorage.getItem('mock_papel') || null,
         usuario: user ? { id: user.id, email: user.email ?? null } : null,
         perfil_id: localStorage.getItem('mock_perfil_id') || null,
-        versao_app: `v${__VERSAO_APP__}`,
+        versao_app: rotuloCompleto(),
         banco: { projetos, perfis, despesas, acertos, diarias, tasks },
         resumo_log: {
           total: eventos.length,
@@ -339,7 +340,7 @@ export function BugReportModal({ onClose, descricaoInicial = '', tipoInicial = '
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               <Etiqueta texto={window.location.pathname.split('/').pop() || 'início'} titulo={window.location.pathname} />
-              <Etiqueta texto={`v${__VERSAO_APP__}`} />
+              <Etiqueta texto={rotuloCompleto()} />
               <Etiqueta texto="navegador e tela" />
               {user?.email && <Etiqueta texto={user.email} />}
               <Etiqueta

@@ -14,6 +14,7 @@ import type { Projeto } from '../types';
 import { CampoData } from './ui/CampoData';
 import { PadraoDaOD } from './PadraoDaOD';
 import { ComemoracaoDoWrap } from './ComemoracaoDoWrap';
+import { rotuloCurto } from '../lib/versao';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
@@ -365,7 +366,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
               </div>
 
               <div className="text-xs text-muted">
-                SetProd v4.2 · Feito para produção audiovisual.
+                SetProd {rotuloCurto()} · Feito para produção audiovisual.
               </div>
             </div>
 

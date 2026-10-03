@@ -228,7 +228,7 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
-    versao: '4.17.0',
+    versao: '0.17.0',
     resumo: <>O Financeiro foi reorganizado pela pergunta de quem abre, o orçamento do filme apareceu, e a equipe entrou em ordem — sem que um crédito tire mais ninguém do departamento.</>,
     grupos: [
       {
@@ -310,7 +310,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.16.0',
+    versao: '0.16.0',
     resumo: <>Os cadastros da equipe ficaram só com quem administra, as janelas passaram a se comportar do mesmo jeito em todo o app, e a importação por planilha parou de trocar campos.</>,
     grupos: [
       {
@@ -408,7 +408,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.15.0',
+    versao: '0.15.0',
     resumo: <>Cada um passa a ver o dinheiro que é seu, o app diz o tempo todo se o seu trabalho está salvo, e as telas falam a mesma língua.</>,
     grupos: [
       {
@@ -500,7 +500,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.14.0',
+    versao: '0.14.0',
     resumo: <>O que você escreve deixa de sumir quando duas pessoas mexem na mesma coisa — e o roteiro volta a abrir no set, sem internet.</>,
     grupos: [
       {
@@ -572,7 +572,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.13.2',
+    versao: '0.13.2',
     itens: [
       {
         tipo: 'novo',
@@ -583,7 +583,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.13.1',
+    versao: '0.13.1',
     itens: [
       {
         tipo: 'melhor',
@@ -606,7 +606,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.13.0',
+    versao: '0.13.0',
     resumo: <>Um menu novo em cada aparelho, e a produção com regras claras de quem mexe em quê — com os dados sensíveis da equipe protegidos de verdade.</>,
     grupos: [
       {
@@ -726,7 +726,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.12.0',
+    versao: '0.12.0',
     resumo: <>O boletim de câmera entrou no app: cada take, cada cartão e cada HD da diária, no celular do set ou no notebook do DIT — e sem internet.</>,
     grupos: [
       {
@@ -828,7 +828,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.11.0',
+    versao: '0.11.0',
     resumo: <>A primeira leva de melhorias de tela: o calendário se lê no celular, e o app inteiro para de escapar pelas bordas.</>,
     grupos: [
       {
@@ -886,7 +886,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.10.0',
+    versao: '0.10.0',
     resumo: <>A Ordem do Dia virou papel de verdade, o set ganhou o "a seguir", e o fim do dia agora tem festa.</>,
     grupos: [
       {
@@ -941,7 +941,7 @@ export const VERSOES: Versao[] = [
             tipo: 'melhor',
             icone: <Sparkles size={20} />,
             titulo: 'A inteligência artificial saiu do caminho',
-            texto: 'A OD é montada e desenhada pelo app, do começo ao fim — não há nada entre os seus dados e o papel. "Diagramar com IA" continua existindo num botão ao lado, para quem quiser outro visual, com a conferência da v4.9.0 intacta.',
+            texto: 'A OD é montada e desenhada pelo app, do começo ao fim — não há nada entre os seus dados e o papel. "Diagramar com IA" continua existindo num botão ao lado, para quem quiser outro visual, com a conferência da beta 0.9 intacta.',
           },
         ],
       },
@@ -1012,7 +1012,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.9.0',
+    versao: '0.9.0',
     resumo: <>A Ordem do Dia parou de inventar — e o dia passou a se montar sem trocar de tela.</>,
     grupos: [
       {
@@ -1076,7 +1076,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.8.2',
+    versao: '0.8.2',
     resumo: <>Trocar a versão do roteiro parou de custar o stripboard, a Ordem do Dia deixou de obrigar a ir e voltar de tela, e o app passou a medir sozinho quanto de roteiro cada cena ocupa.</>,
     grupos: [
       {
@@ -1230,7 +1230,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.8.1',
+    versao: '0.8.1',
     resumo: <>Os campos de texto pararam de brigar com quem digita, e o stripboard passou a alimentar a linha do dia.</>,
     itens: [
       {
@@ -1272,7 +1272,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.8.0',
+    versao: '0.8.0',
     resumo: <>A tela da diária foi refeita em volta de uma coisa só: a linha do dia. E o dia deixou de ser um plano — agora ele se registra acontecendo.</>,
     grupos: [
       {
@@ -1634,7 +1634,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.7.2',
+    versao: '0.7.2',
     itens: [
       {
         tipo: 'corrigido',
@@ -1645,7 +1645,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.7.1',
+    versao: '0.7.1',
     resumo: <>Agora dá para saber que o app mudou sem precisar adivinhar.</>,
     itens: [
       {
@@ -1687,7 +1687,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.7.0',
+    versao: '0.7.0',
     resumo: <>A produção tem mais coisa marcada além das diárias — e agora o app sabe disso.</>,
     itens: [
       {
@@ -1711,14 +1711,14 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.6.1',
+    versao: '0.6.1',
     resumo: <>As colunas voltaram — foi eu que exagerei na versão passada.</>,
     itens: [
       {
         tipo: 'melhor',
         icone: <ListChecks size={20} />,
         titulo: 'O quadro de colunas está de volta',
-        texto: 'O pedido era tirar a palavra "Kanban" do título, e na 4.6.0 eu troquei o formato inteiro por uma lista. O quadro era o certo. Só a palavra saiu: ela nomeia o formato para quem já conhece o formato, e não diz nada para o resto.',
+        texto: 'O pedido era tirar a palavra "Kanban" do título, e na 0.6.0 eu troquei o formato inteiro por uma lista. O quadro era o certo. Só a palavra saiu: ela nomeia o formato para quem já conhece o formato, e não diz nada para o resto.',
       },
       {
         tipo: 'melhor',
@@ -1729,14 +1729,14 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.6.0',
+    versao: '0.6.0',
     resumo: <>As tarefas deixaram de ser um quadro de colunas e viraram uma lista.</>,
     itens: [
       {
         tipo: 'melhor',
         icone: <ListChecks size={20} />,
         titulo: 'Tasks virou uma lista, sem o quadro de colunas',
-        texto: 'Agrupada por A fazer, Fazendo e Feito. (Durou uma versão: as colunas voltaram na 4.6.1.)',
+        texto: 'Agrupada por A fazer, Fazendo e Feito. (Durou uma versão: as colunas voltaram na 0.6.1.)',
       },
       {
         tipo: 'corrigido',
@@ -1765,7 +1765,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.5.3',
+    versao: '0.5.3',
     resumo: <>Tudo no formato brasileiro — dinheiro e data.</>,
     itens: [
       {
@@ -1795,7 +1795,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.5.1',
+    versao: '0.5.1',
     itens: [
       {
         tipo: 'corrigido',
@@ -1830,7 +1830,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.5.0',
+    versao: '0.5.0',
     resumo: (
       <>
         Nada mudou de lugar. O que mudou é como o app <strong>responde</strong> —
@@ -1877,7 +1877,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.4.2',
+    versao: '0.4.2',
     itens: [
       {
         tipo: 'melhor',
@@ -1888,7 +1888,7 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.4.1',
+    versao: '0.4.1',
     itens: [
       {
         tipo: 'corrigido',
@@ -1923,10 +1923,10 @@ export const VERSOES: Versao[] = [
     ],
   },
   {
-    versao: '4.4.0',
+    versao: '0.4.0',
     resumo: (
       <>
-        A v4.3 fez duas equipes trabalharem na mesma produção. A v4.4 fecha o
+        A 0.3 fez duas equipes trabalharem na mesma produção. A 0.4 fecha o
         ciclo do set: o app deixa de só <strong>planejar</strong> e passa a
         saber <strong>o que de fato aconteceu</strong> — e a usar isso.
       </>

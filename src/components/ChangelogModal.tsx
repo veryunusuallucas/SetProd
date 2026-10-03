@@ -5,6 +5,7 @@ import { X, Sparkles } from 'lucide-react';
 import { MOLA } from './ui/ia';
 import { useOrigemAncorada } from './ui/origemAncorada';
 import { VERSOES, ETIQUETA, itensDa, type Grupo, type Item, type Versao } from '../lib/novidades';
+import { rotuloCompleto, rotuloCurto } from '../lib/versao';
 
 /**
  * As novidades da versão.
@@ -73,7 +74,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                 <Sparkles size={18} color="var(--accent)" />
-                <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da v{atual.versao}</h2>
+                <h2 className="font-bold text-lg" style={{ margin: 0 }}>Novidades da {rotuloCurto(atual.versao)}</h2>
               </div>
               {atual.resumo && (
                 <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>{atual.resumo}</p>
@@ -197,7 +198,7 @@ function CartaoVersao({ versao, aberto, aoAlternar }: { versao: Versao; aberto: 
           color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '12px',
         }}
       >
-        <div className="font-bold text-sm" style={{ flex: 1, minWidth: 0 }}>v{versao.versao}</div>
+        <div className="font-bold text-sm" style={{ flex: 1, minWidth: 0 }}>{rotuloCompleto(versao.versao)}</div>
         <span className="text-xs text-muted" style={{ flexShrink: 0 }}>
           {aberto ? '−' : `+${itens.length}`}
         </span>

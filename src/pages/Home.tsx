@@ -29,6 +29,7 @@ import { FundoEntrada } from '../components/ui/webgl/FundoEntrada';
 import { CantoDaConexao } from '../components/ui/cantoDaConexao';
 import { MOLA, MOLA_GESTO, PASSO_STAGGER, useMovimentoReduzido } from '../components/ui/ia';
 import { LogOut } from 'lucide-react';
+import { rotuloCurto } from '../lib/versao';
 
 /**
  * Como cada um é recebido na porta.
@@ -302,7 +303,7 @@ export function Home() {
           {/* Sai do package.json: escrito à mão, o selo já ficou dizendo v4.2
               enquanto o app era outro. Só maior.menor — o número de correção
               interessa ao relatório de bug, não a quem está usando. */}
-          <Sparkles size={12} /> v{__VERSAO_APP__.split('.').slice(0, 2).join('.')}
+          <Sparkles size={12} /> {rotuloCurto()}
         </button>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

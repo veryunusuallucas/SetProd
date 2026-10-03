@@ -110,6 +110,17 @@ for (const linha of entrada.split('\n')) {
 
 if (!mexeuNoApp) process.exit(0);
 
+/*
+  A RENUMERAÇÃO DO BETA (02/10/2026): a série 4.N virou 0.N — a 4.17 é a beta
+  0.17. O que está publicado ainda pode dizer 4.x; para comparar, ele conta
+  como o 0.x correspondente. Sem isto, a 0.18 pareceria menor que a 4.17 e o
+  push seria barrado.
+*/
+function semSerieAntiga(v) {
+  return v && /^4\./.test(v) ? v.replace(/^4\./, '0.') : v;
+}
+versaoPublicada = semSerieAntiga(versaoPublicada);
+
 const versaoAtual = versaoDoPacote(null);
 const versaoNasNovidades = versaoNoTopoDasNovidades();
 
@@ -117,8 +128,8 @@ if (!maiorQue(versaoAtual, versaoPublicada)) {
   erro([
     `A versão continua em ${versaoAtual} (já publicada).`,
     '',
-    'Suba o número no package.json — 4.4.1 → 4.4.2 para uma correção,',
-    '4.4.x → 4.5.0 quando a mudança valer um nome.',
+    'Suba o número no package.json — 0.18.0 → 0.18.1 para uma correção,',
+    '0.18.x → 0.19.0 quando a mudança valer um nome.',
   ]);
 }
 

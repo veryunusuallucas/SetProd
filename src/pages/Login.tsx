@@ -6,6 +6,7 @@ import { MOLA } from '../components/ui/ia';
 import { supabase } from '../lib/supabase';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { sincronizarParticipacoes } from '../lib/membros';
+import { rotuloCompleto } from '../lib/versao';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -137,7 +138,7 @@ export function Login() {
             Discreta de propósito: informação de rodapé, não convite.
           */}
           <div className="text-xs text-muted" style={{ letterSpacing: '0.06em', opacity: 0.7 }}>
-            versão {__VERSAO_APP__}
+            {rotuloCompleto()}
           </div>
         </div>
       </motion.div>

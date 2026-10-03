@@ -1,5 +1,6 @@
 import { db } from '../db/db';
 import { VERSOES } from './novidades';
+import { rotuloCurto } from './versao';
 
 /**
  * O sino avisa quando o app mudou de versão.
@@ -39,8 +40,8 @@ export async function avisarNovidadeSePreciso(): Promise<void> {
   const quantos = entrada ? (entrada.grupos?.flatMap(g => g.itens).length ?? entrada.itens?.length ?? 0) : 0;
 
   const texto = quantos > 0
-    ? `SetProd v${__VERSAO_APP__}: ${quantos} novidade(s). Toque no selo da versão, na tela inicial, para ver.`
-    : `SetProd atualizado para a v${__VERSAO_APP__}.`;
+    ? `SetProd ${rotuloCurto()}: ${quantos} novidade(s). Toque no selo da versão, na tela inicial, para ver.`
+    : `SetProd atualizado para a ${rotuloCurto()}.`;
 
   /*
     Uma notificação POR PRODUÇÃO, porque o sino é por produção.
