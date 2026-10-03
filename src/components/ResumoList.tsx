@@ -12,6 +12,7 @@ import type { ModoAcerto, StatusAcerto, Perfil } from '../types';
 import { ProfileCard } from './ui/ProfileCard';
 import { MODELO_COBRANCA_PADRAO, MODELO_REPASSE_PADRAO, preencherMensagem } from '../lib/mensagensDeAcerto';
 import { GifDoMomento } from './ui/GifDoMomento';
+import { MOMENTOS } from '../lib/gifs';
 
 /**
  * `soEstePerfil` mostra só a linha de quem está olhando (decisão do Lucas,
@@ -250,7 +251,7 @@ export function ResumoList({ projetoId, onVerFicha, soEstePerfil }: { projetoId:
                   {minhatransacoes.length === 0 && detalhe.linhas.length === 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
                       {/* Acerto zerado é motivo de festa (pasta feliz, lib/gifs). */}
-                      <GifDoMomento humor="feliz" altura={110} />
+                      <GifDoMomento humor={MOMENTOS.quite} altura={110} />
                       <div className="text-muted text-sm text-center">Nenhuma pendência — tudo quite.</div>
                     </div>
                   ) : (

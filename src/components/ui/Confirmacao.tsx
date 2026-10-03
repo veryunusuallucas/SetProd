@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
 import { GifDoMomento } from './GifDoMomento';
-import type { Humor } from '../../lib/gifs';
+import { MOMENTOS, type Humor } from '../../lib/gifs';
 
 /**
  * A pergunta de "tem certeza?", feita pelo app e não pelo navegador.
@@ -43,7 +43,7 @@ export interface OpcoesConfirmacao {
    * Pasta de gif própria para esta pergunta ("vazio" no membro sem dados).
    * Pasta vazia ou inexistente cai no padrão: triste no perigo, dúvida no resto.
    */
-  humor?: Humor;
+  humor?: Humor | readonly Humor[];
 }
 
 interface Pedido extends OpcoesConfirmacao {
@@ -156,7 +156,7 @@ export function Confirmacoes() {
                 ("tem certeza?"), um de dúvida — pedido do Lucas, 02/10/2026.
                 Some sozinho se a pessoa desligou os gifs ou a pasta está vazia. */}
             <GifDoMomento
-              humor={[...(pedido.humor ? [pedido.humor] : []), pedido.perigo ? "triste" : "duvida"]}
+              humor={[...([] as Humor[]).concat(pedido.humor ?? []), ...(pedido.perigo ? MOMENTOS.apagar : MOMENTOS.pergunta)]}
               altura={130}
             />
 

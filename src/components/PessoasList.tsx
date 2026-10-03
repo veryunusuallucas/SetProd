@@ -24,6 +24,7 @@ import { CampoData } from './ui/CampoData';
 import { CampoFuncao } from './ui/CampoFuncao';
 import { Janela } from './ui/Janela';
 import { funcoesPorHierarquia, ordemDaFuncao, ordemDoDepartamento } from '../lib/creditos';
+import { MOMENTOS } from '../lib/gifs';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -305,7 +306,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
         detalhe: `${nome} vai entrar só com ${preenchidos === 0 ? 'o nome' : 'o nome e mais uma informação'}. Dá para completar depois — ou mandar o link de cadastro para a pessoa preencher.`,
         confirmar: 'Salvar assim mesmo',
         cancelar: 'Voltar e completar',
-        humor: 'vazio',
+        humor: MOMENTOS.vazio,
       }))) return;
     }
 

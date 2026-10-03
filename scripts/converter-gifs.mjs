@@ -38,13 +38,25 @@ function acharFfmpeg() {
   return null;
 }
 
-/** "Confused Pulp Fiction GIF by SBS.gif" → "confused-pulp-fiction" */
+/**
+ * "certeza_Pulp Fiction GIF.gif" → "certeza_pulp-fiction".
+ * O "_" separa as tags do nome do filme e é mantido; o resto vira traço.
+ */
 function nomeSimples(arquivo) {
   return arquivo
     .replace(/\.[a-z0-9]+$/i, '')
     .replace(/\s+gif(\s+by\s+.*)?$/i, '')
     .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'gif';
+    .toLowerCase()
+    .split('_')
+    .map(parte => parte.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+    .filter(Boolean)
+    .join('_') || 'gif';
+}
+
+/** As pastas a varrer: a raiz (gifs com tags no nome) e as subpastas antigas. */
+function pastas() {
+  return ['', ...readdirSync(RAIZ).filter(d => statSync(join(RAIZ, d)).isDirectory())];
 }
 
 const ffmpeg = acharFfmpeg();
@@ -55,7 +67,7 @@ if (!ffmpeg) {
 
 const kb = n => `${Math.round(n / 1024)} KB`;
 const falhas = [];
-for (const humor of readdirSync(RAIZ).filter(d => statSync(join(RAIZ, d)).isDirectory())) {
+for (const humor of pastas()) {
   for (const arquivo of readdirSync(join(RAIZ, humor)).filter(a => /\.(gif|webp)$/i.test(a))) {
     const origem = join(RAIZ, humor, arquivo);
     let destino = join(RAIZ, humor, `${nomeSimples(arquivo)}.mp4`);

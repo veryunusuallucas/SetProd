@@ -20,6 +20,7 @@ import { useRole } from '../hooks/useRole';
 import { diagramarRelatorio } from '../lib/gemini';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import { confirmar } from '../components/ui/Confirmacao';
+import { MOMENTOS } from '../lib/gifs';
 
 type Grupo = (typeof CONJUNTOS)[number]['grupo'];
 const ORDEM_GRUPOS: Grupo[] = ['Produção', 'Financeiro', 'Set', 'Criativo', 'Logística'];
@@ -231,7 +232,7 @@ export function GestaoDados() {
       confirmar: 'Arquivar mesmo assim',
       perigo: true,
       // Não tem volta: gif de medo, não de tristeza (lib/gifs).
-      humor: 'medo',
+      humor: MOMENTOS.semVolta,
     });
     if (!ok) return;
 

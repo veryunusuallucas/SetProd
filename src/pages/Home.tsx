@@ -32,6 +32,9 @@ import { LogOut } from 'lucide-react';
 import { rotuloCurto } from '../lib/versao';
 import { BotaoDoTema } from '../components/BotaoDoTema';
 import { GifDoMomento } from '../components/ui/GifDoMomento';
+import { MOMENTOS } from '../lib/gifs';
+import { CartaDeAbertura } from '../components/CartaDeAbertura';
+import { preferencias } from '../lib/preferencias';
 
 /**
  * Como cada um é recebido na porta.
@@ -164,6 +167,8 @@ export function Home() {
   }, []);
 
   const [confirmarSaida, setConfirmarSaida] = useState(false);
+  /** A produção que acabou de nascer — a carta de abertura está na tela. */
+  const [abertura, setAbertura] = useState<{ id: string; nome: string } | null>(null);
   const [termoBusca, setTermoBusca] = useState('');
   
   // Stepper State
@@ -236,7 +241,10 @@ export function Home() {
     void entrarComoFundador(id);
 
     setMostrarStepper(false);
-    navigate(`/projeto/${id}`);
+    // A carta de abertura (CartaDeAbertura) só com os gifs ligados; sem eles,
+    // direto para a produção, como sempre foi.
+    if (preferencias().gifs) setAbertura({ id, nome: projetoCriado.nome });
+    else navigate(`/projeto/${id}`);
   };
 
   const naLixeira = projetos?.filter(estaNaLixeira) || [];
@@ -567,6 +575,13 @@ export function Home() {
       )}
 
 
+      {abertura && (
+        <CartaDeAbertura
+          nome={abertura.nome}
+          aoEntrar={() => { const id = abertura.id; setAbertura(null); navigate(`/projeto/${id}`); }}
+        />
+      )}
+
       {/* MODAL DE CONFIRMAÇÃO DE DELEÇÃO */}
       {projetoParaDeletar && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
@@ -574,7 +589,7 @@ export function Home() {
             {/* O gif triste no lugar do ícone; sem gif, o ícone volta. */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <GifDoMomento
-                humor="triste"
+                humor={MOMENTOS.apagar}
                 altura={130}
                 reserva={
                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -662,7 +677,7 @@ export function Home() {
             {/* O gif triste no lugar do ícone; sem gif, o ícone volta. */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <GifDoMomento
-                humor={['medo', 'triste']}
+                humor={MOMENTOS.semVolta}
                 altura={130}
                 reserva={
                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -39,15 +39,15 @@ import { oitavosParaPaginas } from './decupagem';
 */
 
 import textoDasFrases from '../conteudo/wrap/frases.md?raw';
-import { GIFS, type Midia } from './gifs';
+import { GIFS, MOMENTOS, type Midia } from './gifs';
 
 /*
-  Os gifs do wrap são os da pasta FELIZ da coleção do app (`lib/gifs.ts`,
-  `src/conteudo/gifs/feliz/`). Eram uma pasta só do wrap até 02/10/2026,
-  quando os gifs passaram a aparecer em outras partes do app, por humor.
+  Os gifs do wrap são os de tag "comemorar" (ou "feliz") da biblioteca do
+  app — `lib/gifs.ts`, MOMENTOS.wrap. Eram uma pasta só do wrap até 02/10/2026.
 */
 export type MidiaDoWrap = Midia;
-export const MIDIAS_WRAP: MidiaDoWrap[] = GIFS.feliz || [];
+export const MIDIAS_WRAP: MidiaDoWrap[] =
+  MOMENTOS.wrap.map(t => GIFS[t] || []).find(l => l.length > 0) || [];
 
 /**
  * Lê o `.md` como duas listas.
