@@ -289,6 +289,26 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
       return;
     }
 
+    /*
+      "TEM NADA AÍ" (pedido do Lucas, 03/10/2026). Ficha nova só com o nome
+      — ou o nome e mais uma coisa — passa, mas com uma pergunta de brincadeira
+      e um gif da pasta "vazio". Não bloqueia: às vezes só se sabe o nome
+      mesmo, e o resto vem pelo link de cadastro. Editar não pergunta — quem
+      edita já passou por aqui.
+    */
+    if (!editId) {
+      const preenchidos = Object.entries(valoresParaValidar)
+        .filter(([campo, v]) => campo !== 'nome' && campo !== 'sobrenome' && String(v ?? '').trim() !== '')
+        .length + (departamentoId ? 1 : 0);
+      if (preenchidos < 2 && !(await confirmar({
+        titulo: 'Tem quase nada aí 👀',
+        detalhe: `${nome} vai entrar só com ${preenchidos === 0 ? 'o nome' : 'o nome e mais uma informação'}. Dá para completar depois — ou mandar o link de cadastro para a pessoa preencher.`,
+        confirmar: 'Salvar assim mesmo',
+        cancelar: 'Voltar e completar',
+        humor: 'vazio',
+      }))) return;
+    }
+
     const payload = {
       projeto_id: projetoId,
       nome, sobrenome, nome_social: nomeSocial, cpf, rg, data_nascimento: nascimento,

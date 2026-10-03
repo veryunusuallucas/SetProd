@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
 import { GifDoMomento } from './GifDoMomento';
+import { GIFS, type Humor } from '../../lib/gifs';
 
 /**
  * A pergunta de "tem certeza?", feita pelo app e não pelo navegador.
@@ -38,6 +39,11 @@ export interface OpcoesConfirmacao {
   cancelar?: string;
   /** Ação destrutiva pinta o botão de vermelho. */
   perigo?: boolean;
+  /**
+   * Pasta de gif própria para esta pergunta ("vazio" no membro sem dados).
+   * Pasta vazia ou inexistente cai no padrão: triste no perigo, dúvida no resto.
+   */
+  humor?: Humor;
 }
 
 interface Pedido extends OpcoesConfirmacao {
@@ -149,7 +155,10 @@ export function Confirmacoes() {
             {/* Pergunta de perigo (apagar, desfazer) ganha um gif triste; as outras
                 ("tem certeza?"), um de dúvida — pedido do Lucas, 02/10/2026.
                 Some sozinho se a pessoa desligou os gifs ou a pasta está vazia. */}
-            <GifDoMomento humor={pedido.perigo ? "triste" : "duvida"} altura={130} />
+            <GifDoMomento
+              humor={pedido.humor && GIFS[pedido.humor]?.length ? pedido.humor : pedido.perigo ? "triste" : "duvida"}
+              altura={130}
+            />
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => responder(false)} className="btn-secondary" style={{ flex: 1 }}>

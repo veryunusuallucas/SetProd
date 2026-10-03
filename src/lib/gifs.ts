@@ -25,13 +25,16 @@ export interface Midia {
   url: string;
   /** mp4 vai num `<video>` mudo em laço — o mesmo trecho pesa um décimo do gif. */
   video: boolean;
+  /** O nome do arquivo, sem extensão — para a galeria (galeria-gifs.html). */
+  nome: string;
 }
 
 /** `{ feliz: [...], triste: [...] }` — o nome da pasta é o humor. */
 export const GIFS: Record<string, Midia[]> = {};
 for (const caminho of Object.keys(ARQUIVOS).sort()) {
   const humor = caminho.split('/').slice(-2, -1)[0].toLowerCase();
-  (GIFS[humor] ||= []).push({ url: ARQUIVOS[caminho], video: /\.mp4$/i.test(caminho) });
+  const nome = caminho.split('/').pop()!.replace(/\.[^.]+$/, '');
+  (GIFS[humor] ||= []).push({ url: ARQUIVOS[caminho], video: /\.mp4$/i.test(caminho), nome });
 }
 
 export type Humor = 'feliz' | 'triste' | (string & {});

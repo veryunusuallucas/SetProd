@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "pdfjs:fontes": "node scripts/copiar-fontes-pdfjs.mjs",
-    "postinstall": "node scripts/copiar-fontes-pdfjs.mjs"
+    "postinstall": "node scripts/copiar-fontes-pdfjs.mjs",
+    "gifs": "node scripts/converter-gifs.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
