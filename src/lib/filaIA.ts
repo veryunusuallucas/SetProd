@@ -80,7 +80,8 @@ export async function pegarVez(params: { projeto: string; total: number }): Prom
   const ativa = await execucaoAtiva();
   if (ativa && !ativa.minha) return { liberado: false, ocupadaPor: ativa };
 
-  const nome = (usuario.user_metadata?.nome as string) || usuario.email || 'Alguém da equipe';
+  // Nunca o e-mail: a fila é vista por quem está esperando, de qualquer produção.
+  const nome = (usuario.user_metadata?.nome as string) || 'Alguém da equipe';
   const { data, error } = await supabase
     .from('ia_execucoes')
     .insert({
