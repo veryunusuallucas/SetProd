@@ -1,3 +1,4 @@
+import { problemaNaSenha, MINIMO_DA_SENHA } from '../lib/senha';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -43,8 +44,9 @@ export function CriarConta() {
       setErro('As duas senhas não são iguais.');
       return;
     }
-    if (senha.length < 6) {
-      setErro('A senha precisa de pelo menos 6 caracteres.');
+    const problema = problemaNaSenha(senha);
+    if (problema) {
+      setErro(problema);
       return;
     }
 
@@ -163,10 +165,10 @@ export function CriarConta() {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={MINIMO_DA_SENHA}
                   value={senha}
                   onChange={e => setSenha(e.target.value)}
-                  placeholder="pelo menos 6 caracteres"
+                  placeholder="8 ou mais, com letras e números"
                 />
               </div>
               <div>
@@ -204,7 +206,7 @@ function traduzir(mensagem: string): string {
     return 'Já existe uma conta com esse e-mail. Entre pelo login, ou use "Esqueci a senha".';
   }
   if (/password.*at least|weak password/i.test(mensagem)) {
-    return 'Essa senha é curta demais. Use pelo menos 6 caracteres.';
+    return 'Essa senha é fraca demais. Use 8 ou mais caracteres, com letras e números.';
   }
   if (/invalid.*email|unable to validate email/i.test(mensagem)) {
     return 'Esse e-mail não parece válido. Confira se não faltou uma letra.';

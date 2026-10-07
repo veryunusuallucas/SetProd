@@ -1,3 +1,4 @@
+import { problemaNaSenha, MINIMO_DA_SENHA } from '../lib/senha';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -62,8 +63,9 @@ export function NovaSenha() {
       setErro('As duas senhas não são iguais.');
       return;
     }
-    if (senha.length < 6) {
-      setErro('A senha precisa de pelo menos 6 caracteres.');
+    const problema = problemaNaSenha(senha);
+    if (problema) {
+      setErro(problema);
       return;
     }
 
@@ -138,10 +140,10 @@ export function NovaSenha() {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={MINIMO_DA_SENHA}
                   value={senha}
                   onChange={e => setSenha(e.target.value)}
-                  placeholder="pelo menos 6 caracteres"
+                  placeholder="8 ou mais, com letras e números"
                 />
               </div>
               <div>
