@@ -228,6 +228,62 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.19.0',
+    resumo: <>Uma rodada de segurança: as portas que uma auditoria achou abertas foram fechadas — no servidor e no app. Quase nada muda na tela; o que muda é o que outra pessoa conseguiria fazer com os seus dados.</>,
+    grupos: [
+      {
+        id: 'seguranca',
+        titulo: 'Segurança',
+        resumo: 'Achados de uma auditoria completa do app, corrigidos.',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <IdCard size={20} />,
+            titulo: 'A ficha de cada um é de cada um',
+            texto: 'Quem é da equipe não consegue mais trocar o e-mail da ficha de outra pessoa — era o caminho para se passar por ela e ver CPF, conta e ficha médica. Criar a própria ficha ao entrar numa produção continua igual.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'Imprimir é só imprimir',
+            texto: 'DPR, Breakdown, OD e relatórios: um texto digitado com código dentro sai como texto, e nada roda na página de impressão. O mesmo vale para a prévia do que a IA gera (a prévia do relatório não é mais editável — a edição nunca chegava à impressão).',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Trash2 size={20} />,
+            titulo: 'A lixeira não apaga por você',
+            texto: 'Só some sozinha, depois de 7 dias, a produção que você mesmo mandou para a lixeira. O que outra pessoa mandou fica esperando você restaurar ou apagar de vez. A hora da lixeira agora é a do servidor, e produção apagada de vez não pode ser recriada com o mesmo endereço.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Lock size={20} />,
+            titulo: 'Cada produção no seu canto',
+            texto: 'Pesquisas, respostas e o formulário de cadastro público só podem ser mexidos por quem é da produção. Um dado com endereço de outra produção é recusado, no servidor e no aparelho, e um backup com dados de outra produção misturados não é restaurado.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <HeartPulse size={20} />,
+            titulo: 'Menos cópias do que é sensível',
+            texto: 'O cadastro feito pelo link sai da caixa de entrada do servidor depois que vira ficha — e uma ficha apagada não volta mais sozinha. Sair da conta limpa também as anotações locais, e o relato de bug não leva mais o código do convite.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <History size={20} />,
+            titulo: 'A ata segue o relógio do servidor',
+            texto: 'A ordem do "O que andou acontecendo" vem da hora em que o servidor recebeu cada registro, não do relógio de quem fez. E quem abriu uma ficha médica pelo acesso de emergência nunca some da lista.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Clapperboard size={20} />,
+            titulo: 'Claquete no modo claro',
+            texto: 'A claquete do título ficava ilegível no modo claro. Agora é preta com letra clara nos dois temas, como a de verdade.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     versao: '0.18.0',
     resumo: <>O SetProd assume que é beta, ganha o modo claro para o set de dia e uma biblioteca de gifs de filme — na abertura de cada produção, no wrap, e na hora de apagar alguma coisa.</>,
     grupos: [
