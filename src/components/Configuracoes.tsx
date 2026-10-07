@@ -6,7 +6,7 @@ import { SoQuemPode } from './ui/SoQuemPode';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom, FileText } from 'lucide-react';
+import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom, FileText, Star } from 'lucide-react';
 import { abrirEditorDaDock, moduloPorId, useFixosDaDock } from './menu/modulosDaDock';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
@@ -14,6 +14,7 @@ import type { Projeto } from '../types';
 import { CampoData } from './ui/CampoData';
 import { rotuloCurto } from '../lib/versao';
 import { TermosDeUso } from './TermosDeUso';
+import { AvaliacaoDoApp } from './AvaliacaoDoApp';
 import { Interruptor } from './ui/Interruptor';
 import { mudarPreferencia, usePreferencia } from '../lib/preferencias';
 
@@ -37,6 +38,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const [showBug, setShowBug] = useState(false);
   const [showSobre, setShowSobre] = useState(false);
   const [showTermos, setShowTermos] = useState(false);
+  const [opinando, setOpinando] = useState(false);
   const mensagensDivertidas = usePreferencia('mensagensDivertidas');
   const wrapFestivo = usePreferencia('wrapFestivo');
   const gifsLigados = usePreferencia('gifs');
@@ -332,6 +334,13 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
                 >
                   <FileText size={13} /> Termos e condições
                 </button>
+                <button
+                  onClick={() => setOpinando(true)}
+                  className="text-xs"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: 0, color: 'var(--accent-texto)', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  <Star size={13} /> Dar minha opinião
+                </button>
               </div>
             </div>
 
@@ -347,6 +356,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
       )}
 
       {showTermos && <TermosDeUso aoFechar={() => setShowTermos(false)} />}
+      {opinando && <AvaliacaoDoApp aoFechar={() => setOpinando(false)} />}
       {showBug && <BugReportModal onClose={() => setShowBug(false)} />}
     </div>
   );

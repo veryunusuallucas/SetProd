@@ -66,12 +66,19 @@ export async function situacaoDoAceite(usuario: string): Promise<Situacao> {
   return versoes.length || lembrado ? 'nova-versao' : 'primeira';
 }
 
+/** Este aparelho já sabe que a conta aceitou a versão atual? (sem perguntar ao servidor) */
+export const aceiteEmDiaAqui = (usuario: string) => ler(chave(usuario)) === VERSAO_ACEITA;
+
+/** Disparado quando a pessoa aceita: quem esperava o bem-vindo sair (a avaliação) pode entrar. */
+export const EVENTO_ACEITE = 'setprod:termos-aceitos';
+
 /**
  * Registra o aceite. Sem internet, guarda para mandar depois e já libera o app:
  * quem está no set sem sinal não pode ficar preso numa tela de termos.
  */
 export async function registrarAceite(usuario: string): Promise<'registrado' | 'pendente'> {
   gravar(chave(usuario), VERSAO_ACEITA);
+  window.dispatchEvent(new Event(EVENTO_ACEITE));
   if (!supabaseConfigurado) return 'registrado';
 
   const { error } = await supabase.from('aceites_termos').insert({

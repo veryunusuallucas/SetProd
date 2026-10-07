@@ -34,6 +34,9 @@ import { BotaoDoTema } from '../components/BotaoDoTema';
 import { GifDoMomento } from '../components/ui/GifDoMomento';
 import { MOMENTOS } from '../lib/gifs';
 import { CartaDeAbertura } from '../components/CartaDeAbertura';
+import { AvaliacaoDoApp } from '../components/AvaliacaoDoApp';
+import { devePerguntar } from '../lib/avaliacao';
+import { aceiteEmDiaAqui, EVENTO_ACEITE } from '../lib/aceite';
 import { preferencias } from '../lib/preferencias';
 
 /**
@@ -248,6 +251,30 @@ export function Home() {
   };
 
   const naLixeira = projetos?.filter(estaNaLixeira) || [];
+
+  /*
+    A avaliação do fim da produção (lib/avaliacao.ts): a primeira produção
+    encerrada que esta conta ainda não avaliou nem dispensou. Só depois do
+    bem-vindo — com os termos ainda abertos, seriam duas janelas uma em cima
+    da outra.
+  */
+  const [avaliando, setAvaliando] = useState<{ id: string; nome: string; diarias: number } | null>(null);
+  const [aceitou, setAceitou] = useState(0);
+  useEffect(() => {
+    const aoAceitar = () => setAceitou(n => n + 1);
+    window.addEventListener(EVENTO_ACEITE, aoAceitar);
+    return () => window.removeEventListener(EVENTO_ACEITE, aoAceitar);
+  }, []);
+  useEffect(() => {
+    if (!user || buscandoNoServidor || avaliando || !projetos || !diarias || abertura) return;
+    if (!aceiteEmDiaAqui(user.id)) return;
+    const encerrada = projetos.find(p =>
+      !estaNaLixeira(p)
+      && resumirProducao(diariasPorProjeto.get(p.id) || [], hoje).fase === 'encerrada'
+      && devePerguntar(user.id, p.id));
+    if (encerrada) setAvaliando({ id: encerrada.id, nome: encerrada.nome, diarias: (diariasPorProjeto.get(encerrada.id) || []).length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, buscandoNoServidor, projetos, diarias, abertura, aceitou]);
 
   const projetosFiltrados = (projetos || []).filter(p =>
     !estaNaLixeira(p) && (
@@ -579,6 +606,17 @@ export function Home() {
         <CartaDeAbertura
           nome={abertura.nome}
           aoEntrar={() => { const id = abertura.id; setAbertura(null); navigate(`/projeto/${id}`); }}
+        />
+      )}
+
+      {avaliando?.id && (
+        <AvaliacaoDoApp
+          projetoId={avaliando.id}
+          nomeDaProducao={avaliando.nome}
+          diarias={avaliando.diarias}
+          // Fechar não pergunta de novo nesta visita: a próxima produção encerrada
+          // (se houver) espera a próxima vez que a tela inicial abrir.
+          aoFechar={() => setAvaliando({ id: '', nome: '', diarias: 0 })}
         />
       )}
 
