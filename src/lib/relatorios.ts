@@ -85,7 +85,7 @@ export function breakdownSummary(d: DadosRelatorio): string {
         <div style="background:#f4f4f4;padding:8px 10px;font-weight:bold;font-size:13px">
           CENA ${escapar(c.numero)} — ${escapar(c.descricao)}
           <span style="font-weight:normal;color:#666;font-size:11px">
-            · ${(c.ambiente || '').toUpperCase()} ${(c.periodo || '').toUpperCase()}
+            · ${escapar((c.ambiente || '').toUpperCase())} ${escapar((c.periodo || '').toUpperCase())}
             · ${escapar(loc?.nome || 'sem locação')}
             · ${escapar(c.paginas || '—')} pág
             · Diária ${dias.get(c.id) ?? 1}
@@ -123,10 +123,10 @@ export function elementList(d: DadosRelatorio): string {
     const linhas = itens
       .sort((a, b) => (a.castId ?? 999) - (b.castId ?? 999) || a.nome.localeCompare(b.nome))
       .map(i => `<tr>
-        <td style="width:40px;text-align:center">${i.castId ?? ''}</td>
+        <td style="width:40px;text-align:center">${escapar(i.castId)}</td>
         <td><strong>${escapar(i.nome)}</strong>${i.aliases?.length ? `<br><span class="muted">também: ${i.aliases.map(escapar).join(', ')}</span>` : ''}</td>
         <td style="width:60px;text-align:center">${i.cenas.length}</td>
-        <td>${i.cenas.join(', ') || '—'}</td>
+        <td>${escapar(i.cenas.join(', ') || '—')}</td>
       </tr>`).join('');
 
     return `<h2>${escapar(depto)} (${itens.length})</h2>
@@ -230,7 +230,7 @@ export function doodHtml(d: DadosRelatorio): string {
 
   const corpo = linhas.map(l => `
     <tr>
-      <td style="text-align:center">${l.castId ?? ''}</td>
+      <td style="text-align:center">${escapar(l.castId)}</td>
       <td><strong>${escapar(l.nome)}</strong></td>
       ${l.codigos.map(c => `<td style="text-align:center;font-size:10px;font-weight:bold;${c ? `background:${cores[c]};color:#fff` : ''}">${c}</td>`).join('')}
       <td style="text-align:center">${l.diasTrabalho}</td>
@@ -291,7 +291,7 @@ export function shootingSchedule(d: DadosRelatorio): string {
       linhasDoDia.push(`<tr>
         <td style="font-weight:bold">${escapar(c.numero)}</td>
         <td>${escapar(c.descricao)}</td>
-        <td>${(c.ambiente || '').toUpperCase()} ${(c.periodo || '').toUpperCase()}</td>
+        <td>${escapar((c.ambiente || '').toUpperCase())} ${escapar((c.periodo || '').toUpperCase())}</td>
         <td>${escapar(loc?.nome || '—')}</td>
         <td>${escapar(c.paginas || '—')}</td>
         <td>${escapar(c.estimativa || '—')}</td>

@@ -742,7 +742,7 @@ export function DiariaModule() {
       ].filter(Boolean).join(' · ');
 
       return `<li><b>Cena ${h(c.numero)}</b> — ${h(c.descricao)} <span class="muted">(${h((c.ambiente || 'ext').toUpperCase())} / ${h(c.periodo || 'dia')})</span>${
-        detalhes ? ` <span class="muted">[${detalhes}]</span>` : ''
+        detalhes ? ` <span class="muted">[${h(detalhes)}]</span>` : ''
       }${reg?.motivo ? ` — <b class="alerta">${h(reg.motivo)}</b>` : ''
       }${reg?.cobertura ? `<br><span class="muted">${h(reg.cobertura)}</span>` : ''
       }${reg?.observacao ? `<br><span class="muted">${h(reg.observacao)}</span>` : ''}${
@@ -816,7 +816,7 @@ export function DiariaModule() {
     const linhasOcorrencias = ocorrencias.map(o => `<tr>
       <td style="white-space:nowrap">${h(o.hora || '—')}</td>
       <td><b>${h(ROTULO_OCORRENCIA[o.tipo] || o.tipo)}</b></td>
-      <td>${o.minutos_perdidos ? `${o.minutos_perdidos}min` : '<span class="muted">—</span>'}</td>
+      <td>${o.minutos_perdidos ? `${h(o.minutos_perdidos)}min` : '<span class="muted">—</span>'}</td>
       <td>${h(o.descricao)}${assinatura(o.registrado_por, o.registrado_em)}</td>
     </tr>`).join('');
 
@@ -841,7 +841,7 @@ export function DiariaModule() {
         .alerta{color:#c0392b}
       </style></head><body>
       <h1>${h(projeto?.nome || 'Produção')}</h1>
-      <div class="muted">Relatório Diário de Produção (DPR) — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
+      <div class="muted">Relatório Diário de Produção (DPR) — Diária ${h(String(diaria.numero).padStart(2, '0'))} · ${h(formataData(diaria.data))}</div>
 
       <div class="kpis">
         <div class="kpi"><div class="rot">Cenas filmadas</div><div class="val">${relatorio.gravadas.length} de ${cenasDaDiaria.length}</div></div>
@@ -853,7 +853,7 @@ export function DiariaModule() {
       </div>
       ${estouro ? '<p class="alerta"><b>Atenção:</b> o gasto do dia passou do valor máximo definido.</p>' : ''}
       ${atraso.marcados > 0 && Math.abs(atraso.minutos) >= 5
-        ? `<p class="${atraso.minutos > 0 ? 'alerta' : ''}"><b>O dia terminou ${descreverAtraso(atraso.minutos)}</b> — wrap às ${atraso.wrapPrevisto}, planejado ${atraso.wrapPlanejado}.</p>`
+        ? `<p class="${atraso.minutos > 0 ? 'alerta' : ''}"><b>O dia terminou ${descreverAtraso(atraso.minutos)}</b> — wrap às ${h(atraso.wrapPrevisto)}, planejado ${h(atraso.wrapPlanejado)}.</p>`
         : ''}
 
       ${linhasTempo ? `<h2>Horários — planejado × real</h2>
@@ -878,7 +878,7 @@ export function DiariaModule() {
       ${temFiguracao ? `<h2>Figuração e stand-ins</h2>
         <p>${fig!.quantidade !== undefined ? `<b>${h(fig!.quantidade)}</b> pessoa(s)` : ''}${fig!.chamada ? ` · chamada ${h(fig!.chamada)}` : ''}${fig!.wrap ? ` · liberação ${h(fig!.wrap)}` : ''}${fig!.notas ? `<br>${h(fig!.notas)}` : ''}</p>` : ''}
 
-      ${linhasOcorrencias ? `<h2>Ocorrências${minutosPerdidos ? ` — ${minutosPerdidos}min perdidos` : ''}</h2>
+      ${linhasOcorrencias ? `<h2>Ocorrências${minutosPerdidos ? ` — ${h(minutosPerdidos)}min perdidos` : ''}</h2>
         <table><tr><th>Hora</th><th>Tipo</th><th>Perdido</th><th>O que aconteceu</th></tr>${linhasOcorrencias}</table>` : ''}
 
       <h2>Prestação de contas</h2>
@@ -894,7 +894,7 @@ export function DiariaModule() {
         Cada anotação deste relatório traz quem a fez, ao lado dela. Este documento
         foi gerado por <b>${h(nomeDoPerfil(meuPerfilId || undefined) || 'um administrador do projeto')}</b>
         em ${new Date().toLocaleString('pt-BR')}, a partir do que a produção registrou durante o dia.
-        A OD que a equipe recebeu foi a versão ${diaria.versao_od || 1}.
+        A OD que a equipe recebeu foi a versão ${h(diaria.versao_od || 1)}.
       </p>
 
       <p class="muted" style="margin-top:40px;font-size:11px">Gerado pelo SetProd. Os dados permanecem salvos no projeto.</p>
