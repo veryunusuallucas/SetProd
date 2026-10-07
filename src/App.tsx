@@ -17,6 +17,9 @@ import { AvisoDeVersao } from './components/AvisoDeVersao';
 import { Faiscas } from './components/ui/Faisca';
 import { Confirmacoes } from './components/ui/Confirmacao';
 import { useAjudaEstaNoMenu } from './components/menu/ajudaNoMenu';
+import { situacaoDoAceite, enviarAceitePendente, type Situacao } from './lib/aceite';
+
+const BoasVindas = lazy(() => import('./components/BoasVindas').then(m => ({ default: m.BoasVindas })));
 
 /**
  * As telas de dentro do app carregam sob demanda.
@@ -134,6 +137,8 @@ function App() {
           </Suspense>
           <MenuGlobal />
           <PenseNissoQuandoLogado />
+          {/* A primeira vez (e quando os termos mudam): bem-vindo + aceite. */}
+          <BoasVindasQuandoLogado />
           {/* Fora do ProtectedRoute de propósito: a versão nova importa também
               para quem está no login — e login quebrado por pacote velho é
               justamente o caso em que ninguém consegue pedir ajuda de dentro. */}
@@ -266,6 +271,42 @@ function PenseNissoQuandoLogado() {
   if (!user || publica || !ligado) return null;
 
   return <PenseNisso />;
+}
+
+/**
+ * Mostra o bem-vindo para quem ainda não aceitou a versão atual dos termos.
+ *
+ * Pergunta ao servidor uma vez por conta que entra (`lib/aceite.ts`). Fora das
+ * telas públicas e da troca de senha — mesma regra do Pense Nisso.
+ */
+function BoasVindasQuandoLogado() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const [situacao, setSituacao] = useState<Situacao | null>(null);
+
+  useEffect(() => {
+    setSituacao(null);
+    if (!user) return;
+    let vivo = true;
+    enviarAceitePendente(user.id).catch(() => {});
+    situacaoDoAceite(user.id).then(s => { if (vivo) setSituacao(s); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [user?.id]);
+
+  const publica = /^\/(login|cadastro|criar-conta|esqueci-senha|nova-senha|pesquisa)(\/|$)/.test(location.pathname);
+  if (!user || publica || !situacao || situacao === 'em-dia') return null;
+
+  return (
+    <Suspense fallback={null}>
+      <BoasVindas
+        usuario={user.id}
+        nome={(user.user_metadata?.nome as string | undefined) || undefined}
+        soTermos={situacao === 'nova-versao'}
+        aoTerminar={() => setSituacao('em-dia')}
+        aoSair={logout}
+      />
+    </Suspense>
+  );
 }
 
 function CommandPaletteWrapper() {

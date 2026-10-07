@@ -1630,3 +1630,115 @@ input[type="radio"]:checked::before {
 
 /* Termos e condições: o espaço entre parágrafos vem do gap do contêiner. */
 .termos-corpo p { margin: 0; }
+
+/* ============================================================
+   BOAS-VINDAS — a primeira vez no app (BoasVindas.tsx)
+   O app passa desfocado atrás de um vidro; por cima, três passos.
+   z 3800: abaixo da Janela (3900), para os termos completos abrirem por cima.
+   ============================================================ */
+
+.boas-vindas {
+  position: fixed; inset: 0; z-index: 3800;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+.boas-vindas-fundo { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+.boas-vindas-colunas {
+  position: absolute; inset: -10%;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  transform: rotate(-8deg) scale(1.05);
+  filter: blur(8px) saturate(1.2) brightness(0.8);
+}
+.boas-vindas-coluna {
+  display: flex; flex-direction: column; gap: 24px;
+  animation: boas-vindas-subir linear infinite;
+}
+.boas-vindas-coluna img {
+  width: 100%; border-radius: var(--radius-lg);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  user-select: none;
+}
+.boas-vindas-colunas.parado .boas-vindas-coluna { animation: none; }
+@keyframes boas-vindas-subir { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+
+/* Escurece as bordas e o centro, para o vidro ler bem em qualquer imagem. */
+.boas-vindas-veu {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 0%, color-mix(in srgb, var(--bg-primary) 55%, transparent) 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-primary) 30%, transparent), color-mix(in srgb, var(--bg-primary) 70%, transparent));
+}
+
+.boas-vindas-vidro {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 520px; margin: auto;
+  display: flex; flex-direction: column; gap: 18px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.boas-vindas-cartao {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px; border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background: color-mix(in srgb, var(--bg-primary) 45%, transparent);
+}
+.boas-vindas-icone {
+  width: 34px; height: 34px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent-texto);
+}
+
+.boas-vindas-resumo { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; line-height: 1.55; }
+
+.boas-vindas-aceite {
+  display: flex; gap: 12px; align-items: center;
+  padding: 14px; min-height: 48px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  cursor: pointer; font-size: 14px; font-weight: 600;
+  transition: border-color 0.2s, background 0.2s;
+}
+.boas-vindas-aceite input { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+.boas-vindas-aceite.marcado { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+@media (max-width: 640px) {
+  .boas-vindas { align-items: flex-start; }
+  .boas-vindas-vidro { padding: 18px; }
+  .boas-vindas-colunas { grid-template-columns: repeat(2, 1fr); }
+  .boas-vindas-colunas .boas-vindas-coluna:nth-child(3) { display: none; }
+}
+
+/* As telas desenhadas do fundo do bem-vindo (só formas — ficam desfocadas). */
+.tela-falsa-moldura { border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45); }
+.tela-falsa {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 18px; min-height: 340px;
+  background: var(--bg-surface); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+.tela-falsa-linha { border-radius: 4px; background: var(--border-color); }
+.tela-falsa-cartao { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-primary); }
+.tela-falsa-barra { height: 4px; border-radius: 2px; background: var(--border-color); overflow: hidden; }
+.tela-falsa-barra > div { height: 100%; }
+.tela-falsa-tira { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg-primary); border-left: 4px solid; }
+.tela-falsa-dia { aspect-ratio: 1; border-radius: 4px; background: var(--bg-primary); padding: 3px; display: flex; flex-direction: column; justify-content: flex-end; }
+.tela-falsa-pilula { width: 46px; height: 16px; border-radius: 8px; opacity: 0.85; }
+.tela-falsa-ponto { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Bem-vindo com um passo só (termos novos): sem a fila de bolinhas. */
+.step-indicator-row.escondido { display: none; }
+/* O Stepper centraliza com margem automática, o que o encolhe dentro de um flex; no vidro, ocupa a largura toda. */
+.boas-vindas-vidro .outer-container { width: 100%; }
