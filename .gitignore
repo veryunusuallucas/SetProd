@@ -34,3 +34,6 @@ dist-ssr
 
 # Gifs originais (pesados). No app vão as versões leves de src/conteudo/gifs/.
 gifs-originais/
+
+# Estado local do Supabase CLI (versão, ref do projeto)
+supabase/.temp/

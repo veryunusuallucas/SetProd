@@ -16,7 +16,7 @@ import { GeradorODModal } from '../components/GeradorODModal';
 import { DadosDaOD } from '../components/DadosDaOD';
 import { prepararOD } from '../lib/od/exportar';
 import { AIButton } from '../components/ui/AIButton';
-import { imprimirHtml, baixarHtml } from '../lib/impressao';
+import { imprimirHtml, baixarHtml, h } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
 import { oitavosParaPaginas, paginasParaOitavos } from '../lib/decupagem';
@@ -703,11 +703,11 @@ export function DiariaModule() {
     const linhasDespesas = despesasDiaria.map(d => {
       const quemPagou = d.pagadores.map(p => {
         if (p.tipo === 'producao') return 'Produção';
-        if (p.tipo === 'departamento') return departamentos.find(x => x.id === p.id_ref)?.nome || 'Departamento';
+        if (p.tipo === 'departamento') return h(departamentos.find(x => x.id === p.id_ref)?.nome || 'Departamento');
         const pf = perfis.find(x => x.id === p.id_ref);
-        return pf ? `${pf.nome} ${pf.sobrenome || ''}`.trim() : '—';
+        return pf ? h(`${pf.nome} ${pf.sobrenome || ''}`.trim()) : '—';
       }).join(', ');
-      return `<tr><td>${d.descricao}</td><td>${d.categoria || '-'}</td><td>${quemPagou}</td><td style="text-align:right"><b>${dinheiro(d.valor_total)}</b></td></tr>`;
+      return `<tr><td>${h(d.descricao)}</td><td>${h(d.categoria || '-')}</td><td>${quemPagou}</td><td style="text-align:right"><b>${dinheiro(d.valor_total)}</b></td></tr>`;
     }).join('');
 
     /*
@@ -721,13 +721,13 @@ export function DiariaModule() {
     const atraso = calcularAtraso(dia);
     const linhasTempo = dia.itens.map(c => {
       const rotulo = c.cena
-        ? `<b>Cena ${c.cena.numero}</b> — ${c.cena.descricao}`
-        : (c.item.titulo || '—');
+        ? `<b>Cena ${h(c.cena.numero)}</b> — ${h(c.cena.descricao)}`
+        : h(c.item.titulo || '—');
       const real = c.item.hora_real;
       const diff = real ? emMinutos(real)! - c.inicio : null;
       return `<tr>
-        <td style="white-space:nowrap">${c.hora}</td>
-        <td style="white-space:nowrap"><b>${real || '—'}</b></td>
+        <td style="white-space:nowrap">${h(c.hora)}</td>
+        <td style="white-space:nowrap"><b>${h(real || '—')}</b></td>
         <td style="white-space:nowrap" class="${diff !== null && diff > 5 ? 'alerta' : 'muted'}">${diff !== null && Math.abs(diff) >= 5 ? descreverAtraso(diff) : ''}</td>
         <td>${rotulo}</td>
       </tr>`;
@@ -741,11 +741,11 @@ export function DiariaModule() {
         reg?.som_wild ? 'som wild' : '',
       ].filter(Boolean).join(' · ');
 
-      return `<li><b>Cena ${c.numero}</b> — ${c.descricao} <span class="muted">(${(c.ambiente || 'ext').toUpperCase()} / ${c.periodo || 'dia'})</span>${
+      return `<li><b>Cena ${h(c.numero)}</b> — ${h(c.descricao)} <span class="muted">(${h((c.ambiente || 'ext').toUpperCase())} / ${h(c.periodo || 'dia')})</span>${
         detalhes ? ` <span class="muted">[${detalhes}]</span>` : ''
-      }${reg?.motivo ? ` — <b class="alerta">${reg.motivo}</b>` : ''
-      }${reg?.cobertura ? `<br><span class="muted">${reg.cobertura}</span>` : ''
-      }${reg?.observacao ? `<br><span class="muted">${reg.observacao}</span>` : ''}${
+      }${reg?.motivo ? ` — <b class="alerta">${h(reg.motivo)}</b>` : ''
+      }${reg?.cobertura ? `<br><span class="muted">${h(reg.cobertura)}</span>` : ''
+      }${reg?.observacao ? `<br><span class="muted">${h(reg.observacao)}</span>` : ''}${
         assinatura(reg?.registrado_por, reg?.atualizado_em || reg?.registrado_em)
       }</li>`;
     };
@@ -768,7 +768,7 @@ export function DiariaModule() {
       const nome = nomeDoPerfil(perfilId);
       if (!nome) return '';
       const hora = quando ? new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-      return ` <span class="muted" style="font-size:11px">— ${nome}${hora ? `, ${hora}` : ''}</span>`;
+      return ` <span class="muted" style="font-size:11px">— ${h(nome)}${hora ? `, ${hora}` : ''}</span>`;
     };
 
     /*
@@ -793,15 +793,15 @@ export function DiariaModule() {
     const ROTULO_PRESENCA: Record<string, string> = { chegou: 'Chegou', atrasado: 'Atrasou', faltou: 'Faltou' };
     const linhasJornada = escalados.map(pf => {
       const r = presencas[pf.id];
-      const cel = (v?: string) => v || '<span class="muted">—</span>';
+      const cel = (v?: string) => v ? h(v) : '<span class="muted">—</span>';
       return `<tr>
-        <td>${pf.nome} ${pf.sobrenome || ''}<br><span class="muted" style="font-size:11px">${pf.funcao || 'Equipe'}</span></td>
+        <td>${h(pf.nome)} ${h(pf.sobrenome || '')}<br><span class="muted" style="font-size:11px">${h(pf.funcao || 'Equipe')}</span></td>
         <td class="${r?.status === 'faltou' ? 'alerta' : ''}">${r ? ROTULO_PRESENCA[r.status] : '<span class="muted">sem marcação</span>'}</td>
         <td>${cel(r?.chegada)}</td>
         <td>${cel(r?.inicio)}</td>
         <td>${cel(r?.refeicao_saida)} – ${cel(r?.refeicao_volta)}</td>
         <td>${cel(r?.fim)}</td>
-        <td>${r?.nota || ''}${assinatura(r?.registrado_por, r?.registrado_em)}</td>
+        <td>${h(r?.nota)}${assinatura(r?.registrado_por, r?.registrado_em)}</td>
       </tr>`;
     }).join('');
 
@@ -814,10 +814,10 @@ export function DiariaModule() {
     };
     const minutosPerdidos = ocorrencias.reduce((a, o) => a + (o.minutos_perdidos || 0), 0);
     const linhasOcorrencias = ocorrencias.map(o => `<tr>
-      <td style="white-space:nowrap">${o.hora || '—'}</td>
-      <td><b>${ROTULO_OCORRENCIA[o.tipo] || o.tipo}</b></td>
+      <td style="white-space:nowrap">${h(o.hora || '—')}</td>
+      <td><b>${h(ROTULO_OCORRENCIA[o.tipo] || o.tipo)}</b></td>
       <td>${o.minutos_perdidos ? `${o.minutos_perdidos}min` : '<span class="muted">—</span>'}</td>
-      <td>${o.descricao}${assinatura(o.registrado_por, o.registrado_em)}</td>
+      <td>${h(o.descricao)}${assinatura(o.registrado_por, o.registrado_em)}</td>
     </tr>`).join('');
 
     const fig = diaria.figuracao;
@@ -825,7 +825,7 @@ export function DiariaModule() {
 
     const estouro = limiteGasto > 0 && totalGasto > limiteGasto;
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>DPR — Diária ${diaria.numero}</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>DPR — Diária ${h(diaria.numero)}</title>
       <style>
         body{font-family:Arial,sans-serif;color:#111;padding:40px;max-width:820px;margin:0 auto}
         h1{margin:0;font-size:26px}
@@ -840,13 +840,13 @@ export function DiariaModule() {
         .kpi .val{font-size:20px;font-weight:bold;margin-top:2px}
         .alerta{color:#c0392b}
       </style></head><body>
-      <h1>${projeto?.nome || 'Produção'}</h1>
+      <h1>${h(projeto?.nome || 'Produção')}</h1>
       <div class="muted">Relatório Diário de Produção (DPR) — Diária ${String(diaria.numero).padStart(2, '0')} · ${formataData(diaria.data)}</div>
 
       <div class="kpis">
         <div class="kpi"><div class="rot">Cenas filmadas</div><div class="val">${relatorio.gravadas.length} de ${cenasDaDiaria.length}</div></div>
         <div class="kpi"><div class="rot">Não filmadas</div><div class="val ${relatorio.naoGravadas.length ? 'alerta' : ''}">${relatorio.naoGravadas.length}</div></div>
-        <div class="kpi"><div class="rot">Wrap</div><div class="val">${atraso.wrapPrevisto || '—'}</div></div>
+        <div class="kpi"><div class="rot">Wrap</div><div class="val">${h(atraso.wrapPrevisto || '—')}</div></div>
         <div class="kpi"><div class="rot">Gasto do dia</div><div class="val ${estouro ? 'alerta' : ''}">${dinheiro(totalGasto)}</div></div>
         <div class="kpi"><div class="rot">Equipe</div><div class="val">${confirmados}/${escalados.length}</div></div>
         <div class="kpi"><div class="rot">Checklist</div><div class="val">${tarefasFeitas}/${tasks.length}</div></div>
@@ -865,18 +865,18 @@ export function DiariaModule() {
         <p class="muted" style="font-size:12px">Voltam ao stripboard como pendentes, prontas para reagendar.</p>` : ''}
 
       ${(diaria.rolos?.camera || diaria.rolos?.som) ? `<h2>Rolos</h2>
-        <p>${diaria.rolos?.camera ? `<b>Câmera:</b> ${diaria.rolos.camera}` : ''}${diaria.rolos?.camera && diaria.rolos?.som ? ' &nbsp;·&nbsp; ' : ''}${diaria.rolos?.som ? `<b>Som:</b> ${diaria.rolos.som}` : ''}</p>` : ''}
+        <p>${diaria.rolos?.camera ? `<b>Câmera:</b> ${h(diaria.rolos.camera)}` : ''}${diaria.rolos?.camera && diaria.rolos?.som ? ' &nbsp;·&nbsp; ' : ''}${diaria.rolos?.som ? `<b>Som:</b> ${h(diaria.rolos.som)}` : ''}</p>` : ''}
 
       <h2>Equipe — presença e jornada</h2>
       <table>
         <tr><th>Pessoa</th><th>Presença</th><th>Chegada</th><th>Início</th><th>Refeição</th><th>Fim</th><th>Nota</th></tr>
         ${linhasJornada}
       </table>
-      ${faltaram.length ? `<p class="alerta"><b>Faltaram:</b> ${faltaram.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}.</p>` : ''}
-      ${semConfirmar.length ? `<p class="muted" style="font-size:12px">Sem confirmação de presença no app: ${semConfirmar.map(p => `${p.nome} ${p.sobrenome || ''}`.trim()).join(', ')}.</p>` : ''}
+      ${faltaram.length ? `<p class="alerta"><b>Faltaram:</b> ${faltaram.map(p => h(`${p.nome} ${p.sobrenome || ''}`.trim())).join(', ')}.</p>` : ''}
+      ${semConfirmar.length ? `<p class="muted" style="font-size:12px">Sem confirmação de presença no app: ${semConfirmar.map(p => h(`${p.nome} ${p.sobrenome || ''}`.trim())).join(', ')}.</p>` : ''}
 
       ${temFiguracao ? `<h2>Figuração e stand-ins</h2>
-        <p>${fig!.quantidade !== undefined ? `<b>${fig!.quantidade}</b> pessoa(s)` : ''}${fig!.chamada ? ` · chamada ${fig!.chamada}` : ''}${fig!.wrap ? ` · liberação ${fig!.wrap}` : ''}${fig!.notas ? `<br>${fig!.notas}` : ''}</p>` : ''}
+        <p>${fig!.quantidade !== undefined ? `<b>${h(fig!.quantidade)}</b> pessoa(s)` : ''}${fig!.chamada ? ` · chamada ${h(fig!.chamada)}` : ''}${fig!.wrap ? ` · liberação ${h(fig!.wrap)}` : ''}${fig!.notas ? `<br>${h(fig!.notas)}` : ''}</p>` : ''}
 
       ${linhasOcorrencias ? `<h2>Ocorrências${minutosPerdidos ? ` — ${minutosPerdidos}min perdidos` : ''}</h2>
         <table><tr><th>Hora</th><th>Tipo</th><th>Perdido</th><th>O que aconteceu</th></tr>${linhasOcorrencias}</table>` : ''}
@@ -887,12 +887,12 @@ export function DiariaModule() {
            <tr><td colspan="3"><b>Total</b></td><td style="text-align:right"><b>${dinheiro(totalGasto)}</b></td></tr></table>`
         : '<p class="muted">Nenhuma despesa lançada nesta diária.</p>'}
 
-      ${diaria.observacoes ? `<h2>Ocorrências e observações</h2><p>${diaria.observacoes.replace(/\n/g, '<br>')}</p>` : ''}
+      ${diaria.observacoes ? `<h2>Ocorrências e observações</h2><p>${h(diaria.observacoes).replace(/\n/g, '<br>')}</p>` : ''}
 
       <h2>Assinaturas</h2>
       <p class="muted" style="font-size:12px">
         Cada anotação deste relatório traz quem a fez, ao lado dela. Este documento
-        foi gerado por <b>${nomeDoPerfil(meuPerfilId || undefined) || 'um administrador do projeto'}</b>
+        foi gerado por <b>${h(nomeDoPerfil(meuPerfilId || undefined) || 'um administrador do projeto')}</b>
         em ${new Date().toLocaleString('pt-BR')}, a partir do que a produção registrou durante o dia.
         A OD que a equipe recebeu foi a versão ${diaria.versao_od || 1}.
       </p>

@@ -3,6 +3,7 @@ import { useComportamentoDeJanela } from './ui/Janela';
 import { X, Printer, AlertTriangle, FileText, Download, Sparkles, FolderOpen, Loader } from 'lucide-react';
 import { gerarOrdemDoDia } from '../lib/gemini';
 import { AIThinking } from './ui/ia';
+import { HtmlIsolado } from './ui/HtmlIsolado';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import { conferirOD, descreverConferencia, type Conferencia } from '../lib/conferirOD';
 import { prepararOD, gerarPdf, arquivarOD, baixar, abrir, type ODPronta } from '../lib/od/exportar';
@@ -202,10 +203,9 @@ export function GeradorODModal({
                 </div>
               )}
 
-              <div
-                style={{ backgroundColor: '#fff', color: '#111', padding: '28px', borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
-                dangerouslySetInnerHTML={{ __html: htmlIA || od.html }}
-              />
+              <div style={{ backgroundColor: '#fff', color: '#111', padding: '28px', borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+                <HtmlIsolado key={htmlIA ? 'ia' : 'app'} html={htmlIA || od.html} />
+              </div>
             </>
           )}
         </div>

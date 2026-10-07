@@ -11,6 +11,7 @@
  * stripboard. Nenhum deles guarda estado próprio, então nunca ficam
  * desatualizados em relação à decupagem.
  */
+import { h as escapar } from './impressao';
 import type { Cena, Elemento, RoteiroTag, Locacao } from '../types';
 import { temaDe, oitavosParaPaginas, paginasParaOitavos } from './decupagem';
 import { montarLinha, resumirDias, minutosDe, formatarDuracao, type ItemLinha } from './stripboard';
@@ -52,11 +53,6 @@ function aparece(texto: string, nome: string): boolean {
   } catch {
     return texto.toLowerCase().includes(limpo.toLowerCase());
   }
-}
-
-function escapar(t: unknown): string {
-  return String(t ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ---------- 1. Breakdown Summary ----------

@@ -55,7 +55,9 @@ export async function logAction(
 }
 
 /** Até onde a ata deste projeto já foi lida do servidor — por conta, como o sync. */
-const chaveCursor = (projetoId: string) => `setprod_cursor_auditoria_${contaAtual()}_${projetoId}`;
+// "auditoria2": a ata passou a guardar `recebido_em` (ordem pelo servidor), e
+// o cursor novo faz cada aparelho reler uma vez o que já tinha sem ele.
+const chaveCursor = (projetoId: string) => `setprod_cursor_auditoria2_${contaAtual()}_${projetoId}`;
 
 /** Recusa de RLS: a conta não é (mais) da produção. Reenviar não muda nada. */
 const RECUSADO_PELA_RLS = '42501';
@@ -114,8 +116,9 @@ async function puxarAuditoria(projetoId: string) {
     if (error) throw error;
     if (!data?.length) return;
 
-    await db.logs.bulkPut(data.map(({ recebido_em: _r, ...log }) => ({
+    await db.logs.bulkPut(data.map(({ recebido_em, ...log }) => ({
       ...log,
+      recebido_em: Date.parse(recebido_em) || undefined,
       autor_id: log.autor_id || 'offline_user',
       autor_nome: log.autor_nome || '',
       entidade_id: log.entidade_id || '',

@@ -112,10 +112,29 @@ export async function syncPerfisDeCadastro(projetoId: string): Promise<number> {
   }
   if (!perfisRemotos?.length) return 0;
 
+  /*
+    O que já chegou ao espelho (vivo OU apagado) sai da caixa de entrada.
+    Antes a linha ficava lá para sempre: apagar a ficha não adiantava — a
+    próxima puxada a trazia de volta —, e o CPF, o PIX e a saúde da pessoa
+    ficavam numa segunda cópia no servidor. Só apaga depois de ver a ficha no
+    espelho, para nunca perder um cadastro que ainda não subiu.
+    (O DELETE precisa da política de seguranca-rodada-4.sql; antes dela, a
+    recusa é ignorada e só a ressurreição é evitada.)
+  */
+  const ids = perfisRemotos.map(p => String(p.id));
+  const { data: noEspelho } = await supabase
+    .from('registros').select('id')
+    .eq('projeto_id', projetoId).eq('tabela', 'perfis').in('id', ids);
+  const jaNoEspelho = new Set((noEspelho || []).map(r => r.id as string));
+  if (jaNoEspelho.size) {
+    await supabase.from('perfis').delete().eq('projeto_id', projetoId).in('id', [...jaNoEspelho])
+      .then(({ error: e }) => { if (e) console.warn('[SetProd] Cadastro continua na caixa de entrada:', e.message); });
+  }
+
   const jaTemos = new Set(
-    await db.perfis.where('id').anyOf(perfisRemotos.map(p => p.id)).primaryKeys()
+    await db.perfis.where('id').anyOf(ids).primaryKeys()
   );
-  const novos = perfisRemotos.filter(p => !jaTemos.has(p.id));
+  const novos = perfisRemotos.filter(p => !jaTemos.has(p.id) && !jaNoEspelho.has(String(p.id)));
   if (!novos.length) return 0;
 
   // `bulkAdd`, não `bulkPut`: se algo escapou do filtro acima, quero o erro,

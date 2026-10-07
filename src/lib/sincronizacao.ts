@@ -1,3 +1,4 @@
+import { linhaCoerente, type LinhaParaConferir } from './coerencia';
 import { db, TABELAS_SINCRONIZADAS, marcarTransacaoComoRemota } from '../db/db';
 import { mesclarComBase } from './mesclaComBase';
 import { mesclarEscala, mesmaEscala } from './escalaMesclada';
@@ -392,6 +393,8 @@ export async function aplicarLinhas(linhas: LinhaEspelho[]): Promise<number> {
   // A pública vem antes delas na mesma leva, para a camada achar a ficha.
   const usaveis = linhas
     .filter(l => conhecida(l.tabela) || ehParteDaFicha(l.tabela))
+    // Linha forjada (id de dentro diferente do de fora) não entra: ver coerencia.ts.
+    .filter(l => linhaCoerente(l as LinhaParaConferir))
     .sort((a, b) => Number(ehParteDaFicha(a.tabela)) - Number(ehParteDaFicha(b.tabela)));
   if (!usaveis.length) return 0;
 

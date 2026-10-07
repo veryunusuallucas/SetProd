@@ -175,6 +175,19 @@ export async function restaurarBackup(
   backup: Backup,
   opcoes: { substituir?: boolean } = {}
 ): Promise<ResultadoRestauracao> {
+  // Tudo no arquivo tem que ser DESTA produção. Um backup editado à mão podia
+  // trazer linhas com o projeto_id de outra — e o sync as subiria para lá.
+  const id = backup.projeto_id;
+  const deOutra =
+    !id ||
+    (backup.projeto as any)?.id !== id ||
+    Object.values(backup.tabelas || {}).some(regs =>
+      Array.isArray(regs) && regs.some((r: any) => r?.projeto_id !== id)) ||
+    (backup.anexos || []).some(a => !a.caminho?.startsWith(`${id}/`));
+  if (deOutra) {
+    throw new Error('Este backup tem dados de outra produção misturados. Não dá para restaurar com segurança.');
+  }
+
   const jaExiste = Boolean(await db.projetos.get(backup.projeto_id));
   if (jaExiste && !opcoes.substituir) {
     throw new Error(

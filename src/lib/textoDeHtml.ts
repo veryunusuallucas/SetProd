@@ -16,8 +16,9 @@
 const BLOCO = new Set(['H1', 'H2', 'H3', 'P', 'DIV', 'UL', 'OL', 'TABLE', 'TR', 'LI', 'BR']);
 
 export function htmlParaTexto(html: string): string {
-  const raiz = document.createElement('div');
-  raiz.innerHTML = html;
+  // DOMParser monta um documento inerte: nada carrega nem executa. Um `div`
+  // solto com innerHTML já baixava imagens e disparava `onerror`.
+  const raiz = new DOMParser().parseFromString(html, 'text/html').body;
 
   const partes: string[] = [];
 

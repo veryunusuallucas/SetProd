@@ -5,6 +5,7 @@ import { supabaseConfigurado } from './supabase';
 import { participacoesLocais } from './membros';
 import { empurrar } from './sincronizacao';
 import { esquecerConta } from './conta';
+import { limparEventos } from './diagnostico';
 
 /**
  * Apagar o que ficou neste navegador quando a conta vai embora.
@@ -20,7 +21,14 @@ import { esquecerConta } from './conta';
  */
 
 /** Prefixos de `localStorage` que pertencem a uma sessão de trabalho. */
-const PREFIXOS = ['setprod_', 'diaria_atual_'];
+const PREFIXOS = ['setprod_', 'setprod:', 'diaria_atual_'];
+
+/**
+ * `setprod:` também guarda dado de produção (notas da logagem, quem viu o
+ * aviso de acesso...). Saem todas, menos o que é do APARELHO e não da conta:
+ * tema e o aviso de versão — a próxima pessoa não precisa rever as novidades.
+ */
+const MANTER = ['setprod:preferencias', 'setprod:versao-avisada', 'setprod:novidades-vistas', 'setprod:recarreguei-por-chunk'];
 
 /** Chaves soltas do modo de simulação, sem prefixo próprio. */
 const CHAVES_SOLTAS = ['mock_papel', 'mock_perfil_id'];
@@ -144,10 +152,13 @@ export async function limparDadosLocais(): Promise<void> {
   });
 
   for (const chave of Object.keys(localStorage)) {
-    if (PREFIXOS.some(p => chave.startsWith(p)) || CHAVES_SOLTAS.includes(chave)) {
+    if ((PREFIXOS.some(p => chave.startsWith(p)) && !MANTER.includes(chave)) || CHAVES_SOLTAS.includes(chave)) {
       localStorage.removeItem(chave);
     }
   }
+
+  // O diagnóstico do relato de bug guarda mensagens e endereços desta sessão.
+  limparEventos();
 
   // Depois da limpeza, nunca antes: é o registro de que este navegador está
   // vazio, e a próxima conta a entrar conta com isso.

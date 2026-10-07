@@ -12,7 +12,7 @@ import { extrairElementosDeCenas } from '../lib/gemini';
 import { DEPARTAMENTOS, temaDe, normalizarCategoria, extrairCenas, encontrarTrechoLiteral, escopoPadrao, type CabecalhoCena } from '../lib/decupagem';
 import { reconciliarCenas, semelhanca, LIMITE_MESMA_HISTORIA } from '../lib/reconciliarCenas';
 import { EscolhaDeRoteiro } from '../components/EscolhaDeRoteiro';
-import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
+import { imprimirHtml, baixarHtml, montarPaginaRelatorio, h } from '../lib/impressao';
 import { sincronizarElementos } from '../lib/elementos';
 import { pegarVez, liberarVez, marcarProgresso, manterVivo, execucaoAtiva, type Vaga, type ExecucaoAtiva } from '../lib/filaIA';
 import { ScriptDropzone } from '../components/ScriptDropzone';
@@ -662,13 +662,13 @@ export function BreakdownModule({ paginaAlvo, onPaginaAtendida }: BreakdownModul
       const itens = tags.filter(t => normalizarCategoria(t.categoria) === d.chave);
       if (itens.length === 0) return '';
       const lis = [...itens].sort((a, b) => a.pagina - b.pagina)
-        .map(t => `<li>${t.texto_selecionado} <span class="muted">(pág ${t.pagina})</span></li>`).join('');
+        .map(t => `<li>${h(t.texto_selecionado)} <span class="muted">(pág ${h(t.pagina)})</span></li>`).join('');
       return `<h2><span style="display:inline-block;width:10px;height:10px;background:${d.border};border-radius:50%;margin-right:6px"></span>${d.rotulo} (${itens.length})</h2><ul>${lis}</ul>`;
     }).join('');
 
     const html = montarPaginaRelatorio('Breakdown do Roteiro', `
       <h1>Breakdown do Roteiro</h1>
-      <div class="muted">${roteiro?.nome || ''} · ${tags.length} elemento(s) marcados</div>
+      <div class="muted">${h(roteiro?.nome)} · ${tags.length} elemento(s) marcados</div>
       ${blocos}`);
 
     // Imprime por iframe: `window.open` era barrado pelo bloqueador de pop-up e

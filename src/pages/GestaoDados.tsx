@@ -18,6 +18,7 @@ import {
 } from '../lib/exportacao';
 import { useRole } from '../hooks/useRole';
 import { diagramarRelatorio } from '../lib/gemini';
+import { HtmlIsolado } from '../components/ui/HtmlIsolado';
 import { imprimirHtml, baixarHtml, montarPaginaRelatorio } from '../lib/impressao';
 import { confirmar } from '../components/ui/Confirmacao';
 import { MOMENTOS } from '../lib/gifs';
@@ -546,7 +547,7 @@ export function GestaoDados() {
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-primary)' }}>
               <div>
                 <h3 className="font-bold">Relatório gerado</h3>
-                <p className="text-xs text-muted">Confira os números antes de imprimir. Você pode editar o texto clicando nele.</p>
+                <p className="text-xs text-muted">Confira os números antes de imprimir.</p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={imprimirRelatorio} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -556,12 +557,9 @@ export function GestaoDados() {
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px', backgroundColor: 'var(--bg-primary)' }}>
-              <div
-                contentEditable
-                suppressContentEditableWarning
-                style={{ backgroundColor: '#fff', color: '#000', padding: '40px', borderRadius: 'var(--radius-sm)', minHeight: '100%' }}
-                dangerouslySetInnerHTML={{ __html: htmlGerado }}
-              />
+              <div style={{ backgroundColor: '#fff', color: '#000', padding: '40px', borderRadius: 'var(--radius-sm)', minHeight: '100%' }}>
+                <HtmlIsolado html={htmlGerado} />
+              </div>
             </div>
           </div>
         </div>

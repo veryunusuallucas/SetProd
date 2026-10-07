@@ -497,10 +497,10 @@ export async function ligarConvite(token: string, ativo: boolean): Promise<void>
 
 /** Lê o convite para a tela de aceite mostrar de que projeto se trata. */
 export async function lerConvite(token: string): Promise<Convite | null> {
+  // Pela RPC, não pela tabela: a leitura direta de `convites` deixava qualquer
+  // conta listar o token de todos os convites (seguranca-rodada-1.sql, A8a).
   const { data, error } = await supabase
-    .from(TABELA_CONVITES)
-    .select(CAMPOS_CONVITE)
-    .eq('token', token)
+    .rpc('ler_convite', { p_token: token })
     .maybeSingle();
 
   if (error) throw error;

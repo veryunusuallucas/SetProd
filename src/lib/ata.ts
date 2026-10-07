@@ -95,14 +95,20 @@ async function nomesDeQuemMexeu(projetoId: string): Promise<Map<string, string>>
 
 /** Monta a ata do projeto, da mais recente para a mais antiga. */
 export async function montarAta(projetoId: string, limite = 60): Promise<LinhaDaAta[]> {
-  const registros = await db.logs.where('projeto_id').equals(projetoId).toArray();
-  registros.sort((a, b) => b.data_hora - a.data_hora);
+  const todos = await db.logs.where('projeto_id').equals(projetoId).toArray();
+  // Pela hora do servidor: a do aparelho (`data_hora`) qualquer um escreve, e
+  // uma entrada "antiga" sumia lá para baixo do corte. O que ainda não subiu
+  // entra pela hora dele mesmo.
+  const quando = (l: AuditLog) => l.recebido_em ?? l.data_hora;
+  todos.sort((a, b) => quando(b) - quando(a) || b.data_hora - a.data_hora);
+  // Abrir a ficha médica de alguém nunca sai da ata pelo corte.
+  const registros = todos.filter((l, i) => i < limite || (l.acao === 'ver' && l.entidade === 'perfil'));
 
   const nomes = await nomesDeQuemMexeu(projetoId);
   const { data: sessao } = await supabase.auth.getSession();
   const eu = sessao?.session?.user?.id;
 
-  return registros.slice(0, limite).map((log: AuditLog) => {
+  return registros.map((log: AuditLog) => {
     const souEu = Boolean(eu && log.autor_id === eu);
     // Sem nome conhecido, "Outra pessoa" — nunca o e-mail. O log guarda o
     // e-mail de quem agiu, e jogá-lo na tela expõe o endereço de todo mundo
@@ -116,7 +122,7 @@ export async function montarAta(projetoId: string, limite = 60): Promise<LinhaDa
       quem,
       frase: `${quem} ${verbo} ${onde}`,
       detalhe: log.detalhes || '',
-      quando: log.data_hora,
+      quando: log.recebido_em ?? log.data_hora,
       souEu,
     };
   });

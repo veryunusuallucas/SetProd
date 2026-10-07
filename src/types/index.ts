@@ -317,6 +317,11 @@ export interface AuditLog {
   entidade_id: string;
   detalhes: string;
   data_hora: number;
+  /**
+   * Quando o SERVIDOR recebeu (ms). `data_hora` vem do aparelho de quem agiu e
+   * pode ser qualquer coisa; a ata ordena por este. Ausente = ainda não subiu.
+   */
+  recebido_em?: number;
 }
 
 /**

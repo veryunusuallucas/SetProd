@@ -20,6 +20,9 @@ export interface EventoLog {
 }
 
 const CHAVE_STORAGE = 'setprod_diagnostico';
+
+/** O token do convite é a chave da produção: não vai no relato de bug. */
+const semToken = (url: string) => url.replace(/(\/convite\/)[^/?#]+/g, '$1…');
 const LIMITE = 40;
 
 let eventos: EventoLog[] = [];
@@ -71,7 +74,7 @@ function registrar(nivel: EventoLog['nivel'], args: any[]) {
     nivel,
     mensagem: partes.map(p => p.texto).join(' ').slice(0, 1500),
     stack: stack?.split('\n').slice(0, 12).join('\n'),
-    url: window.location.pathname + window.location.search,
+    url: semToken(window.location.pathname + window.location.search),
   });
 
   if (eventos.length > LIMITE) eventos = eventos.slice(-LIMITE);
@@ -123,8 +126,8 @@ export function limparEventos() {
 export function coletarAmbiente() {
   const nav = navigator as any;
   return {
-    url_completa: window.location.href,
-    rota: window.location.pathname,
+    url_completa: semToken(window.location.href),
+    rota: semToken(window.location.pathname),
     tela: `${window.innerWidth}x${window.innerHeight}`,
     tela_fisica: `${window.screen?.width}x${window.screen?.height}`,
     pixel_ratio: window.devicePixelRatio,

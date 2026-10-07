@@ -10,9 +10,18 @@
  * dele. Não é pop-up, então nada bloqueia.
  */
 
+import { escapar } from './od/html';
+
+/**
+ * Texto de quem usa o app, pronto para entrar no HTML do relatório.
+ * Todo valor digitado (nome, descrição, observação...) passa por aqui: sem
+ * isto, um `<img onerror>` na descrição de uma despesa virava código.
+ */
+export const h = (valor: unknown): string => escapar(valor == null ? '' : String(valor));
+
 /** Envolve o corpo num documento completo, com o CSS comum dos relatórios. */
 export function montarPaginaRelatorio(titulo: string, corpo: string, estiloExtra = ''): string {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${titulo}</title>
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${h(titulo)}</title>
 <style>
   body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 32px; max-width: 820px; margin: 0 auto; }
   h1 { margin: 0; font-size: 24px; }
@@ -34,6 +43,11 @@ export function montarPaginaRelatorio(titulo: string, corpo: string, estiloExtra
 export function imprimirHtml(html: string): boolean {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
+  // Sem `allow-scripts`: nada do HTML executa, nem `<script>` nem `onerror`.
+  // É a trava de fundo para as cinco telas que imprimem — o escape (`h`) é a
+  // primeira. `allow-same-origin` deixa escrever no documento; `allow-modals`
+  // deixa abrir o diálogo de impressão.
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-modals');
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
   document.body.appendChild(iframe);
 

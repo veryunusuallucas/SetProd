@@ -128,10 +128,9 @@ export async function destruirProducao(projetoId: string): Promise<void> {
  * aparece na lixeira dizendo "some em 7 dias" e nunca some, porque não há nada
  * chegando que diga que ela morreu.
  *
- * COMO DESCOBRIR SEM TABELA NOVA
- * `projeto_livre_para_fundar` já responde exatamente a pergunta certa: "este
- * projeto está sem nenhum membro E sem nenhuma linha no espelho?". É o estado
- * em que um projeto fica depois de purgado.
+ * COMO DESCOBRIR
+ * `projeto_foi_destruido` (supabase/sql/seguranca-rodada-3.sql): o id está em
+ * `projetos_purgados`, ou não sobrou membro nem linha no espelho.
  *
  * OS DOIS CASOS QUE PARECEM IGUAIS E NÃO SÃO
  * Perder a participação pode significar duas coisas, e elas pedem respostas
@@ -167,7 +166,9 @@ export async function limparProducoesDestruidas(): Promise<string[]> {
     if (!cursorDe(p.id)) continue;
 
     try {
-      const { data, error } = await supabase.rpc('projeto_livre_para_fundar', { p_projeto: p.id });
+      // `projeto_livre_para_fundar` deixou de servir para isto: desde a rodada 1
+      // de segurança, o id purgado nunca volta a ficar "livre".
+      const { data, error } = await supabase.rpc('projeto_foi_destruido', { p_projeto: p.id });
       if (error) continue;
       if (!data) continue; // ainda existe lá — fui removido, não destruíram
 
@@ -191,16 +192,26 @@ export async function limparProducoesDestruidas(): Promise<string[]> {
  *
  * Quem não pode destruir ainda assim apaga a própria cópia: o prazo venceu para
  * todo mundo, e carregar uma produção morta não ajuda ninguém.
+ *
+ * Destruir sozinho, só o que ESTA conta mandou para a lixeira. Uma produção que
+ * outra pessoa jogou lá fica esperando quem pode destruir decidir na tela da
+ * lixeira — antes, a marca de outro (até forjada) apagava a produção do dono
+ * sem nenhum clique dele.
  */
 export async function varrerLixeira(): Promise<string[]> {
   const projetos = await db.projetos.toArray();
   const vencidas = projetos.filter(p => p.lixeira_em && Date.now() - p.lixeira_em >= RETENCAO_MS);
+  if (!vencidas.length) return [];
+
+  const { data: sessao } = await supabase.auth.getSession().catch(() => ({ data: null } as any));
+  const eu: string | undefined = sessao?.session?.user?.id;
 
   const removidas: string[] = [];
   for (const p of vencidas) {
     try {
-      if (await podeDestruir(p.id)) await destruirProducao(p.id);
-      else await apagarSomenteLocal(p.id);
+      if (!(await podeDestruir(p.id))) await apagarSomenteLocal(p.id);
+      else if (!supabaseConfigurado || (eu && p.lixeira_por === eu)) await destruirProducao(p.id);
+      else continue;
       removidas.push(p.nome);
     } catch (e) {
       console.warn('[SetProd] Não consegui limpar a lixeira de', p.nome, e);

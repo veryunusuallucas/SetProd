@@ -645,7 +645,10 @@ export function Home() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="font-bold text-sm truncate">{p.nome}</div>
                       <div className="text-xs" style={{ color: dias <= 1 ? 'var(--color-danger)' : 'var(--text-secondary)' }}>
-                        {dias === 0 ? 'some na próxima abertura do app' : `some em ${dias} dia${dias > 1 ? 's' : ''}`}
+                        {dias > 0
+                          ? `some em ${dias} dia${dias > 1 ? 's' : ''}`
+                          // Só some sozinha o que você mesmo mandou (lixeira.ts, varrerLixeira).
+                          : p.lixeira_por === user?.id ? 'some na próxima abertura do app' : 'o prazo venceu: restaure ou apague de vez'}
                       </div>
                     </div>
                     <button className="btn-chip" onClick={() => restaurarDaLixeira(p.id)} title="Restaurar">
