@@ -71,11 +71,21 @@ export function LocacoesModule() {
     if (!endereco || endereco.length < 3) return alert('Digite um endereço para buscar.');
     setBuscandoOSM(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(endereco)}`);
       const data = await res.json();
       if (data && data.length > 0) {
         const place = data[0];
         setCoordenadas(`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`);
+        /*
+          O OpenStreetMap não tem o número de muitas casas no Brasil. Sem ele, a
+          busca devolve a RUA — e o ponto cai no começo dela, a quarteirões do
+          set. Os hospitais próximos e o clima saem desse ponto, então a pessoa
+          precisa saber que ele é aproximado.
+        */
+        const pediuNumero = /\d/.test(endereco.split(',').slice(0, 2).join(','));
+        if (pediuNumero && !place.address?.house_number) {
+          alert('O OpenStreetMap achou a rua, mas não o número — o ponto pode estar no começo da rua.\n\nPara o local exato: no Google Maps, clique com o botão direito em cima do lugar, clique nos números que aparecem (as coordenadas) e cole no campo do mapa.');
+        }
       } else {
         alert('Endereço não encontrado no OpenStreetMap.');
       }
