@@ -10,8 +10,9 @@
  *   supabase secrets set GEMINI_API_KEY=xxx
  *   supabase functions deploy gemini
  *
- * O Supabase valida o JWT automaticamente, então só quem está logado no app
- * consegue chamar.
+ * O Supabase valida o JWT, e a função ainda confere a conta no servidor de
+ * autenticação: a chave pública do app também é um JWT válido, sem pessoa
+ * nenhuma dentro.
  *
  * CONTROLE DE GASTO
  * O cliente NÃO escolhe o modelo. Antes ele escolhia, e bastava abrir o
@@ -93,79 +94,111 @@ const LIMITE_DIARIO_GLOBAL = 1500;
  * Se a tabela não existir, devolve `null` e a chamada segue: nunca derrubar a
  * IA por causa do contador.
  */
-async function registrarChamadaGlobal(usuario: string): Promise<{ excedeu: boolean; usadas: number } | null> {
-  const url = Deno.env.get('SUPABASE_URL');
-  const servico = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !servico) return null;
+const URL_BASE = Deno.env.get('SUPABASE_URL') ?? '';
+// A chave nova primeiro: se as chaves legadas forem desligadas, a antiga para de
+// funcionar e o contador sumia em silêncio — e com ele, o teto.
+const SERVICO = Deno.env.get('SB_SECRET_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const PUBLICA = Deno.env.get('SB_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
 
-  const cabecalhos = {
-    apikey: servico,
-    Authorization: `Bearer ${servico}`,
-    'Content-Type': 'application/json',
-  };
-  const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+function comoServidor(caminho: string, init: RequestInit = {}) {
+  return fetch(`${URL_BASE}/rest/v1/${caminho}`, {
+    ...init,
+    headers: {
+      apikey: SERVICO,
+      Authorization: `Bearer ${SERVICO}`,
+      'Content-Type': 'application/json',
+      ...(init.headers as Record<string, string> | undefined),
+    },
+  });
+}
 
+/** Quantas linhas do contador batem com o filtro (vem no cabeçalho content-range, "0-9/123"). */
+async function contar(filtro: string): Promise<number | null> {
+  const r = await comoServidor(`ia_chamadas?select=id&${filtro}`, { method: 'HEAD', headers: { Prefer: 'count=exact' } });
+  if (!r.ok) return null;
+  return parseInt(r.headers.get('content-range')?.split('/')[1] || '0', 10);
+}
+
+const FORA_DO_AR = 'O contador da IA está fora do ar. Tente de novo em alguns minutos.';
+
+/**
+ * Confere os dois tetos no banco e, se couber, registra a chamada.
+ *
+ * O teto POR PESSOA também mora no banco agora: o contador na memória da
+ * instância zerava a cada reciclagem do Supabase — justamente sob uso pesado.
+ *
+ * Contador fora do ar = recusa. Antes ele "deixava passar" quando falhava, e o
+ * teto que protege a conta sumia sem ninguém ver.
+ */
+async function registrarChamada(usuario: string): Promise<{ erro: string; status: number; usadas?: number } | null> {
+  if (!URL_BASE || !SERVICO) return { erro: FORA_DO_AR, status: 503 };
   try {
-    const contagem = await fetch(
-      `${url}/rest/v1/ia_chamadas?select=id&criado_em=gte.${desde}`,
-      { method: 'HEAD', headers: { ...cabecalhos, Prefer: 'count=exact' } }
-    );
-    if (!contagem.ok) return null;
+    const desdeHora = new Date(Date.now() - JANELA_MS).toISOString();
+    const minhas = await contar(`user_id=eq.${usuario}&criado_em=gte.${desdeHora}`);
+    if (minhas === null) return { erro: FORA_DO_AR, status: 503 };
+    if (minhas >= LIMITE_POR_USUARIO) {
+      return { erro: `Limite de ${LIMITE_POR_USUARIO} análises por hora atingido. Tente de novo mais tarde.`, status: 429 };
+    }
 
-    // O total vem no cabeçalho content-range, no formato "*/123".
-    const usadas = parseInt(contagem.headers.get('content-range')?.split('/')[1] || '0', 10);
-    if (usadas >= LIMITE_DIARIO_GLOBAL) return { excedeu: true, usadas };
+    const desdeDia = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const usadas = await contar(`criado_em=gte.${desdeDia}`);
+    if (usadas === null) return { erro: FORA_DO_AR, status: 503 };
+    if (usadas >= LIMITE_DIARIO_GLOBAL) {
+      return { erro: `A produção já usou as ${LIMITE_DIARIO_GLOBAL} análises de hoje. Volta amanhã.`, status: 429, usadas };
+    }
 
-    await fetch(`${url}/rest/v1/ia_chamadas`, {
+    const registro = await comoServidor('ia_chamadas', {
       method: 'POST',
-      headers: cabecalhos,
-      body: JSON.stringify({ user_id: usuario === 'anonimo' ? null : usuario }),
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ user_id: usuario }),
     });
-
-    return { excedeu: false, usadas: usadas + 1 };
-  } catch (e) {
-    console.error('Contador global indisponível:', e);
+    if (!registro.ok) return { erro: FORA_DO_AR, status: 503 };
     return null;
+  } catch (e) {
+    console.error('Contador indisponível:', e);
+    return { erro: FORA_DO_AR, status: 503 };
   }
 }
+
+/**
+ * Quem está chamando — conferido no servidor de autenticação, não lido do token.
+ *
+ * O `verify_jwt` do Supabase só garante que o token é assinado; a chave
+ * pública do app (que está no bundle) também é um token assinado, sem pessoa
+ * nenhuma dentro. Era assim que chamadas sem conta caíam na cota "anonimo".
+ */
+async function quemChama(req: Request): Promise<string | null> {
+  const auth = req.headers.get('Authorization');
+  if (!auth || !URL_BASE) return null;
+  for (const chave of [...new Set([PUBLICA, SERVICO].filter(Boolean))]) {
+    const r = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: chave, Authorization: auth } }).catch(() => null);
+    if (r?.ok) {
+      const u = await r.json().catch(() => null);
+      if (u?.id) return String(u.id);
+    }
+  }
+  return null;
+}
+
+/** Participa de alguma produção (ou é super-admin)? Conta recém-criada e vazia não usa a IA. */
+async function participaDeAlgo(usuario: string): Promise<boolean> {
+  const [m, a] = await Promise.all([
+    comoServidor(`projeto_membros?usuario_id=eq.${usuario}&select=projeto_id&limit=1`),
+    comoServidor(`super_admins?usuario_id=eq.${usuario}&select=usuario_id&limit=1`),
+  ]);
+  const temM = m.ok && ((await m.json().catch(() => [])) as unknown[]).length > 0;
+  const temA = a.ok && ((await a.json().catch(() => [])) as unknown[]).length > 0;
+  return temM || temA;
+}
+
+/** Schema de structured output: um objeto, e pequeno. */
+const LIMITE_SCHEMA = 20_000;
 
 function json(corpo: unknown, status = 200) {
   return new Response(JSON.stringify(corpo), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
-}
-
-/**
- * Contador por usuário. Vive na memória da instância, então reinicia quando o
- * Supabase recicla o processo — é um freio contra uso descontrolado, não um
- * cofre. A trava dura contra conta alta é não ativar faturamento no Google.
- */
-const usos = new Map<string, { contagem: number; desde: number }>();
-
-function idDoUsuario(req: Request): string {
-  const auth = req.headers.get('Authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '');
-  try {
-    // O Supabase já validou a assinatura antes de chegar aqui; só lemos o "sub".
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return String(payload.sub || 'anonimo');
-  } catch {
-    return 'anonimo';
-  }
-}
-
-function excedeuCota(usuario: string): boolean {
-  const agora = Date.now();
-  const atual = usos.get(usuario);
-
-  if (!atual || agora - atual.desde > JANELA_MS) {
-    usos.set(usuario, { contagem: 1, desde: agora });
-    return false;
-  }
-
-  atual.contagem += 1;
-  return atual.contagem > LIMITE_POR_USUARIO;
 }
 
 /**
@@ -211,7 +244,7 @@ function modelosPermitidos(): string[] {
  */
 async function descobrirModelosFlash(chave: string): Promise<string[]> {
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${chave}`);
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models', { headers: { 'x-goog-api-key': chave } });
     if (!r.ok) return [];
     const dados = await r.json();
 
@@ -240,11 +273,10 @@ Deno.serve(async (req: Request) => {
     return json({ erro: 'GEMINI_API_KEY não configurada no servidor.' }, 500);
   }
 
-  const usuario = idDoUsuario(req);
-  if (excedeuCota(usuario)) {
-    return json({
-      erro: `Limite de ${LIMITE_POR_USUARIO} análises por hora atingido. Tente de novo mais tarde.`,
-    }, 429);
+  const usuario = await quemChama(req);
+  if (!usuario) return json({ erro: 'Entre na sua conta para usar a IA.' }, 401);
+  if (!(await participaDeAlgo(usuario))) {
+    return json({ erro: 'A IA fica disponível quando você participa de uma produção.' }, 403);
   }
 
   let corpo: { prompt?: string; schema?: unknown; listarModelos?: boolean };
@@ -255,16 +287,9 @@ Deno.serve(async (req: Request) => {
   }
 
   // Diagnóstico: devolve o que esta chave aceita. Só nomes de modelo, nada mais.
+  // Listar modelos não gasta cota do Google, mas só para quem entrou.
   if (corpo.listarModelos) {
     return json({ modelos: await descobrirModelosFlash(chave) });
-  }
-
-  const global = await registrarChamadaGlobal(usuario);
-  if (global?.excedeu) {
-    return json({
-      erro: `A produção já usou as ${LIMITE_DIARIO_GLOBAL} análises de hoje. Volta amanhã.`,
-      usadasHoje: global.usadas,
-    }, 429);
   }
 
   const prompt = (corpo.prompt || '').trim();
@@ -272,6 +297,14 @@ Deno.serve(async (req: Request) => {
   if (prompt.length > LIMITE_PROMPT) {
     return json({ erro: `Prompt grande demais (${prompt.length} caracteres).` }, 413);
   }
+  if (corpo.schema !== undefined
+      && (typeof corpo.schema !== 'object' || corpo.schema === null || JSON.stringify(corpo.schema).length > LIMITE_SCHEMA)) {
+    return json({ erro: 'Formato de resposta inválido.' }, 400);
+  }
+
+  // Só conta depois de validar: pedido inválido não come a cota de ninguém.
+  const recusa = await registrarChamada(usuario);
+  if (recusa) return json({ erro: recusa.erro, ...(recusa.usadas ? { usadasHoje: recusa.usadas } : {}) }, recusa.status);
 
   // Structured output: com um schema, o modelo é OBRIGADO a devolver JSON
   // válido naquele formato. Elimina cerca de markdown, texto de conversa e
@@ -334,10 +367,11 @@ Deno.serve(async (req: Request) => {
 
     try {
       const resposta = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${chave}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // A chave no cabeçalho, não na URL: URL vai parar em log.
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
           body: requisicao,
           signal: cancelamento.signal,
         }

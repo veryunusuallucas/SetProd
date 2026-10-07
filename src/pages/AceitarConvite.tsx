@@ -241,9 +241,9 @@ export function AceitarConvite() {
                   O convite foi feito para um e-mail, e quem abriu está com outro
                   (ROADMAP §4.5.4). É CONFERÊNCIA, não trava: gente usa e-mail
                   pessoal e do trabalho, e um convite barrado por isso vira
-                  mensagem para quem administra. Mas o convite pode trazer a
-                  ficha da pessoa já vinculada — aceitar com a conta errada daria
-                  a ficha de um para outro.
+                  mensagem para quem administra. A ficha é que não vem junto:
+                  com e-mail diferente, a Edge Function `convite` deixa entrar
+                  sem o vínculo, e quem administra confirma depois.
                 */}
                 {convite?.email_esperado && contaAtual
                   && convite.email_esperado.trim().toLowerCase() !== contaAtual.trim().toLowerCase() && (
@@ -252,7 +252,7 @@ export function AceitarConvite() {
                       Este convite foi feito para <strong style={{ wordBreak: 'break-all' }}>{convite.email_esperado}</strong>.
                     </p>
                     <p className="text-xs text-secondary" style={{ margin: '4px 0 0', lineHeight: 1.5 }}>
-                      Se for você com outro e-mail, pode aceitar. Se não for, entre com a conta certa antes: o convite já vem com a ficha dessa pessoa.
+                      Se for você com outro e-mail, pode aceitar: você entra, e quem administra confirma a sua ficha depois. Se não for você, entre com a conta certa antes.
                     </p>
                   </div>
                 )}

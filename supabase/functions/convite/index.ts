@@ -54,15 +54,6 @@ const CHAVE_PUBLICA = Deno.env.get('SB_PUBLISHABLE_KEY') || Deno.env.get('SUPABA
 /** Por que a sessão não foi reconhecida — vai para o log da função. */
 let ultimaFalhaDeAuth = '';
 
-/**
- * Sim/não de cada chave, para a mensagem de erro. NUNCA o valor: isto aparece
- * na tela de quem está usando o app.
- */
-function chavesConfiguradas(): string {
-  const tem = (n: string) => (Deno.env.get(n) ? 'sim' : 'não');
-  return `SB_SECRET_KEY=${tem('SB_SECRET_KEY')} service_role=${tem('SUPABASE_SERVICE_ROLE_KEY')} publishable=${tem('SB_PUBLISHABLE_KEY')} anon=${tem('SUPABASE_ANON_KEY')}`;
-}
-
 async function conferirSessao(auth: string): Promise<Record<string, unknown> | null> {
   const tentadas = [...new Set([CHAVE_PUBLICA, SERVICE_ROLE].filter(Boolean))];
   for (const chave of tentadas) {
@@ -70,7 +61,9 @@ async function conferirSessao(auth: string): Promise<Record<string, unknown> | n
     if (r.ok) return await r.json();
     ultimaFalhaDeAuth = `${r.status} ${(await r.text()).slice(0, 160)}`;
   }
-  console.error('[auth] sessão não reconhecida:', ultimaFalhaDeAuth || 'sem chave configurada');
+  const tem = (n: string) => (Deno.env.get(n) ? 'sim' : 'não');
+  console.error('[auth] sessão não reconhecida:', ultimaFalhaDeAuth || 'sem chave configurada',
+    `| SB_SECRET_KEY=${tem('SB_SECRET_KEY')} service_role=${tem('SUPABASE_SERVICE_ROLE_KEY')} publishable=${tem('SB_PUBLISHABLE_KEY')} anon=${tem('SUPABASE_ANON_KEY')}`);
   return null;
 }
 
@@ -149,7 +142,9 @@ Deno.serve(async req => {
 
     const usuario = await usuarioDaRequisicao(req);
     if (!usuario) {
-      return responder({ erro: `Entre na sua conta antes de aceitar o convite.${` (servidor: ${ultimaFalhaDeAuth || 'sem resposta'} | ${chavesConfiguradas()})`}` }, 401);
+      // Genérico de propósito: o motivo exato (e quais chaves o servidor tem)
+      // vai só para o log da função — `conferirSessao` já o registrou.
+      return responder({ erro: 'Entre na sua conta antes de aceitar o convite.' }, 401);
     }
 
     const { token } = await req.json().catch(() => ({ token: null }));
@@ -159,7 +154,7 @@ Deno.serve(async req => {
 
     // 1. O convite existe?
     const busca = await comoServidor(
-      `convites?token=eq.${encodeURIComponent(token)}&select=token,projeto_id,papel,apelido,expira_em,usado_por,perfil_id,multiuso,ativo,usos`
+      `convites?token=eq.${encodeURIComponent(token)}&select=token,projeto_id,papel,apelido,expira_em,usado_por,perfil_id,multiuso,ativo,usos,criado_por,email_esperado`
     );
     const achados = await busca.json();
     const convite = Array.isArray(achados) ? achados[0] : null;
@@ -202,6 +197,21 @@ Deno.serve(async req => {
       return responder({ erro: 'Este convite expirou. Peça um link novo.' }, 410);
     }
 
+    /*
+      2b. Quem criou o link ainda administra a produção?
+
+      Um admin removido (ou rebaixado) continuava com os links que criou — e
+      voltava a entrar, como admin, pelo próprio link guardado. O convite vale
+      o que vale quem o fez HOJE, não no dia em que foi criado.
+    */
+    const criador = await comoServidor(
+      `projeto_membros?projeto_id=eq.${encodeURIComponent(convite.projeto_id)}&usuario_id=eq.${encodeURIComponent(convite.criado_por || '')}&papel=in.(dono,admin)&select=usuario_id`
+    );
+    const criadores = await criador.json().catch(() => []);
+    if (!Array.isArray(criadores) || !criadores.length) {
+      return responder({ erro: 'Quem fez este link não administra mais a produção. Peça um link novo.' }, 403);
+    }
+
     // 3. Já é membro? (link aberto duas vezes, por exemplo)
     const jaMembro = await comoServidor(
       `projeto_membros?projeto_id=eq.${encodeURIComponent(convite.projeto_id)}&usuario_id=eq.${usuario.id}&select=projeto_id`
@@ -236,7 +246,53 @@ Deno.serve(async req => {
       papel,
       apelido: convite.apelido || apelidoDaConta(usuario),
     };
-    if (convite.perfil_id) linha.perfil_id = convite.perfil_id;
+    /*
+      A ficha só vem junto quando o e-mail da conta é o que o convite esperava.
+
+      A tela continua deixando aceitar com outro e-mail ("se for você com outro
+      e-mail, pode aceitar") — mas sem a ficha. Um link nominal encaminhado
+      entregava a ficha (CPF, conta, saúde) de uma pessoa para outra. Assim a
+      pessoa entra, e quem administra confirma a ficha depois.
+    */
+    const esperado = (convite.email_esperado || '').trim().toLowerCase();
+    const emailBate = !esperado || esperado === (usuario.email || '').trim().toLowerCase();
+    if (convite.perfil_id && emailBate) linha.perfil_id = convite.perfil_id;
+
+    /*
+      USO ÚNICO: queima ANTES de entrar.
+
+      Antes a queima vinha depois da entrada, e o PATCH não conferia quantas
+      linhas mudou: duas pessoas clicando juntas entravam as duas. Agora a
+      queima é a trava — `usado_por=is.null` só deixa UMA requisição mudar a
+      linha, e quem não mudou nada não entra. Se a entrada falhar depois, a
+      queima é desfeita (a pessoa não fica com um convite gasto na mão).
+    */
+    const quando = new Date().toISOString();
+    if (!convite.multiuso) {
+      const queima = await comoServidor(
+        `convites?token=eq.${encodeURIComponent(token)}&usado_por=is.null`,
+        {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({ usado_por: usuario.id, usado_em: quando, usos: 1 }),
+        }
+      );
+      const queimadas = await queima.json().catch(() => []);
+      if (!queima.ok || !Array.isArray(queimadas) || queimadas.length !== 1) {
+        // Clique duplo da mesma pessoa: a primeira requisição já queimou e entrou.
+        const agora = await (await comoServidor(
+          `convites?token=eq.${encodeURIComponent(token)}&select=usado_por`
+        )).json().catch(() => []);
+        if (Array.isArray(agora) && agora[0]?.usado_por === usuario.id) {
+          return responder({ projeto_id: convite.projeto_id, ja_era_membro: true });
+        }
+        return responder({ erro: 'Este convite já foi usado por outra pessoa.' }, 409);
+      }
+    }
+    const desfazerQueima = () => convite.multiuso ? Promise.resolve() : comoServidor(
+      `convites?token=eq.${encodeURIComponent(token)}&usado_por=eq.${usuario.id}`,
+      { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ usado_por: null, usado_em: null, usos: 0 }) }
+    ).catch(() => {});
 
     let entrada = await comoServidor('projeto_membros', {
       method: 'POST',
@@ -258,45 +314,22 @@ Deno.serve(async req => {
     if (!entrada.ok) {
       const detalhe = await entrada.text();
       console.error('[convite] falha ao inserir participação:', detalhe);
+      await desfazerQueima();
       return responder({ erro: 'Não consegui te adicionar ao projeto.' }, 500);
     }
 
     /*
-      5. Marca o uso.
-
-      Só depois da entrada dar certo: marcar antes deixaria a pessoa de fora com
-      um convite gasto na mão, sem jeito de tentar de novo.
-
-      NO USO ÚNICO, queima. O filtro `usado_por=is.null` é o que segura duas
-      pessoas clicando no mesmo link ao mesmo tempo — a segunda atualiza zero
-      linhas e não entra.
-
-      NO MULTIUSO, só conta. `usado_por` fica intacto, senão o próximo cairia no
-      "já foi usado por outra pessoa". O contador serve para a tela dizer quantas
-      pessoas entraram — que é a informação que decide quando desligar o link.
+      5. No MULTIUSO, só conta. `usado_por` fica intacto, senão o próximo cairia
+      no "já foi usado por outra pessoa". O contador serve para a tela dizer
+      quantas pessoas entraram — que é a informação que decide quando desligar.
+      (O uso único já foi queimado antes da entrada.)
     */
     if (convite.multiuso) {
       await comoServidor(`convites?token=eq.${encodeURIComponent(token)}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          usos: (convite.usos ?? 0) + 1,
-          usado_em: new Date().toISOString(),
-        }),
+        body: JSON.stringify({ usos: (convite.usos ?? 0) + 1, usado_em: quando }),
       });
-    } else {
-      await comoServidor(
-        `convites?token=eq.${encodeURIComponent(token)}&usado_por=is.null`,
-        {
-          method: 'PATCH',
-          headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({
-            usado_por: usuario.id,
-            usado_em: new Date().toISOString(),
-            usos: 1,
-          }),
-        }
-      );
     }
 
     // Entrou na produção: vai para a ata (Etapa 8). Nunca derruba o aceite.

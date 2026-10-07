@@ -59,15 +59,6 @@ const CHAVE_PUBLICA = Deno.env.get('SB_PUBLISHABLE_KEY') || Deno.env.get('SUPABA
 /** Por que a sessão não foi reconhecida — vai para o log da função. */
 let ultimaFalhaDeAuth = '';
 
-/**
- * Sim/não de cada chave, para a mensagem de erro. NUNCA o valor: isto aparece
- * na tela de quem está usando o app.
- */
-function chavesConfiguradas(): string {
-  const tem = (n: string) => (Deno.env.get(n) ? 'sim' : 'não');
-  return `SB_SECRET_KEY=${tem('SB_SECRET_KEY')} service_role=${tem('SUPABASE_SERVICE_ROLE_KEY')} publishable=${tem('SB_PUBLISHABLE_KEY')} anon=${tem('SUPABASE_ANON_KEY')}`;
-}
-
 async function conferirSessao(auth: string): Promise<Record<string, unknown> | null> {
   const tentadas = [...new Set([CHAVE_PUBLICA, SERVICE_ROLE].filter(Boolean))];
   for (const chave of tentadas) {
@@ -75,7 +66,9 @@ async function conferirSessao(auth: string): Promise<Record<string, unknown> | n
     if (r.ok) return await r.json();
     ultimaFalhaDeAuth = `${r.status} ${(await r.text()).slice(0, 160)}`;
   }
-  console.error('[auth] sessão não reconhecida:', ultimaFalhaDeAuth || 'sem chave configurada');
+  const tem = (n: string) => (Deno.env.get(n) ? 'sim' : 'não');
+  console.error('[auth] sessão não reconhecida:', ultimaFalhaDeAuth || 'sem chave configurada',
+    `| SB_SECRET_KEY=${tem('SB_SECRET_KEY')} service_role=${tem('SUPABASE_SERVICE_ROLE_KEY')} publishable=${tem('SB_PUBLISHABLE_KEY')} anon=${tem('SUPABASE_ANON_KEY')}`);
   return null;
 }
 
@@ -121,6 +114,21 @@ async function usuarioDaRequisicao(req: Request): Promise<{ id: string; email?: 
   return u?.id ? { id: u.id as string, email: u.email as string | undefined } : null;
 }
 
+/**
+ * Desliga os links que esta pessoa criou na produção.
+ *
+ * Quem sai (ou deixa de administrar) não pode voltar pelo próprio link
+ * guardado. A Edge Function `convite` também confere, na hora do aceite, se
+ * quem criou ainda administra; isto aqui deixa a lista de convites dizendo a
+ * verdade ("desligado") em vez de mostrar um link que já não funciona.
+ */
+async function desligarConvitesDe(projetoId: string, criador: string) {
+  await comoServidor(
+    `convites?projeto_id=eq.${encodeURIComponent(projetoId)}&criado_por=eq.${encodeURIComponent(criador)}&ativo=eq.true`,
+    { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ativo: false }) }
+  ).catch(() => {});
+}
+
 interface Participacao {
   usuario_id: string;
   papel: string;
@@ -149,9 +157,9 @@ Deno.serve(async req => {
 
     const usuario = await usuarioDaRequisicao(req);
     if (!usuario) {
-      // O detalhe entra na mensagem de propósito: sem ele, "Entre na sua conta"
-      // aparece igual para sessão vencida e para chave errada no servidor.
-      return responder({ erro: `Entre na sua conta.${` (servidor: ${ultimaFalhaDeAuth || 'sem resposta'} | ${chavesConfiguradas()})`}` }, 401);
+      // Genérico: o motivo (sessão vencida ou chave errada no servidor) vai só
+      // para o log da função, nunca para quem chamou.
+      return responder({ erro: 'Entre na sua conta.' }, 401);
     }
 
     const { acao, projeto_id, alvo, papel, perfil_id } = await req.json().catch(() => ({}));
@@ -281,6 +289,7 @@ Deno.serve(async req => {
         console.error('[membros] falha ao mudar papel:', await r.text());
         return responder({ erro: 'Não consegui mudar o papel.' }, 500);
       }
+      if (papel !== 'admin') await desligarConvitesDe(projeto_id, alvo);
       await registrarNaAta(projeto_id, usuario, 'editar', alvo, `Papel de ${oAlvo.apelido || 'uma pessoa'}: ${oAlvo.papel} → ${papel}.`);
       return responder({ ok: true });
     }
@@ -308,6 +317,7 @@ Deno.serve(async req => {
         console.error('[membros] falha ao remover:', await r.text());
         return responder({ erro: 'Não consegui remover a pessoa.' }, 500);
       }
+      await desligarConvitesDe(projeto_id, alvo);
       await registrarNaAta(projeto_id, usuario, 'deletar', alvo, `Tirou ${oAlvo.apelido || 'uma pessoa'} (${oAlvo.papel}) da produção.`);
       return responder({ ok: true });
     }
