@@ -228,6 +228,50 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.19.1',
+    resumo: <>A segunda metade da rodada de segurança: convites que não sobrevivem a quem os fez, uma IA que só atende quem é da equipe, e senhas mais fortes.</>,
+    grupos: [
+      {
+        id: 'seguranca-2',
+        titulo: 'Segurança',
+        resumo: 'O que ficou para o servidor e para o navegador.',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <UserPlus size={20} />,
+            titulo: 'Convite vale o que vale quem o fez',
+            texto: 'Se quem criou o link sai da produção ou deixa de administrar, o link para de funcionar e aparece desligado na lista. Um link de uso único não deixa mais duas pessoas entrarem ao mesmo tempo.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <IdCard size={20} />,
+            titulo: 'Convite com outro e-mail entra sem a ficha',
+            texto: 'Aceitar um convite com um e-mail diferente do esperado continua possível — mas a ficha da pessoa não vem junto. Quem administra confirma depois em Quem tem acesso. Assim um link encaminhado não entrega o CPF e a ficha médica de ninguém.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <Sparkles size={20} />,
+            titulo: 'A IA é de quem é da equipe',
+            texto: 'A IA só atende quem tem conta e participa de uma produção, e o limite de uso por pessoa não zera mais sozinho. A fila da IA mostra só quem está rodando agora, sem o e-mail de ninguém.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Lock size={20} />,
+            titulo: 'Senha mais forte',
+            texto: 'Ao criar conta ou trocar a senha, ela precisa ter pelo menos 8 caracteres, com letras e números. Quem já tem conta não precisa trocar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'O navegador também ajuda',
+            texto: 'O SetProd não pode mais ser aberto dentro de outro site, e o endereço completo da página não vaza para os sites que você abre a partir dele.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     versao: '0.19.0',
     resumo: <>Uma rodada de segurança: as portas que uma auditoria achou abertas foram fechadas — no servidor e no app. Quase nada muda na tela; o que muda é o que outra pessoa conseguiria fazer com os seus dados.</>,
     grupos: [
