@@ -228,6 +228,32 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.19.2',
+    resumo: <>A locação avisa quando o mapa só achou a rua, e a proteção do navegador passa a valer.</>,
+    grupos: [
+      {
+        id: 'locacao-e-protecao',
+        titulo: 'Locações e segurança',
+        resumo: '',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <MapPin size={20} />,
+            titulo: 'O ponto da locação no lugar certo',
+            texto: 'O OpenStreetMap não tem o número de muitas casas no Brasil — a busca achava só a rua, e o ponto caía no começo dela, longe do set (e o hospital mais próximo e o clima saíam desse ponto errado). Agora o app avisa quando isso acontece e ensina a colar as coordenadas exatas do Google Maps.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'A proteção do navegador está valendo',
+            texto: 'O navegador agora só deixa o SetProd carregar o que vem dele mesmo e dos serviços que ele usa (servidor, mapa, clima, fontes). Se um dia alguém conseguir pôr código estranho num texto, o navegador não o executa.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     versao: '0.19.1',
     resumo: <>A segunda metade da rodada de segurança: convites que não sobrevivem a quem os fez, uma IA que só atende quem é da equipe, e senhas mais fortes.</>,
     grupos: [
