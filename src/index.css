@@ -1802,3 +1802,16 @@ input[type="radio"]:checked::before {
   .botao-cafe-vapor i { animation: none; opacity: 0.45; }
   .botao-cafe, .botao-cafe:hover::after { transition: none; }
 }
+
+/* O do GitHub: o mesmo formato do café, em tom neutro (segue o tema). */
+.botao-codigo {
+  background: linear-gradient(120deg, var(--bg-surface) 0%, color-mix(in srgb, var(--bg-surface) 80%, var(--text-primary)) 100%);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18), inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.botao-codigo:hover { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent); }
+.botao-codigo::after { background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--text-primary) 14%, transparent) 50%, transparent 65%); }
+.botao-codigo .botao-cafe-xicara { background: var(--text-primary); color: var(--bg-primary); }
+.botao-codigo-sinal { position: absolute; right: -2px; bottom: -2px; padding: 2px; box-sizing: content-box; border-radius: 50%; background: var(--accent); color: #000; transition: transform 0.25s ease; }
+.botao-codigo:hover .botao-codigo-sinal { transform: scale(1.25) rotate(-8deg); }
