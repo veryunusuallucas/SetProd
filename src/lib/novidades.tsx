@@ -9,7 +9,7 @@ import {
   Camera, HardDrive, FileInput, Target, Image, Save,
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
   CloudCheck, SquareRoundCorner, Upload, AppWindow,
-  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun,
+  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun, Star, Coffee, Heart,
 } from 'lucide-react';
 
 /**
@@ -227,6 +227,66 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '0.20.0',
+    resumo: <>O SetProd agora te recebe na primeira vez, pergunta como foi quando a filmagem acaba, e ganhou um jeito de ser apoiado.</>,
+    grupos: [
+      {
+        id: 'boas-vindas',
+        titulo: 'Bem-vindo ao set',
+        resumo: 'Aparece uma vez por conta.',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'Uma apresentação na primeira vez',
+            texto: 'Quem entra pela primeira vez vê o SETPROD virar letra por letra, como um painel de aeroporto, com o app passando desfocado ao fundo: o que ele faz, como funciona (beta, sem sinal, cada um no seu departamento) e o combinado.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ShieldCheck size={20} />,
+            titulo: 'O aceite dos termos fica registrado',
+            texto: 'Para entrar, é preciso marcar "Li e aceito os termos". O aceite fica guardado no servidor, com a data e a versão — e quando os termos mudarem, só essa parte volta a aparecer.',
+          },
+        ],
+      },
+      {
+        id: 'opiniao',
+        titulo: 'Sua opinião',
+        resumo: '',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Star size={20} />,
+            titulo: 'É um wrap — como foi?',
+            texto: 'Quando uma produção encerra, cada pessoa da equipe pode dar uma nota de 1 a 5 estrelas, marcar o que mais ajudou e contar o que faltou. Leva meio minuto, vai direto para quem faz o app e decide o que vem depois. Também dá para opinar a qualquer hora em Configurações.',
+          },
+        ],
+      },
+      {
+        id: 'apoio',
+        titulo: 'Apoie o SetProd',
+        resumo: '',
+        cor: '#fb923c',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Coffee size={20} />,
+            titulo: 'Um café para o set inteiro',
+            texto: 'O SetProd é de graça, sem propaganda, feito por uma pessoa e com o código aberto. Em Configurações → Apoiar dá para pagar um café no Ko-fi, ver o código no GitHub, ou ajudar de outro jeito: relatar, opinar, indicar.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Heart size={20} />,
+            titulo: 'Menos dado pessoal no código aberto',
+            texto: 'Os relatos de problema, que traziam o e-mail de quem relatou, saíram do repositório público do SetProd — inclusive do histórico.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '0.19.2',
     resumo: <>A locação avisa quando o mapa só achou a rua, e a proteção do navegador passa a valer.</>,
