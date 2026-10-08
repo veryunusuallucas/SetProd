@@ -37,3 +37,6 @@ gifs-originais/
 
 # Estado local do Supabase CLI (versão, ref do projeto)
 supabase/.temp/
+
+# Relatos do app (bug_reports): têm e-mail de quem relatou — ficam só neste computador.
+bugs/
