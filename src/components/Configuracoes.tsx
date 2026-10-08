@@ -6,7 +6,7 @@ import { SoQuemPode } from './ui/SoQuemPode';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom, FileText, Star } from 'lucide-react';
+import { Trash2, Bug, Info, X, ShieldCheck, PanelBottom, FileText, Star, Heart } from 'lucide-react';
 import { abrirEditorDaDock, moduloPorId, useFixosDaDock } from './menu/modulosDaDock';
 import { CreepyButton } from './ui/CreepyButton';
 import { BugReportModal } from './BugReportModal';
@@ -15,7 +15,7 @@ import { CampoData } from './ui/CampoData';
 import { rotuloCurto } from '../lib/versao';
 import { TermosDeUso } from './TermosDeUso';
 import { AvaliacaoDoApp } from './AvaliacaoDoApp';
-import { ApoioAoApp } from './ApoioAoApp';
+import { PaginaDeApoio } from './PaginaDeApoio';
 import { Interruptor } from './ui/Interruptor';
 import { mudarPreferencia, usePreferencia } from '../lib/preferencias';
 
@@ -40,6 +40,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const [showSobre, setShowSobre] = useState(false);
   const [showTermos, setShowTermos] = useState(false);
   const [opinando, setOpinando] = useState(false);
+  const [apoiando, setApoiando] = useState(false);
   const mensagensDivertidas = usePreferencia('mensagensDivertidas');
   const wrapFestivo = usePreferencia('wrapFestivo');
   const gifsLigados = usePreferencia('gifs');
@@ -214,6 +215,21 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
       </div>
 
       <div className="card">
+        <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Apoiar</h3>
+        <p className="text-xs text-secondary" style={{ marginBottom: '24px' }}>
+          O SetProd é de graça e feito por uma pessoa. Veja como ajudar a mantê-lo de pé.
+        </p>
+        <button
+          onClick={() => setApoiando(true)}
+          className="botao-cafe"
+          style={{ width: '100%', justifyContent: 'center', border: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          <Heart size={18} fill="currentColor" strokeWidth={0} style={{ color: '#d6336c' }} />
+          <span className="botao-cafe-texto" style={{ textAlign: 'center' }}><strong>Apoiar o SetProd</strong></span>
+        </button>
+      </div>
+
+      <div className="card">
         <h3 className="text-lg font-bold" style={{ marginBottom: '16px' }}>Sobre</h3>
         <p className="text-xs text-secondary" style={{ marginBottom: '24px' }}>
           Quem fez este aplicativo, com que ajuda e por quanto tempo ele será gratuito.
@@ -317,10 +333,6 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
                 essa bomba do próprio bolso. Até lá, é grátis :)
               </p>
 
-              <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-                <ApoioAoApp />
-              </div>
-
               <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 <ShieldCheck size={18} className="text-success" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <p style={{ margin: 0, fontSize: '13px' }}>
@@ -362,6 +374,13 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
 
       {showTermos && <TermosDeUso aoFechar={() => setShowTermos(false)} />}
       {opinando && <AvaliacaoDoApp aoFechar={() => setOpinando(false)} />}
+      {apoiando && (
+        <PaginaDeApoio
+          aoFechar={() => setApoiando(false)}
+          aoRelatar={() => { setApoiando(false); setShowBug(true); }}
+          aoAvaliar={() => { setApoiando(false); setOpinando(true); }}
+        />
+      )}
       {showBug && <BugReportModal onClose={() => setShowBug(false)} />}
     </div>
   );

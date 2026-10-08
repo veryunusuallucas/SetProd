@@ -1815,3 +1815,29 @@ input[type="radio"]:checked::before {
 .botao-codigo .botao-cafe-xicara { background: var(--text-primary); color: var(--bg-primary); }
 .botao-codigo-sinal { position: absolute; right: -2px; bottom: -2px; padding: 2px; box-sizing: content-box; border-radius: 50%; background: var(--accent); color: #000; transition: transform 0.25s ease; }
 .botao-codigo:hover .botao-codigo-sinal { transform: scale(1.25) rotate(-8deg); }
+
+/* Os dois botões de apoio lado a lado, do mesmo tamanho. */
+.apoio-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.apoio-botoes .botao-cafe { width: 100%; min-width: 0; }
+.apoio-botoes .botao-cafe-texto { min-width: 0; }
+.apoio-botoes .botao-cafe-texto small { white-space: normal; }
+@media (max-width: 420px) { .apoio-botoes { grid-template-columns: 1fr; } }
+
+/* A página "Apoie o SetProd" (PaginaDeApoio.tsx). */
+.apoio-topo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 8px 0 4px; }
+.apoio-topo-xicara {
+  position: relative; width: 96px; height: 96px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(140deg, #ffd700, #fb923c); color: #6b3d12;
+  box-shadow: 0 12px 34px rgba(251, 146, 60, 0.35);
+}
+.apoio-topo-xicara svg { margin-top: 8px; }
+.apoio-topo-xicara .botao-cafe-vapor { top: 12px; left: 32px; gap: 5px; }
+.apoio-topo-xicara .botao-cafe-vapor i { width: 4px; height: 14px; }
+.apoio-outro {
+  display: flex; gap: 12px; align-items: center; width: 100%;
+  padding: 12px; border-radius: var(--radius-md);
+  border: 1px solid var(--border-light); background: var(--bg-primary);
+  color: var(--text-primary); cursor: pointer; transition: border-color 0.2s, transform 0.2s;
+}
+.apoio-outro:hover { border-color: var(--accent); transform: translateX(2px); }

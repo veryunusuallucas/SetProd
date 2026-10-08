@@ -31,7 +31,7 @@ export function ApoioAoApp({ compacto = false }: { compacto?: boolean }) {
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: compacto ? 'center' : 'flex-start' }}>
+      <div className="apoio-botoes">
         <a href={LINK_KOFI} target="_blank" rel="noopener noreferrer" className="botao-cafe">
           <span className="botao-cafe-xicara" aria-hidden="true">
             <span className="botao-cafe-vapor"><i /><i /><i /></span>
