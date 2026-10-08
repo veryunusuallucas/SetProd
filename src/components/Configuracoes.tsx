@@ -15,6 +15,7 @@ import { CampoData } from './ui/CampoData';
 import { rotuloCurto } from '../lib/versao';
 import { TermosDeUso } from './TermosDeUso';
 import { AvaliacaoDoApp } from './AvaliacaoDoApp';
+import { ApoioAoApp } from './ApoioAoApp';
 import { Interruptor } from './ui/Interruptor';
 import { mudarPreferencia, usePreferencia } from '../lib/preferencias';
 
@@ -315,6 +316,10 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
                 fudeu o cu da bunda e a gente vai ter que ou rebolar lentinho pros crias ou bancar
                 essa bomba do próprio bolso. Até lá, é grátis :)
               </p>
+
+              <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+                <ApoioAoApp />
+              </div>
 
               <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 <ShieldCheck size={18} className="text-success" style={{ flexShrink: 0, marginTop: '2px' }} />

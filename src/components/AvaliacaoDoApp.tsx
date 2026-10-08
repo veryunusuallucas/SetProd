@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Star, MessageSquareHeart, Check } from 'lucide-react';
 import { Janela } from './ui/Janela';
+import { ApoioAoApp } from './ApoioAoApp';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { useAuth } from '../hooks/useAuth';
 import { OPCOES_QUE_AJUDARAM, enviarAvaliacao, recusarAvaliacao } from '../lib/avaliacao';
@@ -43,7 +44,6 @@ export function AvaliacaoDoApp({ projetoId, nomeDaProducao, diarias, aoFechar }:
     try {
       await enviarAvaliacao(user, { nota, ajudou, atrapalhou, projetoId, diarias });
       setEnviado(true);
-      setTimeout(aoFechar, 1800);
     } catch (e: any) {
       setErro(e?.message || 'Não deu para enviar agora.');
     } finally {
@@ -61,7 +61,7 @@ export function AvaliacaoDoApp({ projetoId, nomeDaProducao, diarias, aoFechar }:
       aoFechar={agoraNao}
       fecharClicandoFora={false}
       largura="520px"
-      rodape={enviado ? undefined : (
+      rodape={enviado ? <button type="button" className="btn-secondary" onClick={aoFechar} style={{ width: '100%' }}>Fechar</button> : (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
           <button type="button" className="btn-secondary" onClick={agoraNao}>Agora não</button>
           <button type="button" className="btn-primary" onClick={enviar} disabled={!nota || enviando} style={{ opacity: nota ? 1 : 0.5 }}>
@@ -80,6 +80,10 @@ export function AvaliacaoDoApp({ projetoId, nomeDaProducao, diarias, aoFechar }:
           <span className="boas-vindas-icone" style={{ width: 44, height: 44 }}><Check size={22} /></span>
           <strong>Obrigado.</strong>
           <p className="text-sm text-secondary" style={{ margin: 0 }}>Chegou direto para quem faz o app — é isso que decide o que vem na próxima versão.</p>
+          {/* O único lugar em que o app lembra do apoio sem a pessoa procurar: ela
+              acabou de dizer como foi. Fica parado até ela fechar. */}
+          <p className="text-xs text-muted" style={{ margin: '8px 0 0' }}>Se o SetProd ajudou, dá para apoiar:</p>
+          <ApoioAoApp compacto />
         </motion.div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
