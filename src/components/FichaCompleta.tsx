@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import type { Perfil, Projeto } from '../types';
 import { UserCircle, Edit2, Trash2, Copy, X, Lock } from 'lucide-react';
+import { db } from '../db/db';
+import { CampoTexto } from './ui/CampoTexto';
 
 interface FichaCompletaProps {
   perfil: Perfil;
@@ -19,6 +22,14 @@ interface FichaCompletaProps {
 }
 
 export function FichaCompleta({ perfil: p, projeto, departamentoNome, outrasFuncoes = [], onClose, onEdit, onDelete, onViewTransacoes, canEdit, verRestrito, verMedico }: FichaCompletaProps) {
+  /*
+    O @ DO CARTÃO SE TROCA AQUI MESMO. É o apelido de set (`nome_social`), e
+    é brincadeira: "acho que isso pode ser permitido" (Lucas, 09/10/2026).
+    Já dava, mas escondido no passo 1 do Editar. Quem pode editar a ficha —
+    a própria pessoa e quem administra — troca com um clique. A ficha aberta é
+    uma foto, então o valor novo fica guardado aqui para a tela acompanhar.
+  */
+  const [apelido, setApelido] = useState(p.nome_social || '');
 
   /**
    * O texto copiado segue as mesmas camadas da tela.
@@ -103,6 +114,23 @@ Plano Saúde: ${p.plano_saude || '-'}`);
           <div>
             <h1 className="text-2xl font-bold">{p.nome} {p.sobrenome || ''}</h1>
             <div className="text-sm text-secondary">{p.funcao || 'Membro'} • {departamentoNome}</div>
+            {canEdit ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '2px', marginTop: '4px' }} title="Seu apelido de set — é o @ do cartão">
+                <span className="text-sm text-muted">@</span>
+                <CampoTexto
+                  value={apelido}
+                  aoGravar={v => {
+                    const novo = v.trim().replace(/^@+/, '');
+                    setApelido(novo);
+                    void db.perfis.update(p.id, { nome_social: novo || undefined });
+                  }}
+                  placeholder={p.nome.toLowerCase()}
+                  style={{ fontSize: '13px', padding: '2px 6px', width: '180px', background: 'transparent', border: '1px dashed var(--border-light)' }}
+                />
+              </label>
+            ) : apelido ? (
+              <div className="text-sm text-muted" style={{ marginTop: '4px' }}>@{apelido}</div>
+            ) : null}
             {outrasFuncoes.length > 0 && (
               <div className="text-xs text-muted" style={{ marginTop: '2px' }}>
                 Também nos créditos: {outrasFuncoes.join(', ')}
@@ -141,7 +169,7 @@ Plano Saúde: ${p.plano_saude || '-'}`);
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 className="text-sm font-bold uppercase tracking-widest text-accent border-b border-border-light pb-2">Pessoais e Contato</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <Linha label="Nome Social / Apelido" valor={p.nome_social} />
+                <Linha label="Nome Social / Apelido" valor={apelido} />
                 <Linha label="Telefone" valor={p.telefone} />
                 <Linha label="E-mail" valor={p.email} />
                 <Linha label="Instagram" valor={p.instagram} />

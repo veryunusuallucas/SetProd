@@ -115,7 +115,7 @@ export function PadraoDaOD({ projetoId }: { projetoId: string }) {
       </div>
 
       <div>
-        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '6px' }}>Canais de rádio</div>
+        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '6px' }}>Comunicação no set (rádio)</div>
         <CampoTexto
           value={projeto.canais_radio || ''}
           aoGravar={v => db.projetos.update(projetoId, { canais_radio: v.trim() || undefined })}
@@ -124,7 +124,7 @@ export function PadraoDaOD({ projetoId }: { projetoId: string }) {
           style={{ width: '100%', padding: '10px', fontSize: '13px', lineHeight: 1.6, resize: 'vertical' }}
         />
         <div className="text-xs text-muted" style={{ marginTop: '4px' }}>
-          Um por linha. Sai no pé da OD, junto dos contatos.
+          Os canais do rádio, um por linha. Vale para a produção inteira e sai no pé de toda OD, junto dos contatos.
         </div>
       </div>
     </div>
