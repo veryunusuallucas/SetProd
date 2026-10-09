@@ -203,6 +203,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const [departamentoId, setDepartamentoId] = useState('');
   const [drt, setDrt] = useState('');
   const [experiencia, setExperiencia] = useState('');
+  const [radio, setRadio] = useState('');
   const [valorDiaria, setValorDiaria] = useState('');
   const [tipoVinculo, setTipoVinculo] = useState('');
   const [chavePix, setChavePix] = useState('');
@@ -224,7 +225,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
   const retratoDoForm = () => JSON.stringify([
     nome, sobrenome, nomeSocial, cpf, rg, nascimento, telefone, email, endereco, instagram,
     contatoEmergencia, infoMedica, tipoSanguineo, alergias, medicamentos, restricaoAlimentar, planoSaude,
-    funcao, departamentoId, drt, experiencia, valorDiaria, tipoVinculo, chavePix,
+    funcao, departamentoId, drt, experiencia, radio, valorDiaria, tipoVinculo, chavePix,
     banco, agencia, conta, cnpj, razaoSocial, customValues,
   ]);
   const retratoAoAbrir = useRef('');
@@ -259,7 +260,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
     setNome(''); setSobrenome(''); setNomeSocial(''); setCpf(''); setRg(''); setNascimento('');
     setTelefone(''); setEmail(''); setEndereco(''); setInstagram('');
     setContatoEmergencia(''); setInfoMedica(''); setTipoSanguineo(''); setAlergias(''); setMedicamentos(''); setRestricaoAlimentar(''); setPlanoSaude('');
-    setFuncao(''); setDepartamentoId(''); setDrt(''); setExperiencia('');
+    setFuncao(''); setDepartamentoId(''); setDrt(''); setExperiencia(''); setRadio('');
     setValorDiaria(''); setTipoVinculo(''); setChavePix(''); setBanco(''); setAgencia(''); setConta(''); setCnpj(''); setRazaoSocial('');
     setCustomValues({});
     setEditId(null);
@@ -278,17 +279,27 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
       telefone, email, endereco, instagram,
       contato_emergencia: contatoEmergencia, info_medica: infoMedica, tipo_sanguineo: tipoSanguineo,
       alergias, medicamentos_continuos: medicamentos, restricao_alimentar: restricaoAlimentar, plano_saude: planoSaude,
-      funcao, drt, experiencia,
+      funcao, drt, experiencia, radio,
       valor_diaria: valorDiaria, tipo_vinculo: tipoVinculo, chave_pix: chavePix,
       banco, agencia, conta, cnpj, razao_social: razaoSocial,
       ...customValues,
     };
 
+    /*
+      OBRIGATÓRIO É PARA A FICHA, NÃO PARA QUEM CADASTRA À MÃO.
+      Os campos obrigatórios da produção valem no link de cadastro, que a
+      própria pessoa preenche. Aqui quem digita é a produção, e às vezes só
+      precisa da pessoa no set agora e completa depois: "sei o que estou
+      fazendo" (Lucas, 09/10/2026). Antes o alerta travava — e quem tinha
+      pressa preenchia tudo com "-", que é pior do que vazio.
+    */
     const faltando = validarObrigatorios(valoresParaValidar, schema);
-    if (faltando.length > 0) {
-      alert(`Preencha os campos obrigatórios:\n\n• ${faltando.join('\n• ')}`);
-      return;
-    }
+    if (faltando.length > 0 && !(await confirmar({
+      titulo: 'Faltam campos que esta produção pede',
+      detalhe: `${faltando.join(', ')}. Dá para salvar assim e completar depois — ou mandar o link de cadastro para a pessoa preencher.`,
+      confirmar: 'Sei o que estou fazendo, salvar',
+      cancelar: 'Voltar e preencher',
+    }))) return;
 
     /*
       "TEM NADA AÍ" (pedido do Lucas, 03/10/2026). Ficha nova só com o nome
@@ -297,7 +308,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
       mesmo, e o resto vem pelo link de cadastro. Editar não pergunta — quem
       edita já passou por aqui.
     */
-    if (!editId) {
+    if (!editId && faltando.length === 0) {
       const preenchidos = Object.entries(valoresParaValidar)
         .filter(([campo, v]) => campo !== 'nome' && campo !== 'sobrenome' && String(v ?? '').trim() !== '')
         .length + (departamentoId ? 1 : 0);
@@ -315,7 +326,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
       nome, sobrenome, nome_social: nomeSocial, cpf, rg, data_nascimento: nascimento,
       telefone, email, endereco, instagram,
       contato_emergencia: contatoEmergencia, info_medica: infoMedica, tipo_sanguineo: tipoSanguineo, alergias, medicamentos_continuos: medicamentos, restricao_alimentar: restricaoAlimentar, plano_saude: planoSaude,
-      funcao, departamento_id: departamentoId || undefined, drt, experiencia,
+      funcao, departamento_id: departamentoId || undefined, drt, experiencia, radio: radio || undefined,
       valor_diaria: Number(valorDiaria) || undefined, tipo_vinculo: tipoVinculo, chave_pix: chavePix, banco, agencia, conta, cnpj, razao_social: razaoSocial,
       custom: customValues
     };
@@ -336,7 +347,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
     setTelefone(p.telefone || ''); setEmail(p.email || ''); setEndereco(p.endereco || ''); setInstagram(p.instagram || '');
     setContatoEmergencia(p.contato_emergencia || ''); setInfoMedica(p.info_medica || ''); setTipoSanguineo(p.tipo_sanguineo || ''); 
     setAlergias(p.alergias || ''); setMedicamentos(p.medicamentos_continuos || ''); setRestricaoAlimentar(p.restricao_alimentar || ''); setPlanoSaude(p.plano_saude || '');
-    setFuncao(p.funcao || ''); setDepartamentoId(p.departamento_id || ''); setDrt(p.drt || ''); setExperiencia(p.experiencia || '');
+    setFuncao(p.funcao || ''); setDepartamentoId(p.departamento_id || ''); setDrt(p.drt || ''); setExperiencia(p.experiencia || ''); setRadio(p.radio || '');
     setValorDiaria(p.valor_diaria ? String(p.valor_diaria) : ''); setTipoVinculo(p.tipo_vinculo || ''); setChavePix(p.chave_pix || ''); 
     setBanco(p.banco || ''); setAgencia(p.agencia || ''); setConta(p.conta || ''); setCnpj(p.cnpj || ''); setRazaoSocial(p.razao_social || '');
     setCustomValues(p.custom || {});
@@ -944,7 +955,11 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                         <option key={d.id} value={d.id}>{d.nome}</option>
                       ))}
                     </select>
-                    <input placeholder={ph('drt', 'DRT')} value={drt} onChange={e => setDrt(e.target.value)} />
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <input placeholder={ph('drt', 'DRT')} value={drt} onChange={e => setDrt(e.target.value)} style={{ flex: 1 }} />
+                      <input placeholder={ph('radio', 'Canal de rádio')} value={radio} onChange={e => setRadio(e.target.value)} style={{ flex: 1 }} />
+                    </div>
+                    <input placeholder={ph('experiencia', 'Experiência')} value={experiencia} onChange={e => setExperiencia(e.target.value)} />
                   </div>
                 </Step>
 
@@ -957,6 +972,8 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                       <input placeholder={ph('plano_saude', 'Plano de Saúde')} value={planoSaude} onChange={e => setPlanoSaude(e.target.value)} style={{ flex: 1 }} />
                     </div>
                     <input placeholder={ph('alergias', 'Alergias')} value={alergias} onChange={e => setAlergias(e.target.value)} />
+                    {/* Faltava: a produção podia exigir e o assistente não tinha onde preencher. */}
+                    <input placeholder={ph('medicamentos_continuos', 'Medicamentos contínuos')} value={medicamentos} onChange={e => setMedicamentos(e.target.value)} />
                     <input placeholder={ph('restricao_alimentar', 'Restrição Alimentar (ex: Vegano)')} value={restricaoAlimentar} onChange={e => setRestricaoAlimentar(e.target.value)} />
                     <input placeholder={ph('info_medica', 'Outras infos médicas / remédios')} value={infoMedica} onChange={e => setInfoMedica(e.target.value)} />
                   </div>
