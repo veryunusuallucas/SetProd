@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { possoEscrever } from '../lib/travaDeEscrita';
 import { motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -15,7 +16,10 @@ import { StripboardTimeline } from '../components/StripboardTimeline';
 import { RelatoriosModal } from '../components/RelatoriosModal';
 import { sincronizarElementos } from '../lib/elementos';
 import { registrarDocumento } from '../lib/documentos';
-import { acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras } from '../lib/decupagem';
+import {
+  acharLocacao, oitavosParaPaginas, paginasParaOitavos, registrarCategoriasExtras,
+  compararNumeroDePlano, reordenarPlanos, proximoNumeroDePlano,
+} from '../lib/decupagem';
 import { ULTIMO_BLOCO, montarLinha, diaNaPosicao } from '../lib/stripboard';
 import { jaAconteceu, estadoDa, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { confirmar } from '../components/ui/Confirmacao';
@@ -387,7 +391,9 @@ export function DecupagemModule() {
       id: crypto.randomUUID(),
       projeto_id: projetoId!,
       cena_id: cenaId,
-      numero: String(planosDaCena.length + 1),
+      // O maior número mais um, e não a quantidade: com a quantidade, apagar o
+      // plano 1 de quatro e criar outro dava dois planos "4".
+      numero: proximoNumeroDePlano(planosDaCena.map(p => p.numero)),
       descricao: '',
     };
     await db.planos.add(novoPlano);
@@ -400,6 +406,26 @@ export function DecupagemModule() {
 
   const removePlano = async (id: string) => {
     await db.planos.delete(id);
+  };
+
+  /** Os planos de uma cena, na ordem do número ("3" antes de "3A" antes de "10"). */
+  const planosOrdenados = (cenaId: string) =>
+    planos.filter(p => p.cena_id === cenaId).sort((a, b) => compararNumeroDePlano(a.numero, b.numero));
+
+  /*
+    Arrastar um plano. O ícone de arrastar existia desde sempre e não fazia
+    nada (relato do Raphael, AD, 09/10/2026). Cada cena é uma lista própria:
+    plano não muda de cena arrastando. A regra de numeração está em
+    `reordenarPlanos`: os números da cena ficam, quem muda é quem tem cada um.
+  */
+  const podeReordenar = possoEscrever('planos', projetoId!);
+  const aoSoltarPlano = async (r: DropResult) => {
+    if (!r.destination || r.destination.droppableId !== r.source.droppableId) return;
+    const mudancas = reordenarPlanos(planosOrdenados(r.source.droppableId), r.source.index, r.destination.index);
+    if (!mudancas.length) return;
+    await db.transaction('rw', db.planos, async () => {
+      for (const m of mudancas) await db.planos.update(m.id, { numero: m.numero });
+    });
   };
 
   const selectStyle = { padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontSize: '13px', color: 'var(--text-primary)' };
@@ -592,8 +618,8 @@ export function DecupagemModule() {
           </div>
         )}
 
-        {viewMode === 'shotlist' && cenasOrdenadas.map(cena => {
-          const planosDaCena = planos.filter(p => p.cena_id === cena.id).sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
+        {viewMode === 'shotlist' && <DragDropContext onDragEnd={aoSoltarPlano}>{cenasOrdenadas.map(cena => {
+          const planosDaCena = planosOrdenados(cena.id);
           
           return (
             <div key={cena.id} style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
@@ -669,14 +695,26 @@ export function DecupagemModule() {
               </div>
 
               {/* Lista de Planos */}
-              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Droppable droppableId={cena.id}>
+              {area => (
+              <div ref={area.innerRef} {...area.droppableProps} style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
                 {planosDaCena.map((plano, index) => {
                   const isExpanded = expandida === plano.id;
                   return (
-                    <div key={plano.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                    <Draggable key={plano.id} draggableId={plano.id} index={index} isDragDisabled={!podeReordenar}>
+                    {(arraste, estado) => (
+                    <div ref={arraste.innerRef} {...arraste.draggableProps} style={{ ...arraste.draggableProps.style, marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', boxShadow: estado.isDragging ? '0 8px 24px rgba(0,0,0,0.25)' : undefined }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <GripVertical size={16} className="text-muted" style={{ cursor: 'grab' }} />
-                        <span className="text-secondary font-bold text-xs" style={{ width: '20px' }}>{(index+1).toString().padStart(2, '0')}</span>
+                        {podeReordenar && (
+                          <span {...arraste.dragHandleProps} aria-label={`Arrastar o plano ${plano.numero}`} style={{ display: 'flex', cursor: 'grab', padding: '4px', margin: '-4px' }}>
+                            <GripVertical size={16} className="text-muted" />
+                          </span>
+                        )}
+                        {/* O NÚMERO do plano, e não a posição: é o que sai na OD
+                            e na claquete. Antes aparecia 01, 02… enquanto a OD
+                            dizia "plano 2", "plano 3". */}
+                        <span className="text-secondary font-bold text-xs" style={{ minWidth: '20px' }}>{plano.numero}</span>
                         
                         <CampoTexto
                           value={plano.descricao}
@@ -734,16 +772,22 @@ export function DecupagemModule() {
                         </div>
                       )}
                     </div>
+                    </div>
+                    )}
+                    </Draggable>
                   );
                 })}
+                {area.placeholder}
 
                 <button onClick={() => addPlano(cena.id)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: 'transparent', border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
                   <Camera size={16} /> Adicionar Plano
                 </button>
               </div>
+              )}
+              </Droppable>
             </div>
           );
-        })}
+        })}</DragDropContext>}
       </div>
 
       {/* Enviar a ordem de filmagem para uma diária */}

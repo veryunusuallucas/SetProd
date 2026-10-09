@@ -604,3 +604,41 @@ const ESCOPO_GLOBAL = new Set(['ELENCO', 'FIGURACAO', 'VEICULOS']);
 export function escopoPadrao(categoria?: string): boolean {
   return ESCOPO_GLOBAL.has(normalizarCategoria(categoria));
 }
+
+// ---------------------------------------------------------------------------
+// A ordem dos planos
+// ---------------------------------------------------------------------------
+
+/** "3" antes de "3A" antes de "10" — a ordem em que o set lê os números. */
+export function compararNumeroDePlano(a: string, b: string): number {
+  return a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' });
+}
+
+/**
+ * Arrastar um plano para outra posição da cena.
+ *
+ * O número do plano é o nome dele: é o que sai na OD, na claquete e na
+ * Logagem. Por isso arrastar NÃO renumera de 1 a N — os números que a cena já
+ * usa continuam os mesmos, e cada plano ganha o número da posição onde caiu.
+ * Uma cena com os planos 2, 3, 4 e 5 continua com 2, 3, 4 e 5.
+ *
+ * Devolve só quem mudou de número, para a tela gravar o mínimo.
+ */
+export function reordenarPlanos<T extends { id: string; numero: string }>(
+  ordenados: T[], de: number, para: number,
+): { id: string; numero: string }[] {
+  if (de === para) return [];
+  const numeros = ordenados.map(p => p.numero);
+  const nova = [...ordenados];
+  const [movido] = nova.splice(de, 1);
+  nova.splice(para, 0, movido);
+  return nova
+    .map((p, i) => ({ id: p.id, numero: numeros[i] }))
+    .filter((m, i) => m.numero !== nova[i].numero);
+}
+
+/** O número de um plano novo: o maior da cena mais um — nunca repete. */
+export function proximoNumeroDePlano(numeros: string[]): string {
+  const maior = Math.max(0, ...numeros.map(n => parseInt(n, 10)).filter(n => !isNaN(n)));
+  return String(maior + 1);
+}
