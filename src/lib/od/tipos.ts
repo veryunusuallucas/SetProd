@@ -99,7 +99,7 @@ export interface GrupoDePessoas {
  * renderizadores precisam aprender a desenhar. A grade hora a hora, as cenas do
  * dia seguinte e o elenco são a mesma `tabela` com colunas diferentes.
  */
-export type Secao =
+export type Secao = (
   | { id: string; tipo: 'campos'; titulo?: string; itens: Campo[]; colunas?: number }
   | { id: string; tipo: 'tabela'; titulo?: string; nota?: string; tabela: Tabela }
   | { id: string; tipo: 'texto'; titulo?: string; corpo: string }
@@ -112,17 +112,39 @@ export type Secao =
    * "BASE E CAMARIM" e "SETS" são três blocos numa linha, não três seções
    * empilhadas. Sem isto, a primeira página do modelo não fecha.
    */
-  | { id: string; tipo: 'faixa'; colunas: { peso?: number; secoes: Secao[] }[] };
+  | { id: string; tipo: 'faixa'; colunas: { peso?: number; secoes: Secao[] }[] }
+) & {
+  /**
+   * Começa numa página nova. É o que separa a OD completa da simples: a
+   * página 1 é o modelo; o que vem depois (equipe, decupagem) é referência.
+   * O HTML do e-mail não tem página e ignora.
+   */
+  novaPagina?: boolean;
+};
+
+/**
+ * Simples: a página 1 do modelo, o que todo mundo precisa no set.
+ * Completa: mais uma página com equipe, próximo dia, checklist e decupagem.
+ */
+export type FormatoOD = 'simples' | 'completa';
 
 export interface CabecalhoOD {
   /** 'ORDEM DO DIA'. Fica no dado porque um dia pode virar 'CALL SHEET'. */
   titulo: string;
   producao: string;
-  /** 'Diária 03'. */
+  /** 'Diária 3 de 12'. */
   diaria: string;
   data: string;
   /** '07h00 às 19h30' — a janela do dia, já calculada. */
   janela?: string;
+  /**
+   * Chamada e fim do dia, soltos, para o papel desenhá-los GRANDES — é a
+   * primeira coisa que alguém procura na OD (pedido do Lucas, 09/10/2026).
+   */
+  chamada?: string;
+  fim?: string;
+  /** 'Lore Leite', embaixo do título. */
+  direcao?: string;
   versao?: number;
   /** Logo da produtora, já resolvido para algo que o renderizador abre. */
   logo?: string;

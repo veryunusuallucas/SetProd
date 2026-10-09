@@ -9,6 +9,14 @@ import { conferirOD, descreverConferencia, type Conferencia } from '../lib/confe
 import { prepararOD, gerarPdf, arquivarOD, baixar, abrir, type ODPronta } from '../lib/od/exportar';
 import type { ClimaPorLocal } from '../lib/clima';
 import { agruparClimasIguais } from '../lib/clima';
+import type { FormatoOD } from '../lib/od/tipos';
+import { Segmentado } from './logagem/pecas';
+
+/** A última escolha entre simples e completa, por aparelho. */
+const CHAVE_FORMATO = 'setprod:od-formato';
+function formatoLembrado(): FormatoOD {
+  try { return localStorage.getItem(CHAVE_FORMATO) === 'completa' ? 'completa' : 'simples'; } catch { return 'simples'; }
+}
 
 /**
  * Exportar a Ordem do Dia.
@@ -57,6 +65,16 @@ export function GeradorODModal({
   const [etapa, setEtapa] = useState<Etapa>('previa');
   const [erro, setErro] = useState('');
   const [arquivo, setArquivo] = useState<{ blob: Blob; nome: string } | null>(null);
+  /*
+    Simples é a página 1 do modelo do set; completa acrescenta a página de
+    referência. Começa na simples: "eu penso que é melhor ser uma página"
+    (Lucas, 09/10/2026) — e a escolha fica lembrada neste aparelho.
+  */
+  const [formato, setFormato] = useState<FormatoOD>(formatoLembrado);
+  const escolherFormato = (f: FormatoOD) => {
+    setFormato(f);
+    try { localStorage.setItem(CHAVE_FORMATO, f); } catch { /* aba privada */ }
+  };
 
   // ---- o caminho opcional da IA ----
   const [htmlIA, setHtmlIA] = useState('');
@@ -65,11 +83,11 @@ export function GeradorODModal({
 
   useEffect(() => {
     let vivo = true;
-    prepararOD(diariaId, { clima: agruparClimasIguais(climas || []), versao })
+    prepararOD(diariaId, { clima: agruparClimasIguais(climas || []), versao, formato })
       .then(r => { if (vivo) { if (r) setOd(r); else setErro('Não consegui ler esta diária.'); } })
       .catch(e => { if (vivo) setErro(String(e?.message || e)); });
     return () => { vivo = false; };
-  }, [diariaId, versao, climas]);
+  }, [diariaId, versao, climas, formato]);
 
   /**
    * Gera o PDF, GUARDA e entrega.
@@ -170,6 +188,25 @@ export function GeradorODModal({
 
           {od && (
             <>
+              {etapa !== 'pronto' && !htmlIA && (
+                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  <div style={{ width: '260px', maxWidth: '100%' }}>
+                    <Segmentado
+                      nome="formato-od"
+                      opcoes={[{ id: 'simples', nome: 'Simples' }, { id: 'completa', nome: 'Completa' }]}
+                      valor={formato}
+                      bloqueado={etapa === 'gerando'}
+                      aoMudar={v => escolherFormato(v as FormatoOD)}
+                    />
+                  </div>
+                  <div className="text-xs text-muted" style={{ flex: 1, minWidth: '200px', lineHeight: 1.5 }}>
+                    {formato === 'simples'
+                      ? 'Uma página, como o modelo do set: horários, locação, cenas, elenco e contatos.'
+                      : 'A página do set e mais uma de referência: equipe, cenas do próximo dia, checklist e decupagem.'}
+                  </div>
+                </div>
+              )}
+
               {problema && (
                 <div style={{ marginBottom: '14px', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                   <AlertTriangle size={18} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: '2px' }} />

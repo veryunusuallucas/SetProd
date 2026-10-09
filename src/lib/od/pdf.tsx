@@ -12,6 +12,10 @@
  *
  * Aqui sai um `Blob`. O app tem o arquivo.
  *
+ * O VISUAL É O DO MODELO DO SET (09/10/2026): retrato, chamada e fim do dia
+ * num círculo grande, títulos em barra cinza, tabelas com grade e cabeçalho
+ * cinza-claro. É o papel que a equipe já sabe ler sem procurar.
+ *
  * ⚠️ O MÓDULO É PESADO (~200 KB). Importe-o com `await import(...)`, nunca no
  * topo de uma tela — ele só precisa existir no instante em que alguém exporta.
  */
@@ -22,63 +26,73 @@ import { textoDaCelula, type Campo, type DocumentoOD, type Secao, type Tabela } 
 import { limpar } from '../pdfTexto';
 
 const PRETO = '#111';
-const CINZA = '#6b6b6b';
-const BORDA = '#d8d8d8';
-const FUNDO = '#f1f1f1';
+const CINZA = '#5c5c5c';
+const BARRA = '#5f5f5f';
+const CABECALHO = '#d6d6d6';
+const ZEBRA = '#f2f2f2';
+const FAIXA = '#e4e4e4';
+const GRADE = '#9a9a9a';
 
 const s = StyleSheet.create({
   pagina: {
-    paddingTop: 22, paddingBottom: 30, paddingHorizontal: 24,
-    fontFamily: 'Helvetica', fontSize: 8, color: PRETO,
+    paddingTop: 20, paddingBottom: 30, paddingHorizontal: 22,
+    fontFamily: 'Helvetica', fontSize: 7.5, color: PRETO,
   },
-  topo: {
-    flexDirection: 'row', alignItems: 'center',
-    borderBottomWidth: 2, borderBottomColor: PRETO, paddingBottom: 6, marginBottom: 4,
-  },
-  logo: { width: 62, maxHeight: 44, marginRight: 12, objectFit: 'contain' },
-  chapeu: { fontSize: 7, letterSpacing: 1.6, color: CINZA, fontFamily: 'Helvetica-Bold' },
-  producao: { fontSize: 17, fontFamily: 'Helvetica-Bold', lineHeight: 1.15 },
-  diaria: { fontSize: 12, fontFamily: 'Helvetica-Bold', textAlign: 'right' },
-  meta: { fontSize: 8, color: CINZA, textAlign: 'right' },
 
-  tituloSecao: {
-    fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.9,
-    borderBottomWidth: 1, borderBottomColor: PRETO, paddingBottom: 2,
-    marginTop: 9, marginBottom: 4,
+  topo: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  circulo: {
+    width: 92, height: 92, borderRadius: 46, borderWidth: 1.5, borderColor: PRETO,
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  nota: { fontSize: 6.5, color: CINZA, marginBottom: 3 },
+  circuloRotulo: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.4 },
+  circuloHora: { fontSize: 18, lineHeight: 1.05, marginBottom: 1 },
+  logo: { width: 56, maxHeight: 40, marginBottom: 3, objectFit: 'contain' },
+  producao: { fontSize: 18, fontFamily: 'Helvetica-Bold', textAlign: 'center', lineHeight: 1.1 },
+  direcao: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', textAlign: 'center', marginTop: 3 },
+  chapeu: { fontSize: 9, fontFamily: 'Helvetica-Bold', textAlign: 'right' },
+  diaria: { fontSize: 14, textAlign: 'right' },
+  meta: { fontSize: 8, color: CINZA, textAlign: 'right', marginTop: 4 },
 
-  campoRotulo: { fontSize: 6.5, color: CINZA, letterSpacing: 0.3 },
-  campoValor: { fontSize: 8.5, fontFamily: 'Helvetica-Bold' },
+  barra: {
+    backgroundColor: BARRA, color: '#fff', fontFamily: 'Helvetica-Bold', fontSize: 7.5,
+    letterSpacing: 0.6, textAlign: 'center', paddingVertical: 2.5, marginTop: 8,
+  },
+  barraClara: {
+    backgroundColor: CABECALHO, fontFamily: 'Helvetica-Bold', fontSize: 7,
+    letterSpacing: 0.5, textAlign: 'center', paddingVertical: 2,
+  },
+  nota: { fontSize: 6.5, color: CINZA, marginVertical: 2 },
+
+  campoRotulo: { fontSize: 6.5, color: CINZA },
+  campoValor: { fontSize: 8, fontFamily: 'Helvetica-Bold' },
   campoDetalhe: { fontSize: 6.5, color: CINZA },
 
-  cabecalhoTabela: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: PRETO, paddingBottom: 2, marginBottom: 1,
-  },
-  th: { fontSize: 6, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5, color: CINZA, paddingHorizontal: 3 },
-  linha: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: BORDA, paddingVertical: 2.5 },
-  td: { fontSize: 7.5, paddingHorizontal: 3 },
-  tdDetalhe: { fontSize: 6, color: CINZA, paddingHorizontal: 3 },
-  faixa: {
-    backgroundColor: FUNDO, paddingVertical: 3, paddingHorizontal: 4,
-    borderBottomWidth: 0.5, borderBottomColor: BORDA,
-  },
-  faixaTexto: { fontSize: 7.5, fontFamily: 'Helvetica-Bold' },
-  total: { flexDirection: 'row', borderTopWidth: 1.5, borderTopColor: PRETO, paddingVertical: 3 },
+  tabela: { borderWidth: 0.5, borderColor: GRADE, borderBottomWidth: 0 },
+  cabecalhoTabela: { flexDirection: 'row', backgroundColor: CABECALHO, borderBottomWidth: 0.5, borderBottomColor: GRADE },
+  th: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', paddingHorizontal: 3, paddingVertical: 2.5, textTransform: 'uppercase' },
+  linha: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: GRADE },
+  celula: { paddingHorizontal: 3, paddingVertical: 2.5, borderRightWidth: 0.5, borderRightColor: GRADE, justifyContent: 'center' },
+  td: { fontSize: 7.5 },
+  tdDetalhe: { fontSize: 6.5, color: CINZA, marginTop: 1 },
+  faixa: { backgroundColor: FAIXA, paddingVertical: 3, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: GRADE },
+  faixaTexto: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+  total: { flexDirection: 'row', backgroundColor: CABECALHO, borderBottomWidth: 0.5, borderBottomColor: GRADE },
 
-  deptoBarra: { backgroundColor: PRETO, paddingVertical: 2, paddingHorizontal: 4, marginBottom: 1 },
+  caixa: { borderWidth: 0.5, borderColor: GRADE, padding: 5 },
+
+  deptoBarra: { backgroundColor: BARRA, paddingVertical: 2, paddingHorizontal: 4, marginBottom: 1 },
   deptoNome: { color: '#fff', fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.7 },
   pessoa: {
     flexDirection: 'row', justifyContent: 'space-between',
-    borderBottomWidth: 0.5, borderBottomColor: BORDA, paddingVertical: 2, paddingHorizontal: 3,
+    borderBottomWidth: 0.5, borderBottomColor: CABECALHO, paddingVertical: 2, paddingHorizontal: 3,
   },
 
-  corpo: { fontSize: 8, lineHeight: 1.5 },
+  corpo: { fontSize: 7.5, lineHeight: 1.45 },
   rodape: {
-    position: 'absolute', bottom: 14, left: 24, right: 24,
+    position: 'absolute', bottom: 14, left: 22, right: 22,
     flexDirection: 'row', justifyContent: 'space-between',
     fontSize: 6.5, color: CINZA,
-    borderTopWidth: 0.5, borderTopColor: BORDA, paddingTop: 4,
+    borderTopWidth: 0.5, borderTopColor: CABECALHO, paddingTop: 4,
   },
 });
 
@@ -93,11 +107,15 @@ function Campos({ itens, colunas = 1 }: { itens: Campo[]; colunas?: number }) {
     <View>
       {linhas.map((linha, i) => (
         <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
-          {linha.map((c, j) => (
-            <View key={j} style={{ flexGrow: 1, flexBasis: 0, paddingRight: 8 }}>
-              <Text style={s.campoRotulo}>{limpar(c.rotulo)}</Text>
-              <Text style={s.campoValor}>{limpar(c.valor)}</Text>
-              {c.detalhe ? <Text style={s.campoDetalhe}>{limpar(c.detalhe)}</Text> : null}
+          {Array.from({ length: colunas }, (_, j) => linha[j]).map((c, j) => (
+            <View key={j} style={{ flexGrow: 1, flexBasis: 0, paddingRight: 6 }}>
+              {c ? (
+                <>
+                  <Text style={s.campoRotulo}>{limpar(c.rotulo)}</Text>
+                  <Text style={s.campoValor}>{limpar(c.valor)}</Text>
+                  {c.detalhe ? <Text style={s.campoDetalhe}>{limpar(c.detalhe)}</Text> : null}
+                </>
+              ) : null}
             </View>
           ))}
         </View>
@@ -107,64 +125,74 @@ function Campos({ itens, colunas = 1 }: { itens: Campo[]; colunas?: number }) {
 }
 
 function TabelaPdf({ t }: { t: Tabela }) {
-  return (
-    <View>
-      {/*
-        O cabeçalho da grade se repete quando a tabela vira a página.
+  const ultima = t.colunas.length - 1;
+  /** A última célula da linha não desenha borda: a da tabela já fecha. */
+  const celula = (peso: number, j: number) => [s.celula, { flexGrow: peso, flexBasis: 0 }, j === ultima ? { borderRightWidth: 0 } : {}];
+  let zebra = 0;
 
-        Sem `fixed` a segunda página começa com colunas anônimas, e a coluna do
-        meio de uma grade de nove é indistinguível sem o rótulo. Quem está no
-        set lê a página 2 tanto quanto a 1.
+  return (
+    <View style={s.tabela}>
+      {/*
+        O cabeçalho se repete quando a tabela vira a página: sem `fixed`, a
+        segunda página começa com colunas anônimas.
       */}
       <View style={s.cabecalhoTabela} fixed>
-        {t.colunas.map(c => (
-          <Text key={c.chave} style={[s.th, { flexGrow: c.peso, flexBasis: 0, textAlign: alinhar(c.alinhamento) }]}>
-            {limpar(c.rotulo)}
-          </Text>
+        {t.colunas.map((c, j) => (
+          <View key={c.chave} style={celula(c.peso, j)}>
+            <Text style={[s.th, { paddingHorizontal: 0, paddingVertical: 0, textAlign: alinhar(c.alinhamento) }]}>
+              {limpar(c.rotulo)}
+            </Text>
+          </View>
         ))}
       </View>
 
-      {t.linhas.map((l, i) => l.faixa ? (
-        <View key={i} style={s.faixa} wrap={false}>
-          <Text style={s.faixaTexto}>
-            {l.faixa.hora ? `${limpar(l.faixa.hora)} - ` : ''}{limpar(l.faixa.texto)}
-          </Text>
-        </View>
-      ) : (
-        <View key={i} style={s.linha} wrap={false}>
-          {t.colunas.map(c => {
-            const v = l.celulas[c.chave];
-            const forte = typeof v === 'object' && v?.enfase === 'forte';
-            const fraco = typeof v === 'object' && v?.enfase === 'fraco';
-            const detalhe = typeof v === 'object' ? v?.detalhe : undefined;
-            return (
-              <View key={c.chave} style={{ flexGrow: c.peso, flexBasis: 0 }}>
-                <Text style={[
-                  s.td,
-                  { textAlign: alinhar(c.alinhamento) },
-                  forte ? { fontFamily: 'Helvetica-Bold' } : {},
-                  fraco ? { color: CINZA } : {},
-                ]}>
-                  {limpar(textoDaCelula(v))}
-                </Text>
-                {detalhe ? (
-                  <Text style={[s.tdDetalhe, { textAlign: alinhar(c.alinhamento) }]}>{limpar(detalhe)}</Text>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-      ))}
+      {t.linhas.map((l, i) => {
+        if (l.faixa) {
+          zebra = 0;
+          return (
+            <View key={i} style={s.faixa} wrap={false}>
+              <Text style={s.faixaTexto}>
+                {limpar(l.faixa.texto)}{l.faixa.hora ? `  ||  ${limpar(l.faixa.hora)}` : ''}
+              </Text>
+            </View>
+          );
+        }
+        const fundo = zebra++ % 2 === 1 ? { backgroundColor: ZEBRA } : {};
+        return (
+          <View key={i} style={[s.linha, fundo]} wrap={false}>
+            {t.colunas.map((c, j) => {
+              const v = l.celulas[c.chave];
+              const forte = typeof v === 'object' && v?.enfase === 'forte';
+              const fraco = typeof v === 'object' && v?.enfase === 'fraco';
+              const detalhe = typeof v === 'object' ? v?.detalhe : undefined;
+              return (
+                <View key={c.chave} style={celula(c.peso, j)}>
+                  <Text style={[
+                    s.td,
+                    { textAlign: alinhar(c.alinhamento) },
+                    forte ? { fontFamily: 'Helvetica-Bold' } : {},
+                    fraco ? { color: CINZA } : {},
+                  ]}>
+                    {limpar(textoDaCelula(v))}
+                  </Text>
+                  {detalhe ? (
+                    <Text style={[s.tdDetalhe, { textAlign: alinhar(c.alinhamento) }]}>{limpar(detalhe)}</Text>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
 
       {t.total ? (
         <View style={s.total} wrap={false}>
-          {t.colunas.map(c => (
-            <Text
-              key={c.chave}
-              style={[s.td, { flexGrow: c.peso, flexBasis: 0, fontFamily: 'Helvetica-Bold', textAlign: alinhar(c.alinhamento) }]}
-            >
-              {limpar(t.total![c.chave] || '')}
-            </Text>
+          {t.colunas.map((c, j) => (
+            <View key={c.chave} style={celula(c.peso, j)}>
+              <Text style={[s.td, { fontFamily: 'Helvetica-Bold', textAlign: alinhar(c.alinhamento) }]}>
+                {limpar(t.total![c.chave] || '')}
+              </Text>
+            </View>
           ))}
         </View>
       ) : null}
@@ -172,26 +200,35 @@ function TabelaPdf({ t }: { t: Tabela }) {
   );
 }
 
-function SecaoPdf({ secao }: { secao: Secao }) {
+/**
+ * `dentro`: a seção está numa coluna de uma faixa (locação, bases, tempo).
+ * Ali o título vira a barra clara da caixa, e não a barra escura da página.
+ */
+function SecaoPdf({ secao, dentro = false }: { secao: Secao; dentro?: boolean }) {
   /*
-    `minPresenceAhead` é o que impede o título órfão.
-
-    Sem ele, "CONTATO DA EQUIPE" cabia no fim da página e o primeiro
-    departamento não — o papel saía com um título sozinho no rodapé e a lista
-    começando na página seguinte. O número são os pontos que precisam existir
-    depois dele para valer a pena começar aqui.
+    `minPresenceAhead` é o que impede o título órfão: sem ele, o título cabia
+    no fim da página e o conteúdo não — o papel saía com um título sozinho no
+    rodapé.
   */
   const titulo = 'titulo' in secao && secao.titulo
-    ? <Text style={s.tituloSecao} minPresenceAhead={46}>{limpar(secao.titulo.toUpperCase())}</Text>
+    ? <Text style={dentro ? s.barraClara : s.barra} minPresenceAhead={40}>{limpar(secao.titulo.toUpperCase())}</Text>
     : null;
+  const quebra = secao.novaPagina ? { break: true } : {};
 
   switch (secao.tipo) {
     case 'campos':
-      return <View wrap={false}>{titulo}<Campos itens={secao.itens} colunas={secao.colunas} /></View>;
+      return (
+        <View wrap={false} {...quebra}>
+          {titulo}
+          <View style={dentro ? { padding: 5 } : [s.caixa, { borderTopWidth: titulo ? 0 : 0.5 }]}>
+            <Campos itens={secao.itens} colunas={secao.colunas} />
+          </View>
+        </View>
+      );
 
     case 'tabela':
       return (
-        <View>
+        <View {...quebra} style={titulo ? {} : { marginTop: 8 }}>
           {titulo}
           {secao.nota ? <Text style={s.nota}>{limpar(secao.nota)}</Text> : null}
           <TabelaPdf t={secao.tabela} />
@@ -200,9 +237,11 @@ function SecaoPdf({ secao }: { secao: Secao }) {
 
     case 'texto':
       return (
-        <View wrap={false}>
+        <View wrap={false} {...quebra}>
           {titulo}
-          <Text style={s.corpo}>{limpar(secao.corpo)}</Text>
+          <View style={[s.caixa, { borderTopWidth: titulo ? 0 : 0.5, marginTop: titulo ? 0 : 6 }]}>
+            <Text style={s.corpo}>{limpar(secao.corpo)}</Text>
+          </View>
         </View>
       );
 
@@ -211,34 +250,29 @@ function SecaoPdf({ secao }: { secao: Secao }) {
       const blocos: string[][] = [];
       for (let i = 0; i < secao.itens.length; i += colunas) blocos.push(secao.itens.slice(i, i + colunas));
       return (
-        <View wrap={false}>
+        <View wrap={false} {...quebra}>
           {titulo}
-          {blocos.map((linha, i) => (
-            <View key={i} style={{ flexDirection: 'row' }}>
-              {linha.map((item, j) => (
-                <Text key={j} style={[s.corpo, { flexGrow: 1, flexBasis: 0, paddingRight: 8 }]}>{limpar(item)}</Text>
-              ))}
-            </View>
-          ))}
+          <View style={[s.caixa, { borderTopWidth: 0 }]}>
+            {blocos.map((linha, i) => (
+              <View key={i} style={{ flexDirection: 'row' }}>
+                {linha.map((item, j) => (
+                  <Text key={j} style={[s.corpo, { flexGrow: 1, flexBasis: 0, paddingRight: 8 }]}>{limpar(item)}</Text>
+                ))}
+              </View>
+            ))}
+          </View>
         </View>
       );
     }
 
     case 'pessoas': {
       /*
-        A equipe sai em duas colunas — e as colunas são LINHAS DE PARES, não
-        duas pilhas balanceadas.
+        A equipe sai em LINHAS DE PARES, e não em duas pilhas balanceadas: a
+        pilha que não cabe no resto da página é comprimida em vez de empurrada,
+        e os departamentos saem uns por cima dos outros. Em pares, cada linha é
+        pequena, cabe inteira e a próxima vai para a página seguinte.
 
-        A pilha balanceada é mais bonita e quebra o documento: quando ela não
-        cabe no resto da página, o PDF comprime a linha inteira em vez de
-        empurrá-la, e os departamentos saem uns por cima dos outros. Em pares,
-        cada linha é pequena, cabe inteira e a próxima simplesmente vai para a
-        página seguinte.
-
-        Duas colunas em vez de uma porque dezoito pessoas empilhadas comem uma
-        página; com a faixa preta do departamento em cima de cada bloco, cabem
-        na metade e continua dando para achar quem se procura — na OD ninguém
-        procura uma pessoa pelo nome, procura pelo departamento dela.
+        O título vai DENTRO da primeira linha, para nunca ficar sozinho no pé.
       */
       const colunas = secao.colunas || 1;
       const linhas: typeof secao.grupos[] = [];
@@ -246,20 +280,12 @@ function SecaoPdf({ secao }: { secao: Secao }) {
         linhas.push(secao.grupos.slice(i, i + colunas));
       }
 
-      /*
-        O TÍTULO VAI DENTRO DA PRIMEIRA LINHA, e não antes dela.
-
-        Solto, ele cabia no fim da página e o primeiro departamento não: o papel
-        saía com "CONTATO DA EQUIPE" sozinho no rodapé e a lista começando na
-        página seguinte. Amarrado ao primeiro par, ou os dois cabem, ou os dois
-        viram a página juntos.
-      */
       return (
-        <View>
+        <View {...quebra}>
           {linhas.map((linha, i) => (
             <View key={i} style={{ flexDirection: 'column' }} wrap={false}>
               {i === 0 ? titulo : null}
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: i === 0 ? 4 : 0 }}>
               {Array.from({ length: colunas }, (_, j) => linha[j]).map((g, j) => (
                 <View key={j} style={{ flexGrow: 1, flexBasis: 0, paddingRight: j < colunas - 1 ? 10 : 0, marginBottom: 6 }}>
                   {g ? (
@@ -291,12 +317,26 @@ function SecaoPdf({ secao }: { secao: Secao }) {
     }
 
     case 'faixa': {
+      /*
+        Colunas lado a lado, cada uma uma caixa — os quadros "Locação / Bases /
+        Previsão do tempo" do modelo. Uma faixa de uma coluna só é só um jeito
+        de agrupar seções, e aí não desenha caixa.
+      */
       const total = secao.colunas.reduce((acc, c) => acc + (c.peso || 1), 0) || 1;
+      if (secao.colunas.length === 1) {
+        return <View {...quebra}>{secao.colunas[0].secoes.map(sub => <SecaoPdf key={sub.id} secao={sub} />)}</View>;
+      }
       return (
-        <View style={{ flexDirection: 'row' }} wrap={false}>
+        <View style={{ flexDirection: 'row', marginTop: 8, borderWidth: 0.5, borderColor: GRADE }} wrap={false} {...quebra}>
           {secao.colunas.map((c, i) => (
-            <View key={i} style={{ flexGrow: (c.peso || 1) / total, flexBasis: 0, paddingRight: i < secao.colunas.length - 1 ? 12 : 0 }}>
-              {c.secoes.map(sub => <SecaoPdf key={sub.id} secao={sub} />)}
+            <View
+              key={i}
+              style={{
+                flexGrow: (c.peso || 1) / total, flexBasis: 0,
+                borderRightWidth: i < secao.colunas.length - 1 ? 0.5 : 0, borderRightColor: GRADE,
+              }}
+            >
+              {c.secoes.map(sub => <SecaoPdf key={sub.id} secao={sub} dentro />)}
             </View>
           ))}
         </View>
@@ -310,26 +350,37 @@ function ODPdf({ doc }: { doc: DocumentoOD }) {
   return (
     <Document title={`${c.titulo} - ${c.producao} - ${c.diaria}`} author="SetProd">
       {/*
-        Paisagem, como o modelo que a produção já usa.
-
-        Não é gosto: a grade hora a hora tem nove colunas (horário, cena, I/E,
-        D/N, locação, sinopse, planos, páginas, elenco). Em retrato, a sinopse
-        fica com três centímetros e cada cena vira quatro linhas de texto — a
-        grade deixa de ser uma grade.
+        Retrato, como o modelo do set. A grade cabe porque "Rodando" junta
+        preparação e roda numa célula e I/E com D/N noutra — eram quatro
+        colunas no papel deitado, são duas aqui.
       */}
-      <Page size="A4" orientation="landscape" style={s.pagina}>
-        <View style={s.topo} fixed>
-          {c.logo ? <Image src={c.logo} style={s.logo} /> : null}
-          <View style={{ flexGrow: 1, flexBasis: 0 }}>
-            <Text style={s.chapeu}>{limpar(c.titulo)}</Text>
-            <Text style={s.producao}>{limpar(c.producao)}</Text>
+      <Page size="A4" style={s.pagina}>
+        {/* O cabeçalho é só da primeira página; as outras têm o rodapé. */}
+        <View style={s.topo}>
+          {/*
+            CHAMADA E FIM DO DIA GRANDES, no círculo. É a primeira coisa que
+            alguém procura na OD — no ônibus, no celular, com pressa (pedido do
+            Lucas, 09/10/2026).
+          */}
+          {c.chamada || c.fim ? (
+            <View style={s.circulo}>
+              {c.chamada ? <><Text style={s.circuloRotulo}>CHAMADA</Text><Text style={s.circuloHora}>{limpar(c.chamada)}</Text></> : null}
+              {c.fim ? <><Text style={s.circuloRotulo}>FIM DO DIA</Text><Text style={s.circuloHora}>{limpar(c.fim)}</Text></> : null}
+            </View>
+          ) : null}
+
+          <View style={{ flexGrow: 1, flexBasis: 0, alignItems: 'center' }}>
+            {c.logo ? <Image src={c.logo} style={s.logo} /> : null}
+            <Text style={s.producao}>{limpar(c.producao.toUpperCase())}</Text>
+            {c.direcao ? <Text style={s.direcao}>Direção: {limpar(c.direcao)}</Text> : null}
           </View>
-          <View>
+
+          <View style={{ width: 120 }}>
+            <Text style={s.chapeu}>{limpar(c.titulo)}</Text>
             <Text style={s.diaria}>
               {limpar(c.diaria)}{c.versao && c.versao > 1 ? `  v${c.versao}` : ''}
             </Text>
             <Text style={s.meta}>{limpar(c.data)}</Text>
-            {c.janela ? <Text style={s.meta}>{limpar(c.janela)}</Text> : null}
           </View>
         </View>
 

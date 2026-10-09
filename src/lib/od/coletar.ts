@@ -99,6 +99,7 @@ export async function coletarOD(diariaId: string, opcoes: OpcoesColeta = {}): Pr
     clima: opcoes.clima || [],
     tasks,
     proximo: proximoDia(diarias, diaria.data, cenas),
+    totalDiarias: diarias.length,
     logo: (await resolverArquivo(projeto.logo_od)) || undefined,
     versao: opcoes.versao,
   };

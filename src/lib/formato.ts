@@ -95,3 +95,23 @@ export function diaDaSemana(v?: Momento | null, vazio = '—'): string {
   const dia = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
   return `${dia}, ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
 }
+
+/** Sábado, 10/10/26 — o dia por extenso, como o cabeçalho da Ordem do Dia. */
+export function diaPorExtenso(v?: Momento | null, vazio = '—'): string {
+  const d = paraData(v);
+  if (!d) return vazio;
+  const semana = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+  return `${semana.charAt(0).toUpperCase()}${semana.slice(1)}, ${dataCurta(d)}`;
+}
+
+/**
+ * 07h30 — a hora como o set escreve, a partir do "07:30" que o app guarda.
+ *
+ * Só para o papel: os campos de digitar continuam no formato do `<input
+ * type="time">`. O que não for hora volta como veio.
+ */
+export function horaDoSet(hhmm?: string | null, vazio = '—'): string {
+  if (!hhmm) return vazio;
+  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm.trim());
+  return m ? `${m[1].padStart(2, '0')}h${m[2]}` : hhmm;
+}
