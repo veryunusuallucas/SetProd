@@ -17,12 +17,13 @@ import { quemEscreveEm } from '../lib/travaDeEscrita';
  */
 export function useAcesso() {
   const { id: projetoId } = useParams<{ id: string }>();
-  // Só para re-renderizar quando a participação muda; a regra lê na hora.
-  useRole();
+  // Re-renderiza quando a participação muda. O papel vem daqui, e não da trava,
+  // porque só a tela trata "fui removido" como leitura (ver `useRole`).
+  const { role } = useRole();
 
   const negacao = (tabela: string, registro?: object): Negacao | null => {
     if (!projetoId) return null;
-    const quem = quemEscreveEm(projetoId);
+    const quem = { ...quemEscreveEm(projetoId), papel: role };
     const alvo = registro ?? { departamento_id: quem.meuDepartamentoId ?? undefined };
     return negacaoDaEscrita(tabela, quem, registro as never, alvo as never);
   };

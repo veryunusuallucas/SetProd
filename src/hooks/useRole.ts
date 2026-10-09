@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { participacaoLocal } from '../lib/membros';
+import { participacaoLocal, fuiRemovido } from '../lib/membros';
 import { pode, type Acao, type Papel } from '../lib/permissoes';
 
 export type Role = Papel;
@@ -49,7 +49,10 @@ export function useRole() {
   const participacao = projetoId ? participacaoLocal(projetoId) : undefined;
   void versao; // só força a releitura quando a participação muda
 
-  const role: Role = participacao?.papel ?? 'desconhecido';
+  // Removido da produção: a cópia fica para consulta, mas o que se editar aqui
+  // não sobe mais — então a tela para de oferecer. (A trava do Dexie segue
+  // deixando passar: é ela que apaga a cópia se a produção for destruída.)
+  const role: Role = participacao?.papel ?? (projetoId && fuiRemovido(projetoId) ? 'leitura' : 'desconhecido');
   const perfilId = participacao?.perfil_id ?? '';
 
   const podeAqui = (acao: Acao) => pode(role, acao);

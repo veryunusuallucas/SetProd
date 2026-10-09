@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usarAviso, URGENCIA } from './avisos/CentralDeAvisos';
 import { FaixaDeAviso } from './avisos/FaixaDeAviso';
-import { ShieldCheck, RotateCw, UserCheck } from 'lucide-react';
+import { ShieldCheck, RotateCw, UserCheck, UserX } from 'lucide-react';
 import { db } from '../db/db';
-import { membrosDoProjeto, participacaoLocal, sincronizarParticipacoes, type Participacao, type PapelMembro } from '../lib/membros';
+import { fuiRemovido, membrosDoProjeto, participacaoLocal, sincronizarParticipacoes, type Participacao, type PapelMembro } from '../lib/membros';
 import { DESCRICAO } from '../lib/permissoes';
 
 /**
@@ -56,13 +57,28 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
   const [pedidos, setPedidos] = useState<{ quem: string; ficha: string }[]>([]);
   /** Pedidos de ACESSO (o botão da área bloqueada), que chegam pela ata. */
   const [pedidosDeAcesso, setPedidosDeAcesso] = useState<string[]>([]);
+  /** Fui removido: quantas alterações daqui ficaram sem subir (`null` = não fui). */
+  const [removido, setRemovido] = useState<{ pendentes: number } | null>(null);
+  const [removidoDispensado, setRemovidoDispensado] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let vivo = true;
 
     const conferir = async () => {
       const eu = participacaoLocal(projetoId);
-      if (!eu || !vivo) return;
+      if (!vivo) return;
+
+      // 0. Saí da lista de membros. O `visto` fica como estava: se me
+      //    convidarem de volta, o papel novo aparece como mudança.
+      if (!eu) {
+        if (fuiRemovido(projetoId)) {
+          const pendentes = await db.sync_queue.where('projeto_id').equals(projetoId).count().catch(() => 0);
+          if (vivo) setRemovido({ pendentes });
+        }
+        return;
+      }
+      setRemovido(null);
 
       const visto = lerVisto(projetoId);
       const agora: Visto = { papel: eu.papel, pedido: eu.perfil_pedido ?? null, perfil: eu.perfil_id ?? null };
@@ -163,6 +179,28 @@ export function AvisoDeAcesso({ projetoId, aoAbrirAcesso }: { projetoId: string;
     >
       {recado?.texto}
       {recado?.recarregar && ' Atualize a página para as telas acompanharem.'}
+    </FaixaDeAviso>
+  ));
+
+  /*
+    Remover alguém não apaga a cópia dessa pessoa (ROADMAP, Etapa 5): a
+    produção segue abrindo aqui. Sem este aviso, ela continuava trabalhando
+    normalmente — e nada do que fizesse subia mais. A tela já virou leitura
+    (`useRole`); o aviso diz por quê, e quanto ficou para trás.
+  */
+  const n = removido?.pendentes ?? 0;
+  const textoRemovido = removido && !removidoDispensado
+    ? 'Você foi removido desta produção por quem administra. ' + (n
+      ? `${n === 1 ? '1 alteração feita aqui não chegou' : `${n} alterações feitas aqui não chegaram`} ao servidor e não ${n === 1 ? 'vai' : 'vão'} mais chegar — se era importante, passe para a produção.`
+      : 'O que já estava neste aparelho fica aqui para consulta, mas nada novo chega nem sobe.')
+    : null;
+  usarAviso('acesso-removido', n ? URGENCIA.dadoEmRisco : URGENCIA.meuAcessoMudou, textoRemovido, () => (
+    <FaixaDeAviso
+      icone={<UserX size={18} />}
+      aoDispensar={() => setRemovidoDispensado(true)}
+      acao={<button className="btn btn-primary" onClick={() => navigate('/')} style={{ flexShrink: 0 }}>Voltar ao início</button>}
+    >
+      {textoRemovido}
     </FaixaDeAviso>
   ));
 

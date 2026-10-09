@@ -120,6 +120,26 @@ export function participacaoLocal(projetoId: string): Participacao | undefined {
   return lerLocal().find(p => p.projeto_id === projetoId);
 }
 
+/**
+ * As produções de onde esta conta saiu da lista de membros, vistas daqui.
+ *
+ * Remover alguém não apaga a cópia dessa pessoa (ROADMAP, Etapa 5) — e por isso
+ * mesmo ela continuava abrindo a produção como se nada tivesse acontecido,
+ * editando coisas que nunca mais iam subir. Guardar o "sumiu da lista" é o que
+ * deixa o `AvisoDeAcesso` contar isso. Só conta o que este aparelho JÁ tinha
+ * visto como membro: produção só local nunca esteve na lista e não entra aqui.
+ * O prefixo `setprod:` faz a lista sair junto no logout (`limpezaLocal.ts`).
+ */
+const CHAVE_REMOVIDO = 'setprod:removido';
+
+function lerRemovidos(): string[] {
+  try { return JSON.parse(localStorage.getItem(CHAVE_REMOVIDO) || '[]'); } catch { return []; }
+}
+
+export function fuiRemovido(projetoId: string): boolean {
+  return lerRemovidos().includes(projetoId);
+}
+
 export function limparParticipacoesLocais() {
   localStorage.removeItem(CHAVE_LOCAL);
   window.dispatchEvent(new Event('setprod-participacoes'));
@@ -150,6 +170,14 @@ export async function sincronizarParticipacoes(): Promise<Participacao[]> {
   }
 
   const lista = (data || []) as Participacao[];
+
+  // Quem estava na lista daqui e sumiu da do servidor foi removido; quem voltou
+  // (convidado de novo) deixa de estar.
+  const agora = new Set(lista.map(p => p.projeto_id));
+  const removidos = [...new Set([...lerRemovidos(), ...lerLocal().map(p => p.projeto_id)])]
+    .filter(id => !agora.has(id));
+  try { localStorage.setItem(CHAVE_REMOVIDO, JSON.stringify(removidos)); } catch { /* aba privada */ }
+
   gravarLocal(lista);
   return lista;
 }
