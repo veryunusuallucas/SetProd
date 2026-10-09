@@ -17,7 +17,7 @@ import { coletarOD, type OpcoesColeta } from './coletar';
 import { montarOD } from './montar';
 import { paraHtml, paraTexto } from './html';
 import type { FatoDaOD } from '../conferirOD';
-import type { DocumentoOD, FormatoOD } from './tipos';
+import type { BlocoOD, DocumentoOD } from './tipos';
 
 export interface ODPronta {
   doc: DocumentoOD;
@@ -40,12 +40,12 @@ export interface ODPronta {
 
 /** Monta a OD e devolve as três formas dela. Não gera PDF: isso custa caro. */
 export async function prepararOD(
-  diariaId: string, opcoes: OpcoesColeta & { formato?: FormatoOD } = {},
+  diariaId: string, opcoes: OpcoesColeta & { blocos?: readonly BlocoOD[] } = {},
 ): Promise<ODPronta | null> {
   const entrada = await coletarOD(diariaId, opcoes);
   if (!entrada) return null;
 
-  const doc = montarOD(entrada, opcoes.formato);
+  const doc = montarOD(entrada, opcoes.blocos);
   const versao = doc.cabecalho.versao || 1;
   const numero = String(entrada.diaria.numero).padStart(2, '0');
 

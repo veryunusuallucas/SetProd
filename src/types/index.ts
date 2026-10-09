@@ -68,6 +68,13 @@ export interface Projeto {
    * mesmo — quem digitasse a cada diária acabaria não digitando.
    */
   observacoes_od?: string;
+  /**
+   * Os canais de rádio da produção, um por linha ("1 - Produção").
+   *
+   * Fixo como as observações: muda de produção para produção, não de dia para
+   * dia. Sai no pé da OD, como no modelo do set.
+   */
+  canais_radio?: string;
 
   creditos?: Credito[]; // Apoios e extras da Fase 3
   /** Categorias de breakdown criadas pelo usuário, além das padrão da indústria. */
@@ -460,6 +467,30 @@ export interface Diaria {
   base?: { nome?: string; endereco?: string; obs?: string };
 
   /**
+   * As bases do dia, uma por função: café, almoço, camarim de figurino, camarim
+   * de make, base de produção. No modelo do set cada uma tem o seu lugar — e
+   * num prédio grande são prédios diferentes. Quando existe, substitui `base`
+   * no papel; `base` continua valendo para as diárias antigas.
+   */
+  bases?: { rotulo: string; local: string }[];
+
+  /** "Saída às 6h · Metrô Vila Madalena": a primeira linha do quadro de lugar. */
+  ponto_encontro?: string;
+
+  /** Carro, moto, ônibus que APARECEM na cena — não é o transporte da equipe. */
+  veiculos_cena?: VeiculoDeCena[];
+
+  /**
+   * Quantas refeições pedir, por grupo e por refeição do dia (a chave é o id
+   * do item de café/almoço/lanche na linha do dia). É o "Elenco total: 9 =
+   * café 5 + almoço 9 + lanche 5" do modelo.
+   */
+  refeicoes?: { elenco?: Record<string, number>; figuracao?: Record<string, number> };
+
+  /** Uma linha em destaque no topo do elenco: "20 minutos de montagem de camarim". */
+  aviso_elenco?: string;
+
+  /**
    * Os horários de cada personagem NESTE dia.
    *
    * A chave é o `id` do `Elemento` de categoria ELENCO — o personagem, não o
@@ -601,14 +632,33 @@ export interface Diaria {
 export interface HorarioElenco {
   /** Chegada à base. */
   chegada?: string;
-  /** Maquiagem e figurino. */
+  /**
+   * Maquiagem e figurino juntos. ⚠️ ANTIGO: desde 09/10/2026 são `make`,
+   * `figurino` e `mic`, separados como no modelo do set. Continua sendo lido
+   * (sai na coluna de make) para as diárias que já tinham.
+   */
   maq_fig?: string;
+  make?: string;
+  figurino?: string;
+  /** Microfone de lapela do som. */
+  mic?: string;
   /** Pronto no set. */
   no_set?: string;
   /** Liberado. */
   fim?: string;
   /** Observações de figurino/maquiagem/arte para este dia. */
   obs?: string;
+}
+
+/** Um veículo que entra em cena, com quem o traz e quando. */
+export interface VeiculoDeCena {
+  id: string;
+  cena?: string;
+  veiculo: string;
+  responsavel?: string;
+  chegada?: string;
+  local?: string;
+  termino?: string;
 }
 
 export interface Comboio {
@@ -904,6 +954,10 @@ export interface Cena {
   corpo?: string;
   ordem?: number; // posição na ordem de filmagem
   paginas?: string; // "1 2/8"
+  /** Uma linha do que acontece na cena — sai embaixo do set na OD. */
+  sinopse?: string;
+  /** O dia da HISTÓRIA ("Dia 1", "0.1"): continuidade de figurino e make. */
+  dia_historia?: string;
   /**
    * ⚠️ DEPRECATED — junto com `Diaria.tem_unidade_b`.
    *

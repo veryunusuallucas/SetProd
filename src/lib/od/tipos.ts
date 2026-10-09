@@ -123,10 +123,43 @@ export type Secao = (
 };
 
 /**
- * Simples: a página 1 do modelo, o que todo mundo precisa no set.
- * Completa: mais uma página com equipe, próximo dia, checklist e decupagem.
+ * Padrão: a OD que a equipe do Lucas monta à mão (`.md/referencias/Canção de
+ * Outono - OD - Dia 1`), numa página. Detalhada: cada bloco, ligado ou não, por
+ * escolha de quem exporta (pedido do Lucas, 09/10/2026).
  */
-export type FormatoOD = 'simples' | 'completa';
+export type FormatoOD = 'padrao' | 'detalhada';
+
+/**
+ * Os blocos da OD, na ordem do papel. `referencia` é o que vai numa página
+ * própria depois do set — quem prepara lê, quem filma não precisa.
+ */
+export const BLOCOS_OD = [
+  { id: 'horarios', nome: 'Horários do dia' },
+  { id: 'gerais', nome: 'Aviso fixo da produção' },
+  { id: 'ponto', nome: 'Ponto de encontro' },
+  { id: 'lugar', nome: 'Locação, bases e tempo' },
+  { id: 'grade', nome: 'Cenas do dia' },
+  { id: 'observacoes', nome: 'Informações do dia' },
+  { id: 'elenco', nome: 'Elenco' },
+  { id: 'figuracao', nome: 'Figuração' },
+  { id: 'veiculos-cena', nome: 'Veículos de cena' },
+  { id: 'transporte', nome: 'Transporte da equipe' },
+  { id: 'contatos', nome: 'Contatos e rádio' },
+  { id: 'equipe', nome: 'Equipe completa', referencia: true },
+  { id: 'proximo-dia', nome: 'Cenas do próximo dia', referencia: true },
+  { id: 'checklist', nome: 'Checklist', referencia: true },
+  { id: 'shotlist', nome: 'Decupagem plano a plano', referencia: true },
+] as const;
+
+export type BlocoOD = (typeof BLOCOS_OD)[number]['id'];
+
+/** O que a OD padrão traz: o papel de referência, sem a página de consulta. */
+export const BLOCOS_PADRAO: BlocoOD[] = [
+  'horarios', 'gerais', 'ponto', 'lugar', 'grade', 'observacoes',
+  'elenco', 'figuracao', 'veiculos-cena', 'contatos',
+];
+
+export const TODOS_OS_BLOCOS: BlocoOD[] = BLOCOS_OD.map(b => b.id);
 
 export interface CabecalhoOD {
   /** 'ORDEM DO DIA'. Fica no dado porque um dia pode virar 'CALL SHEET'. */

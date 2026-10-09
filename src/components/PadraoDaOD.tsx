@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { db } from '../db/db';
 import { guardarArquivo, resolverArquivo, LIMITE_BYTES } from '../lib/arquivos';
+import { CampoTexto } from './ui/CampoTexto';
 
 /**
  * O que se repete em TODA Ordem do Dia desta produção.
@@ -98,17 +99,32 @@ export function PadraoDaOD({ projetoId }: { projetoId: string }) {
       </div>
 
       <div>
-        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '6px' }}>Observações gerais</div>
+        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '6px' }}>Aviso fixo</div>
         <textarea
           defaultValue={projeto.observacoes_od || ''}
           onChange={e => { rascunho.current = e.target.value; }}
           onBlur={gravarObservacoes}
-          placeholder={'Hidrate-se e encha sua garrafinha de água.\nCelulares SEMPRE no silencioso.\nRespeite os horários e as pausas programadas.'}
+          placeholder={'Discriminação, assédio e retaliação não são tolerados nesta produção. Canal de denúncia: …\nCelulares SEMPRE no silencioso.'}
           rows={5}
           style={{ width: '100%', padding: '10px', fontSize: '13px', lineHeight: 1.6, resize: 'vertical' }}
         />
         <div className="text-xs text-muted" style={{ marginTop: '4px' }}>
-          Sai no pé de toda OD desta produção. Deixe em branco e o bloco não é impresso.
+          Sai em toda OD desta produção, logo abaixo dos horários — como o aviso de
+          conduta do modelo do set. Deixe em branco e o bloco não é impresso.
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs text-secondary font-bold uppercase tracking-widest" style={{ marginBottom: '6px' }}>Canais de rádio</div>
+        <CampoTexto
+          value={projeto.canais_radio || ''}
+          aoGravar={v => db.projetos.update(projetoId, { canais_radio: v.trim() || undefined })}
+          placeholder={'1 - Produção\n2 - Direção\n3 - Arte\n7 - Som'}
+          linhas={5}
+          style={{ width: '100%', padding: '10px', fontSize: '13px', lineHeight: 1.6, resize: 'vertical' }}
+        />
+        <div className="text-xs text-muted" style={{ marginTop: '4px' }}>
+          Um por linha. Sai no pé da OD, junto dos contatos.
         </div>
       </div>
     </div>

@@ -29,8 +29,9 @@ import { oitavosParaPaginas, paginasParaOitavos } from '../decupagem';
 import { rotuloDoTrecho } from '../partirCena';
 import { data as formataData, diaPorExtenso, horaDoSet } from '../formato';
 import {
-  campo, campos, podar,
-  type Campo, type ColunaTabela, type DocumentoOD, type FormatoOD, type GrupoDePessoas,
+  campo, campos, podar, textoDaCelula,
+  BLOCOS_OD, TODOS_OS_BLOCOS,
+  type BlocoOD, type Campo, type ColunaTabela, type DocumentoOD, type GrupoDePessoas,
   type LinhaTabela, type Secao,
 } from './tipos';
 
@@ -149,7 +150,12 @@ function locacoesDoDia(e: EntradaOD, itens: ItemCalculado[]): Locacao[] {
 // O documento
 // ---------------------------------------------------------------------------
 
-export function montarOD(e: EntradaOD, formato: FormatoOD = 'completa'): DocumentoOD {
+/**
+ * `blocos`: quais blocos entram, de `BLOCOS_OD`. A OD padrão passa
+ * `BLOCOS_PADRAO`; a detalhada, o que a pessoa marcou. Sem nada, entra tudo —
+ * é o que o e-mail e o WhatsApp recebem.
+ */
+export function montarOD(e: EntradaOD, blocos: readonly BlocoOD[] = TODOS_OS_BLOCOS): DocumentoOD {
   const { projeto, diaria } = e;
   const cenaPorId = (id: string) => e.cenas.find(c => c.id === id);
   const dia = calcularDia(e.itens, diaria.chamada, cenaPorId);
@@ -157,30 +163,34 @@ export function montarOD(e: EntradaOD, formato: FormatoOD = 'completa'): Documen
   const versao = e.versao ?? diaria.versao_od ?? 1;
   const locacoes = locacoesDoDia(e, dia.itens);
 
-  const paginaUm: Secao[] = [
-    secaoHorarios(e, dia.itens),
-    secaoGerais(e),
-    faixaDoLugar(e, locacoes),
-    secaoGrade(e, dia.itens),
-    secaoObservacoes(e),
-    secaoElenco(e, dia.itens),
-    secaoFiguracao(e),
-    secaoTransporte(e, escalados),
-    secaoContatos(e),
-  ];
+  const montar: Record<BlocoOD, () => Secao> = {
+    'horarios': () => secaoHorarios(e, dia.itens),
+    'gerais': () => secaoGerais(e),
+    'ponto': () => secaoPonto(e),
+    'lugar': () => faixaDoLugar(e, locacoes),
+    'grade': () => secaoGrade(e, dia.itens),
+    'observacoes': () => secaoObservacoes(e),
+    'elenco': () => secaoElenco(e, dia.itens),
+    'figuracao': () => secaoFiguracao(e, dia.itens),
+    'veiculos-cena': () => secaoVeiculosDeCena(e),
+    'transporte': () => secaoTransporte(e, escalados),
+    'contatos': () => secaoContatos(e),
+    'equipe': () => secaoEquipe(e, escalados),
+    'proximo-dia': () => secaoProximoDia(e),
+    'checklist': () => secaoChecklist(e),
+    'shotlist': () => secaoShotList(e, dia.itens),
+  };
+  const pedidos = new Set(blocos);
+  const doPapel = (referencia: boolean) => podar(
+    BLOCOS_OD.filter(b => pedidos.has(b.id) && Boolean('referencia' in b && b.referencia) === referencia).map(b => montar[b.id]()),
+  );
 
   /*
-    A página de referência só existe na completa, e começa numa folha nova:
-    a página 1 é o que vai pendurado no set; a 2 é para quem prepara.
+    A página de referência começa numa folha nova: a página 1 é o que vai
+    pendurado no set; o resto é para quem prepara.
   */
-  const referencia: Secao[] = formato === 'completa'
-    ? podar([
-        secaoEquipe(e, escalados),
-        secaoProximoDia(e),
-        secaoChecklist(e),
-        secaoShotList(e, dia.itens),
-      ])
-    : [];
+  const paginaUm = doPapel(false);
+  const referencia = doPapel(true);
   if (referencia[0]) referencia[0] = { ...referencia[0], novaPagina: true };
 
   const numero = String(diaria.numero).padStart(2, '0');
@@ -198,7 +208,7 @@ export function montarOD(e: EntradaOD, formato: FormatoOD = 'completa'): Documen
       versao,
       logo: e.logo,
     },
-    secoes: [...podar(paginaUm), ...referencia],
+    secoes: [...paginaUm, ...referencia],
     rodape: `${projeto.nome} · Diária ${numero}${versao > 1 ? ` · v${versao}` : ''}`,
   };
 }
@@ -260,10 +270,13 @@ function faixaDoLugar(e: EntradaOD, usadas: Locacao[]): Secao {
     ].filter(Boolean).join(' · ') || undefined,
   }));
 
-  const base: Campo[] = campos(
-    campo('Base', e.diaria.base?.nome, e.diaria.base?.endereco),
-    campo('Observação', e.diaria.base?.obs),
-  );
+  /* As bases por função (`bases`) mandam; `base` é das diárias antigas. */
+  const base: Campo[] = e.diaria.bases?.some(b => b.local.trim())
+    ? campos(...e.diaria.bases.map(b => campo(b.rotulo, b.local)))
+    : campos(
+        campo('Base', e.diaria.base?.nome, e.diaria.base?.endereco),
+        campo('Observação', e.diaria.base?.obs),
+      );
 
   const tempo: Campo[] = e.clima.map(g => {
     const d = descreverClima(g.clima.code);
@@ -370,12 +383,17 @@ function secaoGrade(e: EntradaOD, itens: ItemCalculado[]): Secao {
           enfase: 'forte',
           detalhe: prep ? `Prep ${hora(prep.inicio)} - ${hora(prep.fim)}` : undefined,
         },
-        cena: { texto: `${cena.numero}${c.item.parte || ''}`, enfase: 'forte' },
+        cena: {
+          texto: `${cena.numero}${c.item.parte || ''}`,
+          enfase: 'forte',
+          detalhe: cena.dia_historia ? `Dia ${cena.dia_historia.replace(/^dias*/i, '')}` : undefined,
+        },
         iedn: {
           texto: (cena.ambiente || 'ext').toUpperCase() === 'INT' ? 'INT' : 'EXT',
           detalhe: (cena.periodo || 'dia') === 'noite' ? 'NOITE' : 'DIA',
         },
-        set: { texto: cena.descricao || '—', enfase: 'forte', detalhe: locacao },
+        // A sinopse embaixo do set, como no modelo; sem ela, a locação.
+        set: { texto: cena.descricao || '—', enfase: 'forte', detalhe: cena.sinopse?.trim() || locacao },
         planos: quantos
           ? { texto: String(quantos), detalhe: trecho || undefined }
           : '—',
@@ -436,6 +454,18 @@ function rotuloPadrao(tipo: ItemDoDia['tipo']): string {
 
 // ---- Elenco ---------------------------------------------------------------
 
+/**
+ * "Café da Manhã 5 + Almoço 9": quantas refeições pedir para um grupo, na
+ * ordem do dia. Só as refeições que têm número.
+ */
+function refeicoesDe(e: EntradaOD, itens: ItemCalculado[], grupo: 'elenco' | 'figuracao'): string {
+  const contagem = e.diaria.refeicoes?.[grupo] || {};
+  return itens
+    .filter(i => (i.item.tipo === 'almoco' || i.item.tipo === 'coffee') && contagem[i.item.id] > 0)
+    .map(i => `${i.item.titulo || (i.item.tipo === 'almoco' ? 'Almoço' : 'Lanche')} ${contagem[i.item.id]}`)
+    .join(' + ');
+}
+
 function secaoElenco(e: EntradaOD, itens: ItemCalculado[]): Secao {
   const cenasDoDia = itens
     .filter(i => i.item.tipo === 'cena' && i.cena)
@@ -460,13 +490,34 @@ function secaoElenco(e: EntradaOD, itens: ItemCalculado[]): Secao {
         ator: ator ? nomeCompleto(ator) : '—',
         cenas: cenas.join(', ') || '—',
         chegada: horaDoSet(h.chegada),
-        maqfig: horaDoSet(h.maq_fig),
+        // `maq_fig` é o campo antigo (make e figurino juntos): sai como make.
+        make: horaDoSet(h.make || h.maq_fig),
+        figurino: horaDoSet(h.figurino),
+        mic: horaDoSet(h.mic),
         noset: { texto: horaDoSet(h.no_set), enfase: 'forte' as const },
         fim: horaDoSet(h.fim),
         obs: h.obs || p.notas || '',
       },
     };
   });
+
+  /* Coluna que ninguém preencheu não entra: o modelo tem make, figurino e
+     mic, mas uma produção sem som direto não precisa de uma coluna de traços. */
+  const tem = (chave: string) => linhas.some(l => {
+    const v = textoDaCelula(l.celulas[chave]);
+    return v && v !== '—';
+  });
+  const opcional = (chave: string, rotulo: string, peso = 1.4): ColunaTabela[] =>
+    tem(chave) ? [{ chave, rotulo, peso, alinhamento: 'centro' }] : [];
+
+  if (e.diaria.aviso_elenco?.trim()) {
+    linhas.unshift({ celulas: {}, faixa: { texto: e.diaria.aviso_elenco.trim().toUpperCase() } });
+  }
+
+  const refeicoes = refeicoesDe(e, itens, 'elenco');
+  const total = noDia.length
+    ? `Elenco total: ${noDia.length}${refeicoes ? ` = [ ${refeicoes} ]` : ''}`
+    : '';
 
   return {
     id: 'elenco',
@@ -479,13 +530,17 @@ function secaoElenco(e: EntradaOD, itens: ItemCalculado[]): Secao {
         { chave: 'ator', rotulo: 'Ator/atriz', peso: 3 },
         { chave: 'cenas', rotulo: 'Cenas', peso: 2, alinhamento: 'centro' },
         { chave: 'chegada', rotulo: 'Chegada', peso: 1.4, alinhamento: 'centro' },
-        { chave: 'maqfig', rotulo: 'Make/fig', peso: 1.4, alinhamento: 'centro' },
+        ...opcional('make', 'Make'),
+        ...opcional('figurino', 'Figurino'),
+        ...opcional('mic', 'Mic'),
         { chave: 'noset', rotulo: 'No set', peso: 1.4, alinhamento: 'centro' },
-        { chave: 'fim', rotulo: 'Fim', peso: 1.4, alinhamento: 'centro' },
-        { chave: 'obs', rotulo: 'Observações', peso: 3 },
+        ...opcional('fim', 'Fim'),
+        ...(tem('obs') ? [{ chave: 'obs', rotulo: 'Observações', peso: 3 }] : []),
       ],
-      linhas,
-      total: linhas.length ? { obs: `Elenco total: ${linhas.length}` } : undefined,
+      // Sem ninguém do elenco no dia a tabela não sai (o aviso sozinho não é
+      // um elenco). O total vai numa faixa: numa célula, a conta das
+      // refeições quebrava em três linhas.
+      linhas: noDia.length ? [...linhas, { celulas: {}, faixa: { texto: total.toUpperCase() } }] : [],
     },
   };
 }
@@ -493,8 +548,9 @@ function secaoElenco(e: EntradaOD, itens: ItemCalculado[]): Secao {
 // ---- Figuração ------------------------------------------------------------
 
 /** Estava no app desde a diária completa e nunca chegava ao papel. */
-function secaoFiguracao(e: EntradaOD): Secao {
+function secaoFiguracao(e: EntradaOD, itens: ItemCalculado[]): Secao {
   const f = e.diaria.figuracao;
+  const refeicoes = refeicoesDe(e, itens, 'figuracao');
   return {
     id: 'figuracao',
     tipo: 'campos',
@@ -505,7 +561,50 @@ function secaoFiguracao(e: EntradaOD): Secao {
       campo('Chegada', f?.chamada ? horaDoSet(f.chamada) : null),
       campo('Desprodução', f?.wrap ? horaDoSet(f.wrap) : null),
       campo('Observação', f?.notas),
+      campo('Refeições', refeicoes),
     ),
+  };
+}
+
+// ---- Ponto de encontro e veículos de cena ---------------------------------
+
+/** A primeira linha do quadro de lugar no modelo: "Saída às 6h · Metrô…". */
+function secaoPonto(e: EntradaOD): Secao {
+  return {
+    id: 'ponto',
+    tipo: 'campos',
+    itens: campos(campo('Ponto de encontro', e.diaria.ponto_encontro)),
+  };
+}
+
+function secaoVeiculosDeCena(e: EntradaOD): Secao {
+  const linhas: LinhaTabela[] = (e.diaria.veiculos_cena || [])
+    .filter(v => v.veiculo?.trim())
+    .map(v => ({
+      celulas: {
+        cena: v.cena || '—',
+        veiculo: { texto: v.veiculo, enfase: 'forte' as const },
+        responsavel: v.responsavel || '—',
+        chegada: { texto: horaDoSet(v.chegada), enfase: 'forte' as const },
+        local: v.local || '—',
+        termino: horaDoSet(v.termino),
+      },
+    }));
+  return {
+    id: 'veiculos-cena',
+    tipo: 'tabela',
+    titulo: 'Veículos de cena',
+    tabela: {
+      colunas: [
+        { chave: 'cena', rotulo: 'Cena', peso: 1, alinhamento: 'centro' },
+        { chave: 'veiculo', rotulo: 'Veículo', peso: 3 },
+        { chave: 'responsavel', rotulo: 'Responsável', peso: 3 },
+        { chave: 'chegada', rotulo: 'Chegada', peso: 1.5, alinhamento: 'centro' },
+        { chave: 'local', rotulo: 'Locação / base', peso: 4 },
+        { chave: 'termino', rotulo: 'Término', peso: 1.5, alinhamento: 'centro' },
+      ],
+      linhas,
+    },
   };
 }
 
@@ -515,15 +614,17 @@ function secaoFiguracao(e: EntradaOD): Secao {
   Direção, assistência e produção com o telefone AO LADO do nome. O projeto
   guarda `diretor` e `produtor` como texto solto; quando a pessoa está na ficha,
   o telefone vem junto. O texto solto continua valendo: produção pequena não
-  cadastra ninguém.
+  cadastra ninguém. Os canais de rádio da produção vêm junto, como no modelo.
 */
 function secaoContatos(e: EntradaOD): Secao {
   const direcao = direcaoDe(e.perfis);
   const assistencia = quemFaz(e.perfis, ['assistente de dire', '1º ad', '2º ad', '1o ad', 'primeiro assistente', 'segundo assistente']);
   const producao = quemFaz(e.perfis, ['produtor', 'produtora', 'produção', 'producao', 'platô', 'plato'], ['assistente', 'auxiliar', 'elenco']);
+  const radio = (e.projeto.canais_radio || '')
+    .split('\n').map(l => l.trim()).filter(Boolean).join(' · ');
 
-  return {
-    id: 'contatos',
+  const pessoas: Secao = {
+    id: 'contatos-pessoas',
     tipo: 'campos',
     titulo: 'Contatos',
     colunas: 4,
@@ -535,6 +636,10 @@ function secaoContatos(e: EntradaOD): Secao {
       producao.length === 0 ? campo('Produção', e.projeto.produtor) : null,
     ),
   };
+  // O rádio numa linha inteira: numa quarta parte da largura, sete canais
+  // quebravam em três linhas.
+  const canais: Secao = { id: 'contatos-radio', tipo: 'campos', itens: campos(campo('Canais de rádio', radio)) };
+  return { id: 'contatos', tipo: 'faixa', colunas: [{ peso: 1, secoes: [pessoas, canais] }] };
 }
 
 // ---- Equipe ---------------------------------------------------------------

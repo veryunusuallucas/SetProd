@@ -9,13 +9,21 @@ import { conferirOD, descreverConferencia, type Conferencia } from '../lib/confe
 import { prepararOD, gerarPdf, arquivarOD, baixar, abrir, type ODPronta } from '../lib/od/exportar';
 import type { ClimaPorLocal } from '../lib/clima';
 import { agruparClimasIguais } from '../lib/clima';
-import type { FormatoOD } from '../lib/od/tipos';
+import { BLOCOS_OD, BLOCOS_PADRAO, TODOS_OS_BLOCOS, type BlocoOD, type FormatoOD } from '../lib/od/tipos';
 import { Segmentado } from './logagem/pecas';
 
-/** A última escolha entre simples e completa, por aparelho. */
+/** A última escolha (padrão ou detalhada, e os blocos da detalhada), por aparelho. */
 const CHAVE_FORMATO = 'setprod:od-formato';
+const CHAVE_BLOCOS = 'setprod:od-blocos';
 function formatoLembrado(): FormatoOD {
-  try { return localStorage.getItem(CHAVE_FORMATO) === 'completa' ? 'completa' : 'simples'; } catch { return 'simples'; }
+  try { return localStorage.getItem(CHAVE_FORMATO) === 'detalhada' ? 'detalhada' : 'padrao'; } catch { return 'padrao'; }
+}
+function blocosLembrados(): BlocoOD[] {
+  try {
+    const salvos = JSON.parse(localStorage.getItem(CHAVE_BLOCOS) || 'null');
+    if (Array.isArray(salvos)) return TODOS_OS_BLOCOS.filter(b => salvos.includes(b));
+  } catch { /* sem preferência */ }
+  return TODOS_OS_BLOCOS;
 }
 
 /**
@@ -66,15 +74,22 @@ export function GeradorODModal({
   const [erro, setErro] = useState('');
   const [arquivo, setArquivo] = useState<{ blob: Blob; nome: string } | null>(null);
   /*
-    Simples é a página 1 do modelo do set; completa acrescenta a página de
-    referência. Começa na simples: "eu penso que é melhor ser uma página"
-    (Lucas, 09/10/2026) — e a escolha fica lembrada neste aparelho.
+    PADRÃO é a OD de referência do set, numa página; DETALHADA deixa escolher
+    bloco a bloco (pedido do Lucas, 09/10/2026). As duas escolhas ficam
+    lembradas neste aparelho.
   */
   const [formato, setFormato] = useState<FormatoOD>(formatoLembrado);
+  const [escolhidos, setEscolhidos] = useState<BlocoOD[]>(blocosLembrados);
   const escolherFormato = (f: FormatoOD) => {
     setFormato(f);
     try { localStorage.setItem(CHAVE_FORMATO, f); } catch { /* aba privada */ }
   };
+  const alternarBloco = (b: BlocoOD) => {
+    const novos = escolhidos.includes(b) ? escolhidos.filter(x => x !== b) : TODOS_OS_BLOCOS.filter(x => x === b || escolhidos.includes(x));
+    setEscolhidos(novos);
+    try { localStorage.setItem(CHAVE_BLOCOS, JSON.stringify(novos)); } catch { /* aba privada */ }
+  };
+  const blocos = formato === 'padrao' ? BLOCOS_PADRAO : escolhidos;
 
   // ---- o caminho opcional da IA ----
   const [htmlIA, setHtmlIA] = useState('');
@@ -83,11 +98,11 @@ export function GeradorODModal({
 
   useEffect(() => {
     let vivo = true;
-    prepararOD(diariaId, { clima: agruparClimasIguais(climas || []), versao, formato })
+    prepararOD(diariaId, { clima: agruparClimasIguais(climas || []), versao, blocos })
       .then(r => { if (vivo) { if (r) setOd(r); else setErro('Não consegui ler esta diária.'); } })
       .catch(e => { if (vivo) setErro(String(e?.message || e)); });
     return () => { vivo = false; };
-  }, [diariaId, versao, climas, formato]);
+  }, [diariaId, versao, climas, formato, escolhidos]);
 
   /**
    * Gera o PDF, GUARDA e entrega.
@@ -189,21 +204,48 @@ export function GeradorODModal({
           {od && (
             <>
               {etapa !== 'pronto' && !htmlIA && (
-                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                  <div style={{ width: '260px', maxWidth: '100%' }}>
-                    <Segmentado
-                      nome="formato-od"
-                      opcoes={[{ id: 'simples', nome: 'Simples' }, { id: 'completa', nome: 'Completa' }]}
-                      valor={formato}
-                      bloqueado={etapa === 'gerando'}
-                      aoMudar={v => escolherFormato(v as FormatoOD)}
-                    />
+                <div style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <div style={{ width: '260px', maxWidth: '100%' }}>
+                      <Segmentado
+                        nome="formato-od"
+                        opcoes={[{ id: 'padrao', nome: 'Padrão' }, { id: 'detalhada', nome: 'Detalhada' }]}
+                        valor={formato}
+                        bloqueado={etapa === 'gerando'}
+                        aoMudar={v => escolherFormato(v as FormatoOD)}
+                      />
+                    </div>
+                    <div className="text-xs text-muted" style={{ flex: 1, minWidth: '200px', lineHeight: 1.5 }}>
+                      {formato === 'padrao'
+                        ? 'O papel do set, numa página: horários, lugar, cenas, elenco, figuração, veículos e contatos.'
+                        : 'Escolha o que sai. Equipe, próximo dia, checklist e decupagem vão numa página à parte.'}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted" style={{ flex: 1, minWidth: '200px', lineHeight: 1.5 }}>
-                    {formato === 'simples'
-                      ? 'Uma página, como o modelo do set: horários, locação, cenas, elenco e contatos.'
-                      : 'A página do set e mais uma de referência: equipe, cenas do próximo dia, checklist e decupagem.'}
-                  </div>
+                  {formato === 'detalhada' && (
+                    <div role="group" aria-label="Blocos da OD" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {BLOCOS_OD.map(b => {
+                        const ligado = escolhidos.includes(b.id);
+                        return (
+                          <button
+                            key={b.id}
+                            type="button"
+                            aria-pressed={ligado}
+                            disabled={etapa === 'gerando'}
+                            onClick={() => alternarBloco(b.id)}
+                            className="btn-chip"
+                            style={{
+                              fontSize: '12px', padding: '6px 10px',
+                              ...(ligado
+                                ? { backgroundColor: 'var(--accent)', color: '#000', borderColor: 'var(--accent)' }
+                                : { opacity: 0.7, textDecoration: 'line-through' }),
+                            }}
+                          >
+                            {b.nome}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -640,6 +640,22 @@ export function DecupagemModule() {
                     style={{ fontWeight: 'bold', fontSize: '18px', border: 'none', background: 'transparent', padding: 0 }}
                     placeholder="Descrição da cena (ex: Assalto no banco)..."
                   />
+                  {/* A linha que sai embaixo do set na OD, e o dia da história
+                      ("Dia 0.1") que sai embaixo do número — como no modelo do set. */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <CampoTexto
+                      value={cena.sinopse || ''}
+                      aoGravar={v => updateCena(cena.id, { sinopse: v.trim() || undefined })}
+                      style={{ flex: '1 1 260px', padding: '6px 8px', fontSize: '13px' }}
+                      placeholder="Sinopse (ex: Alice e Nicole se conhecem. Alice toca piano.)"
+                    />
+                    <CampoTexto
+                      value={cena.dia_historia || ''}
+                      aoGravar={v => updateCena(cena.id, { dia_historia: v.trim() || undefined })}
+                      style={{ width: '120px', padding: '6px 8px', fontSize: '13px' }}
+                      placeholder="Dia da história"
+                    />
+                  </div>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <select value={cena.ambiente || 'ext'} onChange={e => updateCena(cena.id, { ambiente: e.target.value as any })} style={selectStyle}>
                       <option value="int">INT.</option>
