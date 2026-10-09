@@ -74,6 +74,16 @@ try {
   assert.ok(secao(completa, 'checklist'));
   assert.ok(!secao(completa, 'grade').tabela.colunas.some(c => c.chave === 'paginas'), 'coluna de páginas vazia não entra');
 
+  // O elenco sai do TEXTO da cena, não só da marcação (a manual não guarda a cena).
+  const { cenasDoElemento, aparece } = await vite.ssrLoadModule('/src/lib/decupagem.ts');
+  assert.ok(aparece('ALICE entra na sala.', 'Alice'));
+  assert.ok(!aparece('MARIANA entra.', 'Ana'), '"Ana" não pode casar dentro de "Mariana"');
+  const alice = { id: 'e1', nome: 'Alice', categoria: 'ELENCO', aliases: ['Lice'] };
+  const textos = [{ id: 'c1', corpo: 'ALICE toca piano.' }, { id: 'c2', corpo: 'Nicole espera. LICE chega.' }, { id: 'c3', corpo: 'Rua vazia.' }];
+  assert.deepEqual([...cenasDoElemento(alice, [{ elemento_id: 'e1' }], textos)].sort(), ['c1', 'c2']);
+  const faca = { id: 'e2', nome: 'faca', categoria: 'OBJETOS' };
+  assert.equal(cenasDoElemento(faca, [], [{ id: 'c1', corpo: 'Ele pega a faca.' }]).size, 0, 'objeto só vale marcado');
+
   console.log('OD ok');
 } finally {
   await vite.close();

@@ -11,7 +11,7 @@ import type { Cena, Diaria, ItemDoDia, Plano } from '../../types';
 import type { ClimaDia } from '../clima';
 import { montarLinhaDoDia } from '../linhaDoDia';
 import { resolverArquivo } from '../arquivos';
-import { normalizarCategoria } from '../decupagem';
+import { cenasDoElemento, normalizarCategoria } from '../decupagem';
 import type { DiaVizinho, EntradaOD } from './montar';
 
 export interface OpcoesColeta {
@@ -56,18 +56,12 @@ export async function coletarOD(diariaId: string, opcoes: OpcoesColeta = {}): Pr
     .sort((a, b) => (a.cast_id ?? 999) - (b.cast_id ?? 999));
 
   /*
-    Em que cenas cada personagem aparece.
-
-    Sai das MARCAÇÕES do roteiro (`roteiro_tags`), que são por ocorrência, e não
-    de um campo na cena: é a marcação que sabe que "Renata" e "sua mulher" são a
-    mesma pessoa, porque as duas apontam para o mesmo `Elemento`.
+    Em que cenas cada personagem aparece: pela marcação do roteiro E pelo nome
+    (e apelidos) no texto da cena — ver `cenasDoElemento`. É o que o DOOD já
+    fazia; antes a OD só olhava a marcação, e a coluna de elenco saía vazia.
   */
   const cenasPorPersonagem = new Map<string, Set<string>>();
-  for (const t of tags) {
-    if (!t.elemento_id || !t.cena_id) continue;
-    if (!cenasPorPersonagem.has(t.elemento_id)) cenasPorPersonagem.set(t.elemento_id, new Set());
-    cenasPorPersonagem.get(t.elemento_id)!.add(t.cena_id);
-  }
+  for (const p of personagens) cenasPorPersonagem.set(p.id, cenasDoElemento(p, tags, cenas));
   /*
     Cena marcada à mão, sem roteiro: `Cena.elenco_ids` aponta para PERFIS.
     Quando o perfil é o intérprete de um personagem, a cena entra por ele

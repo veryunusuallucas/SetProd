@@ -13,7 +13,7 @@
  */
 import { h as escapar } from './impressao';
 import type { Cena, Elemento, RoteiroTag, Locacao } from '../types';
-import { temaDe, oitavosParaPaginas, paginasParaOitavos } from './decupagem';
+import { temaDe, oitavosParaPaginas, paginasParaOitavos, aparece } from './decupagem';
 import { montarLinha, resumirDias, minutosDe, formatarDuracao, type ItemLinha } from './stripboard';
 import type { StripboardItem } from '../types';
 
@@ -35,24 +35,6 @@ export function diaPorCena(linha: ItemLinha[]): Map<string, number> {
     if (it.tipo === 'SCENE') mapa.set(it.cena.id, dia);
   }
   return mapa;
-}
-
-/**
- * O nome aparece no texto da cena, como palavra inteira?
- *
- * A fronteira importa: sem ela, "Ana" casaria dentro de "Mariana" e o DOOD
- * colocaria a atriz em cenas onde ela não está — erro que vira cachê pago à
- * toa. O \b do JavaScript não serve aqui porque nome com acento não é ASCII.
- */
-function aparece(texto: string, nome: string): boolean {
-  const limpo = nome.trim();
-  if (limpo.length < 2) return false;
-  const escapado = limpo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  try {
-    return new RegExp(`(^|[^\\p{L}\\p{N}])${escapado}([^\\p{L}\\p{N}]|$)`, 'iu').test(texto);
-  } catch {
-    return texto.toLowerCase().includes(limpo.toLowerCase());
-  }
 }
 
 // ---------- 1. Breakdown Summary ----------

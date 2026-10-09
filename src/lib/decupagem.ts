@@ -642,3 +642,54 @@ export function proximoNumeroDePlano(numeros: string[]): string {
   const maior = Math.max(0, ...numeros.map(n => parseInt(n, 10)).filter(n => !isNaN(n)));
   return String(maior + 1);
 }
+
+// ---------------------------------------------------------------------------
+// Em que cenas um elemento aparece
+// ---------------------------------------------------------------------------
+
+/**
+ * O nome aparece no texto da cena, como palavra inteira?
+ *
+ * A fronteira importa: sem ela, "Ana" casaria dentro de "Mariana" e o DOOD
+ * colocaria a atriz em cenas onde ela não está — erro que vira cachê pago à
+ * toa. O \b do JavaScript não serve aqui porque nome com acento não é ASCII.
+ */
+export function aparece(texto: string, nome: string): boolean {
+  const limpo = nome.trim();
+  if (limpo.length < 2) return false;
+  const escapado = limpo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  try {
+    return new RegExp(`(^|[^\\p{L}\\p{N}])${escapado}([^\\p{L}\\p{N}]|$)`, 'iu').test(texto);
+  } catch {
+    return texto.toLowerCase().includes(limpo.toLowerCase());
+  }
+}
+
+/**
+ * As cenas de um elemento: as marcadas E as que trazem o nome dele no texto.
+ *
+ * Só a marcação não basta. A marcação de elenco é UMA por nome — existe uma
+ * "ALICE" para o roteiro inteiro, porque é assim que o destaque vale em todas
+ * as páginas —, e a marcação feita à mão nem guarda a cena. Na Canção de
+ * Outono, Alice e Nicole estavam marcadas e não apareciam em cena nenhuma: a
+ * coluna de elenco da OD saía vazia (09/10/2026). O DOOD já lia o texto; agora
+ * a OD e o inventário leem igual.
+ *
+ * O texto só conta para o que vale no roteiro todo (elenco, figuração,
+ * veículos — `escopoPadrao`). Para objeto de cena, "faca" no meio de uma fala
+ * não quer dizer que a faca está na cena.
+ */
+export function cenasDoElemento(
+  el: { id: string; nome: string; aliases?: string[]; categoria: string },
+  tags: { elemento_id?: string; cena_id?: string }[],
+  cenas: { id: string; corpo?: string }[],
+): Set<string> {
+  const ids = new Set(tags.filter(t => t.elemento_id === el.id && t.cena_id).map(t => t.cena_id!));
+  if (escopoPadrao(el.categoria)) {
+    const nomes = [el.nome, ...(el.aliases || [])];
+    for (const c of cenas) {
+      if (c.corpo && nomes.some(n => aparece(c.corpo!, n))) ids.add(c.id);
+    }
+  }
+  return ids;
+}

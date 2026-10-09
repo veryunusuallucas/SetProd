@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Merge, Scissors, Search, Users, ChevronRight } from 'lucide-react';
 import { db } from '../db/db';
-import { categoriasDisponiveis, temaDe } from '../lib/decupagem';
+import { categoriasDisponiveis, cenasDoElemento, normalizarCategoria, temaDe } from '../lib/decupagem';
 import { AIRecommendation, AISuggestion, AISuggestionList } from './ui/ia';
 import { mesclarElementos, separarAlias, sugerirMerges, chaveNome } from '../lib/elementos';
 import { confirmar } from './ui/Confirmacao';
@@ -29,12 +29,21 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
   const cenas = useLiveQuery(
     () => db.cenas.where('projeto_id').equals(projetoId).toArray(), [projetoId]
   ) || [];
+  /** Quem pode interpretar um personagem: a equipe da produção, por nome. */
+  const perfis = (useLiveQuery(
+    () => db.perfis.where('projeto_id').equals(projetoId).toArray(), [projetoId]
+  ) || []).filter(p => !p.arquivado_em).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const nomeDe = (p: { nome: string; sobrenome?: string }) => `${p.nome} ${p.sobrenome || ''}`.trim();
 
   const ocorrenciasDe = (id: string) => tags.filter(t => t.elemento_id === id);
 
-  /** Cenas em que o elemento aparece, pelo vínculo gravado na ocorrência. */
-  const cenasDe = (id: string) => {
-    const ids = new Set(ocorrenciasDe(id).map(t => t.cena_id).filter(Boolean));
+  /**
+   * Cenas em que o elemento aparece: pela marcação e, no elenco, pelo nome no
+   * texto da cena. A mesma conta da OD e do DOOD (`cenasDoElemento`) — antes
+   * daqui saía "Nenhuma cena vinculada" para quem estava em todas.
+   */
+  const cenasDe = (el: (typeof elementos)[number]) => {
+    const ids = cenasDoElemento(el, tags, cenas);
     return cenas.filter(c => ids.has(c.id));
   };
 
@@ -179,6 +188,9 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
                     {(el.aliases?.length || 0) > 0 && (
                       <span className="text-xs text-muted">+{el.aliases!.length} apelido(s)</span>
                     )}
+                    {el.perfil_id && perfis.find(p => p.id === el.perfil_id) && (
+                      <span className="text-xs text-secondary">· {nomeDe(perfis.find(p => p.id === el.perfil_id)!)}</span>
+                    )}
                   </button>
                   <span className="text-xs text-muted">
                     {ocorrencias.length}x · pág {paginas.join(', ') || '—'}
@@ -210,9 +222,35 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span className="text-xs text-muted">Cenas</span>
                       <span className="text-sm">
-                        {cenasDe(el.id).map(c => c.numero).join(', ') || 'Nenhuma cena vinculada ainda.'}
+                        {cenasDe(el).map(c => c.numero).join(', ') || 'Nenhuma cena vinculada ainda.'}
                       </span>
                     </div>
+
+                    {/*
+                      QUEM INTERPRETA. O campo existia (`perfil_id`) e a OD já o
+                      usava na coluna "Ator/atriz" — mas nenhuma tela deixava
+                      preencher: "não sei como vincular as atrizes com as cenas"
+                      (amigo do Lucas, 09/10/2026). A cena vem do roteiro; a
+                      atriz vem daqui.
+                    */}
+                    {normalizarCategoria(el.categoria) === 'ELENCO' && (
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span className="text-xs text-muted">Interpretado por</span>
+                        <select
+                          value={el.perfil_id || ''}
+                          onChange={e => db.elementos.update(el.id, { perfil_id: e.target.value || undefined })}
+                          style={{ padding: '7px 10px', fontSize: '13px', maxWidth: '320px' }}
+                        >
+                          <option value="">Ninguém ainda</option>
+                          {perfis.map(p => (
+                            <option key={p.id} value={p.id}>{nomeDe(p)}{p.funcao ? ` — ${p.funcao}` : ''}</option>
+                          ))}
+                        </select>
+                        {perfis.length === 0 && (
+                          <span className="text-xs text-muted">Cadastre a atriz ou o ator em Equipe para escolher aqui.</span>
+                        )}
+                      </label>
+                    )}
 
                     <CampoTexto
                       value={el.notas || ''}
