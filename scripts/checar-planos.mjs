@@ -1,5 +1,6 @@
 /**
- * Confere a ordem dos planos (`reordenarPlanos`, `proximoNumeroDePlano`).
+ * Confere a ordem dos planos (`reordenarPlanos`, `proximoNumeroDePlano`) e a
+ * ordem em que as cenas foram gravadas (`ordemDeGravacao`).
  *
  *   node scripts/checar-planos.mjs
  */
@@ -24,6 +25,13 @@ try {
   assert.equal(proximoNumeroDePlano([]), '1');
   assert.equal(proximoNumeroDePlano(['3A', '10']), '11');
   assert.deepEqual(['10', '3A', '3', '2'].sort(compararNumeroDePlano), ['2', '3', '3A', '10']);
+
+  // A ordem gravada: a lista manda; cena nova vai para o fim; id sumido some.
+  const { ordemDeGravacao } = await vite.ssrLoadModule('/src/lib/linhaDoDia.ts');
+  const dia = [{ id: 'cafe', tipo: 'coffee' }, { id: 'c2', tipo: 'cena' }, { id: 'c4', tipo: 'cena' }, { id: 'c5', tipo: 'cena' }, { id: 'c6', tipo: 'cena' }];
+  const ids = l => l.map(i => i.id);
+  assert.deepEqual(ids(ordemDeGravacao(dia)), ['c2', 'c4', 'c5', 'c6'], 'sem lista é o plano, só cenas');
+  assert.deepEqual(ids(ordemDeGravacao(dia, ['c4', 'c2', 'sumiu'])), ['c4', 'c2', 'c5', 'c6']);
 
   console.log('planos ok');
 } finally {

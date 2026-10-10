@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useComportamentoDeJanela } from './ui/Janela';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Archive, X, AlertTriangle, Check, CircleDashed, CircleSlash, Scissors } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import { Archive, X, AlertTriangle, Check, CircleDashed, CircleSlash, Scissors, GripVertical, ListOrdered } from 'lucide-react';
 import { oitavosParaPaginas } from '../lib/decupagem';
 import { marcarCena, relatorioDoDia, ROTULO, MOTIVOS } from '../lib/registroSet';
 import { db } from '../db/db';
 import { MOLA } from './ui/ia';
-import type { Cena, RegistroCena, StatusCena } from '../types';
+import type { Cena, ItemDoDia, RegistroCena, StatusCena } from '../types';
+import { ordemDeGravacao } from '../lib/linhaDoDia';
 import { ResumoDaLogagem } from './ResumoDaLogagem';
 
 /**
@@ -31,6 +33,10 @@ interface Props {
   diariaId: string;
   cenas: Cena[];
   registros: RegistroCena[];
+  /** A linha do dia planejada — de onde sai a ordem das cenas. */
+  itens: ItemDoDia[];
+  /** `Diaria.ordem_gravacao`: a ordem em que de fato foi gravado. */
+  ordemSalva?: string[];
   meuPerfilId?: string;
   aoFechar: (notas: string) => void;
   aoCancelar: () => void;
@@ -44,7 +50,7 @@ const ICONE: Record<StatusCena, React.ReactNode> = {
 };
 
 export function FechamentoDiaria({
-  numero, projetoId, diariaId, cenas, registros, meuPerfilId, aoFechar, aoCancelar,
+  numero, projetoId, diariaId, cenas, registros, itens, ordemSalva, meuPerfilId, aoFechar, aoCancelar,
 }: Props) {
   // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
   useComportamentoDeJanela(aoCancelar);
@@ -78,6 +84,34 @@ export function FechamentoDiaria({
   const cumprimento = r.oitavosPrevistos > 0
     ? Math.round((r.oitavosGravados / r.oitavosPrevistos) * 100)
     : null;
+
+  /*
+    EM QUE ORDEM FOI GRAVADO. O plano diz uma ordem; o set, às vezes, outra —
+    na Diária 1 da Canção de Outono a cena 4 entrou antes da 2 por causa do
+    tempo. Arrastar aqui grava a ordem real ao lado do plano, sem mexer nele.
+    Cena que não saiu (não gravada, cortada) não tem lugar nessa fila.
+  */
+  const planejados = itens.filter(i => i.tipo === 'cena');
+  const statusDa = (cenaId?: string) => registros.find(x => x.cena_id === cenaId)?.status;
+  const saiu = (i: ItemDoDia) => statusDa(i.cena_id) !== 'nao_gravada' && statusDa(i.cena_id) !== 'cortada';
+  const ordem = ordemDeGravacao(itens, ordemSalva);
+  const gravados = ordem.filter(saiu);
+  /** "Cena 2 · parte 2" quando a mesma cena foi partida em dois trechos. */
+  const rotulo = (i: ItemDoDia) => {
+    const cena = cenas.find(c => c.id === i.cena_id);
+    const mesmas = planejados.filter(p => p.cena_id === i.cena_id);
+    const parte = mesmas.length > 1 ? ` · parte ${mesmas.indexOf(i) + 1}` : '';
+    return { titulo: `Cena ${cena?.numero ?? '?'}${i.parte || ''}${parte}`, descricao: cena?.descricao };
+  };
+  const aoSoltar = async (r: DropResult) => {
+    if (!r.destination || r.destination.index === r.source.index) return;
+    const nova = [...gravados];
+    const [movido] = nova.splice(r.source.index, 1);
+    nova.splice(r.destination.index, 0, movido);
+    // Quem não saiu vai para o fim, para a lista continuar tendo todo mundo.
+    await db.diarias.update(diariaId, { ordem_gravacao: [...nova, ...ordem.filter(i => !saiu(i))].map(i => i.id) });
+  };
+  const mudouAOrdem = gravados.some((i, n) => planejados.filter(saiu)[n]?.id !== i.id);
 
   /** Resolve uma cena que ficou sem marcação, ali mesmo. */
   const resolver = async (cenaId: string, status: StatusCena) => {
@@ -279,6 +313,68 @@ export function FechamentoDiaria({
                 );
               })}
             </div>
+          </section>
+        )}
+
+        {gravados.length > 1 && (
+          <section style={{ marginBottom: '20px' }}>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ListOrdered size={13} /> Em que ordem foi gravado
+            </h3>
+            <p className="text-xs text-muted" style={{ marginBottom: '10px', lineHeight: 1.5 }}>
+              Arraste se o set mudou a ordem. O plano que saiu na OD continua guardado — o DPR mostra os dois.
+            </p>
+            <DragDropContext onDragEnd={aoSoltar}>
+              <Droppable droppableId="ordem-gravacao">
+                {area => (
+                  <div ref={area.innerRef} {...area.droppableProps}>
+                    {gravados.map((i, n) => {
+                      const { titulo, descricao } = rotulo(i);
+                      const noPlano = planejados.filter(saiu).indexOf(i) + 1;
+                      return (
+                        <Draggable key={i.id} draggableId={i.id} index={n}>
+                          {(arraste, estado) => (
+                            <div
+                              ref={arraste.innerRef}
+                              {...arraste.draggableProps}
+                              {...arraste.dragHandleProps}
+                              aria-label={`${titulo}, gravada em ${n + 1}º. Arraste para mudar a ordem.`}
+                              style={{
+                                ...arraste.draggableProps.style,
+                                display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px',
+                                padding: '9px 12px', borderRadius: 'var(--radius-md)', cursor: 'grab',
+                                background: 'var(--bg-primary)',
+                                border: `1px solid ${estado.isDragging ? 'var(--accent)' : 'var(--border-light)'}`,
+                              }}
+                            >
+                              <GripVertical size={15} className="text-muted" />
+                              <span className="font-bold text-sm" style={{ minWidth: '22px' }}>{n + 1}º</span>
+                              <span className="text-sm" style={{ flex: 1, minWidth: 0 }}>
+                                <strong>{titulo}</strong>
+                                {descricao && <span className="text-muted"> · {descricao}</span>}
+                              </span>
+                              {noPlano !== n + 1 && (
+                                <span className="text-xs text-muted" style={{ whiteSpace: 'nowrap' }}>no plano: {noPlano}º</span>
+                              )}
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {area.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+            {mudouAOrdem && (
+              <button
+                className="text-xs"
+                onClick={() => db.diarias.update(diariaId, { ordem_gravacao: undefined })}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+              >
+                Voltar para a ordem do plano
+              </button>
+            )}
           </section>
         )}
 

@@ -451,6 +451,19 @@ export interface Diaria {
    */
   linha_do_tempo?: ItemDoDia[];
 
+  /**
+   * A ORDEM EM QUE AS CENAS FORAM DE FATO GRAVADAS — ids dos itens de cena da
+   * linha do tempo.
+   *
+   * Separada de `linha_do_tempo` de propósito: a linha é o plano que saiu na
+   * OD, e ele continua sendo o registro do que se planejou. Na primeira diária
+   * da Canção de Outono a cena 4 foi gravada antes da 2 por causa do tempo
+   * (Lucas, 10/10/2026); reescrever a linha apagaria justamente essa
+   * diferença, que é o que o DPR existe para mostrar. Vazio = na ordem do
+   * plano. Arrumada no fechamento (`FechamentoDiaria`).
+   */
+  ordem_gravacao?: string[];
+
   /** Chamada geral — o horário de onde todo o resto é encadeado. */
   chamada?: string;
 

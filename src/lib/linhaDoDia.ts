@@ -373,3 +373,21 @@ export function descreverAtraso(minutos: number): string {
   const texto = h ? (m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`) : `${m}min`;
   return minutos > 0 ? `${texto} de atraso` : `${texto} adiantado`;
 }
+
+/**
+ * Os itens de cena do dia, na ordem em que foram GRAVADOS.
+ *
+ * `salva` é `Diaria.ordem_gravacao`. Quem está nela vem na ordem dela; cena
+ * que entrou no plano depois (e por isso não está na lista) vem no fim, na
+ * ordem do plano; id que saiu do plano é ignorado. Sem lista, é o plano.
+ *
+ * Não adivinha pela hora real: no set ela costuma ser marcada de uma vez no
+ * fim do dia, e ordenar por ela inventaria uma ordem que ninguém confirmou.
+ */
+export function ordemDeGravacao(itens: ItemDoDia[], salva?: string[]): ItemDoDia[] {
+  const cenas = itens.filter(i => i.tipo === 'cena');
+  if (!salva?.length) return cenas;
+  const posicao = new Map(salva.map((id, n) => [id, n]));
+  return [...cenas].sort((a, b) =>
+    (posicao.get(a.id) ?? salva.length) - (posicao.get(b.id) ?? salva.length));
+}

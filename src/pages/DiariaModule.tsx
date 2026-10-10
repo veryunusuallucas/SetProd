@@ -25,7 +25,7 @@ import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { CartaDeWrap, type CartaDeWrapProps } from '../components/CartaDeWrap';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
-import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, proximoDoDia, emMinutos } from '../lib/linhaDoDia';
+import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, proximoDoDia, emMinutos, ordemDeGravacao } from '../lib/linhaDoDia';
 import { estadoDa, publicarDiaria, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { montarLinha, ordemParaEntrarNoBloco } from '../lib/stripboard';
 import { faseDoDia } from '../lib/faseDoDia';
@@ -733,6 +733,22 @@ export function DiariaModule() {
       </tr>`;
     }).join('');
 
+    /*
+      A ORDEM EM QUE SE GRAVOU, quando não foi a do plano (`ordem_gravacao`,
+      arrumada no fechamento). Só aparece se mudou: repetir a ordem do plano
+      numa segunda lista não diz nada a ninguém.
+    */
+    const planoDeCenas = dia.itens.filter(c => c.item.tipo === 'cena');
+    const gravadasNaOrdem = ordemDeGravacao(dia.itens.map(c => c.item), diaria.ordem_gravacao)
+      .filter(i => !['nao_gravada', 'cortada'].includes(registrosDoDia.find(x => x.cena_id === i.cena_id)?.status || ''));
+    const ordemMudou = gravadasNaOrdem.some((i, n) =>
+      planoDeCenas.filter(c => gravadasNaOrdem.includes(c.item))[n]?.item.id !== i.id);
+    const linhasOrdem = ordemMudou ? gravadasNaOrdem.map((i, n) => {
+      const c = planoDeCenas.find(x => x.item.id === i.id)!;
+      const noPlano = planoDeCenas.filter(x => gravadasNaOrdem.includes(x.item)).indexOf(c) + 1;
+      return `<tr><td><b>${n + 1}º</b></td><td><b>Cena ${h(c.cena?.numero ?? '?')}${h(i.parte || '')}</b> — ${h(c.cena?.descricao || '')}</td><td class="${noPlano !== n + 1 ? 'alerta' : 'muted'}">${noPlano}º no plano</td></tr>`;
+    }).join('') : '';
+
     const linhaCena = (c: typeof cenasDaDiaria[number]) => {
       const reg = registrosDoDia.find(x => x.cena_id === c.id);
       const detalhes = [
@@ -858,6 +874,8 @@ export function DiariaModule() {
 
       ${linhasTempo ? `<h2>Horários — planejado × real</h2>
         <table><tr><th>Previsto</th><th>Real</th><th>Diferença</th><th>O quê</th></tr>${linhasTempo}</table>` : ''}
+      ${linhasOrdem ? `<h2>Ordem de gravação — o set mudou o plano</h2>
+        <table><tr><th>Gravada</th><th>Cena</th><th>Plano</th></tr>${linhasOrdem}</table>` : ''}
 
       ${relatorio.gravadas.length ? `<h2>Cenas filmadas</h2><ul>${relatorio.gravadas.map(linhaCena).join('')}</ul>` : ''}
       ${relatorio.parciais.length ? `<h2>Cenas parciais</h2><ul>${relatorio.parciais.map(linhaCena).join('')}</ul>` : ''}
@@ -1653,6 +1671,8 @@ export function DiariaModule() {
           diariaId={diariaId!}
           cenas={cenasDaDiaria}
           registros={registrosDoDia}
+          itens={montarLinhaDoDia(diaria)}
+          ordemSalva={diaria.ordem_gravacao}
           meuPerfilId={meuPerfilId || undefined}
           aoFechar={confirmarFechamento}
           aoCancelar={() => setFechamentoAberto(false)}
