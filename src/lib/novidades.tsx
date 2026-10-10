@@ -9,7 +9,7 @@ import {
   Camera, HardDrive, FileInput, Target, Image, Save,
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
   CloudCheck, SquareRoundCorner, Upload, AppWindow,
-  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun, Star, Coffee, Heart,
+  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun, Star, Coffee, Heart, GripVertical, AtSign, UserX,
 } from 'lucide-react';
 
 /**
@@ -227,6 +227,84 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '0.21.0',
+    resumo: <>A Ordem do Dia agora sai igual à do set — e o elenco, os planos e o cadastro da equipe ficaram mais fáceis de acertar.</>,
+    grupos: [
+      {
+        id: 'od',
+        titulo: 'A Ordem do Dia do set',
+        resumo: 'Feita a partir de uma OD de verdade, montada à mão por uma equipe.',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'O papel novo',
+            texto: 'Em pé, com a chamada e o fim do dia grandes num círculo, os horários do dia numa linha, locação, bases e previsão do tempo lado a lado, e cada cena com o "Prep" e o "Roda", o dia da história e a sinopse. As locações das cenas entram mesmo quando a diária não aponta para elas.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ListChecks size={20} />,
+            titulo: 'Padrão ou detalhada',
+            texto: 'Ao exportar, a Padrão é o papel do set numa página. Na Detalhada você liga e desliga cada bloco — e equipe, cenas do próximo dia, checklist e decupagem vão numa página à parte.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'O que a OD pede, agora no app',
+            texto: 'Na diária, "Dados da OD" tem ponto de encontro, as bases (café, almoço, camarins, base de produção), make, figurino e mic do elenco, as refeições a pedir e os veículos de cena. Na cena, a sinopse e o dia da história. Nos Ajustes da OD, o aviso fixo da produção e os canais de rádio.',
+          },
+        ],
+      },
+      {
+        id: 'decupagem',
+        titulo: 'Elenco e planos',
+        resumo: '',
+        cor: '#ff7675',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Users size={20} />,
+            titulo: 'Quem interpreta cada personagem',
+            texto: 'Em Decupagem → Elementos, cada personagem tem "Interpretado por", para escolher a atriz ou o ator da equipe. E as cenas de cada personagem vêm também do texto do roteiro, onde o nome aparece — antes, quem era marcado à mão não aparecia em cena nenhuma e a coluna de elenco da OD saía vazia.',
+          },
+          {
+            tipo: 'corrigido',
+            icone: <GripVertical size={20} />,
+            titulo: 'Os planos se arrastam',
+            texto: 'Na Master Shot List, o ícone de arrastar não fazia nada. Agora troca a ordem, e os números da cena continuam os mesmos — muda qual plano tem cada número. A lista mostra o número do plano, o mesmo da OD e da claquete, e plano novo não repete o de um que foi apagado.',
+          },
+        ],
+      },
+      {
+        id: 'equipe',
+        titulo: 'Equipe',
+        resumo: '',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'corrigido',
+            icone: <UserPlus size={20} />,
+            titulo: 'Cadastrar à mão sem travar',
+            texto: 'O "Novo membro" pedia "Medicamentos contínuos" e não tinha onde preencher — agora tem. E quando faltar um campo que a produção pede, dá para salvar assim mesmo e completar depois. No link de cadastro, que a pessoa preenche, os obrigatórios continuam valendo.',
+          },
+          {
+            tipo: 'novo',
+            icone: <AtSign size={20} />,
+            titulo: 'Troque o seu @',
+            texto: 'O apelido de set — o @ do cartão da equipe — se troca direto na ficha aberta. Vale para a própria pessoa e para quem administra.',
+          },
+          {
+            tipo: 'novo',
+            icone: <UserX size={20} />,
+            titulo: 'Quem é removido fica sabendo',
+            texto: 'Uma faixa avisa que a pessoa saiu da produção e quantas alterações feitas no aparelho não chegaram ao servidor. A produção passa a abrir só para consulta, em vez de aceitar edições que nunca iam subir.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '0.20.0',
     resumo: <>O SetProd agora te recebe na primeira vez, pergunta como foi quando a filmagem acaba, e ganhou um jeito de ser apoiado.</>,
