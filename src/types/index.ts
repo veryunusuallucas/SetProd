@@ -452,17 +452,15 @@ export interface Diaria {
   linha_do_tempo?: ItemDoDia[];
 
   /**
-   * A ORDEM EM QUE AS CENAS FORAM DE FATO GRAVADAS — ids dos itens de cena da
-   * linha do tempo.
+   * A ordem das cenas como a OD saiu — ids dos itens de cena da linha.
    *
-   * Separada de `linha_do_tempo` de propósito: a linha é o plano que saiu na
-   * OD, e ele continua sendo o registro do que se planejou. Na primeira diária
-   * da Canção de Outono a cena 4 foi gravada antes da 2 por causa do tempo
-   * (Lucas, 10/10/2026); reescrever a linha apagaria justamente essa
-   * diferença, que é o que o DPR existe para mostrar. Vazio = na ordem do
-   * plano. Arrumada no fechamento (`FechamentoDiaria`).
+   * Quando o set muda a ordem (o "começou" fora de ordem, ou o arrastar do
+   * fechamento), a própria `linha_do_tempo` muda, para os horários
+   * acompanharem. Esta lista é o que sobra do plano para o DPR dizer "no plano:
+   * 6º". Gravada ao publicar a OD, ou na primeira troca, o que vier antes. O
+   * plano inteiro continua no PDF guardado em Documentos.
    */
-  ordem_gravacao?: string[];
+  ordem_planejada?: string[];
 
   /** Chamada geral — o horário de onde todo o resto é encadeado. */
   chamada?: string;

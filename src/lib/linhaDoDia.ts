@@ -374,20 +374,56 @@ export function descreverAtraso(minutos: number): string {
   return minutos > 0 ? `${texto} de atraso` : `${texto} adiantado`;
 }
 
+// ---------------------------------------------------------------------------
+// Quando o set muda a ordem
+// ---------------------------------------------------------------------------
+
 /**
- * Os itens de cena do dia, na ordem em que foram GRAVADOS.
- *
- * `salva` é `Diaria.ordem_gravacao`. Quem está nela vem na ordem dela; cena
- * que entrou no plano depois (e por isso não está na lista) vem no fim, na
- * ordem do plano; id que saiu do plano é ignorado. Sem lista, é o plano.
- *
- * Não adivinha pela hora real: no set ela costuma ser marcada de uma vez no
- * fim do dia, e ordenar por ela inventaria uma ordem que ninguém confirmou.
+ * A cena que o set pulou: a primeira cena ANTES de `id` na linha que ainda
+ * não começou. É a pergunta do "começou" fora de ordem — na Diária 1 da Canção
+ * de Outono a cena 4 entrou antes da 2 por causa do tempo (Lucas, 10/10/2026).
  */
-export function ordemDeGravacao(itens: ItemDoDia[], salva?: string[]): ItemDoDia[] {
-  const cenas = itens.filter(i => i.tipo === 'cena');
-  if (!salva?.length) return cenas;
-  const posicao = new Map(salva.map((id, n) => [id, n]));
-  return [...cenas].sort((a, b) =>
-    (posicao.get(a.id) ?? salva.length) - (posicao.get(b.id) ?? salva.length));
+export function cenaPulada(linha: ItemDoDia[], id: string): ItemDoDia | undefined {
+  const ate = linha.findIndex(i => i.id === id);
+  if (ate < 0 || linha[ate].tipo !== 'cena') return undefined;
+  return linha.slice(0, ate).find(i => i.tipo === 'cena' && !i.hora_real);
+}
+
+/**
+ * O horário travado à mão é do LUGAR na linha, não da cena: "às 13h15 começa
+ * a cena de depois do almoço". Quem troca de lugar herda a trava do lugar novo.
+ */
+function comATravaDoLugar(item: ItemDoDia, lugar: ItemDoDia): ItemDoDia {
+  const { hora_travada: _sai, ...resto } = item;
+  return lugar.hora_travada ? { ...resto, hora_travada: lugar.hora_travada } : resto;
+}
+
+/** Troca dois itens de lugar. É a resposta "sim" para `cenaPulada`. */
+export function trocarDeLugar(linha: ItemDoDia[], idA: string, idB: string): ItemDoDia[] {
+  const a = linha.findIndex(i => i.id === idA);
+  const b = linha.findIndex(i => i.id === idB);
+  if (a < 0 || b < 0) return linha;
+  const nova = [...linha];
+  nova[a] = comATravaDoLugar(linha[b], linha[a]);
+  nova[b] = comATravaDoLugar(linha[a], linha[b]);
+  return nova;
+}
+
+/**
+ * Põe os itens de `ids` na ordem dada, nos MESMOS lugares que eles ocupavam.
+ *
+ * É o arrastar do fechamento: as cenas trocam entre si, e o almoço, o café e
+ * a preparação ficam onde estavam — o almoço continua ao meio-dia. Como a
+ * linha é a mesma, os horários previstos são recalculados na ordem nova, e o
+ * DPR mostra cada cena no horário em que ela de fato caiu.
+ */
+export function reordenarCenas(linha: ItemDoDia[], ids: string[]): ItemDoDia[] {
+  const naLista = new Set(ids);
+  const porId = new Map(linha.map(i => [i.id, i]));
+  const fila = ids.map(id => porId.get(id)).filter((i): i is ItemDoDia => Boolean(i));
+  return linha.map(i => {
+    if (!naLista.has(i.id)) return i;
+    const vem = fila.shift();
+    return vem ? comATravaDoLugar(vem, i) : i;
+  });
 }

@@ -25,7 +25,7 @@ import { FechamentoDiaria } from '../components/FechamentoDiaria';
 import { CartaDeWrap, type CartaDeWrapProps } from '../components/CartaDeWrap';
 import { SincroniaStripboard } from '../components/SincroniaStripboard';
 import { LinhaDoDia } from '../components/LinhaDoDia';
-import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, proximoDoDia, emMinutos, ordemDeGravacao } from '../lib/linhaDoDia';
+import { montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso, proximoDoDia, emMinutos } from '../lib/linhaDoDia';
 import { estadoDa, publicarDiaria, ROTULO_ESTADO } from '../lib/sincronizaOD';
 import { montarLinha, ordemParaEntrarNoBloco } from '../lib/stripboard';
 import { faseDoDia } from '../lib/faseDoDia';
@@ -302,6 +302,22 @@ export function DiariaModule() {
 
   const gravarLinha = (linha: ItemDoDia[]) =>
     dividido ? gravarNaFrente({ linha_do_tempo: linha }) : db.diarias.update(diariaId!, { linha_do_tempo: linha });
+
+  /** Os ids das cenas da linha, na ordem em que estão. */
+  const ordemDasCenas = (linha: ItemDoDia[]) => linha.filter(i => i.tipo === 'cena').map(i => i.id);
+
+  /*
+    O SET MUDOU A ORDEM (o "começou" fora de ordem, ou o arrastar do
+    fechamento). A linha muda de verdade — é o que faz os horários e o DPR
+    acompanharem —, e antes da primeira troca o app guarda a ordem como estava,
+    para o DPR ainda saber dizer "no plano: 6º".
+  */
+  const mudarOrdemDoSet = async (nova: ItemDoDia[]) => {
+    if (!diaria.ordem_planejada?.length) {
+      await db.diarias.update(diariaId!, { ordem_planejada: ordemDasCenas(montarLinhaDoDia(visaoDoDia)) });
+    }
+    await gravarLinha(nova);
+  };
 
   const gravarChamada = (hora: string) =>
     dividido ? gravarNaFrente({ chamada: hora }) : db.diarias.update(diariaId!, { chamada: hora });
@@ -734,20 +750,19 @@ export function DiariaModule() {
     }).join('');
 
     /*
-      A ORDEM EM QUE SE GRAVOU, quando não foi a do plano (`ordem_gravacao`,
-      arrumada no fechamento). Só aparece se mudou: repetir a ordem do plano
-      numa segunda lista não diz nada a ninguém.
+      QUANDO O SET MUDOU A ORDEM. A linha do dia já está na ordem real (os
+      horários acima acompanham); esta lista diz onde cada cena estava no plano
+      que saiu na OD (`ordem_planejada`). Só aparece se algo mudou de lugar.
     */
-    const planoDeCenas = dia.itens.filter(c => c.item.tipo === 'cena');
-    const gravadasNaOrdem = ordemDeGravacao(dia.itens.map(c => c.item), diaria.ordem_gravacao)
-      .filter(i => !['nao_gravada', 'cortada'].includes(registrosDoDia.find(x => x.cena_id === i.cena_id)?.status || ''));
-    const ordemMudou = gravadasNaOrdem.some((i, n) =>
-      planoDeCenas.filter(c => gravadasNaOrdem.includes(c.item))[n]?.item.id !== i.id);
-    const linhasOrdem = ordemMudou ? gravadasNaOrdem.map((i, n) => {
-      const c = planoDeCenas.find(x => x.item.id === i.id)!;
-      const noPlano = planoDeCenas.filter(x => gravadasNaOrdem.includes(x.item)).indexOf(c) + 1;
-      return `<tr><td><b>${n + 1}º</b></td><td><b>Cena ${h(c.cena?.numero ?? '?')}${h(i.parte || '')}</b> — ${h(c.cena?.descricao || '')}</td><td class="${noPlano !== n + 1 ? 'alerta' : 'muted'}">${noPlano}º no plano</td></tr>`;
-    }).join('') : '';
+    const planejada = diaria.ordem_planejada || [];
+    const cenasAgora = dia.itens.filter(c => c.item.tipo === 'cena' && planejada.includes(c.item.id));
+    const planoComparavel = planejada.filter(id => cenasAgora.some(c => c.item.id === id));
+    const linhasOrdem = cenasAgora.some((c, n) => planoComparavel[n] !== c.item.id)
+      ? cenasAgora.map((c, n) => {
+          const noPlano = planoComparavel.indexOf(c.item.id) + 1;
+          return `<tr><td><b>${n + 1}º</b></td><td style="white-space:nowrap">${h(c.hora)}</td><td><b>Cena ${h(c.cena?.numero ?? '?')}${h(c.item.parte || '')}</b> — ${h(c.cena?.descricao || '')}</td><td class="${noPlano !== n + 1 ? 'alerta' : 'muted'}">${noPlano}º no plano</td></tr>`;
+        }).join('')
+      : '';
 
     const linhaCena = (c: typeof cenasDaDiaria[number]) => {
       const reg = registrosDoDia.find(x => x.cena_id === c.id);
@@ -875,7 +890,7 @@ export function DiariaModule() {
       ${linhasTempo ? `<h2>Horários — planejado × real</h2>
         <table><tr><th>Previsto</th><th>Real</th><th>Diferença</th><th>O quê</th></tr>${linhasTempo}</table>` : ''}
       ${linhasOrdem ? `<h2>Ordem de gravação — o set mudou o plano</h2>
-        <table><tr><th>Gravada</th><th>Cena</th><th>Plano</th></tr>${linhasOrdem}</table>` : ''}
+        <table><tr><th>Gravada</th><th>Previsto</th><th>Cena</th><th>Plano</th></tr>${linhasOrdem}</table>` : ''}
 
       ${relatorio.gravadas.length ? `<h2>Cenas filmadas</h2><ul>${relatorio.gravadas.map(linhaCena).join('')}</ul>` : ''}
       ${relatorio.parciais.length ? `<h2>Cenas parciais</h2><ul>${relatorio.parciais.map(linhaCena).join('')}</ul>` : ''}
@@ -967,7 +982,10 @@ export function DiariaModule() {
    */
   const aoExportarOD = async () => {
     const versaoNova = (diaria.versao_od || 0) + 1;
-    await db.diarias.update(diariaId!, { versao_od: versaoNova, data_export: Date.now() });
+    // A ordem que saiu no papel é "o plano" daqui em diante (ver `ordem_planejada`).
+    await db.diarias.update(diariaId!, {
+      versao_od: versaoNova, data_export: Date.now(), ordem_planejada: ordemDasCenas(montarLinhaDoDia(diaria)),
+    });
 
     /*
       Exportar de RASCUNHO ou de TRAVADA publica. Os dois são "ainda não saiu";
@@ -1200,6 +1218,7 @@ export function DiariaModule() {
             visao={visaoDoDia}
             chamada={chamadaDaVisao}
             aoGravar={gravarLinha}
+            aoMudarOrdemDoSet={mudarOrdemDoSet}
             aoMudarChamada={gravarChamada}
             cenas={cenasGlobais}
             registros={registrosDoDia}
@@ -1671,8 +1690,9 @@ export function DiariaModule() {
           diariaId={diariaId!}
           cenas={cenasDaDiaria}
           registros={registrosDoDia}
-          itens={montarLinhaDoDia(diaria)}
-          ordemSalva={diaria.ordem_gravacao}
+          itens={montarLinhaDoDia(visaoDoDia)}
+          ordemPlanejada={diaria.ordem_planejada}
+          aoReordenar={mudarOrdemDoSet}
           meuPerfilId={meuPerfilId || undefined}
           aoFechar={confirmarFechamento}
           aoCancelar={() => setFechamentoAberto(false)}

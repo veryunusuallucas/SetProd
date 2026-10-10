@@ -9,8 +9,9 @@ import { db } from '../db/db';
 import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao, Plano } from '../types';
 import {
   montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso,
-  duracaoDoItem, COR_TIPO, emHora, emMinutos, type VisaoDoDia,
+  duracaoDoItem, COR_TIPO, emHora, emMinutos, cenaPulada, trocarDeLugar, type VisaoDoDia,
 } from '../lib/linhaDoDia';
+import { confirmar } from './ui/Confirmacao';
 import { getStripboardColor } from '../lib/decupagem';
 import { parseCoords } from '../lib/clima';
 import { linkMapa } from '../lib/osm';
@@ -87,7 +88,7 @@ const GRUPOS_NOVOS: { grupo: string; itens: { tipo: Exclude<TipoItemDia, 'cena'>
 
 export function LinhaDoDia({
   diaria, visao, cenas, registros, meuPerfilId, podeMarcar, planosPorCena,
-  chamada, aoGravar, aoMudarChamada, modo, travada = false, locacoes = [],
+  chamada, aoGravar, aoMudarChamada, aoMudarOrdemDoSet, modo, travada = false, locacoes = [],
   cenasDisponiveis = [], aoAcrescentarCena, proximoId,
 }: {
   /**
@@ -170,6 +171,12 @@ export function LinhaDoDia({
    * isso, cada nova forma de dividir o dia obrigaria a mexer aqui dentro.
    */
   aoGravar: (linha: ItemDoDia[]) => void;
+  /**
+   * Gravar uma linha cuja ORDEM o set mudou. Quem monta a tela guarda antes a
+   * ordem do plano (`Diaria.ordem_planejada`); sem isto, a troca grava como
+   * qualquer outra edição.
+   */
+  aoMudarOrdemDoSet?: (linha: ItemDoDia[]) => void;
   aoMudarChamada: (hora: string) => void;
 }) {
   const reduzido = useMovimentoReduzido();
@@ -288,14 +295,40 @@ export function LinhaDoDia({
    * Agora: sem marcação, marca a hora de agora (o caminho rápido continua de um
    * toque) e já abre o ajuste embaixo. Com marcação, abre e fecha o ajuste.
    */
-  const marcarAgora = (item: ItemDoDia) => {
+  const marcarAgora = async (item: ItemDoDia) => {
     const agora = new Date();
     const marcando = !item.hora_real;
     if (!marcando) {
       setAjustandoHora(a => (a === item.id ? null : item.id));
       return;
     }
-    mudarItem(item.id, { hora_real: emHora(agora.getHours() * 60 + agora.getMinutes()) });
+    const hora = emHora(agora.getHours() * 60 + agora.getMinutes());
+
+    /*
+      COMEÇOU FORA DE ORDEM. A cena 4 começou e a 2, que vinha antes, ainda
+      não: o set trocou a ordem (Diária 1 da Canção de Outono, por causa do
+      tempo). Em vez de deixar a linha dizendo uma coisa e o set fazendo outra,
+      o app pergunta — e, com o sim, as duas trocam de lugar e os horários
+      previstos acompanham (Lucas, 10/10/2026).
+    */
+    const pulada = item.tipo === 'cena' ? cenaPulada(linha, item.id) : undefined;
+    if (pulada) {
+      const nomeDa = (i: ItemDoDia) => `Cena ${cenas.find(c => c.id === i.cena_id)?.numero ?? '?'}${i.parte || ''}`;
+      const trocar = await confirmar({
+        titulo: `${nomeDa(item)} entrou no lugar da ${nomeDa(pulada)}?`,
+        detalhe: `A ${nomeDa(pulada)} ainda não começou. Se o set trocou a ordem, as duas trocam de lugar na linha e os horários do resto do dia acompanham. A OD publicada continua guardada como foi planejada.`,
+        confirmar: 'Sim, trocar de lugar',
+        cancelar: 'Não, só marcar',
+      });
+      if (trocar) {
+        const nova = trocarDeLugar(linha, item.id, pulada.id).map(i => (i.id === item.id ? { ...i, hora_real: hora } : i));
+        (aoMudarOrdemDoSet ?? gravar)(nova);
+        setAjustandoHora(item.id);
+        return;
+      }
+    }
+
+    mudarItem(item.id, { hora_real: hora });
     setAjustandoHora(item.id);
 
     /*

@@ -9,7 +9,7 @@ import { marcarCena, relatorioDoDia, ROTULO, MOTIVOS } from '../lib/registroSet'
 import { db } from '../db/db';
 import { MOLA } from './ui/ia';
 import type { Cena, ItemDoDia, RegistroCena, StatusCena } from '../types';
-import { ordemDeGravacao } from '../lib/linhaDoDia';
+import { reordenarCenas } from '../lib/linhaDoDia';
 import { ResumoDaLogagem } from './ResumoDaLogagem';
 
 /**
@@ -33,10 +33,12 @@ interface Props {
   diariaId: string;
   cenas: Cena[];
   registros: RegistroCena[];
-  /** A linha do dia planejada — de onde sai a ordem das cenas. */
+  /** A linha do dia — de onde sai a ordem das cenas. */
   itens: ItemDoDia[];
-  /** `Diaria.ordem_gravacao`: a ordem em que de fato foi gravado. */
-  ordemSalva?: string[];
+  /** `Diaria.ordem_planejada`: a ordem que saiu na OD, para dizer "no plano: 6º". */
+  ordemPlanejada?: string[];
+  /** Grava a linha com a ordem nova (e guarda o plano antes, se ainda não guardou). */
+  aoReordenar: (linha: ItemDoDia[]) => void;
   meuPerfilId?: string;
   aoFechar: (notas: string) => void;
   aoCancelar: () => void;
@@ -50,7 +52,7 @@ const ICONE: Record<StatusCena, React.ReactNode> = {
 };
 
 export function FechamentoDiaria({
-  numero, projetoId, diariaId, cenas, registros, itens, ordemSalva, meuPerfilId, aoFechar, aoCancelar,
+  numero, projetoId, diariaId, cenas, registros, itens, ordemPlanejada, aoReordenar, meuPerfilId, aoFechar, aoCancelar,
 }: Props) {
   // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
   useComportamentoDeJanela(aoCancelar);
@@ -88,30 +90,29 @@ export function FechamentoDiaria({
   /*
     EM QUE ORDEM FOI GRAVADO. O plano diz uma ordem; o set, às vezes, outra —
     na Diária 1 da Canção de Outono a cena 4 entrou antes da 2 por causa do
-    tempo. Arrastar aqui grava a ordem real ao lado do plano, sem mexer nele.
-    Cena que não saiu (não gravada, cortada) não tem lugar nessa fila.
+    tempo. Arrastar aqui muda a própria linha do dia, para os horários
+    previstos e o DPR acompanharem; o que se planejou fica em `ordem_planejada`
+    e na OD guardada em Documentos. Cena que não saiu (não gravada, cortada)
+    fica parada no lugar dela.
   */
-  const planejados = itens.filter(i => i.tipo === 'cena');
   const statusDa = (cenaId?: string) => registros.find(x => x.cena_id === cenaId)?.status;
-  const saiu = (i: ItemDoDia) => statusDa(i.cena_id) !== 'nao_gravada' && statusDa(i.cena_id) !== 'cortada';
-  const ordem = ordemDeGravacao(itens, ordemSalva);
-  const gravados = ordem.filter(saiu);
+  const saiu = (i: ItemDoDia) => i.tipo === 'cena' && statusDa(i.cena_id) !== 'nao_gravada' && statusDa(i.cena_id) !== 'cortada';
+  const gravados = itens.filter(saiu);
+  const planoDosGravados = (ordemPlanejada || []).filter(id => gravados.some(i => i.id === id));
   /** "Cena 2 · parte 2" quando a mesma cena foi partida em dois trechos. */
   const rotulo = (i: ItemDoDia) => {
     const cena = cenas.find(c => c.id === i.cena_id);
-    const mesmas = planejados.filter(p => p.cena_id === i.cena_id);
+    const mesmas = itens.filter(p => p.tipo === 'cena' && p.cena_id === i.cena_id);
     const parte = mesmas.length > 1 ? ` · parte ${mesmas.indexOf(i) + 1}` : '';
     return { titulo: `Cena ${cena?.numero ?? '?'}${i.parte || ''}${parte}`, descricao: cena?.descricao };
   };
-  const aoSoltar = async (r: DropResult) => {
+  const aoSoltar = (r: DropResult) => {
     if (!r.destination || r.destination.index === r.source.index) return;
     const nova = [...gravados];
     const [movido] = nova.splice(r.source.index, 1);
     nova.splice(r.destination.index, 0, movido);
-    // Quem não saiu vai para o fim, para a lista continuar tendo todo mundo.
-    await db.diarias.update(diariaId, { ordem_gravacao: [...nova, ...ordem.filter(i => !saiu(i))].map(i => i.id) });
+    aoReordenar(reordenarCenas(itens, nova.map(i => i.id)));
   };
-  const mudouAOrdem = gravados.some((i, n) => planejados.filter(saiu)[n]?.id !== i.id);
 
   /** Resolve uma cena que ficou sem marcação, ali mesmo. */
   const resolver = async (cenaId: string, status: StatusCena) => {
@@ -322,7 +323,7 @@ export function FechamentoDiaria({
               <ListOrdered size={13} /> Em que ordem foi gravado
             </h3>
             <p className="text-xs text-muted" style={{ marginBottom: '10px', lineHeight: 1.5 }}>
-              Arraste se o set mudou a ordem. O plano que saiu na OD continua guardado — o DPR mostra os dois.
+              Arraste se o set mudou a ordem: os horários previstos acompanham. A OD publicada continua guardada em Documentos.
             </p>
             <DragDropContext onDragEnd={aoSoltar}>
               <Droppable droppableId="ordem-gravacao">
@@ -330,7 +331,7 @@ export function FechamentoDiaria({
                   <div ref={area.innerRef} {...area.droppableProps}>
                     {gravados.map((i, n) => {
                       const { titulo, descricao } = rotulo(i);
-                      const noPlano = planejados.filter(saiu).indexOf(i) + 1;
+                      const noPlano = planoDosGravados.indexOf(i.id) + 1;
                       return (
                         <Draggable key={i.id} draggableId={i.id} index={n}>
                           {(arraste, estado) => (
@@ -353,7 +354,7 @@ export function FechamentoDiaria({
                                 <strong>{titulo}</strong>
                                 {descricao && <span className="text-muted"> · {descricao}</span>}
                               </span>
-                              {noPlano !== n + 1 && (
+                              {noPlano > 0 && noPlano !== n + 1 && (
                                 <span className="text-xs text-muted" style={{ whiteSpace: 'nowrap' }}>no plano: {noPlano}º</span>
                               )}
                             </div>
@@ -366,10 +367,10 @@ export function FechamentoDiaria({
                 )}
               </Droppable>
             </DragDropContext>
-            {mudouAOrdem && (
+            {planoDosGravados.length === gravados.length && gravados.some((i, n) => planoDosGravados[n] !== i.id) && (
               <button
                 className="text-xs"
-                onClick={() => db.diarias.update(diariaId, { ordem_gravacao: undefined })}
+                onClick={() => aoReordenar(reordenarCenas(itens, planoDosGravados))}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
               >
                 Voltar para a ordem do plano
