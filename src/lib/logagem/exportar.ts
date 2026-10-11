@@ -6,7 +6,7 @@ import { membrosDoProjeto } from '../membros';
 import { criarHd, marcarBackup } from './backup';
 import { blobDoDataUrl, montarCopia, type CopiaLida, type PlanoDeRestauracao } from './copia';
 import { garantirEstado, idDoEstado, mudarEstado } from './estado';
-import { ordenarSons } from './som';
+import { kitLegivel, ordenarSons } from './som';
 import type { BackupDeCartao, ChecksumDeCartao, Diaria, HdDeBackup, Projeto, Som, Take } from '../../types';
 import {
   TITULO_DO_RELATORIO, equipeDoReport, linhasDoComprovante, nomeDeQuemLogou, nomeDoArquivo, ordenarTakes, paraCsv,
@@ -28,7 +28,7 @@ export interface DadosDoRelatorio {
   /** O boletim de som da diária, na ordem do gravador. */
   sons: Som[];
   /** O cabeçalho do sound report: o gravador e o formato do kit de som. */
-  kitDoSom?: { gravador?: string; formato?: string };
+  kitDoSom?: string;
   hds: HdDeBackup[];
   backups: BackupDeCartao[];
   checksums: ChecksumDeCartao[];
@@ -102,7 +102,7 @@ export async function coletarRelatorio(
     diaria,
     takes: ordenarTakes(takes),
     sons: ordenarSons(sons),
-    kitDoSom: { gravador: estado?.gravador_som, formato: estado?.formato_som },
+    kitDoSom: estado ? kitLegivel(estado) : '',
     hds: [...hds].sort((a, b) => a.ordem - b.ordem),
     backups,
     checksums,

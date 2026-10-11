@@ -8,6 +8,7 @@ import { Campo, Escolha, Rotulo, Segmentado, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { digitarNaClaquete, passoNaClaquete, trocarModoDoPlano } from '../../lib/logagem/claquete';
 import { OPCOES } from '../../lib/logagem/opcoes';
+import { claqueteDaCena } from '../../lib/logagem/decupagem';
 import { ListaDeTakes, useRegistroDeTake } from './RegistroDeTake';
 import { PainelDoTake } from './PainelDoTake';
 import { ODiaNaLogagem } from './ODiaNaLogagem';
@@ -123,7 +124,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
     if (!podeEditar) return;
     void (async () => {
       const atual = (await db.log_estado.get(idDoEstado(diariaId))) ?? estado;
-      await mudarEstado(diariaId, { ...passoNaClaquete(atual, campo, direcao), ...soltarDaDecupagem(campo) });
+      await mudarEstado(diariaId, await comCenaDecupada({ ...passoNaClaquete(atual, campo, direcao), ...soltarDaDecupagem(campo) }));
     })();
   };
 
@@ -135,8 +136,20 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
   const soltarDaDecupagem = (campo: 'cena' | 'plano' | 'take'): Partial<EstadoDaLogagem> =>
     campo === 'take' ? {} : { cena_id: '', plano_id: '' };
 
-  const aoDigitar = (campo: 'cena' | 'plano' | 'take', v: string) =>
-    mudar({ ...digitarNaClaquete(estado, campo, v), ...soltarDaDecupagem(campo) });
+  const aoDigitar = (campo: 'cena' | 'plano' | 'take', v: string) => {
+    if (!podeEditar) return;
+    void (async () => mudar(await comCenaDecupada({ ...digitarNaClaquete(estado, campo, v), ...soltarDaDecupagem(campo) })))();
+  };
+
+  /*
+    A cena mudou à mão: se a decupagem tem uma cena com esse número, a claquete
+    puxa dela o INT/EXT e o DIA/NOITE, e o take sai ligado a ela.
+  */
+  async function comCenaDecupada(m: Partial<EstadoDaLogagem>): Promise<Partial<EstadoDaLogagem>> {
+    if (m.cena === undefined) return m;
+    const cenas = await db.cenas.where('projeto_id').equals(projetoId).toArray();
+    return { ...m, ...claqueteDaCena(cenas, String(m.cena)) };
+  }
 
   /*
     A ORDEM DA TELA é a do pedido de quem opera câmera (16/09/2026):

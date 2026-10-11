@@ -398,7 +398,7 @@ const ROTULO_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { bom: 'BOM',
 function SoundReport({ dados }: { dados: DadosDoRelatorio }) {
   const titulo = TITULO_DO_RELATORIO.som;
   const camera = new Map(dados.takes.map(t => [t.id, t.arquivo]));
-  const kit = [dados.kitDoSom?.gravador, dados.kitDoSom?.formato].filter(Boolean).join(' · ');
+  const kit = dados.kitDoSom || '';
   const PESO_DAS_TRILHAS = 48;
 
   return (

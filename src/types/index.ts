@@ -1490,9 +1490,14 @@ export interface EstadoDaLogagem {
   trilhas_som?: string[];
   /** O rolo do gravador: no Zoom H6, a pasta (`FOLDER02` → "02"). */
   rolo_som?: string;
-  /** Para o cabeçalho do sound report: "Zoom H6", "48 kHz / 24 bits". */
+  /** O equipamento, para o cabeçalho do sound report e o ingest dos WAV. */
   gravador_som?: string;
-  formato_som?: string;
+  /** "48 kHz" */
+  taxa_som?: string;
+  /** "24 bits", "32 bits float" */
+  bits_som?: string;
+  /** "Relógio do gravador" ou o fps do timecode ("23,976", "25"…). */
+  tc_som?: string;
   // Preferências da diária
   revisar_antes: boolean;
   atualizado_em?: number;

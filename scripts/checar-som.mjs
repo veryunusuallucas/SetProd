@@ -61,7 +61,7 @@ try {
     ];
     const dados = {
       projeto: { id: 'p', nome: 'Canção de Outono' }, diaria: { id: 'd', numero: 2, data: '2026-10-31' },
-      takes, sons, kitDoSom: { gravador: 'Zoom H6', formato: '48 kHz / 24 bits' }, hds: [], backups: [], checksums: [],
+      takes, sons, kitDoSom: 'Zoom H6 · 48 kHz · 24 bits', hds: [], backups: [], checksums: [],
       equipe: { diretor: '', fotografia: '', operador: '', produtor: '' },
       fotos: {}, quemLogou: {}, comprovantes: {}, geradoEm: Date.now(),
     };

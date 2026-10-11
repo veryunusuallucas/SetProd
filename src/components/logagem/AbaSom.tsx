@@ -6,10 +6,10 @@ import type { EstadoDaLogagem, Som } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
 import { confirmar } from '../ui/Confirmacao';
-import { Campo, MONO, Rotulo, Segmentado, estiloCampo } from './pecas';
+import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
-  MARCAS, NOTAS_DE_TRILHA, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
+  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, kitLegivel, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
   registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom,
 } from '../../lib/logagem/som';
 import { cenasDoElemento, normalizarCategoria } from '../../lib/decupagem';
@@ -22,22 +22,29 @@ import { cenasDoElemento, normalizarCategoria } from '../../lib/decupagem';
  * take de câmera cria a linha sozinho (a ficha 🎙 do painel do take); aqui se
  * loga o que é só som e se anota o que cada trilha teve.
  */
-export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem }: {
-  projetoId: string;
-  diariaId: string;
-  podeEditar: boolean;
-  departamentoId?: string;
-  quem?: string;
-}) {
+/** O estado da Logagem da diária (onde mora o kit de som), criado se ainda não existe. */
+function useEstado(projetoId: string, diariaId: string, podeEditar: boolean, departamentoId?: string) {
   const estadoSalvo = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
   useEffect(() => {
     if (podeEditar && estadoSalvo === undefined) void garantirEstado(projetoId, diariaId, departamentoId);
   }, [podeEditar, estadoSalvo, projetoId, diariaId, departamentoId]);
   const estado: EstadoDaLogagem = estadoSalvo ?? { ...PADRAO, id: idDoEstado(diariaId), projeto_id: projetoId, diaria_id: diariaId };
+  const mudar = (m: Partial<EstadoDaLogagem>) => { if (podeEditar) void mudarEstado(diariaId, m); };
+  return { estado, mudar };
+}
 
+export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, aoAbrirGravador }: {
+  projetoId: string;
+  diariaId: string;
+  podeEditar: boolean;
+  departamentoId?: string;
+  quem?: string;
+  /** Leva à aba Gravador, onde mora o kit. */
+  aoAbrirGravador: () => void;
+}) {
+  const { estado, mudar } = useEstado(projetoId, diariaId, podeEditar, departamentoId);
   const sons = useLiveQuery(() => db.log_som.where('diaria_id').equals(diariaId).toArray(), [diariaId]) ?? [];
   const bloqueado = !podeEditar;
-  const mudar = (m: Partial<EstadoDaLogagem>) => { if (podeEditar) void mudarEstado(diariaId, m); };
 
   const avulso = (tipo: Som['tipo']) => {
     if (!podeEditar) return;
@@ -86,9 +93,32 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem }
 
       <GradeDoSom sons={sons} podeEditar={podeEditar} />
 
-      <KitDoSom estado={estado} bloqueado={bloqueado} mudar={mudar} projetoId={projetoId} />
+      {/* O kit em uma linha, para conferir sem sair daqui; mexer nele é na aba Gravador. */}
+      <button
+        type="button"
+        onClick={aoAbrirGravador}
+        className="card"
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '56px', padding: '12px 18px', textAlign: 'left', cursor: 'pointer', color: 'var(--text-secondary)' }}
+      >
+        <SlidersHorizontal size={16} style={{ color: 'var(--cor-criativo)', flexShrink: 0 }} />
+        <span className="text-sm" style={{ flex: 1, minWidth: 0 }}>
+          {[kitLegivel(estado) || 'Gravador não informado', estado.rolo_som && `Rolo ${estado.rolo_som}`, trilhasDoSom(estado).join(' · ')].filter(Boolean).join('  ·  ')}
+        </span>
+        <span className="text-xs text-muted">ajustar em Gravador</span>
+      </button>
     </div>
   );
+}
+
+/** Aba Gravador: o equipamento de som e as trilhas — o "kit de câmera" do som. */
+export function AbaGravador({ projetoId, diariaId, podeEditar, departamentoId }: {
+  projetoId: string;
+  diariaId: string;
+  podeEditar: boolean;
+  departamentoId?: string;
+}) {
+  const { estado, mudar } = useEstado(projetoId, diariaId, podeEditar, departamentoId);
+  return <KitDoSom estado={estado} bloqueado={!podeEditar} mudar={mudar} projetoId={projetoId} />;
 }
 
 /* ───────────────────────── A grade ───────────────────────── */
@@ -368,14 +398,23 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
 
   return (
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
-      <Rotulo icone={<SlidersHorizontal size={14} />}>Kit de som</Rotulo>
+      <Rotulo icone={<SlidersHorizontal size={14} />}>Gravador</Rotulo>
+      <Campo rotulo="Aparelho">
+        <SeletorComOutro opcoes={OPCOES_DO_GRAVADOR.aparelho} valor={estado.gravador_som} bloqueado={bloqueado} aoMudar={v => mudar({ gravador_som: v })} />
+      </Campo>
+      <Campo rotulo="Taxa de amostragem">
+        <Escolha nome="som-taxa" opcoes={OPCOES_DO_GRAVADOR.taxa} valor={estado.taxa_som} bloqueado={bloqueado} aoMudar={v => mudar({ taxa_som: v })} />
+      </Campo>
+      <Campo rotulo="Resolução">
+        <Escolha nome="som-bits" opcoes={OPCOES_DO_GRAVADOR.bits} valor={estado.bits_som} bloqueado={bloqueado} aoMudar={v => mudar({ bits_som: v })} />
+      </Campo>
+      <Campo rotulo="Timecode">
+        <Escolha nome="som-tc" opcoes={OPCOES_DO_GRAVADOR.tc} valor={estado.tc_som} bloqueado={bloqueado} aoMudar={v => mudar({ tc_som: v })} />
+      </Campo>
+      <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
+        Sem timecode, o gravador grava a hora do relógio dele — o ingest usa isso para casar o som com o vídeo.
+      </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-        <Campo rotulo="Gravador">
-          <CampoTexto value={estado.gravador_som || ''} aoGravar={v => mudar({ gravador_som: v.trim() })} disabled={bloqueado} placeholder="Zoom H6" style={estiloCampo} />
-        </Campo>
-        <Campo rotulo="Formato">
-          <CampoTexto value={estado.formato_som || ''} aoGravar={v => mudar({ formato_som: v.trim() })} disabled={bloqueado} placeholder="48 kHz / 24 bits" style={estiloCampo} />
-        </Campo>
         <Campo rotulo="Rolo (pasta)">
           <CampoTexto value={estado.rolo_som || ''} aoGravar={v => mudar({ rolo_som: v.trim() })} disabled={bloqueado} placeholder="02" style={{ ...estiloCampo, fontFamily: MONO }} />
         </Campo>

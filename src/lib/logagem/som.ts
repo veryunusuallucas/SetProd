@@ -21,7 +21,21 @@ export const SOM_PADRAO = {
   trilhas: ['Boom', 'Lapela 1', 'Lapela 2'],
 };
 
-export const somJunto = (e: Pick<EstadoDaLogagem, 'som_junto'>) => e.som_junto !== false;
+/** O que o sound report e a aba Gravador oferecem. "Outro" é sempre possível. */
+export const OPCOES_DO_GRAVADOR = {
+  aparelho: ['Zoom H6', 'Zoom H5', 'Zoom H4n', 'Zoom F3', 'Zoom F6', 'Zoom F8n', 'Tascam DR-40X', 'Sound Devices MixPre-6', 'Celular'],
+  taxa: ['44,1 kHz', '48 kHz', '96 kHz'],
+  bits: ['16 bits', '24 bits', '32 bits float'],
+  tc: ['Relógio do gravador', '23,976', '24', '25', '29,97', '30'],
+} as const;
+
+/** "Zoom H6 · 48 kHz · 24 bits · TC 24" — o cabeçalho do sound report. */
+export function kitLegivel(e: Pick<EstadoDaLogagem, 'gravador_som' | 'taxa_som' | 'bits_som' | 'tc_som'>): string {
+  const tc = e.tc_som && /\d/.test(e.tc_som) ? `TC ${e.tc_som} fps` : '';
+  return [e.gravador_som, e.taxa_som, e.bits_som, tc].filter(Boolean).join(' · ');
+}
+
+export const somJunto =(e: Pick<EstadoDaLogagem, 'som_junto'>) => e.som_junto !== false;
 export const arquivoDoSom = (e: Pick<EstadoDaLogagem, 'arquivo_som'>) => e.arquivo_som?.trim() || SOM_PADRAO.arquivo;
 export const trilhasDoSom = (e: Pick<EstadoDaLogagem, 'trilhas_som'>) =>
   e.trilhas_som?.length ? e.trilhas_som : SOM_PADRAO.trilhas;

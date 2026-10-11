@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
-  Clapperboard, Camera, Mic, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays, AlertTriangle,
+  Clapperboard, Camera, Mic, AudioLines, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays, AlertTriangle,
 } from 'lucide-react';
 import { db } from '../db/db';
 import { useRole } from '../hooks/useRole';
@@ -13,7 +13,7 @@ import { podeEditarLogagem, departamentoDaFotografia, visaoPadraoDeQuemVe } from
 import { AbaCamera } from '../components/logagem/AbaCamera';
 import { AbaLogagem } from '../components/logagem/AbaLogagem';
 import { AbaBackup } from '../components/logagem/AbaBackup';
-import { AbaSom } from '../components/logagem/AbaSom';
+import { AbaGravador, AbaSom } from '../components/logagem/AbaSom';
 import { AbaIngest } from '../components/logagem/AbaIngest';
 import { AbaConfig } from '../components/logagem/AbaConfig';
 import { pedirUmaVez } from '../lib/logagem/aparelho';
@@ -37,16 +37,67 @@ import { diaDaSemana } from '../lib/formato';
  * componente, em `components/logagem/`.
  */
 
-type Aba = 'logagem' | 'som' | 'camera' | 'backup' | 'ingest' | 'config';
+type Aba = 'logagem' | 'som' | 'camera' | 'gravador' | 'backup' | 'ingest' | 'config';
 
-const ABAS: { id: Aba; nome: string; icone: typeof Camera }[] = [
-  { id: 'logagem', nome: 'Logagem', icone: Clapperboard },
-  { id: 'som', nome: 'Som', icone: Mic },
-  { id: 'camera', nome: 'Câmera', icone: Camera },
-  { id: 'backup', nome: 'Backup', icone: HardDrive },
-  { id: 'ingest', nome: 'Ingest', icone: FileInput },
-  { id: 'config', nome: 'Config', icone: Settings2 },
+/**
+ * Duas faixas (Lucas, 11/10/2026): em cima o que se loga no set — o vídeo e o
+ * som —; embaixo, menor, o equipamento e o que é de antes e depois do dia.
+ */
+interface DefinicaoDeAba { id: Aba; nome: string; icone: typeof Camera; grupo: 'set' | 'apoio' }
+const ABAS: DefinicaoDeAba[] = [
+  { id: 'logagem', nome: 'Vídeo', icone: Clapperboard, grupo: 'set' },
+  { id: 'som', nome: 'Som', icone: Mic, grupo: 'set' },
+  { id: 'camera', nome: 'Câmera', icone: Camera, grupo: 'apoio' },
+  { id: 'gravador', nome: 'Gravador', icone: AudioLines, grupo: 'apoio' },
+  { id: 'backup', nome: 'Backup', icone: HardDrive, grupo: 'apoio' },
+  { id: 'ingest', nome: 'Ingest', icone: FileInput, grupo: 'apoio' },
+  { id: 'config', nome: 'Config', icone: Settings2, grupo: 'apoio' },
 ];
+
+/**
+ * Um botão de aba. O marcador DESLIZA até a aba escolhida (`layoutId`): é o
+ * deslizar que faz a troca parecer um lugar, e não um piscar. Cada faixa tem o
+ * seu marcador, para ele não voar de uma linha à outra.
+ */
+function BotaoDeAba({ aba, ativa, grande, reduzido, aoEscolher }: {
+  aba: DefinicaoDeAba;
+  ativa: boolean;
+  grande?: boolean;
+  reduzido: boolean;
+  aoEscolher: () => void;
+}) {
+  const Icone = aba.icone;
+  return (
+    <button
+      role="tab"
+      aria-selected={ativa}
+      onClick={e => {
+        aoEscolher();
+        // No celular a faixa rola: a aba escolhida não pode ficar meio escondida na borda.
+        e.currentTarget.scrollIntoView({ behavior: reduzido ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
+      }}
+      style={{
+        position: 'relative', flex: '1 0 auto',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        padding: grande ? '16px' : '10px 14px', minHeight: '44px', border: grande ? 'none' : '1px solid var(--border-light)',
+        borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer',
+        fontWeight: 700, fontSize: grande ? '15px' : '13px',
+        color: ativa ? 'var(--text-primary)' : 'var(--text-muted)',
+      }}
+    >
+      {ativa && (
+        <motion.span
+          layoutId={`logagem-aba-${aba.grupo}`}
+          transition={reduzido ? { duration: 0 } : MOLA}
+          style={{ position: 'absolute', inset: grande ? 0 : -1, borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-active)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}
+        />
+      )}
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Icone size={grande ? 18 : 15} /> {aba.nome}
+      </span>
+    </button>
+  );
+}
 
 const CHAVE_ABA = 'setprod:logagem:aba';
 
@@ -227,7 +278,7 @@ export default function LogagemPage() {
           <h1 className="text-xl font-bold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Clapperboard size={24} color="var(--cor-criativo)" /> Logagem
           </h1>
-          <p className="text-sm text-secondary">O boletim de câmera da diária: takes, cartões e backup</p>
+          <p className="text-sm text-secondary">Os boletins de vídeo e som da diária: takes, arquivos, cartões e backup</p>
         </div>
 
         {ordenadas.length > 0 && (
@@ -296,42 +347,23 @@ export default function LogagemPage() {
             mas não diria DE ONDE você veio — e é o deslizar que faz a troca de
             aba parecer um lugar, e não um piscar.
           */}
-          <div className="tab-strip" role="tablist" aria-label="Partes da Logagem" style={{ display: 'flex', gap: '4px', padding: '4px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)' }}>
-            {ABAS.map(a => {
-              const ativa = a.id === aba;
-              const Icone = a.icone;
-              return (
-                <button
-                  key={a.id}
-                  role="tab"
-                  aria-selected={ativa}
-                  onClick={e => {
-                    setAba(a.id);
-                    // No celular a faixa rola: a aba escolhida não pode ficar
-                    // meio escondida na borda, com o marcador fora da tela.
-                    e.currentTarget.scrollIntoView({ behavior: reduzido ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
-                  }}
-                  style={{
-                    position: 'relative', flex: '1 0 auto',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    padding: '14px', border: 'none', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer',
-                    fontWeight: 700, fontSize: '13px',
-                    color: ativa ? 'var(--text-primary)' : 'var(--text-muted)',
-                  }}
-                >
-                  {ativa && (
-                    <motion.span
-                      layoutId="logagem-aba-ativa"
-                      transition={reduzido ? { duration: 0 } : MOLA}
-                      style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-active)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}
-                    />
-                  )}
-                  <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Icone size={16} /> {a.nome}
-                  </span>
-                </button>
-              );
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* O trabalho do set — o que se toca com a câmera rodando. */}
+            <div className="tab-strip" role="tablist" aria-label="No set" style={{ display: 'flex', gap: '4px', padding: '4px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)' }}>
+              {ABAS.filter(a => a.grupo === 'set').map(a => (
+                <BotaoDeAba key={a.id} aba={a} ativa={a.id === aba} grande reduzido={reduzido} aoEscolher={() => setAba(a.id)} />
+              ))}
+            </div>
+            {/*
+              O apoio — equipamento, cópia, ingest e ajustes — numa faixa menor
+              embaixo: é do começo e do fim do dia, e não pode roubar o lugar
+              dos dois de cima.
+            */}
+            <div className="tab-strip" role="tablist" aria-label="Equipamento e arquivos" style={{ display: 'flex', gap: '4px' }}>
+              {ABAS.filter(a => a.grupo === 'apoio').map(a => (
+                <BotaoDeAba key={a.id} aba={a} ativa={a.id === aba} reduzido={reduzido} aoEscolher={() => setAba(a.id)} />
+              ))}
+            </div>
           </div>
 
           {/*
@@ -358,6 +390,7 @@ export default function LogagemPage() {
           >
             <ConteudoDaAba
               aba={aba}
+              aoTrocarAba={setAba}
               diariaData={diaria?.data}
               projetoId={projetoId}
               diariaId={diariaId}
@@ -401,9 +434,10 @@ function SemDiaria({ projetoId }: { projetoId: string }) {
 /** O que vem em cada aba. Por enquanto, a promessa — escrita para quem vai usar. */
 function ConteudoDaAba({
   aba, diariaData, projetoId, diariaId, podeEditar, departamentoId, densidade, aoTrocarDensidade, quem,
-  administra, liberados, perfis, departamentos, usuarioId,
+  administra, liberados, perfis, departamentos, usuarioId, aoTrocarAba,
 }: {
   aba: Aba;
+  aoTrocarAba: (aba: Aba) => void;
   diariaData?: string;
   projetoId: string;
   diariaId: string;
@@ -436,7 +470,10 @@ function ConteudoDaAba({
     return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
   }
   if (aba === 'som' && diariaId) {
-    return <AbaSom projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;
+    return <AbaSom projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} aoAbrirGravador={() => aoTrocarAba('gravador')} />;
+  }
+  if (aba === 'gravador' && diariaId) {
+    return <AbaGravador projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
   }
   if (aba === 'backup' && diariaId) {
     return <AbaBackup projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;

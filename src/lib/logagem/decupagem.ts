@@ -85,6 +85,27 @@ export function planosDaDiaria(dados: {
  *   querer lê-la;
  * - os ids de cena e plano, para o take saber de onde veio.
  */
+/** INT/EXT e DIA/NOITE da cena decupada. O que a cena não diz, a claquete mantém. */
+export function contextoDaCena(cena: Pick<Cena, 'ambiente' | 'periodo'>): Partial<EstadoDaLogagem> {
+  const m: Partial<EstadoDaLogagem> = {};
+  if (cena.ambiente) m.ambiente = cena.ambiente === 'ext' ? 'EXT' : 'INT';
+  if (cena.periodo) m.luz = cena.periodo === 'noite' ? 'NOITE' : 'DIA';
+  return m;
+}
+
+/**
+ * A cena decupada com este número, quando a claquete muda à mão.
+ *
+ * Trocar para a cena 4 no + ou digitando é o mesmo que escolher a cena 4 na
+ * decupagem: a claquete já sabe se ela é EXT e NOITE, e o take sai ligado a ela.
+ * Número que a decupagem não tem (cena nova, inserida no set) não muda nada.
+ */
+export function claqueteDaCena(cenas: Pick<Cena, 'id' | 'numero' | 'ambiente' | 'periodo'>[], numero: string): Partial<EstadoDaLogagem> {
+  const alvo = String(numero).trim().toUpperCase();
+  const cena = alvo ? cenas.find(c => String(c.numero).trim().toUpperCase() === alvo) : undefined;
+  return cena ? { cena_id: cena.id, ...contextoDaCena(cena) } : {};
+}
+
 export function claqueteDoPlano(
   item: PlanoDoDia,
   estado: Pick<EstadoDaLogagem, 'abertura' | 'obs'>,
@@ -99,8 +120,7 @@ export function claqueteDoPlano(
     plano_id: plano.id,
   };
 
-  if (cena.ambiente) mudanca.ambiente = cena.ambiente === 'ext' ? 'EXT' : 'INT';
-  if (cena.periodo) mudanca.luz = cena.periodo === 'noite' ? 'NOITE' : 'DIA';
+  Object.assign(mudanca, contextoDaCena(cena));
 
   if (plano.lente?.trim()) {
     const lente = acharLente(kitDeLentes, plano.lente);
