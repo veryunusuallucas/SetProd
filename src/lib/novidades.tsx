@@ -9,7 +9,7 @@ import {
   Camera, HardDrive, FileInput, Target, Image, Save,
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
   CloudCheck, SquareRoundCorner, Upload, AppWindow,
-  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun, Star, Coffee, Heart, GripVertical, AtSign, UserX,
+  Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun, Star, Coffee, Heart, GripVertical, AtSign, UserX, ArrowUpDown, Minus,
 } from 'lucide-react';
 
 /**
@@ -227,6 +227,52 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '0.21.1',
+    resumo: <>Saiu da primeira diária da Canção de Outono: o dia de verdade nem sempre segue o plano, e agora o app acompanha.</>,
+    grupos: [
+      {
+        id: 'ordem',
+        titulo: 'Quando o set muda a ordem',
+        resumo: '',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <ArrowUpDown size={20} />,
+            titulo: 'A cena entra no lugar da outra',
+            texto: 'Tocar "começou" numa cena enquanto uma anterior ainda não começou pergunta se ela entrou no lugar da outra. Com o sim, as duas trocam de lugar e os horários do resto do dia acompanham — o horário travado fica no lugar, com quem entrou nele. No fechamento, dá para arrastar as cenas para a ordem em que foram gravadas.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'O DPR diz quem subiu e quem desceu',
+            texto: 'O relatório sai na ordem em que o dia foi gravado, com "↑ subiu 2" ou "↓ desceu 1" em cada cena que mudou de lugar. A OD publicada continua guardada em Documentos, como foi planejada.',
+          },
+        ],
+      },
+      {
+        id: 'logagem',
+        titulo: 'Logagem',
+        resumo: '',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <CheckSquare size={20} />,
+            titulo: 'O boletim de câmera ajuda a fechar o dia',
+            texto: 'Se a Logagem tem take bom de todos os planos de uma cena, a linha do dia oferece "Logagem ✓ · marcar gravada". No fechamento, cada cena sem marcação mostra quantos planos rodaram e destaca o status sugerido, com um botão para marcar todas de uma vez.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Minus size={20} />,
+            titulo: 'Take neutro',
+            texto: 'Um quinto botão, embaixo dos quatro de sempre, para o take que não é nem bom nem ruim — é só um take. Conta como plano rodado e sai nos relatórios.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '0.21.0',
     resumo: <>A Ordem do Dia agora sai igual à do set — e o elenco, os planos e o cadastro da equipe ficaram mais fáceis de acertar.</>,
