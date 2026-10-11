@@ -40,7 +40,7 @@ try {
   assert.equal(claqueteDoSom(w), 'Cena 4 · wild track');
 
   const r = montarSom({ ...kit, trilhas_som: ['Boom', 'Lapela Nicole'] }, 'room_tone', 3);
-  assert.equal(resumoDoSom([{ ...s1, marca: 'bom' }, w, { ...r, marca: 'fs' }]), '3 arquivos · 1 bom · 1 wild · 1 room tone · 1 false start');
+  assert.equal(resumoDoSom([{ ...s1, marca: 'hero' }, w, { ...r, marca: 'fs' }]), '3 arquivos · 1 HERO · 1 wild · 1 room tone · 1 false start');
   assert.equal(resumoDoSom([]), '');
   assert.deepEqual(trechosDoSom([s1, w, r]).map(t => t.sons.length), [2, 1], 'a lapela trocou de ator: trecho novo');
 
@@ -48,8 +48,8 @@ try {
   assert.equal(alternarNota('vento', 'roupa'), 'vento, roupa');
   assert.equal(alternarNota('vento, roupa', 'Vento'), 'roupa', 'tocar de novo tira');
 
-  // O HERO da câmera nasce como o take bom do som.
-  assert.equal(montarSom(kit, 'take', 4, { take: { id: 't9', take: 1, status: 'HERO' } }).marca, 'bom');
+  // O HERO da câmera nasce HERO no som.
+  assert.equal(montarSom(kit, 'take', 4, { take: { id: 't9', take: 1, status: 'HERO' } }).marca, 'hero');
   assert.equal(montarSom(kit, 'take', 5, { take: { id: 't9', take: 1, status: 'OK' } }).marca, undefined);
 
   // O nome do primeiro arquivo pelo gravador, e a data do F3 trocando com o dia.
@@ -86,7 +86,7 @@ try {
     const takes = [tk('t1', 'B', 1, 'A001C001'), tk('t2', 'B', 2, 'A001C002'), tk('t3', 'C', 1, 'A001C003')];
     const sons = [
       { ...montarSom({ ...kit, arquivo_som: 'ZOOM0001', trilhas_som: ['Boom', 'Lapela Alice', 'Lapela Bia'] }, 'take', 1, { take: takes[0] }), marca: 'fs' },
-      { ...montarSom({ ...kit, arquivo_som: 'ZOOM0002', trilhas_som: ['Boom', 'Lapela Alice', 'Lapela Bia'] }, 'take', 2, { take: takes[1] }), marca: 'bom', trilhas: [{ nome: 'Boom' }, { nome: 'Lapela Alice', nota: 'roupa' }, { nome: 'Lapela Bia' }], obs: 'avião no fim' },
+      { ...montarSom({ ...kit, arquivo_som: 'ZOOM0002', trilhas_som: ['Boom', 'Lapela Alice', 'Lapela Bia'] }, 'take', 2, { take: takes[1] }), marca: 'hero', trilhas: [{ nome: 'Boom' }, { nome: 'Lapela Alice', nota: 'roupa' }, { nome: 'Lapela Bia' }], obs: 'avião no fim' },
       { ...montarSom({ ...kit, arquivo_som: 'ZOOM0003', trilhas_som: ['Boom', 'Lapela Nicole'] }, 'room_tone', 3) },
     ];
     const dados = {

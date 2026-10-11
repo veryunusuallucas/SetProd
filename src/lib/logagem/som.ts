@@ -71,10 +71,12 @@ export const takeLevaSom = (e: Pick<EstadoDaLogagem, 'som_junto' | 'audio'>) => 
 
 export const ROTULO_DO_TIPO: Record<Som['tipo'], string> = { take: 'Take', wild: 'Wild track', room_tone: 'Room tone' };
 
-export const MARCAS: { id: NonNullable<Som['marca']>; curto: string; nome: string }[] = [
-  { id: 'bom', curto: '◯', nome: 'Take bom' },
-  { id: 'fs', curto: 'FS', nome: 'False start' },
-  { id: 'ng', curto: 'NG', nome: 'No good' },
+/** As marcas, na ordem dos botões. `status` é o da câmera com a mesma cor. */
+export const MARCAS: { id: NonNullable<Som['marca']>; curto: string; nome: string; status: 'OK' | 'NG' | 'HERO' | 'RECINV' }[] = [
+  { id: 'ok', curto: 'OK', nome: 'OK', status: 'OK' },
+  { id: 'ng', curto: 'NG', nome: 'NG', status: 'NG' },
+  { id: 'hero', curto: 'HERO', nome: 'HERO', status: 'HERO' },
+  { id: 'fs', curto: 'FS', nome: 'False start', status: 'RECINV' },
 ];
 
 /** Notas que o som mais escreve numa trilha. */
@@ -103,8 +105,8 @@ export function montarSom(
     arquivo: arquivoDoSom(estado),
     rolo: estado.rolo_som?.trim() || undefined,
     trilhas: trilhasDoSom(estado).map(nome => ({ nome })),
-    // O HERO da câmera é o take escolhido: o som dele nasce marcado como o bom.
-    marca: take?.status === 'HERO' ? 'bom' : undefined,
+    // O HERO da câmera é o take escolhido: o som dele nasce HERO também.
+    marca: take?.status === 'HERO' ? 'hero' : undefined,
     take_id: take?.id,
     hora: horaDeAgora(agora),
     ordem,
@@ -125,19 +127,22 @@ export async function registrarSom(estado: EstadoDaLogagem, tipo: Som['tipo'], q
 
 /**
  * O take de câmera virou HERO depois (substituído ou editado): o som casado
- * sem marca vira o bom. Marca que alguém já pôs à mão (FS, NG) fica — o som
+ * sem marca vira HERO. Marca que alguém já pôs à mão (FS, NG) fica — o som
  * pode ter estragado justo no take que a câmera adorou.
  */
 export async function somAcompanhaHero(takeId: string, status?: string) {
   if (status !== 'HERO') return;
   const casados = await db.log_som.where('take_id').equals(takeId).toArray();
-  for (const s of casados) if (!s.marca) await db.log_som.update(s.id, { marca: 'bom' });
+  for (const s of casados) if (!s.marca) await db.log_som.update(s.id, { marca: 'hero' });
 }
 
 export const mudarSom = (id: string, m: Partial<Pick<Som, 'marca' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);
 export const apagarSom = (id: string) => db.log_som.delete(id);
 
 export const ordenarSons = (sons: Som[]) => [...sons].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+/** O arquivo mais recente da diária — o que os botões do Som marcam. */
+export const ultimoSom = (sons: Som[]) => sons.reduce<Som | undefined>((u, s) => (!u || (s.ordem ?? 0) > (u.ordem ?? 0) ? s : u), undefined);
 
 /** Acrescenta ou tira uma nota rápida do texto da trilha ("vento, roupa"). */
 export function alternarNota(texto: string | undefined, nota: string): string {
@@ -171,18 +176,20 @@ export function claqueteDoSom(s: Pick<Som, 'tipo' | 'cena' | 'plano' | 'take'>):
   return `${cena}-${s.plano} / Tk${s.take ?? ''}`;
 }
 
-/** "12 arquivos · 3 bons · 2 wild · 1 room tone · 1 false start" */
+/** "12 arquivos · 2 HERO · 5 OK · 2 wild · 1 room tone · 1 false start · 1 NG" */
 export function resumoDoSom(sons: Som[]): string {
   if (!sons.length) return '';
   const n = (f: (s: Som) => boolean) => sons.filter(f).length;
-  const bons = n(s => s.marca === 'bom');
+  const hero = n(s => s.marca === 'hero');
+  const ok = n(s => s.marca === 'ok');
   const wild = n(s => s.tipo === 'wild');
   const room = n(s => s.tipo === 'room_tone');
   const fs = n(s => s.marca === 'fs');
   const ng = n(s => s.marca === 'ng');
   return [
     `${sons.length} arquivo${sons.length === 1 ? '' : 's'}`,
-    bons && `${bons} bo${bons === 1 ? 'm' : 'ns'}`,
+    hero && `${hero} HERO`,
+    ok && `${ok} OK`,
     wild && `${wild} wild`,
     room && `${room} room tone`,
     fs && `${fs} false start`,

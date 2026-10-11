@@ -384,8 +384,8 @@ function audioDosTakes(sons: Som[]): Map<string, string> {
   return m;
 }
 
-const COR_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { bom: VERDE, fs: '#b8620b', ng: VERMELHO };
-const ROTULO_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { bom: 'BOM', fs: 'FS', ng: 'NG' };
+const COR_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { ok: VERDE, hero: '#b8620b', fs: '#9a7400', ng: VERMELHO };
+const ROTULO_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { ok: 'OK', hero: 'HERO', fs: 'FS', ng: 'NG' };
 
 /**
  * O sound report, no desenho do papel do som: uma linha por arquivo do

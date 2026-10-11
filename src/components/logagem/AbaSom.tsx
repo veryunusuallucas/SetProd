@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Mic, Wind, Volume2, Trash2, Plus, X, SlidersHorizontal, Users } from 'lucide-react';
+import { Mic, Wind, Volume2, Trash2, Plus, X, SlidersHorizontal, Users, Check, Scissors } from 'lucide-react';
+import { COR_DO_STATUS } from '../../lib/logagem/takes';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, Som } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
@@ -10,7 +11,7 @@ import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, estiloCampo 
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
   MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, kitLegivel, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
-  registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom,
+  registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom, claqueteDoSom,
 } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
 
@@ -45,6 +46,7 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
   const { estado, mudar } = useEstado(projetoId, diariaId, podeEditar, departamentoId);
   const sons = useLiveQuery(() => db.log_som.where('diaria_id').equals(diariaId).toArray(), [diariaId]) ?? [];
   const bloqueado = !podeEditar;
+  const ultimo = ultimoSom(sons);
 
   const avulso = (tipo: Som['tipo']) => {
     if (!podeEditar) return;
@@ -57,14 +59,14 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)', containerType: 'inline-size' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-          <Rotulo icone={<Mic size={14} />}>Só som</Rotulo>
+          <Rotulo icone={<Mic size={14} />}>Som</Rotulo>
           <span className="text-xs text-muted">
             Próximo: <b style={{ fontFamily: MONO, color: 'var(--text-primary)' }}>{arquivoDoSom(estado)}</b> · Cena {estado.cena}
           </span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
           {([['wild', Wind], ['room_tone', Volume2]] as const).map(([tipo, Icone]) => (
             <BotaoTatil
               key={tipo}
@@ -81,7 +83,22 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
               <Icone size={20} /> {ROTULO_DO_TIPO[tipo]}
             </BotaoTatil>
           ))}
+          <BotaoDaMarca marca="fs" ultimo={ultimo} bloqueado={bloqueado} grande={false} />
         </div>
+
+        {/*
+          OK, NG e HERO, com as cores da câmera, marcam o arquivo que acabou de
+          gravar — o take de câmera já o criou. Tocar de novo tira a marca; a
+          grade abaixo corrige qualquer um depois.
+        */}
+        <div className="status-grade" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          {(['ok', 'ng', 'hero'] as const).map(m => <BotaoDaMarca key={m} marca={m} ultimo={ultimo} bloqueado={bloqueado} grande />)}
+        </div>
+        <p className="text-xs text-muted" style={{ margin: '-4px 0 0' }}>
+          {ultimo
+            ? <>Marcam o último arquivo: <b style={{ fontFamily: MONO, color: 'var(--text-primary)' }}>{ultimo.arquivo}</b> · {claqueteDoSom(ultimo)}</>
+            : 'Os botões marcam o último arquivo gravado — ainda não há nenhum.'}
+        </p>
         <Segmentado
           nome="logagem-som-junto"
           opcoes={[{ id: 'junto', nome: 'Take leva som' }, { id: 'sem', nome: 'Câmera sem som' }]}
@@ -119,6 +136,46 @@ export function AbaGravador({ projetoId, diariaId, podeEditar, departamentoId }:
 }) {
   const { estado, mudar } = useEstado(projetoId, diariaId, podeEditar, departamentoId);
   return <KitDoSom estado={estado} bloqueado={!podeEditar} mudar={mudar} projetoId={projetoId} />;
+}
+
+/** Um botão de marca para o último arquivo. Grande, com a cor cheia da câmera; pequeno, como os do "Só som". */
+function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable<Som['marca']>; ultimo?: Som; bloqueado: boolean; grande: boolean }) {
+  const m = MARCAS.find(x => x.id === marca)!;
+  const ativa = ultimo?.marca === marca;
+  const desligado = bloqueado || !ultimo;
+  const marcar = () => { if (ultimo && !bloqueado) void mudarSom(ultimo.id, { marca: ativa ? undefined : marca }); };
+  if (grande) {
+    return (
+      <button
+        type="button"
+        className="botao-status"
+        data-status={m.status}
+        aria-pressed={ativa}
+        disabled={desligado}
+        onClick={marcar}
+        style={{ minHeight: '64px', boxShadow: ativa ? 'inset 0 0 0 3px #0b0b0b' : undefined }}
+      >
+        {ativa ? <Check size={20} /> : null}{m.nome}
+      </button>
+    );
+  }
+  return (
+    <BotaoTatil
+      onClick={marcar}
+      disabled={desligado}
+      escala={0.97}
+      aria-pressed={ativa}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minHeight: '64px',
+        borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '16px',
+        border: `1px solid ${ativa ? COR_DO_STATUS[m.status] : 'var(--border-color)'}`,
+        backgroundColor: ativa ? `color-mix(in srgb, ${COR_DO_STATUS[m.status]} 18%, transparent)` : 'var(--bg-primary)',
+        color: 'var(--text-primary)', cursor: desligado ? 'default' : 'pointer', opacity: desligado ? 0.5 : 1,
+      }}
+    >
+      <Scissors size={18} /> {m.nome}
+    </BotaoTatil>
+  );
 }
 
 /* ───────────────────────── A grade ───────────────────────── */
@@ -209,7 +266,7 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                           <div role="group" aria-label={`Marca de ${s.arquivo}`} style={{ display: 'flex', gap: '4px' }}>
                             {MARCAS.map(m => {
                               const ativa = s.marca === m.id;
-                              const cor = m.id === 'bom' ? 'var(--color-success)' : m.id === 'fs' ? 'var(--color-warning)' : 'var(--color-danger)';
+                              const cor = COR_DO_STATUS[m.status];
                               return (
                                 <button
                                   key={m.id}
@@ -219,7 +276,7 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                                   disabled={!podeEditar}
                                   onClick={() => marcar(s, m.id)}
                                   style={{
-                                    minWidth: '44px', minHeight: '44px', borderRadius: 'var(--radius-sm)', fontSize: '13px', fontWeight: 800,
+                                    minWidth: '44px', minHeight: '44px', padding: '0 8px', borderRadius: 'var(--radius-sm)', fontSize: '13px', fontWeight: 800,
                                     border: `1px solid ${ativa ? cor : 'var(--border-light)'}`,
                                     backgroundColor: ativa ? `color-mix(in srgb, ${cor} 18%, transparent)` : 'transparent',
                                     color: ativa ? 'var(--text-primary)' : 'var(--text-muted)', cursor: podeEditar ? 'pointer' : 'default',

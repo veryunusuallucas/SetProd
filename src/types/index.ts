@@ -1603,10 +1603,11 @@ export interface Som {
   arquivo: string;
   rolo?: string;
   /**
-   * As marcas do iXML, que a montagem entende: `bom` é o CIRCLED (o take
-   * escolhido), `fs` o FALSE_START, `ng` o NO_GOOD. Sem marca = só um take.
+   * A opinião sobre o arquivo, com os nomes da câmera (Lucas, 11/10/2026):
+   * OK, NG e HERO, mais o `fs` (false start). No iXML, HERO é o CIRCLED,
+   * NG o NO_GOOD e FS o FALSE_START. Sem marca = ninguém opinou ainda.
    */
-  marca?: 'bom' | 'fs' | 'ng';
+  marca?: 'ok' | 'ng' | 'hero' | 'fs';
   /** Nota vazia = trilha limpa. */
   trilhas: { nome: string; nota?: string }[];
   obs?: string;

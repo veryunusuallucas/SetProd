@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Check, X, Star, RefreshCw, Minus, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
+import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
@@ -34,8 +34,7 @@ const BOTOES: { status: StatusTake; icone: typeof Check; atalho?: string }[] = [
   { status: 'NG', icone: X, atalho: 'Shift+Espaço' },
   { status: 'HERO', icone: Star },
   { status: 'RECINV', icone: RefreshCw },
-  // Embaixo dos quatro, numa faixa mais baixa: os quatro não mudam de lugar.
-  { status: 'NEUTRO', icone: Minus },
+  // O NEUTRO saiu dos botões (Lucas, 11/10/2026). Take neutro antigo continua nos relatórios.
 ];
 
 export interface Registro {
