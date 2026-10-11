@@ -6,9 +6,14 @@ import { idDoEstado } from './estado';
 /**
  * O boletim de som (PLANO-boletim-de-som, Fase 1).
  *
- * O "kit de som" mora no estado da Logagem: gravador, próximo arquivo e o nome
- * das trilhas. Por isso herda sozinho da diária anterior (`herdarEstado`), como
- * a câmera — e o arquivo continua de onde parou.
+ * O desenho segue o sound report de papel e o iXML dos gravadores (pesquisa
+ * de 11/10/2026): uma linha por ARQUIVO do gravador, uma coluna por TRILHA com
+ * o nome no cabeçalho, e as marcas que a montagem lê — take bom (circled),
+ * false start e no good.
+ *
+ * O "kit de som" mora no estado da Logagem: gravador, rolo, próximo arquivo e
+ * o nome das trilhas. Por isso herda sozinho da diária anterior
+ * (`herdarEstado`), como a câmera — e o arquivo continua de onde parou.
  */
 
 export const SOM_PADRAO = {
@@ -21,8 +26,19 @@ export const arquivoDoSom = (e: Pick<EstadoDaLogagem, 'arquivo_som'>) => e.arqui
 export const trilhasDoSom = (e: Pick<EstadoDaLogagem, 'trilhas_som'>) =>
   e.trilhas_som?.length ? e.trilhas_som : SOM_PADRAO.trilhas;
 
+/** O take de câmera vai criar som? Não quando o som está desligado ou o áudio é MOS. */
+export const takeLevaSom = (e: Pick<EstadoDaLogagem, 'som_junto' | 'audio'>) => somJunto(e) && e.audio !== 'MOS';
+
 export const ROTULO_DO_TIPO: Record<Som['tipo'], string> = { take: 'Take', wild: 'Wild track', room_tone: 'Room tone' };
-export const ROTULO_DO_STATUS_DO_SOM: Record<Som['status'], string> = { bom: 'Bom', problema: 'Com problema', descartar: 'Descartar' };
+
+export const MARCAS: { id: NonNullable<Som['marca']>; curto: string; nome: string }[] = [
+  { id: 'bom', curto: '◯', nome: 'Take bom' },
+  { id: 'fs', curto: 'FS', nome: 'False start' },
+  { id: 'ng', curto: 'NG', nome: 'No good' },
+];
+
+/** Notas que o som mais escreve numa trilha. */
+export const NOTAS_DE_TRILHA = ['vento', 'clipou', 'roupa', 'ruído', 'sem sinal', 'baixo', 'fora'];
 
 /** O registro de som, a partir do que está na claquete agora. */
 export function montarSom(
@@ -45,7 +61,7 @@ export function montarSom(
     plano: tipo === 'take' ? String(estado.plano) : '',
     take: tipo === 'take' ? take?.take ?? (Number(estado.take) || 1) : undefined,
     arquivo: arquivoDoSom(estado),
-    status: 'bom',
+    rolo: estado.rolo_som?.trim() || undefined,
     trilhas: trilhasDoSom(estado).map(nome => ({ nome })),
     take_id: take?.id,
     hora: horaDeAgora(agora),
@@ -65,31 +81,58 @@ export async function registrarSom(estado: EstadoDaLogagem, tipo: Som['tipo'], q
   return som;
 }
 
-export const mudarSom = (id: string, m: Partial<Pick<Som, 'status' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);
+export const mudarSom = (id: string, m: Partial<Pick<Som, 'marca' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);
 export const apagarSom = (id: string) => db.log_som.delete(id);
 
 export const ordenarSons = (sons: Som[]) => [...sons].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
-/** "Cena 4 · 2B · take 3", "Cena 4 · wild track" */
+/** Acrescenta ou tira uma nota rápida do texto da trilha ("vento, roupa"). */
+export function alternarNota(texto: string | undefined, nota: string): string {
+  const partes = (texto || '').split(',').map(p => p.trim()).filter(Boolean);
+  const tem = partes.some(p => p.toLowerCase() === nota.toLowerCase());
+  return (tem ? partes.filter(p => p.toLowerCase() !== nota.toLowerCase()) : [...partes, nota]).join(', ');
+}
+
+/**
+ * Os arquivos em trechos com as mesmas trilhas e o mesmo rolo, na ordem.
+ *
+ * É o cabeçalho de colunas do papel: quando a lapela 2 troca de ator no meio
+ * do dia, abre um trecho novo com os nomes novos — sem isso a coluna "Lapela
+ * Alice" de cima estaria mentindo para as linhas de baixo.
+ */
+export function trechosDoSom(sons: Som[]): { trilhas: string[]; rolo?: string; sons: Som[] }[] {
+  const trechos: { trilhas: string[]; rolo?: string; sons: Som[] }[] = [];
+  for (const som of sons) {
+    const nomes = som.trilhas.map(t => t.nome);
+    const ultimo = trechos[trechos.length - 1];
+    if (ultimo && ultimo.rolo === som.rolo && ultimo.trilhas.join('|') === nomes.join('|')) ultimo.sons.push(som);
+    else trechos.push({ trilhas: nomes, rolo: som.rolo, sons: [som] });
+  }
+  return trechos;
+}
+
+/** "4-B / Tk3", "Cena 4 · wild track" */
 export function claqueteDoSom(s: Pick<Som, 'tipo' | 'cena' | 'plano' | 'take'>): string {
   const cena = String(s.cena ?? '').trim();
   if (s.tipo !== 'take') return [cena && `Cena ${cena}`, ROTULO_DO_TIPO[s.tipo].toLowerCase()].filter(Boolean).join(' · ');
   return `${cena}-${s.plano} / Tk${s.take ?? ''}`;
 }
 
-/** "12 arquivos · 2 wild · 1 room tone · 1 com problema" */
+/** "12 arquivos · 3 bons · 2 wild · 1 room tone · 1 false start" */
 export function resumoDoSom(sons: Som[]): string {
   if (!sons.length) return '';
   const n = (f: (s: Som) => boolean) => sons.filter(f).length;
+  const bons = n(s => s.marca === 'bom');
   const wild = n(s => s.tipo === 'wild');
   const room = n(s => s.tipo === 'room_tone');
-  const problema = n(s => s.status === 'problema');
-  const descartar = n(s => s.status === 'descartar');
+  const fs = n(s => s.marca === 'fs');
+  const ng = n(s => s.marca === 'ng');
   return [
     `${sons.length} arquivo${sons.length === 1 ? '' : 's'}`,
+    bons && `${bons} bo${bons === 1 ? 'm' : 'ns'}`,
     wild && `${wild} wild`,
     room && `${room} room tone`,
-    problema && `${problema} com problema`,
-    descartar && `${descartar} para descartar`,
+    fs && `${fs} false start`,
+    ng && `${ng} NG`,
   ].filter(Boolean).join(' · ');
 }

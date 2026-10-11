@@ -3,7 +3,7 @@ import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { nomeArquivoPrevisto } from './nomenclatura';
 import { mesmaClaquete, proximoPlanoLivre } from './claquete';
 import { idDoEstado } from './estado';
-import { registrarSom, somJunto } from './som';
+import { registrarSom, takeLevaSom } from './som';
 
 /**
  * Registrar o take: o ato que a Logagem existe para fazer.
@@ -118,7 +118,7 @@ export async function registrarTake(estado: EstadoDaLogagem, status: StatusTake,
   await sincronizarKit(estado, (Number(estado.proximo_clipe) || 0) + 1);
   // Som junto: o mesmo toque loga o arquivo do gravador, casado com este take.
   // MOS é "rodou sem som": não há arquivo de gravador para casar.
-  if (somJunto(estado) && estado.audio !== 'MOS') await registrarSom(estado, 'take', quem, take);
+  if (takeLevaSom(estado)) await registrarSom(estado, 'take', quem, take);
 
   return take;
 }

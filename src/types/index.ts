@@ -1488,6 +1488,11 @@ export interface EstadoDaLogagem {
   arquivo_som?: string;
   /** O nome de cada trilha do gravador, na ordem: Tr1, Tr2… */
   trilhas_som?: string[];
+  /** O rolo do gravador: no Zoom H6, a pasta (`FOLDER02` → "02"). */
+  rolo_som?: string;
+  /** Para o cabeçalho do sound report: "Zoom H6", "48 kHz / 24 bits". */
+  gravador_som?: string;
+  formato_som?: string;
   // Preferências da diária
   revisar_antes: boolean;
   atualizado_em?: number;
@@ -1591,7 +1596,13 @@ export interface Som {
   /** Só no `take`: wild e room tone não têm número de take. */
   take?: number;
   arquivo: string;
-  status: 'bom' | 'problema' | 'descartar';
+  rolo?: string;
+  /**
+   * As marcas do iXML, que a montagem entende: `bom` é o CIRCLED (o take
+   * escolhido), `fs` o FALSE_START, `ng` o NO_GOOD. Sem marca = só um take.
+   */
+  marca?: 'bom' | 'fs' | 'ng';
+  /** Nota vazia = trilha limpa. */
   trilhas: { nome: string; nota?: string }[];
   obs?: string;
   /** O take de câmera casado, quando houver. */

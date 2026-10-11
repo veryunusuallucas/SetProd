@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
-  Clapperboard, Camera, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays, AlertTriangle,
+  Clapperboard, Camera, Mic, HardDrive, FileInput, Settings2, Monitor, Eye, CalendarDays, AlertTriangle,
 } from 'lucide-react';
 import { db } from '../db/db';
 import { useRole } from '../hooks/useRole';
@@ -13,6 +13,7 @@ import { podeEditarLogagem, departamentoDaFotografia, visaoPadraoDeQuemVe } from
 import { AbaCamera } from '../components/logagem/AbaCamera';
 import { AbaLogagem } from '../components/logagem/AbaLogagem';
 import { AbaBackup } from '../components/logagem/AbaBackup';
+import { AbaSom } from '../components/logagem/AbaSom';
 import { AbaIngest } from '../components/logagem/AbaIngest';
 import { AbaConfig } from '../components/logagem/AbaConfig';
 import { pedirUmaVez } from '../lib/logagem/aparelho';
@@ -32,14 +33,15 @@ import { diaDaSemana } from '../lib/formato';
  * O plano inteiro, e o porquê de cada decisão, está em `.md/PLANO-logagem.md`
  * (fora do Git, como os outros planos) e resumido no manual.
  *
- * A página é a casca: a diária escolhida e as cinco abas. Cada aba mora no seu
+ * A página é a casca: a diária escolhida e as seis abas. Cada aba mora no seu
  * componente, em `components/logagem/`.
  */
 
-type Aba = 'logagem' | 'camera' | 'backup' | 'ingest' | 'config';
+type Aba = 'logagem' | 'som' | 'camera' | 'backup' | 'ingest' | 'config';
 
 const ABAS: { id: Aba; nome: string; icone: typeof Camera }[] = [
   { id: 'logagem', nome: 'Logagem', icone: Clapperboard },
+  { id: 'som', nome: 'Som', icone: Mic },
   { id: 'camera', nome: 'Câmera', icone: Camera },
   { id: 'backup', nome: 'Backup', icone: HardDrive },
   { id: 'ingest', nome: 'Ingest', icone: FileInput },
@@ -432,6 +434,9 @@ function ConteudoDaAba({
   }
   if (aba === 'camera' && diariaId) {
     return <AbaCamera projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} />;
+  }
+  if (aba === 'som' && diariaId) {
+    return <AbaSom projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;
   }
   if (aba === 'backup' && diariaId) {
     return <AbaBackup projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;

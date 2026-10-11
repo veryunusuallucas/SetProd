@@ -13,7 +13,7 @@ import { limpar } from '../pdfTexto';
 import { data as dataLegivel, dataHora, numero } from '../formato';
 import { ROTULO_DO_STATUS } from './takes';
 import { resumirLogagem } from './resumo';
-import { ROTULO_DO_STATUS_DO_SOM, ROTULO_DO_TIPO, claqueteDoSom, resumoDoSom } from './som';
+import { ROTULO_DO_TIPO, claqueteDoSom, resumoDoSom, trechosDoSom } from './som';
 import {
   COLUNAS_DO_REPORT, TETO_DE_LINHAS, TITULO_DO_RELATORIO, agruparTakes, celulaDoTake, linhasDaIntegridade,
   type OpcoesDoReport, type TipoDeRelatorio,
@@ -384,79 +384,70 @@ function audioDosTakes(sons: Som[]): Map<string, string> {
   return m;
 }
 
-const COR_DO_SOM_NO_PAPEL: Record<Som['status'], string> = { bom: VERDE, problema: '#b8620b', descartar: VERMELHO };
+const COR_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { bom: VERDE, fs: '#b8620b', ng: VERMELHO };
+const ROTULO_DA_MARCA: Record<NonNullable<Som['marca']>, string> = { bom: 'BOM', fs: 'FS', ng: 'NG' };
 
 /**
- * O sound report: um arquivo do gravador por linha, com a nota de cada trilha.
+ * O sound report, no desenho do papel do som: uma linha por arquivo do
+ * gravador, uma coluna por trilha. Trilha sem nota é trilha limpa e fica em
+ * branco — o olho do montador para só onde houve problema.
  *
- * As trilhas são as do PRIMEIRO arquivo do trecho — quando o kit muda no meio
- * do dia (a lapela trocou de ator), uma faixa cinza abre o trecho novo, como o
- * formato no camera report.
+ * Cada trecho (rolo ou trilhas diferentes) abre com o próprio cabeçalho: a
+ * coluna "Lapela Alice" de manhã pode ser "Lapela Nicole" à tarde.
  */
 function SoundReport({ dados }: { dados: DadosDoRelatorio }) {
   const titulo = TITULO_DO_RELATORIO.som;
   const camera = new Map(dados.takes.map(t => [t.id, t.arquivo]));
-  const grupos: { trilhas: string[]; sons: Som[] }[] = [];
-  for (const som of dados.sons) {
-    const nomes = som.trilhas.map(t => t.nome);
-    const ultimo = grupos[grupos.length - 1];
-    if (ultimo && ultimo.trilhas.join('|') === nomes.join('|')) ultimo.sons.push(som);
-    else grupos.push({ trilhas: nomes, sons: [som] });
-  }
-  const colunas = [
-    { rotulo: 'Arquivo', peso: 12 },
-    { rotulo: 'Claquete', peso: 13 },
-    { rotulo: 'Status', peso: 10 },
-    { rotulo: 'Câmera', peso: 12 },
-    { rotulo: 'Hora', peso: 7 },
-    { rotulo: 'Notas por trilha', peso: 40 },
-  ];
+  const kit = [dados.kitDoSom?.gravador, dados.kitDoSom?.formato].filter(Boolean).join(' · ');
+  const PESO_DAS_TRILHAS = 48;
 
   return (
-    <Page size="A4" orientation="portrait" style={s.pagina}>
+    <Page size="A4" orientation="landscape" style={s.pagina}>
       <Topo dados={dados} titulo={titulo} />
-      <Text style={s.numeros}>{limpar(resumoDoSom(dados.sons))}</Text>
+      <Text style={s.numeros}>{limpar([kit, resumoDoSom(dados.sons)].filter(Boolean).join(' · '))}</Text>
 
       {dados.sons.length === 0 ? (
         <Text style={s.vazio}>Nenhum arquivo de som registrado nesta diária.</Text>
-      ) : (
-        <View>
-          <View style={s.cabecalhoTabela} fixed>
-            {colunas.map(c => (
-              <Text key={c.rotulo} style={[s.th, { flexGrow: c.peso, flexBasis: 0 }]}>{limpar(c.rotulo.toUpperCase())}</Text>
+      ) : trechosDoSom(dados.sons).map((trecho, i) => {
+        const pesoTrilha = PESO_DAS_TRILHAS / Math.max(1, trecho.trilhas.length);
+        const colunas = [
+          { rotulo: trecho.rolo ? `Arquivo · rolo ${trecho.rolo}` : 'Arquivo', peso: 11 },
+          { rotulo: 'Claquete', peso: 10 },
+          ...trecho.trilhas.map((nome, k) => ({ rotulo: `Tr${k + 1} ${nome}`, peso: pesoTrilha })),
+          { rotulo: 'Marca', peso: 5 },
+          { rotulo: 'Câmera', peso: 9 },
+          { rotulo: 'Hora', peso: 5 },
+          { rotulo: 'Obs', peso: 16 },
+        ];
+        const peso = (k: number) => ({ flexGrow: colunas[k].peso, flexBasis: 0 });
+        const n = trecho.trilhas.length;
+        return (
+          <View key={i} style={{ marginBottom: 8 }}>
+            <View style={s.cabecalhoTabela} fixed>
+              {colunas.map((c, k) => (
+                <Text key={k} style={[s.th, peso(k)]}>{limpar(c.rotulo.toUpperCase())}</Text>
+              ))}
+            </View>
+            {trecho.sons.map(som => (
+              <View key={som.id} style={s.linha} wrap={false}>
+                <Text style={[s.td, peso(0), { fontFamily: 'Helvetica-Bold' }]}>{limpar(som.arquivo)}</Text>
+                <Text style={[s.td, peso(1), { fontFamily: 'Helvetica-Bold' }]}>
+                  {limpar(som.tipo === 'take' ? claqueteDoSom(som) : `${ROTULO_DO_TIPO[som.tipo]}${som.cena ? ` · ${som.cena}` : ''}`)}
+                </Text>
+                {trecho.trilhas.map((_, k) => (
+                  <Text key={k} style={[s.td, peso(2 + k), { color: '#9a5a00' }]}>{limpar(som.trilhas[k]?.nota || '')}</Text>
+                ))}
+                <Text style={[s.td, peso(2 + n), { fontFamily: 'Helvetica-Bold', color: som.marca ? COR_DA_MARCA[som.marca] : CINZA }]}>
+                  {som.marca ? ROTULO_DA_MARCA[som.marca] : ''}
+                </Text>
+                <Text style={[s.td, peso(3 + n)]}>{limpar((som.take_id && camera.get(som.take_id)) || '')}</Text>
+                <Text style={[s.td, peso(4 + n)]}>{limpar(som.hora.slice(0, 5))}</Text>
+                <Text style={[s.td, peso(5 + n)]}>{limpar(som.obs || '')}</Text>
+              </View>
             ))}
           </View>
-          {grupos.map(g => g.sons.map((som, j) => {
-            const peso = (k: number) => ({ flexGrow: colunas[k].peso, flexBasis: 0 });
-            const notas = som.trilhas.map((t, n) => (t.nota?.trim() ? `Tr${n + 1} ${t.nome}: ${t.nota.trim()}` : '')).filter(Boolean);
-            return (
-              <View key={som.id} wrap={false}>
-                {j === 0 ? (
-                  <View style={s.faixa}>
-                    <Text style={s.faixaTexto}>{limpar(g.trilhas.map((t, n) => `Tr${n + 1} ${t}`).join('  |  ') || 'Trilhas não informadas')}</Text>
-                  </View>
-                ) : null}
-                <View style={s.linha}>
-                  <Text style={[s.td, peso(0), { fontFamily: 'Helvetica-Bold' }]}>{limpar(som.arquivo)}</Text>
-                  <View style={peso(1)}>
-                    <Text style={[s.td, { fontFamily: 'Helvetica-Bold' }]}>{limpar(som.tipo === 'take' ? claqueteDoSom(som) : ROTULO_DO_TIPO[som.tipo])}</Text>
-                    {som.tipo !== 'take' && som.cena ? <Text style={s.tdDetalhe}>{limpar(`Cena ${som.cena}`)}</Text> : null}
-                  </View>
-                  <Text style={[s.td, peso(2), { color: COR_DO_SOM_NO_PAPEL[som.status], fontFamily: 'Helvetica-Bold' }]}>
-                    {limpar(ROTULO_DO_STATUS_DO_SOM[som.status])}
-                  </Text>
-                  <Text style={[s.td, peso(3)]}>{limpar((som.take_id && camera.get(som.take_id)) || '-')}</Text>
-                  <Text style={[s.td, peso(4)]}>{limpar(som.hora.slice(0, 5))}</Text>
-                  <View style={peso(5)}>
-                    {notas.map((n, k) => <Text key={k} style={s.td}>{limpar(n)}</Text>)}
-                    {som.obs ? <Text style={s.tdDetalhe}>{limpar(som.obs)}</Text> : null}
-                  </View>
-                </View>
-              </View>
-            );
-          }))}
-        </View>
-      )}
+        );
+      })}
 
       <Rodape dados={dados} titulo={titulo} />
     </Page>

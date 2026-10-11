@@ -27,6 +27,8 @@ export interface DadosDoRelatorio {
   takes: Take[];
   /** O boletim de som da diária, na ordem do gravador. */
   sons: Som[];
+  /** O cabeçalho do sound report: o gravador e o formato do kit de som. */
+  kitDoSom?: { gravador?: string; formato?: string };
   hds: HdDeBackup[];
   backups: BackupDeCartao[];
   checksums: ChecksumDeCartao[];
@@ -51,13 +53,14 @@ export async function coletarRelatorio(
   const projeto = await db.projetos.get(diaria.projeto_id);
   if (!projeto) return null;
 
-  const [takes, sons, hds, backups, checksums, perfis] = await Promise.all([
+  const [takes, sons, hds, backups, checksums, perfis, estado] = await Promise.all([
     db.log_takes.where('diaria_id').equals(diariaId).toArray(),
     db.log_som.where('diaria_id').equals(diariaId).toArray(),
     db.log_hds.where('projeto_id').equals(projeto.id).toArray(),
     db.log_backups.where('diaria_id').equals(diariaId).toArray(),
     db.log_checksums.where('diaria_id').equals(diariaId).toArray(),
     db.perfis.where('projeto_id').equals(projeto.id).toArray(),
+    db.log_estado.get(idDoEstado(diariaId)),
   ]);
 
   // A lista de membros vem do servidor. Sem rede, fica só a ficha — e quem
@@ -99,6 +102,7 @@ export async function coletarRelatorio(
     diaria,
     takes: ordenarTakes(takes),
     sons: ordenarSons(sons),
+    kitDoSom: { gravador: estado?.gravador_som, formato: estado?.formato_som },
     hds: [...hds].sort((a, b) => a.ordem - b.ordem),
     backups,
     checksums,

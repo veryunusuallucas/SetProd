@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minus, Plus, Clapperboard } from 'lucide-react';
+import { Minus, Plus, Clapperboard, Mic, MicOff } from 'lucide-react';
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -10,6 +10,7 @@ import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { estimativaDoCartaoGB } from '../../lib/logagem/backup';
 import { aberturaLegivel } from '../../lib/logagem/relatorio';
 import { numero } from '../../lib/formato';
+import { arquivoDoSom, somJunto, takeLevaSom } from '../../lib/logagem/som';
 
 type Campo = 'cena' | 'plano' | 'take';
 
@@ -62,6 +63,7 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
         <span className="arquivo-previsto" style={{ fontFamily: MONO, fontWeight: 800 }}>
           {nomeArquivoPrevisto(estado) || '—'}
         </span>
+        <FichaDoSom estado={estado} bloqueado={bloqueado} />
       </div>
 
       <BotoesDeStatus registro={registro} podeEditar={podeEditar} />
@@ -87,6 +89,39 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * O arquivo do gravador que vai junto com este take — o mesmo lugar do arquivo
+ * da câmera, porque é o mesmo momento. Tocar liga e desliga o som junto.
+ */
+function FichaDoSom({ estado, bloqueado }: { estado: EstadoDaLogagem; bloqueado: boolean }) {
+  const vai = takeLevaSom(estado);
+  const mos = somJunto(estado) && !vai;
+  const rolo = estado.rolo_som?.trim();
+  return (
+    <button
+      type="button"
+      disabled={bloqueado || mos}
+      aria-pressed={vai}
+      onClick={() => void mudarEstado(estado.diaria_id, { som_junto: !somJunto(estado) })}
+      title={mos ? 'O áudio da cena está em MOS' : vai ? 'Tocar para gravar este take sem som' : 'Tocar para o som ir junto'}
+      style={{
+        alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 14px',
+        borderRadius: 'var(--radius-full)', fontSize: '14px', fontWeight: 700,
+        border: `1px solid ${vai ? 'var(--border-color)' : 'var(--border-light)'}`,
+        backgroundColor: vai ? 'var(--bg-primary)' : 'transparent',
+        color: vai ? 'var(--text-primary)' : 'var(--text-muted)', cursor: bloqueado || mos ? 'default' : 'pointer',
+      }}
+    >
+      {vai ? <Mic size={15} aria-hidden /> : <MicOff size={15} aria-hidden />}
+      {vai ? (
+        <span><span style={{ fontFamily: MONO }}>{arquivoDoSom(estado)}</span>{rolo ? ` · Rolo ${rolo}` : ''}</span>
+      ) : (
+        <span>{mos ? 'MOS · sem som' : 'Sem som'}</span>
+      )}
+    </button>
   );
 }
 

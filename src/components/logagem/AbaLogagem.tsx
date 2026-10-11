@@ -16,7 +16,6 @@ import { PlanosDaDecupagem } from './PlanosDaDecupagem';
 import { ExportarRelatorios } from './ExportarRelatorios';
 import { Acompanhamento } from './Acompanhamento';
 import { NotasRapidas } from './NotasRapidas';
-import { SomNaLogagem } from './SomNaLogagem';
 import { acrescentarNota } from '../../lib/logagem/notas';
 import type { Densidade } from '../../lib/logagem/densidade';
 
@@ -178,8 +177,6 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
           É do take que vem, e se apaga quando ele for registrado.
         </p>
       </section>
-
-      <SomNaLogagem estado={estado} podeEditar={podeEditar} quem={quem} limite={detalhada ? undefined : 3} />
 
       <FotoDeReferencia estado={estado} podeEditar={podeEditar} />
 
