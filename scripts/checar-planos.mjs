@@ -46,6 +46,18 @@ try {
   assert.equal(trocado.find(i => i.id === 'c4').hora_travada, undefined);
   assert.equal(reordenarCenas(travado, ['c4', 'c2']).find(i => i.id === 'c2').hora_travada, '13:15');
 
+  // A Logagem sugere o status da cena pelos planos que rodaram.
+  const { planosNaLogagem, sugestaoPelosPlanos } = await vite.ssrLoadModule('/src/lib/registroSet.ts');
+  const c4 = { id: 'c4', numero: '4' };
+  const planosC4 = [{ id: 'p1', numero: '1' }, { id: 'p2', numero: '2' }];
+  const tk = (extra) => ({ cena: '4', plano: '1', status: 'OK', ...extra });
+  assert.deepEqual(planosNaLogagem(c4, planosC4, [{}], [tk({ plano_id: 'p1' }), tk({ plano: '2', status: 'NEUTRO' })]), { feitos: 2, total: 2 }, 'NEUTRO conta como rodou');
+  assert.deepEqual(planosNaLogagem(c4, planosC4, [{}], [tk({ plano_id: 'p1' }), tk({ plano: '2', status: 'NG' })]), { feitos: 1, total: 2 }, 'NG não conta');
+  assert.deepEqual(planosNaLogagem(c4, planosC4, [{ planos_ids: ['p1'] }], [tk({ plano_id: 'p1' })]), { feitos: 1, total: 1 }, 'só os planos do trecho do dia');
+  assert.deepEqual(planosNaLogagem(c4, planosC4, [{}], [tk({ cena: '5' })]), { feitos: 0, total: 2 }, 'take de outra cena não conta');
+  assert.equal(sugestaoPelosPlanos(2, 2), 'gravada');
+  assert.equal(sugestaoPelosPlanos(2, 1), 'parcial');
+
   console.log('planos ok');
 } finally {
   await vite.close();

@@ -9,7 +9,7 @@ import {
   type CampoComCascata, type EdicaoDoTake,
 } from '../../lib/logagem/takes';
 
-const STATUS_EDITAVEIS: StatusTake[] = ['OK', 'NG', 'HERO', 'RECINV'];
+const STATUS_EDITAVEIS: StatusTake[] = ['OK', 'NG', 'HERO', 'RECINV', 'NEUTRO'];
 
 const NOME_DO_CAMPO: Record<CampoComCascata, string> = { cena: 'a cena', plano: 'o plano', arquivo: 'o arquivo' };
 

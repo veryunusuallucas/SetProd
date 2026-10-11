@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
+import { Check, X, Star, RefreshCw, Minus, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
@@ -31,6 +31,8 @@ const BOTOES: { status: StatusTake; icone: typeof Check; atalho?: string }[] = [
   { status: 'NG', icone: X, atalho: 'Shift+Espaço' },
   { status: 'HERO', icone: Star },
   { status: 'RECINV', icone: RefreshCw },
+  // Embaixo dos quatro, numa faixa mais baixa: os quatro não mudam de lugar.
+  { status: 'NEUTRO', icone: Minus },
 ];
 
 export interface Registro {
@@ -238,8 +240,8 @@ export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Take
   OK, NG e HERO são siglas e não variam. "Importado" e "REC invertido" são
   palavras — "42 Importado" lê como erro de digitação.
 */
-const NO_PLACAR: Record<StatusTake, string> = { OK: 'OK', NG: 'NG', HERO: 'HERO', RECINV: 'REC invertido', IMPORT: 'importado' };
-const NO_PLACAR_PLURAL: Record<StatusTake, string> = { OK: 'OK', NG: 'NG', HERO: 'HERO', RECINV: 'REC invertidos', IMPORT: 'importados' };
+const NO_PLACAR: Record<StatusTake, string> = { OK: 'OK', NG: 'NG', HERO: 'HERO', RECINV: 'REC invertido', IMPORT: 'importado', NEUTRO: 'neutro' };
+const NO_PLACAR_PLURAL: Record<StatusTake, string> = { OK: 'OK', NG: 'NG', HERO: 'HERO', RECINV: 'REC invertidos', IMPORT: 'importados', NEUTRO: 'neutros' };
 
 function contar(takes: Take[]) {
   const por = takes.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.status]: (acc[t.status] || 0) + 1 }), {});

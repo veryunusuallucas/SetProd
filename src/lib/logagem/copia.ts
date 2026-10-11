@@ -166,7 +166,7 @@ export interface CopiaLida {
 
 export class CopiaInvalida extends Error {}
 
-const STATUS_VALIDOS: StatusTake[] = ['OK', 'NG', 'HERO', 'RECINV', 'IMPORT'];
+const STATUS_VALIDOS: StatusTake[] = ['OK', 'NG', 'HERO', 'RECINV', 'IMPORT', 'NEUTRO'];
 const texto = (v: unknown) => (v == null ? '' : String(v)).trim();
 const semVazios = <T extends object>(o: T): T =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as T;

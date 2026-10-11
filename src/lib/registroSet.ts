@@ -1,6 +1,6 @@
 import { db } from '../db/db';
 import { paginasParaOitavos } from './decupagem';
-import type { RegistroCena, StatusCena, Cena } from '../types';
+import type { RegistroCena, StatusCena, Cena, ItemDoDia, StatusTake, Take } from '../types';
 
 /**
  * O que aconteceu no set — o caminho de volta que o app não tinha.
@@ -167,6 +167,36 @@ export function sugestaoPelosPlanos(
   if (planosFeitos === 0) return 'nao_gravada';
   if (planosFeitos >= totalDePlanos) return 'gravada';
   return 'parcial';
+}
+
+/** Take que diz que o plano rodou: o bom, o escolhido, ou "só um take". */
+const RODOU: StatusTake[] = ['OK', 'HERO', 'NEUTRO'];
+
+/**
+ * Quantos planos DESTA cena, NESTE dia, a Logagem diz que rodaram.
+ *
+ * Os planos do dia são os dos trechos da cena na linha (`planos_ids`); sem
+ * trecho, todos os planos da cena. Um plano conta quando há um take dele com
+ * `RODOU` — pelo vínculo com a decupagem (`plano_id`) ou, no take sem
+ * vínculo, pela claquete escrita (cena e plano).
+ *
+ * É a base da sugestão "a Logagem diz que todos os planos saíram — marcar
+ * gravada?" (Lucas, 10/10/2026). Com `sugestaoPelosPlanos`, vira o status
+ * sugerido. Sugere: quem decide continua sendo quem fecha.
+ */
+export function planosNaLogagem(
+  cena: Pick<Cena, 'id' | 'numero'>,
+  planosDaCena: { id: string; numero: string }[],
+  itensDaCena: Pick<ItemDoDia, 'planos_ids'>[],
+  takes: Pick<Take, 'status' | 'plano_id' | 'cena_id' | 'cena' | 'plano'>[],
+): { feitos: number; total: number } {
+  const recorte = itensDaCena.flatMap(i => i.planos_ids || []);
+  const doDia = recorte.length ? planosDaCena.filter(p => recorte.includes(p.id)) : planosDaCena;
+  const rodou = (p: { id: string; numero: string }) => takes.some(t =>
+    RODOU.includes(t.status) && (t.plano_id
+      ? t.plano_id === p.id
+      : (t.cena_id ? t.cena_id === cena.id : String(t.cena) === String(cena.numero)) && String(t.plano) === String(p.numero)));
+  return { feitos: doDia.filter(rodou).length, total: doDia.length };
 }
 
 // ---------------------------------------------------------------------------

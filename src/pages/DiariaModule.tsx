@@ -735,9 +735,37 @@ export function DiariaModule() {
     */
     const dia = calcularDia(montarLinhaDoDia(diaria), diaria.chamada, id => cenasGlobais.find(c => c.id === id));
     const atraso = calcularAtraso(dia);
+    /*
+      QUANDO O SET MUDOU A ORDEM. A linha do dia já está na ordem real (os
+      horários acompanham); `ordem_planejada` é onde cada cena estava no plano
+      que saiu na OD. O relatório diz quem SUBIU e quem DESCEU — "Cena 4 subiu
+      2" é a frase que explica o dia (pedido do Lucas, 10/10/2026). Só aparece
+      se algo mudou de lugar.
+    */
+    const planejada = diaria.ordem_planejada || [];
+    const cenasAgora = dia.itens.filter(c => c.item.tipo === 'cena' && planejada.includes(c.item.id));
+    const planoComparavel = planejada.filter(id => cenasAgora.some(c => c.item.id === id));
+    /** Quantas posições a cena andou: positivo subiu, negativo desceu. */
+    const andou = new Map(cenasAgora.map((c, n) => [c.item.id, planoComparavel.indexOf(c.item.id) - n]));
+    const mudouOrdem = [...andou.values()].some(v => v !== 0);
+    const movimento = (id: string) => {
+      const v = mudouOrdem ? andou.get(id) ?? 0 : 0;
+      if (v > 0) return `↑ subiu ${v}`;
+      if (v < 0) return `↓ desceu ${-v}`;
+      return '';
+    };
+    const linhasOrdem = mudouOrdem
+      ? cenasAgora.map((c, n) => {
+          const noPlano = planoComparavel.indexOf(c.item.id) + 1;
+          const mov = movimento(c.item.id);
+          return `<tr><td><b>${n + 1}º</b></td><td style="white-space:nowrap">${h(c.hora)}</td><td><b>Cena ${h(c.cena?.numero ?? '?')}${h(c.item.parte || '')}</b> — ${h(c.cena?.descricao || '')}</td><td style="white-space:nowrap">${noPlano}º</td><td style="white-space:nowrap" class="${mov ? 'alerta' : 'muted'}"><b>${mov || 'no lugar'}</b></td></tr>`;
+        }).join('')
+      : '';
+
     const linhasTempo = dia.itens.map(c => {
+      const mov = c.cena ? movimento(c.item.id) : '';
       const rotulo = c.cena
-        ? `<b>Cena ${h(c.cena.numero)}</b> — ${h(c.cena.descricao)}`
+        ? `<b>Cena ${h(c.cena.numero)}</b> — ${h(c.cena.descricao)}${mov ? ` <b class="alerta" style="white-space:nowrap">${mov}</b>` : ''}`
         : h(c.item.titulo || '—');
       const real = c.item.hora_real;
       const diff = real ? emMinutos(real)! - c.inicio : null;
@@ -748,21 +776,6 @@ export function DiariaModule() {
         <td>${rotulo}</td>
       </tr>`;
     }).join('');
-
-    /*
-      QUANDO O SET MUDOU A ORDEM. A linha do dia já está na ordem real (os
-      horários acima acompanham); esta lista diz onde cada cena estava no plano
-      que saiu na OD (`ordem_planejada`). Só aparece se algo mudou de lugar.
-    */
-    const planejada = diaria.ordem_planejada || [];
-    const cenasAgora = dia.itens.filter(c => c.item.tipo === 'cena' && planejada.includes(c.item.id));
-    const planoComparavel = planejada.filter(id => cenasAgora.some(c => c.item.id === id));
-    const linhasOrdem = cenasAgora.some((c, n) => planoComparavel[n] !== c.item.id)
-      ? cenasAgora.map((c, n) => {
-          const noPlano = planoComparavel.indexOf(c.item.id) + 1;
-          return `<tr><td><b>${n + 1}º</b></td><td style="white-space:nowrap">${h(c.hora)}</td><td><b>Cena ${h(c.cena?.numero ?? '?')}${h(c.item.parte || '')}</b> — ${h(c.cena?.descricao || '')}</td><td class="${noPlano !== n + 1 ? 'alerta' : 'muted'}">${noPlano}º no plano</td></tr>`;
-        }).join('')
-      : '';
 
     const linhaCena = (c: typeof cenasDaDiaria[number]) => {
       const reg = registrosDoDia.find(x => x.cena_id === c.id);
@@ -890,7 +903,7 @@ export function DiariaModule() {
       ${linhasTempo ? `<h2>Horários — planejado × real</h2>
         <table><tr><th>Previsto</th><th>Real</th><th>Diferença</th><th>O quê</th></tr>${linhasTempo}</table>` : ''}
       ${linhasOrdem ? `<h2>Ordem de gravação — o set mudou o plano</h2>
-        <table><tr><th>Gravada</th><th>Previsto</th><th>Cena</th><th>Plano</th></tr>${linhasOrdem}</table>` : ''}
+        <table><tr><th>Gravada</th><th>Previsto</th><th>Cena</th><th>No plano</th><th>Mudou</th></tr>${linhasOrdem}</table>` : ''}
 
       ${relatorio.gravadas.length ? `<h2>Cenas filmadas</h2><ul>${relatorio.gravadas.map(linhaCena).join('')}</ul>` : ''}
       ${relatorio.parciais.length ? `<h2>Cenas parciais</h2><ul>${relatorio.parciais.map(linhaCena).join('')}</ul>` : ''}

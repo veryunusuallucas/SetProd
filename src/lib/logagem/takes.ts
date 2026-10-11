@@ -17,6 +17,7 @@ export const ROTULO_DO_STATUS: Record<StatusTake, string> = {
   HERO: 'HERO',
   RECINV: 'REC invertido',
   IMPORT: 'Importado',
+  NEUTRO: 'Neutro',
 };
 
 /** A cor de cada status. Vermelho é só o NG — HERO é a melhor coisa do dia. */
@@ -26,6 +27,7 @@ export const COR_DO_STATUS: Record<StatusTake, string> = {
   HERO: 'var(--accent)',
   RECINV: 'var(--color-warning)',
   IMPORT: 'var(--text-muted)',
+  NEUTRO: 'var(--text-secondary)',
 };
 
 export const horaDeAgora = (agora = new Date()) =>

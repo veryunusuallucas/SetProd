@@ -1054,10 +1054,14 @@ input[type="radio"]:checked::before {
 .botao-status[data-status="NG"] { background-color: var(--color-danger); }
 .botao-status[data-status="HERO"] { background-color: var(--accent); }
 .botao-status[data-status="RECINV"] { background-color: var(--color-warning); }
+/* O NEUTRO ("é só um take") fica embaixo dos quatro, numa faixa mais baixa e
+   cinza: entrou depois, e os quatro de sempre não podem mudar de lugar. */
+.botao-status[data-status="NEUTRO"] { background-color: #c9c9c9; grid-column: 1 / -1; min-height: 48px; font-size: clamp(14px, 3.4cqi, 18px); text-transform: uppercase; }
 .botao-status:disabled { opacity: 0.35; cursor: default; }
 .botao-status:focus-visible { outline: 3px solid var(--text-primary); outline-offset: 2px; }
 @container (min-width: 560px) {
   .botao-status { min-height: 88px; }
+  .botao-status[data-status="NEUTRO"] { min-height: 52px; }
 }
 
 /* Uma linha só, que rola de lado: em três linhas, o HUD empurrava a claquete. */

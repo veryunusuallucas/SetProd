@@ -1341,7 +1341,11 @@ export interface Evento {
  * `IMPORT` é o take que nasceu do ingest: um clipe que o XML da câmera trouxe e
  * que ninguém logou no set. Ele não tem claquete confiável, só metadados.
  */
-export type StatusTake = 'OK' | 'NG' | 'HERO' | 'RECINV' | 'IMPORT';
+/*
+ * `NEUTRO` é o take que rodou e não é nem bom nem ruim — "é só um take"
+ * (Lucas, 10/10/2026). Conta como plano gravado, mas não é o take escolhido.
+ */
+export type StatusTake = 'OK' | 'NG' | 'HERO' | 'RECINV' | 'IMPORT' | 'NEUTRO';
 
 /** Metadados que só a câmera sabe, trazidos pelo ingest do XML (ou do vídeo). */
 export interface MetadadosDoClipe {

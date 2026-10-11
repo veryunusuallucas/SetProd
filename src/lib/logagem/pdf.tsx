@@ -36,6 +36,7 @@ const COR_NO_PAPEL: Record<Take['status'], string> = {
   HERO: '#b8620b',
   RECINV: '#9a7400',
   IMPORT: CINZA,
+  NEUTRO: '#555555',
 };
 
 const s = StyleSheet.create({

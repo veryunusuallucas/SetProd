@@ -23,6 +23,7 @@ const ORDEM: { status: StatusTake; rotulo: string; plural: string; cor: string }
   { status: 'NG', rotulo: 'NG', plural: 'NG', cor: 'var(--color-danger)' },
   { status: 'HERO', rotulo: 'HERO', plural: 'HERO', cor: 'var(--accent)' },
   { status: 'RECINV', rotulo: 'REC invertido', plural: 'REC invertidos', cor: 'var(--color-warning)' },
+  { status: 'NEUTRO', rotulo: 'neutro', plural: 'neutros', cor: 'var(--text-secondary)' },
   { status: 'IMPORT', rotulo: 'importado', plural: 'importados', cor: 'var(--text-muted)' },
 ];
 

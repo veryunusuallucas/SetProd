@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
@@ -16,7 +17,7 @@ import { getStripboardColor } from '../lib/decupagem';
 import { parseCoords } from '../lib/clima';
 import { linkMapa } from '../lib/osm';
 import { formatarDuracao } from '../lib/stripboard';
-import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO } from '../lib/registroSet';
+import { registroDe, proximoStatus, marcarCena, limparMarcacao, ROTULO, planosNaLogagem } from '../lib/registroSet';
 import { faiscar } from './ui/Faisca';
 import { Fogos } from './ui/Fogos';
 import { usePreferencia } from '../lib/preferencias';
@@ -345,6 +346,25 @@ export function LinhaDoDia({
       setFestejando(true);
       setTimeout(() => setFestejando(false), 3200);
     }
+  };
+
+  /*
+    O BOLETIM DE CÂMERA SUGERE. Cena sem marcação cuja Logagem já tem take bom
+    (ou neutro) de todos os planos do dia ganha um atalho "marcar gravada" —
+    quem loga a câmera não precisa marcar o dia de novo (Lucas, 10/10/2026).
+    Só na linha do set (modo interativo), e só para "gravada": "parcial" é
+    decisão de quem estava lá, e fica para o fechamento.
+  */
+  const takesDoDia = useLiveQuery(
+    () => (modo === 'interativo' ? db.log_takes.where('diaria_id').equals(diaria.id).toArray() : []),
+    [modo, diaria.id],
+  ) || [];
+  const logagemFechouACena = (cena: Cena) => {
+    if (takesDoDia.length === 0) return false;
+    const { feitos, total } = planosNaLogagem(
+      cena, planosPorCena.get(cena.id) || [], linha.filter(i => i.cena_id === cena.id), takesDoDia,
+    );
+    return total > 0 && feitos >= total;
   };
 
   const alternarStatus = async (cenaId: string, e: React.MouseEvent) => {
@@ -707,6 +727,22 @@ export function LinhaDoDia({
                         </button>
                       )}
 
+                      {c.cena && !registro && podeMarcar && logagemFechouACena(c.cena) && (
+                        <button
+                          onClick={e => {
+                            faiscar(e);
+                            void marcarCena(diaria.projeto_id, diaria.id, c.cena!.id, 'gravada', { registrado_por: meuPerfilId || undefined });
+                          }}
+                          className="text-xs font-bold"
+                          title="A Logagem tem take bom (ou neutro) de todos os planos desta cena hoje"
+                          style={{
+                            padding: '5px 10px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
+                            border: '1px dashed var(--color-success)', background: 'transparent', color: 'var(--color-success)',
+                          }}
+                        >
+                          Logagem ✓ · marcar gravada
+                        </button>
+                      )}
                       {c.cena && (
                         <button
                           onClick={e => podeMarcar && alternarStatus(c.cena!.id, e)}

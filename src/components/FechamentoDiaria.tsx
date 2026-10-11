@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useComportamentoDeJanela } from './ui/Janela';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Archive, X, AlertTriangle, Check, CircleDashed, CircleSlash, Scissors, GripVertical, ListOrdered } from 'lucide-react';
 import { oitavosParaPaginas } from '../lib/decupagem';
-import { marcarCena, relatorioDoDia, ROTULO, MOTIVOS } from '../lib/registroSet';
+import { marcarCena, relatorioDoDia, ROTULO, MOTIVOS, planosNaLogagem, sugestaoPelosPlanos } from '../lib/registroSet';
 import { db } from '../db/db';
 import { MOLA } from './ui/ia';
 import type { Cena, ItemDoDia, RegistroCena, StatusCena } from '../types';
@@ -114,6 +115,29 @@ export function FechamentoDiaria({
     aoReordenar(reordenarCenas(itens, nova.map(i => i.id)));
   };
 
+  /*
+    O QUE O BOLETIM DE CÂMERA JÁ SABE. Se a Logagem tem take bom (ou neutro)
+    de todos os planos da cena, ela foi gravada — o app sugere, e quem fecha
+    confirma com um toque (Lucas, 10/10/2026: "quando eu marcar no boletim de
+    câmera… ele já sugere?"). Sem take nenhum, não sugere nada: falta de log
+    não é prova de que a cena não saiu.
+  */
+  const takes = useLiveQuery(() => db.log_takes.where('diaria_id').equals(diariaId).toArray(), [diariaId]) || [];
+  const planos = useLiveQuery(() => db.planos.where('projeto_id').equals(projetoId).toArray(), [projetoId]) || [];
+  const daLogagem = (cena: Cena) => {
+    const { feitos, total } = planosNaLogagem(
+      cena,
+      planos.filter(p => p.cena_id === cena.id),
+      itens.filter(i => i.tipo === 'cena' && i.cena_id === cena.id),
+      takes,
+    );
+    const sugestao = feitos > 0 ? sugestaoPelosPlanos(total, feitos) : undefined;
+    return { feitos, total, sugestao };
+  };
+  const sugeridas = r.semRegistro
+    .map(cena => ({ cena, sugestao: daLogagem(cena).sugestao }))
+    .filter((x): x is { cena: Cena; sugestao: StatusCena } => Boolean(x.sugestao));
+
   /** Resolve uma cena que ficou sem marcação, ali mesmo. */
   const resolver = async (cenaId: string, status: StatusCena) => {
     await marcarCena(projetoId, diariaId, cenaId, status, { registrado_por: meuPerfilId });
@@ -203,31 +227,54 @@ export function FechamentoDiaria({
               Marque agora — depois ninguém lembra. Se deixar em branco, elas ficam
               como não gravadas, e aí vão pedir a explicação abaixo.
             </p>
+            {sugeridas.length > 0 && (
+              <button
+                className="btn btn-primary"
+                onClick={() => sugeridas.forEach(x => resolver(x.cena.id, x.sugestao))}
+                style={{ marginBottom: '12px', fontSize: '13px', padding: '8px 12px' }}
+              >
+                <Check size={14} /> Marcar como a Logagem sugere ({sugeridas.length})
+              </button>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {r.semRegistro.map(cena => (
+              {r.semRegistro.map(cena => {
+                const log = daLogagem(cena);
+                return (
                 <div key={cena.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <span className="text-sm" style={{ flex: 1, minWidth: '120px' }}>
                     <strong>Cena {cena.numero}</strong>
                     <span className="text-muted"> · {cena.descricao}</span>
+                    {log.feitos > 0 && (
+                      <span className="text-xs" style={{ display: 'block', color: 'var(--color-success)' }}>
+                        Logagem: {log.feitos} de {log.total} plano{log.total === 1 ? '' : 's'} rodado{log.feitos === 1 ? '' : 's'}
+                      </span>
+                    )}
                   </span>
-                  {(['gravada', 'parcial', 'nao_gravada'] as StatusCena[]).map(s => (
+                  {(['gravada', 'parcial', 'nao_gravada'] as StatusCena[]).map(s => {
+                    const sugerido = log.sugestao === s;
+                    return (
                     <button
                       key={s}
                       onClick={() => resolver(cena.id, s)}
                       className="text-xs"
+                      title={sugerido ? 'É o que a Logagem sugere' : undefined}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '4px',
                         padding: '4px 9px', borderRadius: 'var(--radius-full)', cursor: 'pointer',
-                        border: '1px solid var(--border-light)', background: 'transparent',
-                        color: 'var(--text-secondary)',
+                        border: `1px solid ${sugerido ? 'var(--accent)' : 'var(--border-light)'}`,
+                        background: sugerido ? 'var(--accent)' : 'transparent',
+                        color: sugerido ? '#000' : 'var(--text-secondary)',
+                        fontWeight: sugerido ? 700 : undefined,
                       }}
                     >
                       {ICONE[s]} {ROTULO[s]}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
