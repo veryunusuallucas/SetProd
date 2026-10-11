@@ -18,6 +18,8 @@ export interface PlanoDoDia {
   naClaquete: string;
   /** Quantos takes já foram logados para este setup nesta diária. */
   takes: number;
+  /** Quantos deles são bons (OK ou HERO): plano com take e sem nenhum bom ainda não acabou. */
+  bons: number;
 }
 
 /**
@@ -62,12 +64,13 @@ export function planosDaDiaria(dados: {
     const daCena = dados.planos.filter(p => p.cena_id === cenaId).sort((a, b) => numerico(a.numero, b.numero));
     for (const plano of daCena) {
       const naClaquete = planoNaClaquete(plano.numero, dados.letras);
-      const takes = dados.takes.filter(t =>
+      const doPlano = dados.takes.filter(t =>
         t.plano_id === plano.id ||
         (String(t.cena).trim().toUpperCase() === String(cena.numero).trim().toUpperCase() &&
           String(t.plano).trim().toUpperCase() === naClaquete.toUpperCase())
-      ).length;
-      lista.push({ cena, plano, naClaquete, takes });
+      );
+      const bons = doPlano.filter(t => t.status === 'OK' || t.status === 'HERO').length;
+      lista.push({ cena, plano, naClaquete, takes: doPlano.length, bons });
     }
   }
   return lista;
@@ -104,6 +107,38 @@ export function claqueteDaCena(cenas: Pick<Cena, 'id' | 'numero' | 'ambiente' | 
   const alvo = String(numero).trim().toUpperCase();
   const cena = alvo ? cenas.find(c => String(c.numero).trim().toUpperCase() === alvo) : undefined;
   return cena ? { cena_id: cena.id, ...contextoDaCena(cena) } : {};
+}
+
+/**
+ * A claquete mudou à mão (o + ou digitando): o que a decupagem sabe dela.
+ *
+ * Cena com o mesmo número traz INT/EXT, DIA/NOITE e o vínculo; plano com a
+ * mesma marca na claquete (o "3" da decupagem é o "C" com letras) traz também
+ * a lente, como o "Pôr na claquete". A descrição do plano só entra numa
+ * observação vazia: passando de plano em plano no +, ela se empilharia.
+ */
+export function claqueteDaDecupagem(
+  dados: { cenas: Cena[]; planos: Plano[]; kitDeLentes?: KitDeLogagem },
+  mudanca: Partial<EstadoDaLogagem>,
+  estado: Pick<EstadoDaLogagem, 'cena' | 'plano' | 'plano_letras' | 'abertura' | 'obs'>,
+): Partial<EstadoDaLogagem> {
+  if (mudanca.cena === undefined && mudanca.plano === undefined) return {};
+  const daCena = claqueteDaCena(dados.cenas, String(mudanca.cena ?? estado.cena));
+  if (!daCena.cena_id) return daCena;
+
+  const cena = dados.cenas.find(c => c.id === daCena.cena_id)!;
+  const letras = estado.plano_letras !== false;
+  const alvo = String(mudanca.plano ?? estado.plano).trim().toUpperCase();
+  const plano = dados.planos.find(p => p.cena_id === cena.id && planoNaClaquete(p.numero, letras).toUpperCase() === alvo);
+  if (!plano) return daCena;
+
+  const doPlano = claqueteDoPlano({ cena, plano, naClaquete: alvo, takes: 0, bons: 0 }, { ...estado, obs: '' }, dados.kitDeLentes);
+  // Só os efeitos do plano: cena, plano e take são os que a pessoa acabou de escolher.
+  const { cena: _c, plano: _p, take: _t, obs, ...resto } = doPlano;
+  // A observação é "livre" vazia ou quando é só a descrição de outro plano, que entrou por aqui.
+  const atual = String(estado.obs ?? '').trim();
+  const livre = !atual || dados.planos.some(p => String(p.descricao ?? '').trim() === atual);
+  return { ...daCena, ...resto, ...(livre && obs !== undefined ? { obs } : livre && atual ? { obs: '' } : {}) };
 }
 
 export function claqueteDoPlano(

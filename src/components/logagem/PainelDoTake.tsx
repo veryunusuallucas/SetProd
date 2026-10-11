@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minus, Plus, Clapperboard, Mic, MicOff } from 'lucide-react';
+import { Minus, Plus, Clapperboard, Mic, MicOff, Users } from 'lucide-react';
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -11,6 +11,7 @@ import { estimativaDoCartaoGB } from '../../lib/logagem/backup';
 import { aberturaLegivel } from '../../lib/logagem/relatorio';
 import { numero } from '../../lib/formato';
 import { arquivoDoSom, somJunto, takeLevaSom } from '../../lib/logagem/som';
+import { useElencoDaCena } from './useElencoDaCena';
 
 type Campo = 'cena' | 'plano' | 'take';
 
@@ -55,6 +56,8 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
         <Contador campo="plano" rotulo="Plano" valor={String(estado.plano)} bloqueado={bloqueado} maiuscula={letras} aoPassar={aoPassar} aoDigitar={aoDigitar} />
         <Contador campo="take" rotulo="Take" valor={String(estado.take)} bloqueado={bloqueado} destaque aoPassar={aoPassar} aoDigitar={aoDigitar} />
       </div>
+
+      <ElencoEmCena estado={estado} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--cor-criativo)', backgroundColor: 'color-mix(in srgb, var(--cor-criativo) 7%, transparent)' }}>
         <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--cor-criativo)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -122,6 +125,31 @@ function FichaDoSom({ estado, bloqueado }: { estado: EstadoDaLogagem; bloqueado:
         <span>{mos ? 'MOS · sem som' : 'Sem som'}</span>
       )}
     </button>
+  );
+}
+
+/**
+ * Quem está em cena, pela decupagem: a continuidade confere figurino e posição
+ * de quem está ali, e o som sabe de quem é cada lapela.
+ */
+function ElencoEmCena({ estado }: { estado: EstadoDaLogagem }) {
+  const elenco = useElencoDaCena(estado.projeto_id, estado);
+  if (elenco.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '-4px' }} aria-label="Elenco em cena">
+      <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Users size={13} aria-hidden /> Em cena
+      </span>
+      {elenco.map(e => (
+        <span
+          key={e.personagem}
+          className="text-sm"
+          style={{ padding: '4px 12px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', fontWeight: 700 }}
+        >
+          {e.personagem}{e.ator ? <span className="text-muted" style={{ fontWeight: 500 }}> · {e.ator}</span> : null}
+        </span>
+      ))}
+    </div>
   );
 }
 

@@ -9,10 +9,10 @@ import { confirmar } from '../ui/Confirmacao';
 import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
-  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, kitLegivel, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
+  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, kitLegivel, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
   registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom,
 } from '../../lib/logagem/som';
-import { cenasDoElemento, normalizarCategoria } from '../../lib/decupagem';
+import { useElencoDaCena } from './useElencoDaCena';
 
 /**
  * Aba Som: o sound report sendo preenchido (11/10/2026).
@@ -127,6 +127,12 @@ type Celula = { id: string; trilha: number } | null; // trilha -1 = observação
 
 function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) {
   const [aberta, setAberta] = useState<Celula>(null);
+  // O status do take de câmera casado, para o som ver o HERO e o NG da câmera.
+  const diariaId = sons[0]?.diaria_id ?? '';
+  const statusDoTake = useLiveQuery(
+    async () => new Map((await db.log_takes.where('diaria_id').equals(diariaId).toArray()).map(t => [t.id, t.status])),
+    [diariaId],
+  ) ?? new Map<string, string>();
   // No set, o que acabou de rodar fica em cima.
   const trechos = trechosDoSom(ordenarSons(sons)).reverse().map(t => ({ ...t, sons: [...t.sons].reverse() }));
   const maxTrilhas = Math.max(1, ...sons.map(s => s.trilhas.length));
@@ -184,6 +190,7 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                           <div style={{ fontFamily: MONO, fontWeight: 800, fontSize: '15px' }}>{s.arquivo}</div>
                           <div className="text-xs text-muted" style={{ whiteSpace: 'nowrap' }}>
                             {s.tipo === 'take' ? `${s.cena}-${s.plano} / Tk${s.take ?? ''}` : `${ROTULO_DO_TIPO[s.tipo]} · ${s.cena}`} · {s.hora.slice(0, 5)}
+                            {s.take_id && statusDoTake.get(s.take_id) ? ` · câmera ${statusDoTake.get(s.take_id)}` : ''}
                           </div>
                         </td>
                         {s.trilhas.map((t, k) => (
@@ -354,27 +361,6 @@ function EditorDaCelula({ som, trilha, podeEditar, aoFechar }: {
 
 /* ───────────────────────── O kit ───────────────────────── */
 
-/** Os personagens da cena da claquete, com quem interpreta — para dar nome às lapelas. */
-function useElencoDaCena(projetoId: string, estado: EstadoDaLogagem) {
-  return useLiveQuery(async () => {
-    const [elementos, tags, cenas, perfis] = await Promise.all([
-      db.elementos.where('projeto_id').equals(projetoId).toArray(),
-      db.roteiro_tags.where('projeto_id').equals(projetoId).toArray(),
-      db.cenas.where('projeto_id').equals(projetoId).toArray(),
-      db.perfis.where('projeto_id').equals(projetoId).toArray(),
-    ]);
-    const cena = cenas.find(c => c.id === estado.cena_id)
-      ?? cenas.find(c => String(c.numero).trim().toUpperCase() === String(estado.cena).trim().toUpperCase());
-    if (!cena) return [];
-    return elementos
-      .filter(el => normalizarCategoria(el.categoria) === 'ELENCO' && cenasDoElemento(el, tags, cenas).has(cena.id))
-      .map(el => {
-        const p = perfis.find(x => x.id === el.perfil_id);
-        return { personagem: el.nome, ator: p ? (p.nome_social || p.nome) : '' };
-      });
-  }, [projetoId, estado.cena_id, estado.cena]) ?? [];
-}
-
 function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
   estado: EstadoDaLogagem;
   bloqueado: boolean;
@@ -384,6 +370,20 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
   const trilhas = trilhasDoSom(estado);
   const elenco = useElencoDaCena(projetoId, estado);
   const trocar = (lista: string[]) => mudar({ trilhas_som: lista });
+
+  /*
+    Trocar de gravador antes do primeiro arquivo do dia já acerta o nome dele
+    (ZOOM0001 na série H, 261031_001 no F3). Depois de logado algum arquivo, o
+    contador é o que o gravador está mostrando, e não se mexe nele.
+  */
+  const trocarAparelho = async (aparelho: string) => {
+    const [sons, diaria] = await Promise.all([
+      db.log_som.where('diaria_id').equals(estado.diaria_id).count(),
+      db.diarias.get(estado.diaria_id),
+    ]);
+    const primeiro = sons === 0 ? primeiroArquivoDo(aparelho, diaria?.data) : null;
+    mudar({ gravador_som: aparelho, ...(primeiro ? { arquivo_som: primeiro } : {}) });
+  };
 
   /*
     O personagem entra na primeira lapela ainda genérica ("Lapela 2") ou vazia;
@@ -400,7 +400,7 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
       <Rotulo icone={<SlidersHorizontal size={14} />}>Gravador</Rotulo>
       <Campo rotulo="Aparelho">
-        <SeletorComOutro opcoes={OPCOES_DO_GRAVADOR.aparelho} valor={estado.gravador_som} bloqueado={bloqueado} aoMudar={v => mudar({ gravador_som: v })} />
+        <SeletorComOutro opcoes={OPCOES_DO_GRAVADOR.aparelho} valor={estado.gravador_som} bloqueado={bloqueado} aoMudar={v => void trocarAparelho(v)} />
       </Campo>
       <Campo rotulo="Taxa de amostragem">
         <Escolha nome="som-taxa" opcoes={OPCOES_DO_GRAVADOR.taxa} valor={estado.taxa_som} bloqueado={bloqueado} aoMudar={v => mudar({ taxa_som: v })} />
@@ -422,6 +422,11 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
           <CampoTexto value={arquivoDoSom(estado)} aoGravar={v => mudar({ arquivo_som: v.trim() })} disabled={bloqueado} style={{ ...estiloCampo, fontFamily: MONO }} />
         </Campo>
       </div>
+      {estado.gravador_som && !primeiroArquivoDo(estado.gravador_som, '2000-01-01') && (
+        <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
+          Não sei como o {estado.gravador_som} nomeia os arquivos: confira o nome do primeiro no visor e escreva acima. Daí para frente, o número anda sozinho.
+        </p>
+      )}
 
       <Campo rotulo="Trilhas">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

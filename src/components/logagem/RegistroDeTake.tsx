@@ -16,6 +16,9 @@ import {
 } from '../../lib/logagem/takes';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { EditarTake } from './EditarTake';
+import { comecarCenaPelaLogagem } from '../../lib/logagem/linhaDoDia';
+
+const cenaDaClaquete = (e: EstadoDaLogagem) => e.cena_id || '';
 
 /**
  * O registro do take: quatro botões, e o que acontece depois deles.
@@ -66,10 +69,34 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
   const [ultimo, setUltimo] = useState<string>('');
 
   const gravar = async (status: StatusTake, comEstado = estado) => {
+    const primeiroDaCena = Boolean(cenaDaClaquete(comEstado)) && !takes.some(t => t.cena_id === cenaDaClaquete(comEstado));
     const take = await registrarTake(comEstado, status, quem);
     setUltimo(take.id);
     setRepetido(null);
     setRevisando(null);
+    if (primeiroDaCena && take.cena_id) void avisarLinhaDoDia(take);
+  };
+
+  /*
+    O primeiro take da cena é o "começou" dela na linha do dia. Fora de ordem,
+    a mesma pergunta do toque na linha — quem está logando é quem sabe se o
+    set trocou a ordem.
+  */
+  const avisarLinhaDoDia = async (take: Take) => {
+    try {
+      const r = await comecarCenaPelaLogagem(take.diaria_id, take.cena_id!, take.hora.slice(0, 5));
+      if (!r.pulada) return;
+      const trocar = await confirmar({
+        titulo: `${r.pulada.nomeDaQueEntrou} entrou no lugar da ${r.pulada.nome}?`,
+        detalhe: `A ${r.pulada.nome} ainda não começou na linha do dia. Se o set trocou a ordem, as duas trocam de lugar e os horários do resto do dia acompanham.`,
+        confirmar: 'Sim, trocar de lugar',
+        cancelar: 'Não, só marcar',
+      });
+      await (trocar ? r.trocar : r.soMarcar)?.();
+    } catch (e) {
+      // A linha do dia é um extra: o take já está registrado, e é o que importa.
+      console.warn('[SetProd] Não consegui marcar a cena na linha do dia:', e);
+    }
   };
 
   const tentar = (status: StatusTake) => {

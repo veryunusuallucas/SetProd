@@ -29,6 +29,32 @@ export const OPCOES_DO_GRAVADOR = {
   tc: ['Relógio do gravador', '23,976', '24', '25', '29,97', '30'],
 } as const;
 
+/** "2026-10-31" → "261031", como os gravadores escrevem a data no nome. */
+const dataCurta = (dataISO?: string) => (dataISO && /^\d{4}-\d{2}-\d{2}/.test(dataISO) ? dataISO.slice(2, 10).replace(/-/g, '') : '');
+
+/**
+ * O nome do primeiro arquivo do dia, no padrão de fábrica do gravador.
+ *
+ * Só os padrões confirmados (pesquisa de 11/10/2026): a série H da Zoom numera
+ * `ZOOM0001…ZOOM9999`; o Zoom F3 usa a data e o número, `261031_001`. Para os
+ * outros, `null` — quem loga confere o primeiro arquivo e digita.
+ */
+export function primeiroArquivoDo(aparelho: string | undefined, dataISO?: string): string | null {
+  if (!aparelho) return null;
+  if (/^zoom h/i.test(aparelho)) return 'ZOOM0001';
+  if (/^zoom f3$/i.test(aparelho.trim())) return dataCurta(dataISO) ? `${dataCurta(dataISO)}_001` : null;
+  return null;
+}
+
+/**
+ * O arquivo herdado da diária anterior, com a data trocada quando o nome é por
+ * data (`261010_014` → `261031_014`). O número continua; a data é a do dia.
+ */
+export function arquivoNoDia(arquivo: string | undefined, dataISO?: string): string | undefined {
+  const d = dataCurta(dataISO);
+  return arquivo && d && /^\d{6}_\d+$/.test(arquivo) ? `${d}${arquivo.slice(6)}` : arquivo;
+}
+
 /** "Zoom H6 · 48 kHz · 24 bits · TC 24" — o cabeçalho do sound report. */
 export function kitLegivel(e: Pick<EstadoDaLogagem, 'gravador_som' | 'taxa_som' | 'bits_som' | 'tc_som'>): string {
   const tc = e.tc_som && /\d/.test(e.tc_som) ? `TC ${e.tc_som} fps` : '';
@@ -77,6 +103,8 @@ export function montarSom(
     arquivo: arquivoDoSom(estado),
     rolo: estado.rolo_som?.trim() || undefined,
     trilhas: trilhasDoSom(estado).map(nome => ({ nome })),
+    // O HERO da câmera é o take escolhido: o som dele nasce marcado como o bom.
+    marca: take?.status === 'HERO' ? 'bom' : undefined,
     take_id: take?.id,
     hora: horaDeAgora(agora),
     ordem,
@@ -93,6 +121,17 @@ export async function registrarSom(estado: EstadoDaLogagem, tipo: Som['tipo'], q
   await db.log_som.add(som);
   await db.log_estado.update(idDoEstado(estado.diaria_id), { arquivo_som: proximoArquivo(som.arquivo) });
   return som;
+}
+
+/**
+ * O take de câmera virou HERO depois (substituído ou editado): o som casado
+ * sem marca vira o bom. Marca que alguém já pôs à mão (FS, NG) fica — o som
+ * pode ter estragado justo no take que a câmera adorou.
+ */
+export async function somAcompanhaHero(takeId: string, status?: string) {
+  if (status !== 'HERO') return;
+  const casados = await db.log_som.where('take_id').equals(takeId).toArray();
+  for (const s of casados) if (!s.marca) await db.log_som.update(s.id, { marca: 'bom' });
 }
 
 export const mudarSom = (id: string, m: Partial<Pick<Som, 'marca' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);

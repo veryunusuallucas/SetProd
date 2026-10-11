@@ -57,6 +57,7 @@ export function PlanosDaDecupagem({ estado, bloqueado, aoEscolher }: {
   };
 
   const rodados = lista.filter(i => i.takes > 0).length;
+  const semBom = lista.filter(i => i.takes > 0 && i.bons === 0).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -75,7 +76,7 @@ export function PlanosDaDecupagem({ estado, bloqueado, aoEscolher }: {
         <span style={{ flex: 1 }}>
           Da decupagem
           <span className="text-muted" style={{ fontWeight: 400 }}>
-            {' '}· {lista.length} plano{lista.length === 1 ? '' : 's'} hoje · {rodados} com take
+            {' '}· {lista.length} plano{lista.length === 1 ? '' : 's'} hoje · {rodados} com take{semBom ? ` · ${semBom} sem take bom` : ''}
           </span>
         </span>
         <motion.span animate={{ rotate: aberto ? 180 : 0 }} transition={reduzido ? { duration: 0 } : MOLA} style={{ display: 'flex' }}>
@@ -119,8 +120,12 @@ export function PlanosDaDecupagem({ estado, bloqueado, aoEscolher }: {
                   )}
                 </span>
                 {item.takes > 0 && (
-                  <span className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)', flexShrink: 0 }}>
-                    <Check size={13} /> {item.takes} take{item.takes === 1 ? '' : 's'}
+                  /* Rodou e não tem take bom: o plano ainda não pode ser dado como feito. */
+                  <span className="text-xs" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0, color: item.bons ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {item.bons ? <Check size={13} /> : null} {item.takes} take{item.takes === 1 ? '' : 's'}
+                    </span>
+                    <span style={{ fontWeight: 700 }}>{item.bons ? `${item.bons} bom${item.bons === 1 ? '' : 's'}` : 'nenhum bom'}</span>
                   </span>
                 )}
               </BotaoTatil>

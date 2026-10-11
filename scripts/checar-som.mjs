@@ -48,6 +48,36 @@ try {
   assert.equal(alternarNota('vento', 'roupa'), 'vento, roupa');
   assert.equal(alternarNota('vento, roupa', 'Vento'), 'roupa', 'tocar de novo tira');
 
+  // O HERO da câmera nasce como o take bom do som.
+  assert.equal(montarSom(kit, 'take', 4, { take: { id: 't9', take: 1, status: 'HERO' } }).marca, 'bom');
+  assert.equal(montarSom(kit, 'take', 5, { take: { id: 't9', take: 1, status: 'OK' } }).marca, undefined);
+
+  // O nome do primeiro arquivo pelo gravador, e a data do F3 trocando com o dia.
+  const { primeiroArquivoDo, arquivoNoDia } = await vite.ssrLoadModule('/src/lib/logagem/som.ts');
+  assert.equal(primeiroArquivoDo('Zoom H6', '2026-10-31'), 'ZOOM0001');
+  assert.equal(primeiroArquivoDo('Zoom F3', '2026-10-31'), '261031_001');
+  assert.equal(primeiroArquivoDo('Sound Devices MixPre-6', '2026-10-31'), null, 'padrão desconhecido: a pessoa digita');
+  assert.equal(arquivoNoDia('261010_014', '2026-10-31'), '261031_014');
+  assert.equal(arquivoNoDia('ZOOM0014', '2026-10-31'), 'ZOOM0014');
+  assert.equal(proximoArquivo('261031_009'), '261031_010');
+
+  // A claquete mudada à mão puxa a cena e o plano da decupagem.
+  const { claqueteDaDecupagem } = await vite.ssrLoadModule('/src/lib/logagem/decupagem.ts');
+  const dec = {
+    cenas: [{ id: 'c4', numero: '4', ambiente: 'ext', periodo: 'noite' }],
+    planos: [{ id: 'p2', cena_id: 'c4', numero: '2', lente: '35mm', descricao: 'Alice corre' }],
+  };
+  const base = { cena: '3', plano: 'A', plano_letras: true, abertura: 'f/2.8', obs: '' };
+  assert.deepEqual(claqueteDaDecupagem(dec, { cena: '4', plano: 'A', take: 1 }, base), { cena_id: 'c4', ambiente: 'EXT', luz: 'NOITE' });
+  const b = claqueteDaDecupagem(dec, { plano: 'B', take: 1 }, { ...base, cena: '4' });
+  assert.equal(b.plano_id, 'p2', 'o B da claquete é o plano 2 da decupagem');
+  assert.equal(b.lente, '35mm');
+  assert.equal(b.obs, 'Alice corre', 'observação vazia ganha a descrição');
+  assert.equal(claqueteDaDecupagem(dec, { plano: 'B' }, { ...base, cena: '4', obs: 'já tem' }).obs, undefined, 'não empilha');
+  assert.deepEqual(claqueteDaDecupagem(dec, { cena: '9' }, base), {}, 'cena fora da decupagem não muda nada');
+  assert.equal(claqueteDaDecupagem({ ...dec, planos: [...dec.planos, { id: 'p1', cena_id: 'c4', numero: '1', descricao: 'Geral' }] }, { plano: 'B' }, { ...base, cena: '4', obs: 'Geral' }).obs, 'Alice corre', 'a descrição do plano anterior dá lugar à do novo');
+  assert.deepEqual(claqueteDaDecupagem(dec, { take: 2 }, base), {}, 'mudar só o take não procura nada');
+
   const pasta = process.argv[2];
   if (pasta) {
     const { relatorioEmPdf } = await vite.ssrLoadModule('/src/lib/logagem/pdf.tsx');

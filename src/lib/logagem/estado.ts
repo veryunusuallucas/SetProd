@@ -1,5 +1,6 @@
 import { db } from '../../db/db';
 import type { EstadoDaLogagem } from '../../types';
+import { arquivoNoDia } from './som';
 
 /**
  * O "agora" da Logagem numa diária: claquete e câmera ativa.
@@ -103,7 +104,10 @@ export async function garantirEstado(projetoId: string, diariaId: string, depart
   const anterior = (antes[0] ?? depois[0] ?? candidatos[0])?.e;
 
   // `add` e não `put`: se outra aba criou no meio do caminho, a dela fica.
-  await db.log_estado.add(herdarEstado(anterior, { projeto_id: projetoId, diaria_id: diariaId, departamento_id: departamentoId }))
+  const novo = herdarEstado(anterior, { projeto_id: projetoId, diaria_id: diariaId, departamento_id: departamentoId });
+  // O gravador que nomeia por data (Zoom F3) começa o dia com a data do dia.
+  novo.arquivo_som = arquivoNoDia(novo.arquivo_som, minhaData);
+  await db.log_estado.add(novo)
     .catch(() => { /* já existe — era isso que se queria */ });
 }
 

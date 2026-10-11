@@ -3,7 +3,7 @@ import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { nomeArquivoPrevisto } from './nomenclatura';
 import { mesmaClaquete, proximoPlanoLivre } from './claquete';
 import { idDoEstado } from './estado';
-import { registrarSom, takeLevaSom } from './som';
+import { registrarSom, somAcompanhaHero, takeLevaSom } from './som';
 
 /**
  * Registrar o take: o ato que a Logagem existe para fazer.
@@ -142,7 +142,8 @@ async function sincronizarKit(estado: EstadoDaLogagem, clipe: number) {
  * ele (era NG, virou OK) ou o contexto que faltou anotar. Mexer no nome do
  * arquivo aqui seria dizer que a câmera regravou por cima, o que não aconteceu.
  */
-export function substituirTake(id: string, estado: EstadoDaLogagem, status: StatusTake, agora = new Date()) {
+export async function substituirTake(id: string, estado: EstadoDaLogagem, status: StatusTake, agora = new Date()) {
+  await somAcompanhaHero(id, status);
   return db.log_takes.update(id, {
     status,
     hora: horaDeAgora(agora),
@@ -258,7 +259,10 @@ export function mudancasDaCascata(campo: CampoComCascata, alvos: Take[], novo: s
   });
 }
 
-export const editarTake = (id: string, mudanca: EdicaoDoTake) => db.log_takes.update(id, mudanca);
+export async function editarTake(id: string, mudanca: EdicaoDoTake) {
+  await somAcompanhaHero(id, mudanca.status);
+  return db.log_takes.update(id, mudanca);
+}
 
 export async function aplicarMudancas(lista: { id: string; mudanca: EdicaoDoTake }[]) {
   await db.transaction('rw', db.log_takes, async () => {
