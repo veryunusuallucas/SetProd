@@ -3,6 +3,7 @@ import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { nomeArquivoPrevisto } from './nomenclatura';
 import { mesmaClaquete, proximoPlanoLivre } from './claquete';
 import { idDoEstado } from './estado';
+import { registrarSom, somJunto } from './som';
 
 /**
  * Registrar o take: o ato que a Logagem existe para fazer.
@@ -115,6 +116,9 @@ export async function registrarTake(estado: EstadoDaLogagem, status: StatusTake,
     foto: '',
   });
   await sincronizarKit(estado, (Number(estado.proximo_clipe) || 0) + 1);
+  // Som junto: o mesmo toque loga o arquivo do gravador, casado com este take.
+  // MOS é "rodou sem som": não há arquivo de gravador para casar.
+  if (somJunto(estado) && estado.audio !== 'MOS') await registrarSom(estado, 'take', quem, take);
 
   return take;
 }
@@ -174,7 +178,12 @@ export function claqueteDoAcrescimo(takes: Take[], estado: EstadoDaLogagem) {
   };
 }
 
-export const apagarTake = (id: string) => db.log_takes.delete(id);
+/** Apaga o take e o som casado com ele: foi o mesmo momento, registrado por engano. */
+export const apagarTake = (id: string) =>
+  db.transaction('rw', db.log_takes, db.log_som, async () => {
+    await db.log_takes.delete(id);
+    await db.log_som.where('take_id').equals(id).delete();
+  });
 
 /**
  * A claquete do take, para mostrar.

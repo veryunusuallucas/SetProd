@@ -40,6 +40,7 @@ export const PADRAO: Omit<EstadoDaLogagem, 'id' | 'projeto_id' | 'diaria_id' | '
   lut: '',
   lente: '35mm',
   abertura: 'f/2.8',
+  som_junto: true,
   revisar_antes: false,
 };
 

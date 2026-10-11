@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 import { carimbarMudancasDaEscala } from '../lib/escalaMesclada';
 import type { Table } from 'dexie';
 
-import type { SyncBase, ConflitoGuardado, Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao } from '../types';
+import type { SyncBase, ConflitoGuardado, Projeto, Departamento, Perfil, Despesa, Acerto, Configuracao, AuditLog, SyncQueue, Locacao, Diaria, DiariaTask, Task, Notificacao, Aporte, Cena, Plano, RoteiroPDF, RoteiroTag, Pasta, Documento, Veiculo, Motorista, Elemento, StripboardItem, Pesquisa, RespostaPesquisa, ArquivoLocal, RegistroCena, RegistroPlano, Evento, Take, EstadoDaLogagem, KitDeLogagem, HdDeBackup, BackupDeCartao, ChecksumDeCartao, Som } from '../types';
 
 /**
  * As tabelas que viajam para o servidor.
@@ -20,7 +20,7 @@ export const TABELAS_SINCRONIZADAS = [
   'roteiro_pdfs', 'roteiro_tags', 'pastas', 'documentos', 'veiculos',
   'motoristas', 'elementos', 'stripboard_itens',
   'registros_cena', 'registros_plano', 'eventos',
-  'log_takes', 'log_estado', 'log_kits', 'log_hds', 'log_backups', 'log_checksums',
+  'log_takes', 'log_estado', 'log_kits', 'log_hds', 'log_backups', 'log_checksums', 'log_som',
 ] as const;
 
 /**
@@ -164,6 +164,8 @@ export class SetMoneyDB extends Dexie {
   log_hds!: Table<HdDeBackup, string>;
   log_backups!: Table<BackupDeCartao, string>;
   log_checksums!: Table<ChecksumDeCartao, string>;
+  /** O boletim de som (10/10/2026): um registro por arquivo do gravador. */
+  log_som!: Table<Som, string>;
 
   constructor() {
     super('SetMoneyDB');
@@ -321,6 +323,11 @@ export class SetMoneyDB extends Dexie {
     */
     this.version(22).stores({
       sync_base: 'id, projeto_id'
+    });
+
+    // v23: o boletim de som, irmão do `log_takes`.
+    this.version(23).stores({
+      log_som: 'id, projeto_id, diaria_id, take_id'
     });
 
     this.version(19).stores({

@@ -8,11 +8,12 @@
  * ⚠️ MÓDULO PESADO. Só entra por `await import('./pdf')`, em `exportar.ts`.
  */
 import { Document, Image, Page, StyleSheet, Text, View, pdf } from '@react-pdf/renderer';
-import type { Take } from '../../types';
+import type { Som, Take } from '../../types';
 import { limpar } from '../pdfTexto';
 import { data as dataLegivel, dataHora, numero } from '../formato';
 import { ROTULO_DO_STATUS } from './takes';
 import { resumirLogagem } from './resumo';
+import { ROTULO_DO_STATUS_DO_SOM, ROTULO_DO_TIPO, claqueteDoSom, resumoDoSom } from './som';
 import {
   COLUNAS_DO_REPORT, TETO_DE_LINHAS, TITULO_DO_RELATORIO, agruparTakes, celulaDoTake, linhasDaIntegridade,
   type OpcoesDoReport, type TipoDeRelatorio,
@@ -167,6 +168,9 @@ function CameraReport({ dados, opcoes }: { dados: DadosDoRelatorio; opcoes: Opco
   const titulo = TITULO_DO_RELATORIO.camera;
   const colunas = COLUNAS_DO_REPORT.filter(c => opcoes.colunas.includes(c.id));
   const grupos = agruparTakes(dados.takes, opcoes.agrupar);
+  // A coluna Áudio só existe quando há som casado: sem ele, seria uma coluna de traços.
+  const audio = audioDosTakes(dados.sons);
+  const pesoDoAudio = audio.size ? 11 : 0;
 
   return (
     /*
@@ -187,6 +191,7 @@ function CameraReport({ dados, opcoes }: { dados: DadosDoRelatorio; opcoes: Opco
             {colunas.map(c => (
               <Text key={c.id} style={[s.th, { flexGrow: c.peso, flexBasis: 0 }]}>{limpar(c.rotulo.toUpperCase())}</Text>
             ))}
+            {pesoDoAudio ? <Text style={[s.th, { flexGrow: pesoDoAudio, flexBasis: 0 }]}>ÁUDIO</Text> : null}
           </View>
 
           {grupos.map((g, i) => (
@@ -203,7 +208,7 @@ function CameraReport({ dados, opcoes }: { dados: DadosDoRelatorio; opcoes: Opco
                       <Text style={s.faixaTexto}>{limpar(g.rotulo)}</Text>
                     </View>
                   ) : null}
-                  <LinhaDoTake take={t} colunas={colunas} dados={dados} opcoes={opcoes} />
+                  <LinhaDoTake take={t} colunas={colunas} dados={dados} opcoes={opcoes} audio={pesoDoAudio ? audio.get(t.id) ?? '—' : undefined} pesoDoAudio={pesoDoAudio} />
                 </View>
               ))}
             </View>
@@ -216,11 +221,13 @@ function CameraReport({ dados, opcoes }: { dados: DadosDoRelatorio; opcoes: Opco
   );
 }
 
-function LinhaDoTake({ take, colunas, dados, opcoes }: {
+function LinhaDoTake({ take, colunas, dados, opcoes, audio, pesoDoAudio }: {
   take: Take;
   colunas: typeof COLUNAS_DO_REPORT;
   dados: DadosDoRelatorio;
   opcoes: OpcoesDoReport;
+  audio?: string;
+  pesoDoAudio: number;
 }) {
   return (
     <View style={s.linha}>
@@ -252,6 +259,9 @@ function LinhaDoTake({ take, colunas, dados, opcoes }: {
           </View>
         );
       })}
+      {audio !== undefined ? (
+        <Text style={[s.td, { flexGrow: pesoDoAudio, flexBasis: 0, fontFamily: 'Helvetica-Bold' }]}>{limpar(audio)}</Text>
+      ) : null}
     </View>
   );
 }
@@ -364,12 +374,102 @@ function Integridade({ dados }: { dados: DadosDoRelatorio }) {
   );
 }
 
+/** id do take → arquivos de som casados com ele ("ZOOM0012"). */
+function audioDosTakes(sons: Som[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const som of sons) {
+    if (!som.take_id) continue;
+    m.set(som.take_id, m.has(som.take_id) ? `${m.get(som.take_id)}, ${som.arquivo}` : som.arquivo);
+  }
+  return m;
+}
+
+const COR_DO_SOM_NO_PAPEL: Record<Som['status'], string> = { bom: VERDE, problema: '#b8620b', descartar: VERMELHO };
+
+/**
+ * O sound report: um arquivo do gravador por linha, com a nota de cada trilha.
+ *
+ * As trilhas são as do PRIMEIRO arquivo do trecho — quando o kit muda no meio
+ * do dia (a lapela trocou de ator), uma faixa cinza abre o trecho novo, como o
+ * formato no camera report.
+ */
+function SoundReport({ dados }: { dados: DadosDoRelatorio }) {
+  const titulo = TITULO_DO_RELATORIO.som;
+  const camera = new Map(dados.takes.map(t => [t.id, t.arquivo]));
+  const grupos: { trilhas: string[]; sons: Som[] }[] = [];
+  for (const som of dados.sons) {
+    const nomes = som.trilhas.map(t => t.nome);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.trilhas.join('|') === nomes.join('|')) ultimo.sons.push(som);
+    else grupos.push({ trilhas: nomes, sons: [som] });
+  }
+  const colunas = [
+    { rotulo: 'Arquivo', peso: 12 },
+    { rotulo: 'Claquete', peso: 13 },
+    { rotulo: 'Status', peso: 10 },
+    { rotulo: 'Câmera', peso: 12 },
+    { rotulo: 'Hora', peso: 7 },
+    { rotulo: 'Notas por trilha', peso: 40 },
+  ];
+
+  return (
+    <Page size="A4" orientation="portrait" style={s.pagina}>
+      <Topo dados={dados} titulo={titulo} />
+      <Text style={s.numeros}>{limpar(resumoDoSom(dados.sons))}</Text>
+
+      {dados.sons.length === 0 ? (
+        <Text style={s.vazio}>Nenhum arquivo de som registrado nesta diária.</Text>
+      ) : (
+        <View>
+          <View style={s.cabecalhoTabela} fixed>
+            {colunas.map(c => (
+              <Text key={c.rotulo} style={[s.th, { flexGrow: c.peso, flexBasis: 0 }]}>{limpar(c.rotulo.toUpperCase())}</Text>
+            ))}
+          </View>
+          {grupos.map(g => g.sons.map((som, j) => {
+            const peso = (k: number) => ({ flexGrow: colunas[k].peso, flexBasis: 0 });
+            const notas = som.trilhas.map((t, n) => (t.nota?.trim() ? `Tr${n + 1} ${t.nome}: ${t.nota.trim()}` : '')).filter(Boolean);
+            return (
+              <View key={som.id} wrap={false}>
+                {j === 0 ? (
+                  <View style={s.faixa}>
+                    <Text style={s.faixaTexto}>{limpar(g.trilhas.map((t, n) => `Tr${n + 1} ${t}`).join('  |  ') || 'Trilhas não informadas')}</Text>
+                  </View>
+                ) : null}
+                <View style={s.linha}>
+                  <Text style={[s.td, peso(0), { fontFamily: 'Helvetica-Bold' }]}>{limpar(som.arquivo)}</Text>
+                  <View style={peso(1)}>
+                    <Text style={[s.td, { fontFamily: 'Helvetica-Bold' }]}>{limpar(som.tipo === 'take' ? claqueteDoSom(som) : ROTULO_DO_TIPO[som.tipo])}</Text>
+                    {som.tipo !== 'take' && som.cena ? <Text style={s.tdDetalhe}>{limpar(`Cena ${som.cena}`)}</Text> : null}
+                  </View>
+                  <Text style={[s.td, peso(2), { color: COR_DO_SOM_NO_PAPEL[som.status], fontFamily: 'Helvetica-Bold' }]}>
+                    {limpar(ROTULO_DO_STATUS_DO_SOM[som.status])}
+                  </Text>
+                  <Text style={[s.td, peso(3)]}>{limpar((som.take_id && camera.get(som.take_id)) || '-')}</Text>
+                  <Text style={[s.td, peso(4)]}>{limpar(som.hora.slice(0, 5))}</Text>
+                  <View style={peso(5)}>
+                    {notas.map((n, k) => <Text key={k} style={s.td}>{limpar(n)}</Text>)}
+                    {som.obs ? <Text style={s.tdDetalhe}>{limpar(som.obs)}</Text> : null}
+                  </View>
+                </View>
+              </View>
+            );
+          }))}
+        </View>
+      )}
+
+      <Rodape dados={dados} titulo={titulo} />
+    </Page>
+  );
+}
+
 function Relatorio({ tipo, dados, opcoes }: { tipo: TipoDeRelatorio; dados: DadosDoRelatorio; opcoes: OpcoesDoReport }) {
   const titulo = TITULO_DO_RELATORIO[tipo];
   return (
     <Document title={limpar(`${titulo} - ${dados.projeto.nome} - Diária ${numeroDaDiaria(dados.diaria)}`)} author="SetProd">
-      {tipo !== 'integridade' ? <CameraReport dados={dados} opcoes={opcoes} /> : null}
-      {tipo !== 'camera' ? <Integridade dados={dados} /> : null}
+      {tipo === 'camera' || tipo === 'consolidado' ? <CameraReport dados={dados} opcoes={opcoes} /> : null}
+      {tipo === 'integridade' || tipo === 'consolidado' ? <Integridade dados={dados} /> : null}
+      {tipo === 'som' ? <SoundReport dados={dados} /> : null}
     </Document>
   );
 }

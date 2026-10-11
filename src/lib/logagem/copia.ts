@@ -1,6 +1,6 @@
 import type {
   BackupDeCartao, CameraDoKit, ChecksumDeCartao, EstadoDaLogagem, HdDeBackup, KitDeLogagem, LenteDoKit,
-  MetadadosDoClipe, StatusTake, Take,
+  MetadadosDoClipe, Som, StatusTake, Take,
 } from '../../types';
 import { NOMENCLATURAS } from './nomenclatura';
 import { faixaDaLente } from './kits';
@@ -60,6 +60,8 @@ export interface CopiaDaLogagem {
   diaria: { id: string; numero: number; data?: string };
   estado?: EstadoDaLogagem;
   takes: Take[];
+  /** O boletim de som. Só vai na cópia; restaurar ainda não o traz de volta. */
+  sons?: Som[];
   kits: KitDeLogagem[];
   hds: HdDeBackup[];
   backups: BackupDeCartao[];
@@ -75,6 +77,7 @@ export function montarCopia(d: {
   diaria: { id: string; numero: number; data?: string };
   estado?: EstadoDaLogagem;
   takes: Take[];
+  sons?: Som[];
   kits: KitDeLogagem[];
   hds: HdDeBackup[];
   backups: BackupDeCartao[];
@@ -132,6 +135,7 @@ export function montarCopia(d: {
     diaria: d.diaria,
     estado: d.estado,
     takes,
+    sons: d.sons,
     kits: d.kits,
     hds: d.hds,
     backups: d.backups,

@@ -90,7 +90,8 @@ as $$
     ) then 'restrito'
     when p_tabela in (
       'perfis', 'tasks', 'diaria_tasks',
-      'log_takes', 'log_estado', 'log_kits', 'log_hds', 'log_backups', 'log_checksums'
+      'log_takes', 'log_estado', 'log_kits', 'log_hds', 'log_backups', 'log_checksums',
+      'log_som'
     ) then 'departamental'
     else 'comum'
   end;

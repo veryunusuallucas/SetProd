@@ -265,7 +265,7 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
   const apagar = async () => {
     if (!(await confirmar({
       titulo: `Apagar o take ${take.cena}/${take.plano}/${take.take}?`,
-      detalhe: `O arquivo ${take.arquivo} continua no cartão; o que some é o registro dele aqui.`,
+      detalhe: `O arquivo ${take.arquivo} continua no cartão; o que some é o registro dele aqui — e o do som casado com ele, se houver.`,
       confirmar: 'Apagar',
       perigo: true,
     }))) return;

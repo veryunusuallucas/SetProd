@@ -66,6 +66,7 @@ const NOMES: Record<string, string> = {
   log_hds: 'a logagem',
   log_backups: 'a logagem',
   log_checksums: 'a logagem',
+  log_som: 'o boletim de som',
   stripboard_itens: 'o stripboard',
   configuracoes: 'as configurações',
   notificacoes: 'uma notificação',

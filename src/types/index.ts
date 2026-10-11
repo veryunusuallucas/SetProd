@@ -1481,6 +1481,13 @@ export interface EstadoDaLogagem {
    * Some quando o take é registrado — ela é DAQUELE take.
    */
   foto?: string;
+  // Som (boletim de som, 10/10/2026). Ausente = o padrão de `lib/logagem/som.ts`.
+  /** Registrar o take de câmera cria junto o registro de som casado. */
+  som_junto?: boolean;
+  /** O próximo arquivo do gravador (`ZOOM0012`). Anda sozinho a cada registro. */
+  arquivo_som?: string;
+  /** O nome de cada trilha do gravador, na ordem: Tr1, Tr2… */
+  trilhas_som?: string[];
   // Preferências da diária
   revisar_antes: boolean;
   atualizado_em?: number;
@@ -1563,6 +1570,39 @@ export interface BackupDeCartao {
  * centenas de KB, e isto sincroniza a cada mudança. O arquivo vai para o
  * Storage (`arquivo`); aqui fica só a assinatura, que é o que prova.
  */
+/**
+ * Um arquivo do gravador de som, logado no set (boletim de som, 10/10/2026).
+ *
+ * Independente do take de câmera: o som grava ambiência sem vídeo e a câmera
+ * roda plano sem som. Quando os dois foram o mesmo momento, `take_id` casa um
+ * com o outro. As trilhas são uma FOTOGRAFIA dos nomes no momento — a lapela 2
+ * de hoje é de outro ator amanhã.
+ */
+export interface Som {
+  id: string;
+  projeto_id: string;
+  diaria_id: string;
+  departamento_id?: string;
+  tipo: 'take' | 'wild' | 'room_tone';
+  cena_id?: string;
+  plano_id?: string;
+  cena: string;
+  plano: string;
+  /** Só no `take`: wild e room tone não têm número de take. */
+  take?: number;
+  arquivo: string;
+  status: 'bom' | 'problema' | 'descartar';
+  trilhas: { nome: string; nota?: string }[];
+  obs?: string;
+  /** O take de câmera casado, quando houver. */
+  take_id?: string;
+  /** `HH:MM:SS` local do registro. */
+  hora: string;
+  ordem: number;
+  logado_por?: string;
+  criado_em: number;
+}
+
 export interface ChecksumDeCartao {
   id: string;
   projeto_id: string;

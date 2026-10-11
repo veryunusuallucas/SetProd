@@ -396,12 +396,13 @@ export function linhasDoComprovante(texto: string, teto = TETO_DE_LINHAS): { lin
 
 /* ───────────────────────── Nome do arquivo ───────────────────────── */
 
-export type TipoDeRelatorio = 'camera' | 'integridade' | 'consolidado';
+export type TipoDeRelatorio = 'camera' | 'integridade' | 'consolidado' | 'som';
 
 export const TITULO_DO_RELATORIO: Record<TipoDeRelatorio, string> = {
   camera: 'Camera Report',
   integridade: 'Relatório de Integridade',
   consolidado: 'Camera Report + Integridade',
+  som: 'Sound Report',
 };
 
 const semAcento = (s: string) =>

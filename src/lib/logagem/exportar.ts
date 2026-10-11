@@ -6,7 +6,8 @@ import { membrosDoProjeto } from '../membros';
 import { criarHd, marcarBackup } from './backup';
 import { blobDoDataUrl, montarCopia, type CopiaLida, type PlanoDeRestauracao } from './copia';
 import { garantirEstado, idDoEstado, mudarEstado } from './estado';
-import type { BackupDeCartao, ChecksumDeCartao, Diaria, HdDeBackup, Projeto, Take } from '../../types';
+import { ordenarSons } from './som';
+import type { BackupDeCartao, ChecksumDeCartao, Diaria, HdDeBackup, Projeto, Som, Take } from '../../types';
 import {
   TITULO_DO_RELATORIO, equipeDoReport, linhasDoComprovante, nomeDeQuemLogou, nomeDoArquivo, ordenarTakes, paraCsv,
   type EquipeDoReport, type OpcoesDoReport, type TipoDeRelatorio,
@@ -24,6 +25,8 @@ export interface DadosDoRelatorio {
   projeto: Projeto;
   diaria: Diaria;
   takes: Take[];
+  /** O boletim de som da diária, na ordem do gravador. */
+  sons: Som[];
   hds: HdDeBackup[];
   backups: BackupDeCartao[];
   checksums: ChecksumDeCartao[];
@@ -48,8 +51,9 @@ export async function coletarRelatorio(
   const projeto = await db.projetos.get(diaria.projeto_id);
   if (!projeto) return null;
 
-  const [takes, hds, backups, checksums, perfis] = await Promise.all([
+  const [takes, sons, hds, backups, checksums, perfis] = await Promise.all([
     db.log_takes.where('diaria_id').equals(diariaId).toArray(),
+    db.log_som.where('diaria_id').equals(diariaId).toArray(),
     db.log_hds.where('projeto_id').equals(projeto.id).toArray(),
     db.log_backups.where('diaria_id').equals(diariaId).toArray(),
     db.log_checksums.where('diaria_id').equals(diariaId).toArray(),
@@ -94,6 +98,7 @@ export async function coletarRelatorio(
     projeto,
     diaria,
     takes: ordenarTakes(takes),
+    sons: ordenarSons(sons),
     hds: [...hds].sort((a, b) => a.ordem - b.ordem),
     backups,
     checksums,
@@ -208,6 +213,7 @@ export async function copiaDaLogagem(dados: DadosDoRelatorio, versaoDoApp: strin
     diaria: { id: dados.diaria.id, numero: dados.diaria.numero, data: dados.diaria.data },
     estado,
     takes: dados.takes,
+    sons: dados.sons,
     kits,
     hds: dados.hds,
     backups: dados.backups,

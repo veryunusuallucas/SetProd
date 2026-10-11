@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { FileDown, FileText, ShieldCheck, Files, Table, ChevronDown, Check, Loader2, AlertTriangle, Archive } from 'lucide-react';
+import { FileDown, FileText, ShieldCheck, Files, Table, ChevronDown, Check, Loader2, AlertTriangle, Archive, Mic } from 'lucide-react';
 import { db } from '../../db/db';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
@@ -23,6 +23,7 @@ const SAIDAS: { id: Saida; nome: string; explica: string; icone: typeof FileText
   { id: 'camera', nome: 'Camera report', explica: 'PDF com os takes do dia', icone: FileText },
   { id: 'integridade', nome: 'Integridade', explica: 'PDF dos cartões, HDs e checksums', icone: ShieldCheck },
   { id: 'consolidado', nome: 'Os dois juntos', explica: 'um PDF só, para a montagem', icone: Files },
+  { id: 'som', nome: 'Sound report', explica: 'PDF dos arquivos do gravador, com as notas', icone: Mic },
   { id: 'csv', nome: 'Planilha', explica: 'CSV com as 43 colunas do Lumavi', icone: Table },
   { id: 'json', nome: 'Cópia de segurança', explica: 'JSON com tudo, fotos inclusive, para o HD', icone: Archive },
 ];
@@ -53,11 +54,12 @@ export function ExportarRelatorios({ projetoId, diariaId, podeEditar, departamen
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
   const quantos = useLiveQuery(async () => {
-    const [takes, cartoes] = await Promise.all([
+    const [takes, cartoes, sons] = await Promise.all([
       db.log_takes.where('diaria_id').equals(diariaId).count(),
       db.log_backups.where('diaria_id').equals(diariaId).count(),
+      db.log_som.where('diaria_id').equals(diariaId).count(),
     ]);
-    return { takes, cartoes };
+    return { takes, cartoes, sons };
   }, [diariaId]);
 
   /*
@@ -78,7 +80,7 @@ export function ExportarRelatorios({ projetoId, diariaId, podeEditar, departamen
 
   const semNada = (quantos?.takes ?? 0) === 0 && (quantos?.cartoes ?? 0) === 0;
   const indisponivel = (s: Saida) =>
-    !quantos || (s === 'csv' || s === 'camera' ? quantos.takes === 0 : semNada);
+    !quantos || (s === 'som' ? quantos.sons === 0 : s === 'csv' || s === 'camera' ? quantos.takes === 0 : semNada);
 
   const exportar = async (saida: Saida) => {
     if (fazendo) return;

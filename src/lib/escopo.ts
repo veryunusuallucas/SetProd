@@ -113,6 +113,7 @@ export const ESCOPO: Record<TabelaSincronizada, Escopo> = {
   log_hds: 'departamental',
   log_backups: 'departamental',
   log_checksums: 'departamental',
+  log_som: 'departamental',
 };
 
 export function escopoDe(tabela: string): Escopo {
