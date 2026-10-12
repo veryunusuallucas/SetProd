@@ -4,9 +4,9 @@ import { Sun, MessageSquare } from 'lucide-react';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem } from '../../types';
 import { CampoTexto } from '../ui/CampoTexto';
-import { Campo, Escolha, Rotulo, Segmentado, estiloCampo } from './pecas';
+import { Campo, Escolha, Rotulo, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
-import { digitarNaClaquete, ehExtra, passoNaClaquete, trocarModoDoPlano } from '../../lib/logagem/claquete';
+import { digitarNaClaquete, ehExtra, passoNaClaquete } from '../../lib/logagem/claquete';
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { claqueteDaDecupagem } from '../../lib/logagem/decupagem';
 import { ListaDeTakes, useRegistroDeTake } from './RegistroDeTake';
@@ -243,15 +243,14 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
 }
 
 /**
- * O contexto da cena (Detalhada): ambiente, luz, áudio, ND, e como a claquete
- * conta os planos. Vai junto em cada take e vale até alguém mudar.
+ * O contexto da cena (Detalhada): ambiente, luz, áudio e ND. Vai junto em cada
+ * take e vale até alguém mudar.
  */
 function ContextoDaCena({ estado, bloqueado, mudar }: {
   estado: EstadoDaLogagem;
   bloqueado: boolean;
   mudar: (m: Partial<EstadoDaLogagem>) => void;
 }) {
-  const letras = estado.plano_letras !== false;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
       <Rotulo icone={<Sun size={14} />}>Como está a cena</Rotulo>
@@ -267,27 +266,7 @@ function ContextoDaCena({ estado, bloqueado, mudar }: {
       <Campo rotulo="ND">
         <Escolha nome="logagem-nd" opcoes={OPCOES.nd} valor={estado.nd} bloqueado={bloqueado} aoMudar={v => mudar({ nd: v })} />
       </Campo>
-      <Campo rotulo="Planos em">
-        <Segmentado
-          nome="logagem-modo-plano"
-          opcoes={[{ id: 'letras', nome: 'Letras (A, B, C…)' }, { id: 'numeros', nome: 'Números' }]}
-          valor={letras ? 'letras' : 'numeros'}
-          bloqueado={bloqueado}
-          aoMudar={v => {
-            const paraLetras = v === 'letras';
-            mudar({ plano_letras: paraLetras, plano: trocarModoDoPlano(estado.plano, paraLetras) });
-          }}
-        />
-      </Campo>
-      {/*
-        A cascata é a convenção do set, e ela surpreende quem nunca viu: mexer
-        na cena zera plano e take sozinho. Dizer isso aqui evita o "por que ele
-        apagou meu take?".
-      */}
-      <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
-        Trocar a cena devolve o plano para {letras ? 'A' : '1'} e o take para 1; trocar o plano devolve só o take.
-        {letras && ' O alfabeto da claquete pula I, O, Q, S e Z, que à mão viram 1, 0, 2, 5 e 2. Depois de Y vem AA.'}
-      </p>
+      {/* Planos em letras ou números mudou para a aba Config (Lucas, 12/10/2026): é ajuste de produção, não do take. */}
     </div>
   );
 }

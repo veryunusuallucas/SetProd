@@ -5,6 +5,7 @@ import {
   FolderOpen, Files, FileWarning, CalendarX2, GitCompareArrows, FilePlus2, CheckCircle2, RotateCcw, Info,
 } from 'lucide-react';
 import { db } from '../../db/db';
+import { idDoEstado } from '../../lib/logagem/estado';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { Rotulo, MONO } from './pecas';
@@ -134,10 +135,19 @@ export function AbaIngest({ projetoId, diariaId, diaDaDiaria, podeEditar, depart
               cartão 003 da Sony com 41 takes que não são dele. Em branco, o
               boletim diz a verdade: não se sabe, alguém ajusta.
             */
-            importar: importar.map(c => {
-              const doNome = cameraECartaoDoNome(c.nome);
-              return { clipe: c, camera_id: doNome.camera_id || '', cartao: doNome.cartao || '' };
-            }),
+            /*
+              Exceção: quando o A00X do nome segue a CENA (Canção de Outono),
+              o 003 do nome é a cena 3, e não um cartão. Aí o cartão é o que
+              está na câmera — ler do nome criou cartões que nunca existiram.
+            */
+            importar: await (async () => {
+              const estado = await db.log_estado.get(idDoEstado(diariaId));
+              return importar.map(c => {
+                const doNome = cameraECartaoDoNome(c.nome);
+                const cartao = estado?.reel_da_cena ? estado.cartao : doNome.cartao;
+                return { clipe: c, camera_id: doNome.camera_id || '', cartao: cartao || '' };
+              });
+            })(),
           });
           setResultado(r);
         } finally {

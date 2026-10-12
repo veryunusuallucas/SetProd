@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { StickyNote, UserCheck, Smartphone, X, Plus, RotateCcw, Check, Wifi, WifiOff, CloudUpload, HardDrive } from 'lucide-react';
+import { StickyNote, UserCheck, Smartphone, X, Plus, RotateCcw, Check, Wifi, WifiOff, CloudUpload, HardDrive, Clapperboard } from 'lucide-react';
+import { garantirEstado, idDoEstado, mudarEstado } from '../../lib/logagem/estado';
+import { trocarModoDoPlano } from '../../lib/logagem/claquete';
 import { db } from '../../db/db';
 import type { Departamento, Perfil } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
-import { Rotulo, estiloCampo } from './pecas';
+import { Campo, Rotulo, Segmentado, estiloCampo } from './pecas';
 import { useNotas } from './NotasRapidas';
 import { MAXIMO_DE_NOTAS, NOTAS_PADRAO, lembrarNotas } from '../../lib/logagem/notas';
 import { departamentoDaFotografia } from '../../lib/logagem/permissao';
@@ -24,8 +26,10 @@ import {
  * - as anotações rápidas são DESTE APARELHO (o vocabulário de quem loga);
  * - quem registra takes é da PRODUÇÃO, e só dono/admin mexe.
  */
-export function AbaConfig({ projetoId, podeEditar, administra, liberados, perfis, departamentos, eu }: {
+export function AbaConfig({ projetoId, diariaId, podeEditar, administra, liberados, perfis, departamentos, eu }: {
   projetoId: string;
+  /** A claquete mora no estado da diária e passa para as próximas. */
+  diariaId?: string;
   podeEditar: boolean;
   administra: boolean;
   liberados: string[];
@@ -37,6 +41,7 @@ export function AbaConfig({ projetoId, podeEditar, administra, liberados, perfis
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* O aparelho primeiro: é o único bloco que pode estar pedindo atenção agora. */}
       <EsteAparelho projetoId={projetoId} />
+      {diariaId && <Claquete projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} />}
       {podeEditar && <AnotacoesRapidas />}
       <QuemRegistra projetoId={projetoId} podeEditar={podeEditar} administra={administra} liberados={liberados} perfis={perfis} departamentos={departamentos} eu={eu} />
     </div>
@@ -44,6 +49,47 @@ export function AbaConfig({ projetoId, podeEditar, administra, liberados, perfis
 }
 
 const cartao = { display: 'flex', flexDirection: 'column' as const, gap: '12px', padding: '22px' };
+
+/**
+ * Como a claquete conta os planos. Vale desta diária em diante: o estado da
+ * próxima diária herda da anterior.
+ */
+function Claquete({ projetoId, diariaId, podeEditar }: { projetoId: string; diariaId: string; podeEditar: boolean }) {
+  const estado = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
+  // Quem vem direto à Config numa diária nova ainda não tem estado: nasce aqui, herdando da anterior.
+  useEffect(() => {
+    if (podeEditar && estado === undefined) void garantirEstado(projetoId, diariaId);
+  }, [podeEditar, estado, projetoId, diariaId]);
+  if (!estado) return null;
+  const letras = estado.plano_letras !== false;
+  return (
+    <section className="card" style={cartao}>
+      <Rotulo icone={<Clapperboard size={14} />}>Claquete</Rotulo>
+      <Campo rotulo="Planos em">
+        <Segmentado
+          nome="config-modo-plano"
+          opcoes={[{ id: 'letras', nome: 'Letras (A, B, C…)' }, { id: 'numeros', nome: 'Números' }]}
+          valor={letras ? 'letras' : 'numeros'}
+          bloqueado={!podeEditar}
+          aoMudar={v => {
+            const paraLetras = v === 'letras';
+            void mudarEstado(diariaId, { plano_letras: paraLetras, plano: trocarModoDoPlano(estado.plano, paraLetras) });
+          }}
+        />
+      </Campo>
+      {/*
+        A cascata é a convenção do set, e ela surpreende quem nunca viu: mexer
+        na cena zera plano e take sozinho. Dizer isso aqui evita o "por que ele
+        apagou meu take?".
+      */}
+      <p className="text-xs text-muted" style={{ margin: 0 }}>
+        Trocar a cena devolve o plano para {letras ? 'A' : '1'} e o take para 1; trocar o plano devolve só o take.
+        {letras && ' O alfabeto da claquete pula I, O, Q, S e Z, que à mão viram 1, 0, 2, 5 e 2. Depois de Y vem AA.'}
+        {' '}Vale desta diária em diante.
+      </p>
+    </section>
+  );
+}
 
 function AnotacoesRapidas() {
   const notas = useNotas();

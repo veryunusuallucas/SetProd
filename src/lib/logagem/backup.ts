@@ -300,3 +300,35 @@ export async function anexarChecksum(dados: {
 }
 
 export const apagarChecksum = (id: string) => db.log_checksums.delete(id);
+
+/**
+ * Juntar cartões que são o mesmo cartão físico (Lucas, 12/10/2026).
+ *
+ * Na Diária 1 da Canção de Outono foi um cartão só, mas o ingest leu o A002,
+ * o A004 e o A008 do nome dos clipes como cartões — e o Backup passou a pedir
+ * cópia de quatro. Juntar leva os takes, as marcações de cópia e os
+ * comprovantes para o cartão que fica. Marcação repetida (o mesmo HD marcado
+ * nos dois) vira uma só.
+ */
+export async function juntarCartoes(diariaId: string, de: string[], para: string) {
+  const sai = new Set(de.map(c => c.trim()).filter(c => c && c !== para.trim()));
+  if (!sai.size) return;
+  await db.transaction('rw', [db.log_takes, db.log_backups, db.log_checksums, db.log_estado], async () => {
+    // O cartão na câmera também: senão ele continuaria aparecendo como um cartão à parte.
+    const estado = await db.log_estado.where('diaria_id').equals(diariaId).first();
+    if (estado && sai.has(String(estado.cartao ?? '').trim())) await db.log_estado.update(estado.id, { cartao: para });
+    const [takes, backups, checksums] = await Promise.all([
+      db.log_takes.where('diaria_id').equals(diariaId).toArray(),
+      db.log_backups.where('diaria_id').equals(diariaId).toArray(),
+      db.log_checksums.where('diaria_id').equals(diariaId).toArray(),
+    ]);
+    for (const t of takes) if (sai.has(String(t.cartao ?? '').trim())) await db.log_takes.update(t.id, { cartao: para });
+    const hdsDoQueFica = new Set(backups.filter(b => b.cartao.trim() === para.trim()).map(b => b.hd_id));
+    for (const b of backups) {
+      if (!sai.has(b.cartao.trim())) continue;
+      if (hdsDoQueFica.has(b.hd_id)) await db.log_backups.delete(b.id);
+      else { await db.log_backups.update(b.id, { cartao: para }); hdsDoQueFica.add(b.hd_id); }
+    }
+    for (const c of checksums) if (sai.has(c.cartao.trim())) await db.log_checksums.update(c.id, { cartao: para });
+  });
+}

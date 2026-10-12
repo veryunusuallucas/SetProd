@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
-  HardDrive, ShieldCheck, ShieldAlert, FileCheck2, Plus, Trash2, X, Check, Files, Camera, ChevronDown,
+  HardDrive, ShieldCheck, ShieldAlert, FileCheck2, Plus, Trash2, X, Check, Files, Camera, ChevronDown, Merge,
 } from 'lucide-react';
 import { db } from '../../db/db';
 import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, Take } from '../../types';
@@ -15,7 +15,7 @@ import { idDoEstado } from '../../lib/logagem/estado';
 import { guardarArquivo, apagarArquivo } from '../../lib/arquivos';
 import { dataHora, numero } from '../../lib/formato';
 import {
-  anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos,
+  anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos, juntarCartoes,
   criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta,
 } from '../../lib/logagem/backup';
 import { ExportarRelatorios } from './ExportarRelatorios';
@@ -98,6 +98,10 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
 
       {emOrdem.length === 0 && (
         <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} primeiraVez />
+      )}
+
+      {podeEditar && cartoes.length > 1 && (
+        <JuntarCartoes diariaId={diariaId} cartoes={cartoes} takes={takes} cartaoAtual={estado?.cartao} />
       )}
 
       <Cartoes
@@ -268,6 +272,91 @@ function Hds({ hds, projetoId, departamentoId, podeEditar, primeiraVez }: {
 }
 
 /* ───────────────────────── Cartões ───────────────────────── */
+
+/**
+ * "Foi um cartão só": juntar os cartões que o app separou (o ingest leu o A002,
+ * o A004 do nome dos clipes como cartões). Fechado por padrão — é conserto,
+ * não rotina.
+ */
+function JuntarCartoes({ diariaId, cartoes, takes, cartaoAtual }: { diariaId: string; cartoes: string[]; takes: Take[]; cartaoAtual?: string }) {
+  const [aberto, setAberto] = useState(false);
+  const [marcados, setMarcados] = useState<string[]>([]);
+  const [fica, setFica] = useState('');
+  const escolhidos = marcados.length ? marcados : cartoes;
+  const destino = escolhidos.includes(fica) ? fica : (escolhidos.includes(String(cartaoAtual ?? '')) ? String(cartaoAtual) : escolhidos[0]);
+  const quantos = (c: string) => takes.filter(t => String(t.cartao ?? '').trim() === c).length;
+
+  const juntar = async () => {
+    const saem = escolhidos.filter(c => c !== destino);
+    if (!saem.length) return;
+    if (!(await confirmar({
+      titulo: `Juntar ${saem.join(', ')} no cartão ${destino}?`,
+      detalhe: 'Os takes, as cópias marcadas e os comprovantes passam para ele. Use quando foi o mesmo cartão físico.',
+      confirmar: 'Juntar',
+    }))) return;
+    await juntarCartoes(diariaId, saem, destino);
+    setAberto(false);
+    setMarcados([]);
+  };
+
+  if (!aberto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        className="text-sm"
+        style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 4px', border: 'none', background: 'none', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}
+      >
+        <Merge size={15} /> Foi um cartão só? Juntar cartões
+      </button>
+    );
+  }
+
+  return (
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
+      <Rotulo icone={<Merge size={14} />}>Juntar cartões</Rotulo>
+      <p className="text-xs text-muted" style={{ margin: 0 }}>Marque os que foram o mesmo cartão físico e escolha o nome que fica.</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        {cartoes.map(c => {
+          const marcado = escolhidos.includes(c);
+          return (
+            <label key={c} style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 12px', borderRadius: 'var(--radius-sm)', border: `1px solid ${marcado ? 'var(--cor-criativo)' : 'var(--border-light)'}`, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={marcado}
+                onChange={e => setMarcados(atual => {
+                  const base = atual.length ? atual : cartoes;
+                  return e.target.checked ? [...base, c] : base.filter(x => x !== c);
+                })}
+                style={{ width: '18px', height: '18px', accentColor: 'var(--cor-criativo)' }}
+              />
+              <b style={{ fontVariantNumeric: 'tabular-nums' }}>{c}</b>
+              <span className="text-xs text-muted">{quantos(c)} take{quantos(c) === 1 ? '' : 's'}</span>
+            </label>
+          );
+        })}
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <span className="text-sm text-secondary">Fica como</span>
+        <select value={destino} onChange={e => setFica(e.target.value)} style={{ ...estiloCampo, width: 'auto', minWidth: '110px' }}>
+          {escolhidos.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </label>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <BotaoTatil
+          onClick={() => void juntar()}
+          disabled={escolhidos.length < 2}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '48px', padding: '0 18px', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: 'var(--cor-criativo)', color: '#0b0b0b', fontWeight: 800, cursor: 'pointer', opacity: escolhidos.length < 2 ? 0.5 : 1 }}
+        >
+          <Merge size={16} /> Juntar {escolhidos.length} cartões em {destino}
+        </BotaoTatil>
+        <button type="button" onClick={() => setAberto(false)} className="text-sm" style={{ minHeight: '48px', border: 'none', background: 'none', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}>
+          Cancelar
+        </button>
+      </div>
+    </section>
+  );
+}
 
 function Cartoes({ cartoes, hds, takes, backups, checksums, cartaoAtual, podeEditar, aoMarcar, aoDesmarcar, aoAnexar }: {
   cartoes: string[];

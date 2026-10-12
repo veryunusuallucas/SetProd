@@ -458,6 +458,7 @@ function ConteudoDaAba({
     return (
       <AbaConfig
         projetoId={projetoId}
+        diariaId={diariaId}
         podeEditar={podeEditar}
         administra={administra}
         liberados={liberados}
