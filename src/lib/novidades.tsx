@@ -229,6 +229,36 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.1',
+    resumo: <>Acertos que vieram de olhar a Diária 1 de novo: um cartão é um cartão, e as configurações moram na Config.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <HardDrive size={20} />,
+        titulo: 'Foi um cartão só? Juntar cartões',
+        texto: 'No Backup, marque os cartões que foram o mesmo cartão físico e escolha o nome que fica. Os takes, as cópias marcadas e os comprovantes passam para ele.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <FileInput size={20} />,
+        titulo: 'O Ingest não inventa cartão',
+        texto: 'Quando o A00X do nome segue a cena, o clipe importado entra no cartão que está na câmera — antes, o A002 e o A004 do nome viravam cartões que nunca existiram.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Settings size={20} />,
+        titulo: 'Letras ou números na Config',
+        texto: 'Como a claquete conta os planos saiu de "Como está a cena" e foi para a aba Config, no bloco Claquete.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <History size={20} />,
+        titulo: 'Novidades por versão',
+        texto: 'Nas versões anteriores, as atualizações da mesma versão ficam num cartão só — Beta 0.21 com a 0.21.0 e a 0.21.1 dentro, cada uma separada.',
+      },
+    ],
+  },
+  {
     versao: '0.22.0',
     resumo: <>O boletim de som chegou: o som se loga junto com a câmera, sai num sound report de verdade e se casa sozinho com o vídeo.</>,
     grupos: [
