@@ -31,7 +31,25 @@ import { rotuloCompleto, rotuloCurto } from '../lib/versao';
  *
  * E a versão anterior fica listada embaixo, fechada. Quem pulou duas versões
  * não fica sem saber o que mudou só porque não abriu o app naquele dia.
+ *
+ * AS ATUALIZAÇÕES MORAM NA VERSÃO-MÃE (Lucas, 12/10/2026): 0.21.0 e 0.21.1
+ * são um cartão só, "Beta 0.21", e dentro dele cada uma aparece separada.
+ * A lista de anteriores para de crescer a cada consertinho.
  */
+
+/** "0.21.1" → "0.21" */
+const familiaDe = (versao: string) => versao.split('.').slice(0, 2).join('.');
+
+/** As versões em famílias consecutivas, na ordem em que vieram (a mais nova primeiro). */
+function emFamilias(versoes: Versao[]): { familia: string; versoes: Versao[] }[] {
+  const familias: { familia: string; versoes: Versao[] }[] = [];
+  for (const v of versoes) {
+    const ultima = familias[familias.length - 1];
+    if (ultima?.familia === familiaDe(v.versao)) ultima.versoes.push(v);
+    else familias.push({ familia: familiaDe(v.versao), versoes: [v] });
+  }
+  return familias;
+}
 
 export function ChangelogModal({ onClose }: { onClose: () => void }) {
   // Esc fecha, o fundo para de rolar e o foco volta para o botão que abriu.
@@ -116,12 +134,12 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
           {anteriores.length > 0 && (
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '14px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div className="text-xs font-bold uppercase tracking-widest text-muted">Versões anteriores</div>
-              {anteriores.map(v => (
+              {emFamilias(anteriores).map(f => (
                 <CartaoVersao
-                  key={v.versao}
-                  versao={v}
-                  aberto={abertos.has(`v:${v.versao}`)}
-                  aoAlternar={() => alternar(`v:${v.versao}`)}
+                  key={f.familia}
+                  versoes={f.versoes}
+                  aberto={abertos.has(`v:${f.familia}`)}
+                  aoAlternar={() => alternar(`v:${f.familia}`)}
                 />
               ))}
             </div>
@@ -186,8 +204,14 @@ function CartaoGrupo({ grupo, aberto, aoAlternar }: { grupo: Grupo; aberto: bool
   );
 }
 
-function CartaoVersao({ versao, aberto, aoAlternar }: { versao: Versao; aberto: boolean; aoAlternar: () => void }) {
-  const itens = itensDa(versao);
+/**
+ * Uma versão-mãe (Beta 0.21) com as suas atualizações dentro. Com uma só, é o
+ * cartão de sempre; com várias, cada uma ganha o seu título lá dentro, a mais
+ * nova primeiro.
+ */
+function CartaoVersao({ versoes, aberto, aoAlternar }: { versoes: Versao[]; aberto: boolean; aoAlternar: () => void }) {
+  const itens = versoes.flatMap(itensDa);
+  const varias = versoes.length > 1;
   return (
     <div style={CARTAO}>
       <button
@@ -198,7 +222,14 @@ function CartaoVersao({ versao, aberto, aoAlternar }: { versao: Versao; aberto: 
           color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '12px',
         }}
       >
-        <div className="font-bold text-sm" style={{ flex: 1, minWidth: 0 }}>{rotuloCompleto(versao.versao)}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="font-bold text-sm">{varias ? rotuloCurto(versoes[0].versao) : rotuloCompleto(versoes[0].versao)}</div>
+          {varias && (
+            <div className="text-xs text-muted" style={{ marginTop: '2px' }}>
+              {versoes.length} atualizações · {[...versoes].reverse().map(v => v.versao).join(', ')}
+            </div>
+          )}
+        </div>
         <span className="text-xs text-muted" style={{ flexShrink: 0 }}>
           {aberto ? '−' : `+${itens.length}`}
         </span>
@@ -206,7 +237,17 @@ function CartaoVersao({ versao, aberto, aoAlternar }: { versao: Versao; aberto: 
 
       <Sanfona aberto={aberto}>
         <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {itens.map(item => <LinhaItem key={item.titulo} item={item} cor="var(--text-muted)" />)}
+          {versoes.map(v => (
+            <div key={v.versao} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {varias && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingTop: '4px', borderTop: '1px solid var(--border-light)' }}>
+                  <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ paddingTop: '10px' }}>{rotuloCompleto(v.versao)}</span>
+                  {v.resumo && <span className="text-xs text-muted" style={{ lineHeight: 1.45 }}>{v.resumo}</span>}
+                </div>
+              )}
+              {itensDa(v).map(item => <LinhaItem key={item.titulo} item={item} cor="var(--text-muted)" />)}
+            </div>
+          ))}
         </div>
       </Sanfona>
     </div>
