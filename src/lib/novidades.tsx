@@ -10,6 +10,7 @@ import {
   Archive, Crown, BadgeCheck, HeartPulse, UserCheck, FileWarning, CloudOff, Eye, History,
   CloudCheck, SquareRoundCorner, Upload, AppWindow,
   Flag, Wallet, ArrowDownUp, ArrowDownAZ, Sun, Star, Coffee, Heart, GripVertical, AtSign, UserX, ArrowUpDown, Minus,
+  Mic, AudioLines, Link2, SlidersHorizontal,
 } from 'lucide-react';
 
 /**
@@ -227,6 +228,94 @@ const GRUPOS_4_4: Grupo[] = [
  * assume que o primeiro item é o atual.
  */
 export const VERSOES: Versao[] = [
+  {
+    versao: '0.22.0',
+    resumo: <>O boletim de som chegou: o som se loga junto com a câmera, sai num sound report de verdade e se casa sozinho com o vídeo.</>,
+    grupos: [
+      {
+        id: 'som',
+        titulo: 'Boletim de som',
+        resumo: 'Feito a partir do boletim da Diária 1 da Canção de Outono e de como os apps de som fazem.',
+        cor: '#1dd1a1',
+        itens: [
+          {
+            tipo: 'novo',
+            icone: <Mic size={20} />,
+            titulo: 'O som vai junto com o take',
+            texto: 'No painel do take, a ficha 🎙 mostra o arquivo do gravador que vai junto (ZOOM0012) e o número anda sozinho. Tocar nela desliga o som daquele take; com o áudio em MOS, ele não vai.',
+          },
+          {
+            tipo: 'novo',
+            icone: <AudioLines size={20} />,
+            titulo: 'A aba Som',
+            texto: 'Wild track, Room tone e False start; OK, NG e HERO com as cores da câmera, marcando o último arquivo. Embaixo, o sound report em grade: uma linha por arquivo, uma coluna por trilha — toque na trilha para anotar vento, clipou, roupa. Tudo editável depois.',
+          },
+          {
+            tipo: 'novo',
+            icone: <SlidersHorizontal size={20} />,
+            titulo: 'Gravador e trilhas',
+            texto: 'Na aba Gravador: aparelho, taxa, resolução, timecode, rolo e próximo arquivo (a série H da Zoom começa em ZOOM0001, o F3 pela data). As lapelas ganham nome pelo elenco da cena. Passa para a próxima diária.',
+          },
+          {
+            tipo: 'novo',
+            icone: <FileText size={20} />,
+            titulo: 'Sound report em PDF',
+            texto: 'Nos relatórios da diária, guardado em Documentos. O camera report ganha a coluna Áudio com o arquivo de som de cada take.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Link2 size={20} />,
+            titulo: 'O som se casa sozinho com o vídeo',
+            texto: 'No Ingest, depois do cartão da câmera, escolha a pasta do cartão de som. O app lê a hora de cada WAV, acha quanto o relógio do gravador está adiantado e liga cada arquivo ao clipe que gravou junto — sem timecode. Na Diária 1, bateu 100% com o boletim do continuísta.',
+          },
+        ],
+      },
+      {
+        id: 'logagem',
+        titulo: 'Logagem mais ligada ao resto do app',
+        resumo: '',
+        cor: '#ffd700',
+        itens: [
+          {
+            tipo: 'melhor',
+            icone: <Rows3 size={20} />,
+            titulo: 'Vídeo e Som em cima',
+            texto: 'As abas do set ficam grandes, em cima. Câmera, Gravador, Backup, Ingest e Config vão numa faixa menor embaixo.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Clapperboard size={20} />,
+            titulo: 'A claquete puxa da decupagem',
+            texto: 'Trocar a cena ou o plano à mão traz o INT/EXT, o DIA/NOITE e a lente da decupagem. Embaixo da claquete, quem está em cena e quem interpreta.',
+          },
+          {
+            tipo: 'novo',
+            icone: <Sparkles size={20} />,
+            titulo: 'Extra',
+            texto: 'Para o plano fora da decupagem que a equipe quis gravar: Extra 1, 2, 3… com take normal, e um toque volta para a cena de antes. Sai separado nos relatórios.',
+          },
+          {
+            tipo: 'novo',
+            icone: <ListChecks size={20} />,
+            titulo: 'O primeiro take marca a linha do dia',
+            texto: 'O primeiro take de uma cena marca o "começou" dela. Fora de ordem, a Logagem pergunta se ela entrou no lugar da outra. E a lista "Da decupagem" mostra quantos takes bons cada plano tem.',
+          },
+          {
+            tipo: 'novo',
+            icone: <HardDrive size={20} />,
+            titulo: 'Cartões e o A00X do nome',
+            texto: 'Na aba Câmera, os cartões de memória da produção, para escolher o que está na câmera. E o A00X do nome pode seguir a cena (cena 4 → A004), separado do cartão físico do backup.',
+          },
+          {
+            tipo: 'melhor',
+            icone: <Star size={20} />,
+            titulo: 'HERO dos dois lados, sem o Neutro',
+            texto: 'O take HERO da câmera nasce HERO no som. O botão Neutro saiu; os takes neutros já registrados continuam nos relatórios.',
+          },
+        ],
+      },
+    ],
+  },
   {
     versao: '0.21.1',
     resumo: <>Saiu da primeira diária da Canção de Outono: o dia de verdade nem sempre segue o plano, e agora o app acompanha.</>,
