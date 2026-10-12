@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Minus, Plus, Clapperboard, Mic, MicOff, Users, Sparkles } from 'lucide-react';
-import { cartaoQueSegue, ehExtra, entrarNoExtra, sairDoExtra } from '../../lib/logagem/claquete';
+import { ehExtra, entrarNoExtra, sairDoExtra } from '../../lib/logagem/claquete';
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -133,14 +133,14 @@ function FichaDoSom({ estado, bloqueado }: { estado: EstadoDaLogagem; bloqueado:
 
 /**
  * O plano EXTRA: fora da decupagem, mas a equipe quis gravar. Entrar guarda a
- * claquete; sair volta para ela (e o cartão volta junto, se segue a cena).
+ * claquete; sair volta para ela.
  */
 function BotaoDoExtra({ estado, registro, bloqueado }: { estado: EstadoDaLogagem; registro: Registro; bloqueado: boolean }) {
   const ativo = ehExtra(estado.cena);
   const antes = estado.claquete_antes_do_extra;
   const alternar = () => {
     const m = ativo ? sairDoExtra(estado) : entrarNoExtra(registro.takes, estado);
-    void mudarEstado(estado.diaria_id, { ...m, ...cartaoQueSegue(m, estado) });
+    void mudarEstado(estado.diaria_id, m);
   };
   return (
     <button

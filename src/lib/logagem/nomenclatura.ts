@@ -1,4 +1,5 @@
-import type { NomenclaturaArquivo } from '../../types';
+import type { EstadoDaLogagem, NomenclaturaArquivo } from '../../types';
+import { reelDaCena } from './claquete';
 
 /**
  * O nome do arquivo que a câmera VAI gravar no próximo take.
@@ -20,6 +21,10 @@ export interface DadosDoNome {
   zeros_clipe: number;
   template?: string;
   codec?: string;
+  /** Com `reel_da_cena`, o A00X vem da cena da claquete, e não do cartão. */
+  reel_da_cena?: boolean;
+  cena?: string;
+  claquete_antes_do_extra?: EstadoDaLogagem['claquete_antes_do_extra'];
 }
 
 export const NOMENCLATURAS: { id: NomenclaturaArquivo; nome: string; exemplo: string; explicacao: string }[] = [
@@ -49,17 +54,22 @@ function reelDe(cartao: string): string {
   return String(cartao || '').replace(/\D/g, '') || '0';
 }
 
+/** O reel do nome: o da cena, quando a produção numera assim; senão, o do cartão. */
+function reelDoNome(d: DadosDoNome): string | null {
+  return d.reel_da_cena ? reelDaCena({ cena: d.cena ?? '', claquete_antes_do_extra: d.claquete_antes_do_extra }) : null;
+}
+
 export function aplicarTemplate(d: DadosDoNome): string {
   const clipe = pad(Number(d.proximo_clipe) || 0, Number(d.zeros_clipe) || 4);
   return String(d.template || '')
     .replace(/\{CAM\}/gi, d.camera_id || '')
-    .replace(/\{CARD\}/gi, d.cartao || '')
+    .replace(/\{CARD\}/gi, reelDoNome(d) ?? (d.cartao || ''))
     .replace(/\{CLIP\}/gi, clipe);
 }
 
 export function nomeArquivoPrevisto(d: DadosDoNome): string {
   const clipe = Number(d.proximo_clipe) || 0;
-  const reel = reelDe(d.cartao);
+  const reel = reelDoNome(d) ?? reelDe(d.cartao);
   const id = (d.camera_id || 'A').toUpperCase();
   const zeros = Number(d.zeros_clipe) || 4;
 

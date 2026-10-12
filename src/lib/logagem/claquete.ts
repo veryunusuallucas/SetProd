@@ -169,21 +169,15 @@ export function sairDoExtra(estado: Pick<EstadoDaLogagem, 'claquete_antes_do_ext
   };
 }
 
-/* ───────────────────────── O cartão que segue a cena ───────────────────────── */
+/* ───────────────────────── O A00X que segue a cena ───────────────────────── */
 
 /**
- * O cartão (reel) numerado pela cena: A001 é a cena 1, A008 a cena 8 — a
- * convenção da Canção de Outono (Lucas, 12/10/2026). `12A` vira `012`; cena
- * sem número (EXTRA) não muda o cartão.
+ * O reel do NOME do arquivo pela cena: A004 é a cena 4 (a convenção da Canção
+ * de Outono, Lucas, 12/10/2026). Não é o cartão físico — esse é um por diária
+ * e é o controle do backup. No extra, vale a cena de onde se saiu. `12A` → `012`.
  */
-export function cartaoDaCena(cena: unknown): string | null {
+export function reelDaCena(estado: Pick<EstadoDaLogagem, 'cena' | 'claquete_antes_do_extra'>): string | null {
+  const cena = ehExtra(estado.cena) ? estado.claquete_antes_do_extra?.cena : estado.cena;
   const digitos = /\d+/.exec(String(cena ?? ''))?.[0];
   return digitos ? digitos.padStart(3, '0').slice(-3) : null;
-}
-
-/** O que muda junto quando a cena muda e o cartão segue a cena. */
-export function cartaoQueSegue(mudanca: Partial<EstadoDaLogagem>, estado: Pick<EstadoDaLogagem, 'cartao_da_cena'>): Partial<EstadoDaLogagem> {
-  if (!estado.cartao_da_cena || mudanca.cena === undefined) return {};
-  const cartao = cartaoDaCena(mudanca.cena);
-  return cartao ? { cartao } : {};
 }

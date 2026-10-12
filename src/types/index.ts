@@ -1459,8 +1459,11 @@ export interface EstadoDaLogagem {
   kit_lente_id?: string;
   camera_id: string;
   cartao: string;
-  /** O cartão (reel) acompanha a cena: cena 4 → 004, o A004 do nome do arquivo. */
-  cartao_da_cena?: boolean;
+  /**
+   * O A00X do NOME do arquivo segue a cena (cena 4 → A004), e não o cartão.
+   * O `cartao` continua sendo o cartão físico, o do backup.
+   */
+  reel_da_cena?: boolean;
   posicao: string;
   proximo_clipe: number;
   nomenclatura: NomenclaturaArquivo;
@@ -1517,6 +1520,14 @@ export interface CameraDoKit {
   posicao: string;
 }
 
+/** Um cartão de memória da produção. O `nome` é o que vai no take e no backup ("01"). */
+export interface CartaoDoKit {
+  id: string;
+  nome: string;
+  /** "128 GB" */
+  capacidade?: string;
+}
+
 export interface LenteDoKit {
   id: string;
   nome: string;
@@ -1543,10 +1554,12 @@ export interface KitDeLogagem {
   id: string;
   projeto_id: string;
   departamento_id?: string;
-  tipo: 'camera' | 'lente';
+  tipo: 'camera' | 'lente' | 'cartao';
   nome: string;
   cameras?: CameraDoKit[];
   lentes?: LenteDoKit[];
+  /** Os cartões físicos da produção (tipo `cartao`): quais e quantos estão em uso. */
+  cartoes?: CartaoDoKit[];
   criado_em: number;
 }
 

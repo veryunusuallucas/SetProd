@@ -1,5 +1,5 @@
 import { db } from '../../db/db';
-import type { CameraDoKit, EstadoDaLogagem, KitDeLogagem, LenteDoKit } from '../../types';
+import type { CameraDoKit, CartaoDoKit, EstadoDaLogagem, KitDeLogagem, LenteDoKit } from '../../types';
 
 /**
  * Kits de câmera e de lente: o equipamento que a produção tem em mãos.
@@ -127,7 +127,7 @@ export function trocarCamera(cameras: CameraDoKit[], estado: EstadoDaLogagem, no
 
 /* ───────────────────────── Banco ───────────────────────── */
 
-export function kitsDoProjeto(projetoId: string, tipo: 'camera' | 'lente') {
+export function kitsDoProjeto(projetoId: string, tipo: KitDeLogagem['tipo']) {
   return db.log_kits.where('projeto_id').equals(projetoId).filter(k => k.tipo === tipo).toArray();
 }
 
@@ -187,4 +187,25 @@ export async function importarKit(kitId: string, projetoId: string, departamento
   };
   await db.log_kits.add(copia);
   return copia;
+}
+
+/* ───────────────────────── Cartões ───────────────────────── */
+
+/**
+ * Os cartões físicos da produção (Lucas, 12/10/2026): quais e quantos estão em
+ * uso — "um por diária, ou dois se encher". Um registro por produção, do tipo
+ * `cartao`, criado na primeira edição.
+ */
+export async function salvarCartoes(projetoId: string, cartoes: CartaoDoKit[], departamentoId?: string) {
+  const atual = (await db.log_kits.where('projeto_id').equals(projetoId).toArray()).find(k => k.tipo === 'cartao');
+  if (atual) return db.log_kits.update(atual.id, { cartoes });
+  return db.log_kits.add({
+    id: crypto.randomUUID(),
+    projeto_id: projetoId,
+    departamento_id: departamentoId,
+    tipo: 'cartao',
+    nome: 'Cartões',
+    cartoes,
+    criado_em: Date.now(),
+  });
 }

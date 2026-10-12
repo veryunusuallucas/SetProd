@@ -89,12 +89,18 @@ try {
   assert.deepEqual(q.sairDoExtra({ claquete_antes_do_extra: dentro.claquete_antes_do_extra }), { cena: '4', plano: 'B', take: 3, cena_id: 'c4', plano_id: 'p', claquete_antes_do_extra: undefined });
   assert.equal(q.passoNaClaquete({ cena: 'EXTRA', plano: '3', take: 2, plano_letras: true }, 'plano', 1).plano, '4', 'extra conta em números');
   assert.equal(claqueteLegivel({ cena: 'EXTRA', plano: '3', take: 1, status: 'OK' }), 'Extra 3 · take 1');
-  assert.equal(q.cartaoDaCena('4'), '004');
-  assert.equal(q.cartaoDaCena('12A'), '012');
-  assert.equal(q.cartaoDaCena('EXTRA'), null);
-  assert.deepEqual(q.cartaoQueSegue({ cena: '8' }, { cartao_da_cena: true }), { cartao: '008' });
-  assert.deepEqual(q.cartaoQueSegue({ cena: 'EXTRA' }, { cartao_da_cena: true }), {}, 'extra não mexe no cartão');
-  assert.deepEqual(q.cartaoQueSegue({ cena: '8' }, {}), {}, 'desligado, o cartão é do usuário');
+  assert.equal(q.reelDaCena({ cena: '4' }), '004');
+  assert.equal(q.reelDaCena({ cena: '12A' }), '012');
+  assert.equal(q.reelDaCena({ cena: 'EXTRA', claquete_antes_do_extra: { cena: '2' } }), '002', 'o extra leva o A00X da cena de onde saiu');
+  assert.equal(q.reelDaCena({ cena: 'EXTRA' }), null);
+
+  // O nome do arquivo: o A00X segue a cena, o cartão físico fica.
+  const { nomeArquivoPrevisto } = await vite.ssrLoadModule('/src/lib/logagem/nomenclatura.ts');
+  const cam = { nomenclatura: 'camid', camera_id: 'A', cartao: '01', posicao: 'C', proximo_clipe: 13, zeros_clipe: 4, cena: '8' };
+  assert.equal(nomeArquivoPrevisto(cam), 'A001C013', 'sem a opção, o reel é o cartão');
+  assert.equal(nomeArquivoPrevisto({ ...cam, reel_da_cena: true }), 'A008C013');
+  assert.equal(nomeArquivoPrevisto({ ...cam, reel_da_cena: true, cena: 'EXTRA', claquete_antes_do_extra: { cena: '2' } }), 'A002C013');
+  assert.equal(nomeArquivoPrevisto({ ...cam, reel_da_cena: true, cena: 'EXTRA' }), 'A001C013', 'sem cena para seguir, volta ao cartão');
 
   const pasta = process.argv[2];
   if (pasta) {

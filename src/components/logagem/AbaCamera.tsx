@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Minus, Plus, FileVideo, SlidersHorizontal, Tag } from 'lucide-react';
+import { Minus, Plus, FileVideo, SlidersHorizontal, Tag, HardDrive, X } from 'lucide-react';
 import { db } from '../../db/db';
-import type { EstadoDaLogagem, NomenclaturaArquivo } from '../../types';
+import type { CartaoDoKit, EstadoDaLogagem, NomenclaturaArquivo } from '../../types';
+import { kitsDoProjeto, salvarCartoes } from '../../lib/logagem/kits';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { CampoTexto } from '../ui/CampoTexto';
 import { BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
@@ -14,7 +15,6 @@ import { OPCOES } from '../../lib/logagem/opcoes';
 import { KitDeCameras, KitDeLentes } from './Kits';
 import { confirmar } from '../ui/Confirmacao';
 import { cartaoSeguro, cartaoTemTakes, oQueFalta } from '../../lib/logagem/backup';
-import { cartaoDaCena } from '../../lib/logagem/claquete';
 
 /**
  * Aba Câmera: o que a câmera vai gravar, e com que setup.
@@ -83,6 +83,7 @@ export function AbaCamera({ projetoId, diariaId, podeEditar, departamentoId }: {
       <ProximoArquivo estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
       <KitDeCameras projetoId={projetoId} estado={estado} bloqueado={bloqueado} aoMudar={mudar} departamentoId={departamentoId} />
       <KitDeLentes projetoId={projetoId} estado={estado} bloqueado={bloqueado} aoMudar={mudar} departamentoId={departamentoId} />
+      <CartoesDaProducao projetoId={projetoId} departamentoId={departamentoId} bloqueado={bloqueado} />
       <Nomenclatura estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
       <Setup estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
     </div>
@@ -101,6 +102,10 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   const nome = nomeArquivoPrevisto(estado);
   const campos = camposDaNomenclatura(estado.nomenclatura);
   const clipe = Number(estado.proximo_clipe) || 0;
+  const cartoes = useLiveQuery(
+    async () => (await kitsDoProjeto(estado.projeto_id, 'cartao'))[0]?.cartoes ?? [],
+    [estado.projeto_id],
+  ) ?? [];
 
   /**
    * A trava da troca de cartão.
@@ -199,22 +204,33 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
           </Campo>
         )}
         {campos.usaCartao && (
-          <Campo rotulo="Cartão / reel">
+          <Campo rotulo={estado.reel_da_cena ? 'Cartão na câmera' : 'Cartão / reel'}>
             <CartaoQueConfirma valor={estado.cartao} bloqueado={bloqueado} aoConfirmar={trocarDeCartao} />
-            {/* A convenção da Canção de Outono: o A004 do arquivo é a cena 4. */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', cursor: bloqueado ? 'default' : 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={Boolean(estado.cartao_da_cena)}
-                disabled={bloqueado}
-                onChange={e => aoMudar({
-                  cartao_da_cena: e.target.checked,
-                  ...(e.target.checked && cartaoDaCena(estado.cena) ? { cartao: cartaoDaCena(estado.cena)! } : {}),
+            {cartoes.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {cartoes.map(c => {
+                  const ativo = c.nome === estado.cartao;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={ativo}
+                      disabled={bloqueado}
+                      onClick={() => void trocarDeCartao(c.nome)}
+                      title={c.capacidade}
+                      style={{
+                        minHeight: '44px', padding: '0 12px', borderRadius: 'var(--radius-sm)', fontFamily: MONO, fontWeight: 700, fontSize: '14px',
+                        border: `1px solid ${ativo ? 'var(--cor-criativo)' : 'var(--border-light)'}`,
+                        backgroundColor: ativo ? 'color-mix(in srgb, var(--cor-criativo) 12%, transparent)' : 'transparent',
+                        color: ativo ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: bloqueado ? 'default' : 'pointer',
+                      }}
+                    >
+                      {c.nome}
+                    </button>
+                  );
                 })}
-                style={{ width: '18px', height: '18px', accentColor: 'var(--cor-criativo)' }}
-              />
-              <span className="text-xs text-secondary">Segue a cena (cena 4 → 004)</span>
-            </label>
+              </div>
+            )}
           </Campo>
         )}
         {campos.usaPosicao && (
@@ -338,6 +354,78 @@ function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
           );
         })}
       </div>
+
+      {camposDaNomenclatura(estado.nomenclatura).usaCartao && (
+        <Campo rotulo="O A00X do nome segue">
+          <Segmentado
+            nome="logagem-reel"
+            opcoes={[{ id: 'cartao', nome: 'O cartão' }, { id: 'cena', nome: 'A cena' }]}
+            valor={estado.reel_da_cena ? 'cena' : 'cartao'}
+            bloqueado={bloqueado}
+            aoMudar={v => aoMudar({ reel_da_cena: v === 'cena' })}
+          />
+          <span className="text-xs text-muted">
+            {estado.reel_da_cena
+              ? 'Cena 4 → A004C…, cena 8 → A008C… No extra, vale a cena de onde se saiu. O cartão físico continua o da câmera, para o backup.'
+              : 'O número do cartão vai no nome: cartão 002 → A002C…'}
+          </span>
+        </Campo>
+      )}
+    </section>
+  );
+}
+
+/* ───────────────────────── Cartões ───────────────────────── */
+
+/**
+ * Os cartões físicos da produção: quais e quantos. É o controle do backup — o
+ * cartão que entra na câmera, e não o A00X do nome, que pode seguir a cena.
+ */
+function CartoesDaProducao({ projetoId, departamentoId, bloqueado }: { projetoId: string; departamentoId?: string; bloqueado: boolean }) {
+  const cartoes = useLiveQuery(
+    async () => (await kitsDoProjeto(projetoId, 'cartao'))[0]?.cartoes ?? [],
+    [projetoId],
+  ) ?? [];
+  const salvar = (lista: CartaoDoKit[]) => { if (!bloqueado) void salvarCartoes(projetoId, lista, departamentoId); };
+  const proximo = () => String(cartoes.reduce((m, c) => Math.max(m, parseInt(c.nome, 10) || 0), 0) + 1).padStart(3, '0');
+
+  return (
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+        <Rotulo icone={<HardDrive size={14} />}>Cartões da produção</Rotulo>
+        {cartoes.length > 0 && <span className="text-xs text-muted">{cartoes.length} cart{cartoes.length === 1 ? 'ão' : 'ões'}</span>}
+      </div>
+      <p className="text-xs text-muted" style={{ margin: '-4px 0 0' }}>
+        Os cartões de memória em uso. Escolha qual está na câmera em "Próximo arquivo"; o backup confere cada um.
+      </p>
+      {cartoes.map((c, i) => (
+        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '110px', flexShrink: 0 }}>
+            <CampoTexto value={c.nome} aoGravar={v => salvar(cartoes.map((x, j) => (j === i ? { ...x, nome: v.trim() || x.nome } : x)))} disabled={bloqueado} style={{ ...estiloCampo, fontFamily: MONO, fontWeight: 700 }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <CampoTexto value={c.capacidade || ''} aoGravar={v => salvar(cartoes.map((x, j) => (j === i ? { ...x, capacidade: v.trim() || undefined } : x)))} disabled={bloqueado} placeholder="128 GB, SanDisk…" style={estiloCampo} />
+          </div>
+          <button
+            type="button"
+            aria-label={`Tirar o cartão ${c.nome}`}
+            disabled={bloqueado}
+            onClick={() => salvar(cartoes.filter((_, j) => j !== i))}
+            style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        disabled={bloqueado}
+        onClick={() => salvar([...cartoes, { id: crypto.randomUUID(), nome: proximo() }])}
+        className="text-sm"
+        style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', minHeight: '44px', padding: '0 4px', border: 'none', background: 'none', color: 'var(--text-secondary)', fontWeight: 700, cursor: 'pointer' }}
+      >
+        <Plus size={15} /> Cartão
+      </button>
     </section>
   );
 }

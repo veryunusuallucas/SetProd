@@ -6,7 +6,7 @@ import type { EstadoDaLogagem } from '../../types';
 import { CampoTexto } from '../ui/CampoTexto';
 import { Campo, Escolha, Rotulo, Segmentado, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
-import { cartaoQueSegue, digitarNaClaquete, ehExtra, passoNaClaquete, trocarModoDoPlano } from '../../lib/logagem/claquete';
+import { digitarNaClaquete, ehExtra, passoNaClaquete, trocarModoDoPlano } from '../../lib/logagem/claquete';
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { claqueteDaDecupagem } from '../../lib/logagem/decupagem';
 import { ListaDeTakes, useRegistroDeTake } from './RegistroDeTake';
@@ -56,11 +56,11 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
 
   const estado: EstadoDaLogagem = estadoSalvo ?? { ...PADRAO, id: idDoEstado(diariaId), projeto_id: projetoId, diaria_id: diariaId };
   /*
-    O que anda junto com a cena: o cartão, quando segue a cena (A004 = cena 4),
-    e a memória do extra, que some quando a claquete sai dele por outro caminho.
+    A memória do extra some quando a claquete sai dele por outro caminho (o +
+    da cena, digitar), e não só pelo botão.
   */
   const comACena = (m: Partial<EstadoDaLogagem>, base: EstadoDaLogagem = estado): Partial<EstadoDaLogagem> =>
-    m.cena === undefined ? m : { ...m, ...cartaoQueSegue(m, base), ...(ehExtra(m.cena) ? {} : { claquete_antes_do_extra: undefined }) };
+    m.cena === undefined || ehExtra(m.cena) || !base.claquete_antes_do_extra ? m : { ...m, claquete_antes_do_extra: undefined };
   const mudar = (m: Partial<EstadoDaLogagem>) => { if (podeEditar) void mudarEstado(diariaId, comACena(m)); };
   const bloqueado = !podeEditar;
 
