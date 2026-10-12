@@ -39,6 +39,9 @@ try {
   assert.equal(s.acharDesvio(clipes.slice(0, 1), arquivos.slice(1, 2)), null, 'um par só não prova o desvio');
   assert.equal(s.duracoesBatem(37, 186), false, 'clipe curto não é o som de 3 minutos');
   assert.equal(s.duracoesBatem(145.6, 150.4), true);
+  const c9 = { takeId: 'c9', arquivo: 'A001C009', inicio: 10 * 3600 + 35 * 60 + 12, duracao: 153.7 };
+  assert.equal(s.sobrepoe(c9, { nome: 'ZOOM0016', faixas: [], inicio: 11 * 3600 + 17 * 60 + 6, duracao: 86.3 }, 2450), true, 'som inteiro dentro do clipe');
+  assert.equal(s.sobrepoe(c9, { nome: 'ZOOM0015', faixas: [], inicio: 11 * 3600 + 15 * 60 + 52, duracao: 21.3 }, 2450), false, 'false start que mal encosta');
   assert.equal(s.desvioDoBoletim([{ take_id: 'c3', arquivo: 'zoom0007' }], clipes, arquivos), 2450);
 
   // O plano: o boletim manda; o relógio liga o que falta e aponta o que diverge.
@@ -60,7 +63,7 @@ try {
     const reais = readdirSync(pastaClip).filter(n => /M01.XML$/i.test(n)).map(n => {
       const t = readFileSync(join(pastaClip, n), 'utf8');
       const nome = n.slice(0, 8);
-      return { id: nome, arquivo: nome, xml: { criadoEm: /CreationDate value="([^"]+)"/.exec(t)?.[1], segundos: Number(/Duration value="(d+)"/.exec(t)?.[1]) / 23.976 } };
+      return { id: nome, arquivo: nome, xml: { criadoEm: /CreationDate value="([^"]+)"/.exec(t)?.[1], segundos: Number(/Duration value="(\d+)"/.exec(t)?.[1]) / 23.976 } };
     });
     const wavs = [];
     for (const pasta of [pastaSom, ...readdirSync(pastaSom).map(d => join(pastaSom, d)).filter(d => statSync(d).isDirectory())]) {
@@ -75,6 +78,7 @@ try {
     console.log('  só som:', real.semVideo.map(a => `${a.nome}@${s.horaDoDia(a.inicio)}`).join(' '));
     console.log('  só vídeo:', real.semSom.map(c => c.arquivo).join(' '));
     assert.ok(real.pares.some(p => p.clipe.arquivo === 'A001C003' && p.arquivo.nome === 'ZOOM0007'), 'o par do Lucas');
+    assert.ok(real.pares.some(p => p.clipe.arquivo === 'A001C009' && p.arquivo.nome === 'ZOOM0016'), 'o som que entrou depois da câmera (boletim do continuísta)');
   }
   console.log('sincronia: ok');
 } finally {

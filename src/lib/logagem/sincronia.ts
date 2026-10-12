@@ -157,13 +157,31 @@ export function duracoesBatem(video?: number, som?: number): boolean {
  * Cada clipe com o arquivo que começou junto com ele (relógio do som =
  * relógio da câmera + desvio), o mais perto primeiro e cada arquivo uma vez só.
  */
-export function casar(clipes: ClipeComHora[], arquivos: ArquivoDoGravador[], desvio: number, folga = FOLGA) {
+/**
+ * O som que cabe DENTRO do clipe: a câmera rodou antes e o som entrou depois.
+ * Na Diária 1, o ZOOM0016 (86 s) começou 64 s depois do A001C009 (154 s) e
+ * acabou junto — o boletim do continuísta confirma que é o take dele. 80% do
+ * mais curto dentro do outro é o mesmo momento; menos que isso é vizinho.
+ */
+export function sobrepoe(clipe: ClipeComHora, arquivo: ArquivoDoGravador, desvio: number): boolean {
+  if (!clipe.duracao || !arquivo.duracao || arquivo.inicio === undefined) return false;
+  const ini = Math.max(clipe.inicio + desvio, arquivo.inicio);
+  const fim = Math.min(clipe.inicio + desvio + clipe.duracao, arquivo.inicio + arquivo.duracao);
+  return fim - ini >= 0.8 * Math.min(clipe.duracao, arquivo.duracao);
+}
+
+/**
+ * `porDentro` liga o casamento por sobreposição. A busca do desvio não o usa:
+ * com um desvio errado, sobreposição por acaso inventaria pares.
+ */
+export function casar(clipes: ClipeComHora[], arquivos: ArquivoDoGravador[], desvio: number, folga = FOLGA, porDentro = true) {
   const candidatos: Par[] = [];
   for (const clipe of clipes) {
     for (const arquivo of arquivos) {
       if (arquivo.inicio === undefined) continue;
       const d = Math.abs(arquivo.inicio - (clipe.inicio + desvio));
-      if (d <= folga && duracoesBatem(clipe.duracao, arquivo.duracao)) candidatos.push({ clipe, arquivo, folga: d });
+      const juntos = d <= folga && duracoesBatem(clipe.duracao, arquivo.duracao);
+      if (juntos || (porDentro && sobrepoe(clipe, arquivo, desvio))) candidatos.push({ clipe, arquivo, folga: d });
     }
   }
   candidatos.sort((a, b) => a.folga - b.folga);
@@ -198,7 +216,7 @@ export function acharDesvio(clipes: ClipeComHora[], arquivos: ArquivoDoGravador[
       const desvio = a.inicio - c.inicio;
       if (tentados.has(desvio)) continue;
       tentados.add(desvio);
-      const { pares } = casar(clipes, arquivos, desvio);
+      const { pares } = casar(clipes, arquivos, desvio, FOLGA, false);
       const folga = pares.reduce((s, p) => s + p.folga, 0);
       if (!melhor || pares.length > melhor.pares || (pares.length === melhor.pares && folga < melhor.folga)) {
         melhor = { desvio, pares: pares.length, folga };
