@@ -2,6 +2,7 @@ import { db } from '../../db/db';
 import type { EstadoDaLogagem, Som, Take } from '../../types';
 import { horaDeAgora, proximoArquivo } from './takes';
 import { idDoEstado } from './estado';
+import { horaDoDia, type LinhaDaSincronia } from './sincronia';
 
 /**
  * O boletim de som (PLANO-boletim-de-som, Fase 1).
@@ -195,4 +196,73 @@ export function resumoDoSom(sons: Som[]): string {
     fs && `${fs} false start`,
     ng && `${ng} NG`,
   ].filter(Boolean).join(' · ');
+}
+
+/* ───────────────────────── A sincronia aplicada ───────────────────────── */
+
+/**
+ * As trilhas de um arquivo lido no ingest: os nomes do kit pela posição
+ * (`Tr3` é a terceira trilha do kit), até a última faixa que gravou.
+ */
+export function trilhasDasFaixas(faixas: string[], kit: string[]): Som['trilhas'] {
+  const numeros = faixas.map(f => Number(/\d+/.exec(f)?.[0])).filter(n => n > 0);
+  const ate = Math.max(kit.length, ...numeros, 0);
+  return Array.from({ length: ate }, (_, i) => ({ nome: kit[i] || `Tr${i + 1}` }));
+}
+
+/**
+ * Grava o que a pessoa aprovou na sincronia.
+ *
+ * O boletim manda: arquivo "divergente" não é religado — o relógio pode estar
+ * certo, mas quem decide mudar o que foi anotado no set é uma pessoa, na grade.
+ * Todo arquivo do gravador ganha o `wav` (hora, duração, trilhas gravadas).
+ */
+export async function aplicarSincronia(
+  estado: EstadoDaLogagem,
+  linhas: LinhaDaSincronia[],
+  opcoes: { desvio: number; incluirSemVideo: boolean; quem?: string },
+): Promise<{ ligados: number; novos: number; semVideo: number }> {
+  const conta = { ligados: 0, novos: 0, semVideo: 0 };
+  const kit = trilhasDoSom(estado);
+  await db.transaction('rw', db.log_som, db.log_estado, async () => {
+    let ordem = (await db.log_som.where('diaria_id').equals(estado.diaria_id).toArray())
+      .reduce((m, s) => Math.max(m, s.ordem || 0), 0);
+    for (const l of linhas) {
+      const wav = { inicio: horaDoDia(l.arquivo.inicio ?? 0), duracao: l.arquivo.duracao, faixas: l.arquivo.faixas };
+      if (l.som) {
+        await db.log_som.update(l.som.id, { wav, ...(l.acao === 'ligar' && l.take ? { take_id: l.take.id } : {}) });
+        if (l.acao === 'ligar') conta.ligados++;
+        continue;
+      }
+      if (l.acao === 'sem_video' && !opcoes.incluirSemVideo) continue;
+      const t = l.acao === 'novo' ? l.take : undefined;
+      await db.log_som.add({
+        id: crypto.randomUUID(),
+        projeto_id: estado.projeto_id,
+        diaria_id: estado.diaria_id,
+        departamento_id: estado.departamento_id,
+        tipo: t ? 'take' : 'wild',
+        cena_id: t?.cena_id,
+        plano_id: t?.plano_id,
+        cena: t?.cena ?? '',
+        plano: t?.plano ?? '',
+        take: t?.take,
+        arquivo: l.arquivo.nome,
+        rolo: estado.rolo_som?.trim() || undefined,
+        marca: t?.status === 'HERO' ? 'hero' : undefined,
+        trilhas: trilhasDasFaixas(l.arquivo.faixas, kit),
+        obs: t ? undefined : 'sem vídeo no mesmo horário (ingest)',
+        take_id: t?.id,
+        wav,
+        hora: wav.inicio,
+        ordem: ++ordem,
+        logado_por: opcoes.quem,
+        criado_em: Date.now(),
+      });
+      if (t) conta.novos++;
+      else conta.semVideo++;
+    }
+    await db.log_estado.update(idDoEstado(estado.diaria_id), { desvio_som: opcoes.desvio });
+  });
+  return conta;
 }

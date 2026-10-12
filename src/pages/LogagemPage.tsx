@@ -15,6 +15,7 @@ import { AbaLogagem } from '../components/logagem/AbaLogagem';
 import { AbaBackup } from '../components/logagem/AbaBackup';
 import { AbaGravador, AbaSom } from '../components/logagem/AbaSom';
 import { AbaIngest } from '../components/logagem/AbaIngest';
+import { IngestDoSom } from '../components/logagem/IngestDoSom';
 import { AbaConfig } from '../components/logagem/AbaConfig';
 import { pedirUmaVez } from '../lib/logagem/aparelho';
 import { SeletorDeDiaria } from '../components/logagem/SeletorDeDiaria';
@@ -488,7 +489,7 @@ function ConteudoDaAba({
         <div className="mobile-only">
           <AvisoComputador />
         </div>
-        <div className="desktop-only">
+        <div className="desktop-only" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <AbaIngest
             projetoId={projetoId}
             diariaId={diariaId}
@@ -496,6 +497,8 @@ function ConteudoDaAba({
             podeEditar={podeEditar}
             departamentoId={departamentoId}
           />
+          {/* O som vem depois da câmera: é do ingest dela que sai a hora de cada clipe. */}
+          {diariaId && <IngestDoSom projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />}
         </div>
       </>
     );

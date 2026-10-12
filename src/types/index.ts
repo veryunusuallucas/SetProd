@@ -1498,6 +1498,8 @@ export interface EstadoDaLogagem {
   bits_som?: string;
   /** "Relógio do gravador" ou o fps do timecode ("23,976", "25"…). */
   tc_som?: string;
+  /** Quanto o relógio do gravador anda na frente do da câmera, em segundos (a sincronia do ingest). */
+  desvio_som?: number;
   // Preferências da diária
   revisar_antes: boolean;
   atualizado_em?: number;
@@ -1613,6 +1615,8 @@ export interface Som {
   obs?: string;
   /** O take de câmera casado, quando houver. */
   take_id?: string;
+  /** O que o WAV disse no ingest do som: hora de início no relógio do gravador, duração e trilhas gravadas. */
+  wav?: { inicio: string; duracao?: number; faixas: string[] };
   /** `HH:MM:SS` local do registro. */
   hora: string;
   ordem: number;
