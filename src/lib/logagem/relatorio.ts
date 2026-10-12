@@ -2,6 +2,7 @@ import type {
   BackupDeCartao, ChecksumDeCartao, Credito, HdDeBackup, Perfil, Projeto, Take,
 } from '../../types';
 import { ROTULO_DO_STATUS } from './takes';
+import { ehExtra } from './claquete';
 import { cartaoSeguro, cartoesConhecidos, estimativaDoCartaoGB, oQueFalta } from './backup';
 
 /**
@@ -192,7 +193,7 @@ export function chaveDoGrupo(take: Take, agrupar: AgruparPor): string {
 }
 
 export function rotuloDoGrupo(take: Take, agrupar: AgruparPor): string {
-  if (agrupar === 'cena') return vazio(take.cena) ? `Cena ${take.cena}` : 'Sem cena';
+  if (agrupar === 'cena') return ehExtra(take.cena) ? 'Extras — fora da decupagem' : vazio(take.cena) ? `Cena ${take.cena}` : 'Sem cena';
   if (agrupar === 'codec') return `Codec: ${vazio(take.codec) || 'não informado'}`;
   const partes = formatoDoTake(take);
   return partes.length ? partes.join('  |  ') : 'Formato não informado';

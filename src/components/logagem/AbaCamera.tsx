@@ -14,6 +14,7 @@ import { OPCOES } from '../../lib/logagem/opcoes';
 import { KitDeCameras, KitDeLentes } from './Kits';
 import { confirmar } from '../ui/Confirmacao';
 import { cartaoSeguro, cartaoTemTakes, oQueFalta } from '../../lib/logagem/backup';
+import { cartaoDaCena } from '../../lib/logagem/claquete';
 
 /**
  * Aba Câmera: o que a câmera vai gravar, e com que setup.
@@ -200,6 +201,20 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
         {campos.usaCartao && (
           <Campo rotulo="Cartão / reel">
             <CartaoQueConfirma valor={estado.cartao} bloqueado={bloqueado} aoConfirmar={trocarDeCartao} />
+            {/* A convenção da Canção de Outono: o A004 do arquivo é a cena 4. */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', cursor: bloqueado ? 'default' : 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(estado.cartao_da_cena)}
+                disabled={bloqueado}
+                onChange={e => aoMudar({
+                  cartao_da_cena: e.target.checked,
+                  ...(e.target.checked && cartaoDaCena(estado.cena) ? { cartao: cartaoDaCena(estado.cena)! } : {}),
+                })}
+                style={{ width: '18px', height: '18px', accentColor: 'var(--cor-criativo)' }}
+              />
+              <span className="text-xs text-secondary">Segue a cena (cena 4 → 004)</span>
+            </label>
           </Campo>
         )}
         {campos.usaPosicao && (

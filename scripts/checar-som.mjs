@@ -78,6 +78,24 @@ try {
   assert.equal(claqueteDaDecupagem({ ...dec, planos: [...dec.planos, { id: 'p1', cena_id: 'c4', numero: '1', descricao: 'Geral' }] }, { plano: 'B' }, { ...base, cena: '4', obs: 'Geral' }).obs, 'Alice corre', 'a descrição do plano anterior dá lugar à do novo');
   assert.deepEqual(claqueteDaDecupagem(dec, { take: 2 }, base), {}, 'mudar só o take não procura nada');
 
+  // O EXTRA e o cartão que segue a cena (Canção de Outono, 12/10/2026).
+  const q = await vite.ssrLoadModule('/src/lib/logagem/claquete.ts');
+  const { claqueteLegivel } = await vite.ssrLoadModule('/src/lib/logagem/takes.ts');
+  const feitos = [{ cena: 'EXTRA', plano: '1' }, { cena: 'extra', plano: '2' }, { cena: '4', plano: '9' }];
+  assert.equal(q.proximoExtra(feitos), 3);
+  assert.equal(q.proximoExtra([]), 1);
+  const dentro = q.entrarNoExtra(feitos, { cena: '4', plano: 'B', take: 3, cena_id: 'c4', plano_id: 'p' });
+  assert.deepEqual([dentro.cena, dentro.plano, dentro.take, dentro.cena_id], ['EXTRA', '3', 1, '']);
+  assert.deepEqual(q.sairDoExtra({ claquete_antes_do_extra: dentro.claquete_antes_do_extra }), { cena: '4', plano: 'B', take: 3, cena_id: 'c4', plano_id: 'p', claquete_antes_do_extra: undefined });
+  assert.equal(q.passoNaClaquete({ cena: 'EXTRA', plano: '3', take: 2, plano_letras: true }, 'plano', 1).plano, '4', 'extra conta em números');
+  assert.equal(claqueteLegivel({ cena: 'EXTRA', plano: '3', take: 1, status: 'OK' }), 'Extra 3 · take 1');
+  assert.equal(q.cartaoDaCena('4'), '004');
+  assert.equal(q.cartaoDaCena('12A'), '012');
+  assert.equal(q.cartaoDaCena('EXTRA'), null);
+  assert.deepEqual(q.cartaoQueSegue({ cena: '8' }, { cartao_da_cena: true }), { cartao: '008' });
+  assert.deepEqual(q.cartaoQueSegue({ cena: 'EXTRA' }, { cartao_da_cena: true }), {}, 'extra não mexe no cartão');
+  assert.deepEqual(q.cartaoQueSegue({ cena: '8' }, {}), {}, 'desligado, o cartão é do usuário');
+
   const pasta = process.argv[2];
   if (pasta) {
     const { relatorioEmPdf } = await vite.ssrLoadModule('/src/lib/logagem/pdf.tsx');

@@ -1452,11 +1452,15 @@ export interface EstadoDaLogagem {
   /** A cena e o plano da decupagem, quando a claquete veio de lá. */
   cena_id?: string;
   plano_id?: string;
+  /** O plano EXTRA guarda a claquete de antes, para voltar a ela (ver `lib/logagem/claquete.ts`). */
+  claquete_antes_do_extra?: { cena: string; plano: string; take: number; cena_id?: string; plano_id?: string };
   // Câmera ativa
   kit_camera_id?: string;
   kit_lente_id?: string;
   camera_id: string;
   cartao: string;
+  /** O cartão (reel) acompanha a cena: cena 4 → 004, o A004 do nome do arquivo. */
+  cartao_da_cena?: boolean;
   posicao: string;
   proximo_clipe: number;
   nomenclatura: NomenclaturaArquivo;

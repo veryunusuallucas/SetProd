@@ -1,7 +1,7 @@
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { nomeArquivoPrevisto } from './nomenclatura';
-import { mesmaClaquete, proximoPlanoLivre } from './claquete';
+import { ehExtra, mesmaClaquete, proximoPlanoLivre } from './claquete';
 import { idDoEstado } from './estado';
 import { registrarSom, somAcompanhaHero, takeLevaSom } from './som';
 
@@ -196,6 +196,7 @@ export const apagarTake = (id: string) =>
 export function claqueteLegivel(take: Pick<Take, 'cena' | 'plano' | 'take' | 'status'>): string {
   const vazia = !String(take.cena ?? '').trim() && !String(take.plano ?? '').trim();
   if (take.status === 'IMPORT' || vazia) return 'sem claquete';
+  if (ehExtra(take.cena)) return `Extra ${take.plano} · take ${take.take}`;
   return `${take.cena} · ${take.plano} · take ${take.take}`;
 }
 

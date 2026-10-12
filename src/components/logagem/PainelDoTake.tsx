@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Minus, Plus, Clapperboard, Mic, MicOff, Users } from 'lucide-react';
+import { Minus, Plus, Clapperboard, Mic, MicOff, Users, Sparkles } from 'lucide-react';
+import { cartaoQueSegue, ehExtra, entrarNoExtra, sairDoExtra } from '../../lib/logagem/claquete';
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
@@ -56,6 +57,8 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
         <Contador campo="plano" rotulo="Plano" valor={String(estado.plano)} bloqueado={bloqueado} maiuscula={letras} aoPassar={aoPassar} aoDigitar={aoDigitar} />
         <Contador campo="take" rotulo="Take" valor={String(estado.take)} bloqueado={bloqueado} destaque aoPassar={aoPassar} aoDigitar={aoDigitar} />
       </div>
+
+      <BotaoDoExtra estado={estado} registro={registro} bloqueado={bloqueado} />
 
       <ElencoEmCena estado={estado} />
 
@@ -124,6 +127,39 @@ function FichaDoSom({ estado, bloqueado }: { estado: EstadoDaLogagem; bloqueado:
       ) : (
         <span>{mos ? 'MOS · sem som' : 'Sem som'}</span>
       )}
+    </button>
+  );
+}
+
+/**
+ * O plano EXTRA: fora da decupagem, mas a equipe quis gravar. Entrar guarda a
+ * claquete; sair volta para ela (e o cartão volta junto, se segue a cena).
+ */
+function BotaoDoExtra({ estado, registro, bloqueado }: { estado: EstadoDaLogagem; registro: Registro; bloqueado: boolean }) {
+  const ativo = ehExtra(estado.cena);
+  const antes = estado.claquete_antes_do_extra;
+  const alternar = () => {
+    const m = ativo ? sairDoExtra(estado) : entrarNoExtra(registro.takes, estado);
+    void mudarEstado(estado.diaria_id, { ...m, ...cartaoQueSegue(m, estado) });
+  };
+  return (
+    <button
+      type="button"
+      onClick={alternar}
+      disabled={bloqueado}
+      aria-pressed={ativo}
+      style={{
+        alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 16px',
+        borderRadius: 'var(--radius-full)', fontSize: '14px', fontWeight: 700, marginTop: '-6px',
+        border: `1px solid ${ativo ? 'var(--cor-criativo)' : 'var(--border-light)'}`,
+        backgroundColor: ativo ? 'color-mix(in srgb, var(--cor-criativo) 14%, transparent)' : 'transparent',
+        color: ativo ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: bloqueado ? 'default' : 'pointer',
+      }}
+    >
+      <Sparkles size={15} aria-hidden />
+      {ativo
+        ? `Extra ${estado.plano} · voltar para a cena ${antes?.cena ?? '1'}`
+        : 'Extra — plano fora da decupagem'}
     </button>
   );
 }

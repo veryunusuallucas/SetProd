@@ -62,7 +62,8 @@ export function passoNaClaquete(estado: Pick<EstadoDaLogagem, 'cena' | 'plano' |
   const letras = estado.plano_letras !== false;
 
   if (campo === 'plano') {
-    const novo = letras
+    // O extra conta em números: Extra 1, 2, 3.
+    const novo = letras && !ehExtra(estado.cena)
       ? (direcao > 0 ? proximoPlano(estado.plano) : planoAnterior(estado.plano))
       : String(Math.max(0, (parseInt(String(estado.plano), 10) || 0) + direcao));
     return { plano: novo, take: 1 };
@@ -124,4 +125,65 @@ export function proximoPlanoLivre(planosDaCena: string[], plano: string, letras:
     if (!usados.has((base + letra).toUpperCase())) return base + letra;
   }
   return base + 'A';
+}
+
+/* ───────────────────────── Extra ───────────────────────── */
+
+/**
+ * O plano EXTRA (Lucas, 12/10/2026): o que não estava na decupagem e a equipe
+ * quis gravar — um céu, um plano geral do lugar. Na Diária 1 da Canção de
+ * Outono virou "cena 0, plano EXTRA" à mão, e o continuísta, sem saber, marcou
+ * alguns como rec falso. Bons, só fora do roteiro.
+ *
+ * Na claquete, a cena vira EXTRA e o plano é o número do extra no dia
+ * (Extra 1, 2, 3…), sempre em números; o take conta como em qualquer plano.
+ * Não liga a cena nenhuma da decupagem: não conta como cena gravada.
+ */
+export const EXTRA = 'EXTRA';
+export const ehExtra = (cena: unknown) => String(cena ?? '').trim().toUpperCase() === EXTRA;
+
+/** O próximo número de extra do dia: um a mais que o maior já usado. */
+export function proximoExtra(takes: Pick<Take, 'cena' | 'plano'>[]): number {
+  return takes.filter(t => ehExtra(t.cena)).reduce((m, t) => Math.max(m, parseInt(String(t.plano), 10) || 0), 0) + 1;
+}
+
+export type ClaqueteGuardada = Pick<EstadoDaLogagem, 'cena' | 'plano' | 'take' | 'cena_id' | 'plano_id'>;
+
+/** Entrar no extra guarda a claquete de antes, para voltar a ela ao sair. */
+export function entrarNoExtra(takes: Pick<Take, 'cena' | 'plano'>[], estado: ClaqueteGuardada): Partial<EstadoDaLogagem> {
+  return {
+    cena: EXTRA,
+    plano: String(proximoExtra(takes)),
+    take: 1,
+    cena_id: '',
+    plano_id: '',
+    claquete_antes_do_extra: { cena: estado.cena, plano: estado.plano, take: estado.take, cena_id: estado.cena_id, plano_id: estado.plano_id },
+  };
+}
+
+export function sairDoExtra(estado: Pick<EstadoDaLogagem, 'claquete_antes_do_extra' | 'plano_letras'>): Partial<EstadoDaLogagem> {
+  const antes = estado.claquete_antes_do_extra;
+  return {
+    ...(antes ?? { cena: '1', plano: estado.plano_letras === false ? '1' : 'A', take: 1 }),
+    claquete_antes_do_extra: undefined,
+  };
+}
+
+/* ───────────────────────── O cartão que segue a cena ───────────────────────── */
+
+/**
+ * O cartão (reel) numerado pela cena: A001 é a cena 1, A008 a cena 8 — a
+ * convenção da Canção de Outono (Lucas, 12/10/2026). `12A` vira `012`; cena
+ * sem número (EXTRA) não muda o cartão.
+ */
+export function cartaoDaCena(cena: unknown): string | null {
+  const digitos = /\d+/.exec(String(cena ?? ''))?.[0];
+  return digitos ? digitos.padStart(3, '0').slice(-3) : null;
+}
+
+/** O que muda junto quando a cena muda e o cartão segue a cena. */
+export function cartaoQueSegue(mudanca: Partial<EstadoDaLogagem>, estado: Pick<EstadoDaLogagem, 'cartao_da_cena'>): Partial<EstadoDaLogagem> {
+  if (!estado.cartao_da_cena || mudanca.cena === undefined) return {};
+  const cartao = cartaoDaCena(mudanca.cena);
+  return cartao ? { cartao } : {};
 }

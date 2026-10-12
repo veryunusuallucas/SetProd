@@ -1,6 +1,7 @@
 import { db } from '../../db/db';
 import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, StatusTake, Take } from '../../types';
 import { cartaoSeguro, estimativaDoCartaoGB } from './backup';
+import { ehExtra } from './claquete';
 
 /**
  * O resumo da Logagem para o resto do app (PLANO-logagem §7.2).
@@ -51,7 +52,8 @@ export function resumirLogagem(dados: {
 
   // Take importado não tem claquete: entra na contagem de takes, não na de cenas.
   const logados = takes.filter(t => t.status !== 'IMPORT' && String(t.cena ?? '').trim());
-  const cenas = new Set(logados.map(t => String(t.cena).trim().toUpperCase())).size;
+  // O extra é plano fora do roteiro: conta como setup, não como cena.
+  const cenas = new Set(logados.filter(t => !ehExtra(t.cena)).map(t => String(t.cena).trim().toUpperCase())).size;
   const planos = new Set(logados.map(t => `${String(t.cena).trim()}|${String(t.plano).trim()}`.toUpperCase())).size;
 
   // Só os cartões que TÊM material: é deles que a pergunta "pode formatar?" importa.
