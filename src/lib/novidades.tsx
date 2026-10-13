@@ -229,6 +229,48 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.2',
+    resumo: <>Leva de telas da Logagem: o que se olha no set ficou grande, e o resto saiu do caminho.</>,
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <Clapperboard size={20} />,
+        titulo: 'A claquete virou uma lousa',
+        texto: 'Como nas claquetes digitais: o arquivo grande no meio, e cena, plano e take embaixo, com o nome dentro da casa. Câmera, cartão, lente e ND ficam numa faixa em cima, e um toque nela leva à aba Câmera. O OK agora cabe na primeira tela, no celular e no computador.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Mic size={20} />,
+        titulo: 'A mesma lousa no Som',
+        texto: 'O último arquivo aparece grande, porque é nele que OK, NG e HERO marcam. O gravador fica na faixa de cima. Wild, Room tone e False start ficaram menores, embaixo.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Columns3 size={20} />,
+        titulo: 'Duas colunas no computador',
+        texto: 'Em todas as abas da Logagem: à esquerda o trabalho do dia, à direita o que é da produção. A aba Vídeo ficou quase com a metade da altura. "Como está a cena" ficou recolhido, porque a decupagem já preenche.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <HardDrive size={20} />,
+        titulo: 'O ~GB mora no Backup',
+        texto: 'A estimativa do cartão saiu da lousa e ganhou destaque no Backup. O cartão que ainda está na câmera mostra os passos de cópia recolhidos. A Câmera e o Gravador também ganharam a lousa do próximo arquivo, e o formato do nome ficou recolhido.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <FileInput size={20} />,
+        titulo: 'O Ingest acha o take mesmo com o nome errado',
+        texto: 'Quando o boletim diz A001C013 e a câmera gravou A008C013, o Ingest casa pelo número do clipe, pela câmera e pela hora, mostra a troca do nome e o boletim passa a usar o nome que a câmera gravou. Acaba o take em dobro.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <SlidersHorizontal size={20} />,
+        titulo: 'Seletor vazio não finge escolha',
+        texto: 'Com o campo vazio, o seletor do aparelho (e os outros da Logagem) mostrava a primeira opção como se estivesse escolhida, e escolher justo ela não gravava. Agora aparece "Escolher…".',
+      },
+    ],
+  },
+  {
     versao: '0.22.1',
     resumo: <>Acertos que vieram de olhar a Diária 1 de novo: um cartão é um cartão, e as configurações moram na Config.</>,
     itens: [
