@@ -2003,12 +2003,17 @@ input[type="radio"]:checked::before {
    Uma terceira coluna, presa ao rolar, só em tela larga: abaixo de 1280px o
    cronograma ficaria espremido. A folha tem a proporção do A4.
    ============================================================ */
+/* A diária mora DENTRO do .screen-padding do layout, que tem o teto de
+   1400px: alargar só a de dentro não adiantava (a prévia ficou com 460px na
+   tela de 2000 do Lucas). O `:has` solta a de fora também. */
 @media (min-width: 1024px) {
-  .project-layout .screen-padding.diaria-com-previa { max-width: 1920px; }
+  .project-layout .screen-padding:has(.diaria-com-previa),
+  .project-layout .screen-padding.diaria-com-previa { max-width: 2200px; }
 }
 .diaria-com-previa {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  /* A folha cresce com a tela: ~36% da largura, entre 380 e 720px. */
+  grid-template-columns: minmax(0, 1fr) clamp(380px, 36vw, 720px);
   gap: 24px;
   align-items: start;
 }
@@ -2033,7 +2038,10 @@ input[type="radio"]:checked::before {
 .previa-od-papel {
   position: relative;
   aspect-ratio: 210 / 297;
-  max-height: calc(100vh - 220px);
+  /* A folha inteira cabe na altura da janela: se a coluna for mais larga que
+     isso, ela fica centrada em vez de virar um A4 cortado embaixo. */
+  width: min(100%, calc((100vh - 200px) * 210 / 297));
+  margin: 0 auto;
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: #f4f4f2;
