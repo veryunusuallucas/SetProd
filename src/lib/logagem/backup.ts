@@ -150,6 +150,26 @@ export function oQueFalta(dados: {
  * não-dígitos e ignorando zeros à esquerda — "001" acha "Reel001" e "A001C012".
  * Não achou: quem escolhe é a pessoa, no seletor.
  */
+/**
+ * Os OUTROS cartões cujos clipes aparecem num comprovante.
+ *
+ * Um md5sums lista cada arquivo do cartão. Se o comprovante anexado no 001
+ * traz o A002C003 e o A004C010, que o boletim diz serem dos cartões 002 e 004,
+ * é sinal de que foi um cartão físico só (Diária 1 da Canção, 13/10/2026: o
+ * A00X do nome seguia a cena, e o ingest antigo leu isso como cartão).
+ */
+export function outrosCartoesNoComprovante(texto: string, cartao: string, takes: Pick<Take, 'arquivo' | 'cartao'>[]): string[] {
+  const corpo = String(texto || '').toUpperCase();
+  const achados = new Set<string>();
+  for (const t of takes) {
+    const dele = String(t.cartao ?? '').trim();
+    const nome = String(t.arquivo ?? '').trim().toUpperCase();
+    if (!dele || dele === cartao || nome.length < 4) continue;
+    if (corpo.includes(nome)) achados.add(dele);
+  }
+  return [...achados].sort();
+}
+
 export function detectarCartao(nomeArquivo: string, texto: string, cartoes: string[]): string | null {
   if (cartoes.length === 1) return cartoes[0];
 

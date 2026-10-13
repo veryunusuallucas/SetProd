@@ -15,7 +15,7 @@ import { idDoEstado } from '../../lib/logagem/estado';
 import { guardarArquivo, apagarArquivo } from '../../lib/arquivos';
 import { dataHora, numero } from '../../lib/formato';
 import {
-  anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos, juntarCartoes,
+  anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos, juntarCartoes, outrosCartoesNoComprovante,
   criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta,
 } from '../../lib/logagem/backup';
 import { ExportarRelatorios } from './ExportarRelatorios';
@@ -71,6 +71,22 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
     await anexarChecksum({
       projetoId, diariaId, cartao, nomeArquivo: arquivo.name, texto, arquivo: referencia, quem, departamentoId,
     });
+
+    /*
+      O comprovante sabe quais arquivos estavam no cartão. Se ele traz clipes
+      que o boletim põe em OUTROS cartões, foi um cartão físico só: pergunta e
+      junta ali mesmo, em vez de deixar quatro cartões que nunca existiram
+      (Diária 1 da Canção, 13/10/2026).
+    */
+    const outros = podeEditar ? outrosCartoesNoComprovante(texto, cartao, takes) : [];
+    if (outros.length && await confirmar({
+      titulo: `Este comprovante também tem os arquivos d${outros.length === 1 ? 'o cartão' : 'os cartões'} ${outros.join(', ')}.`,
+      detalhe: `Foi tudo o mesmo cartão físico? Juntar deixa só o ${cartao}: os takes, as cópias marcadas e os comprovantes passam para ele.`,
+      confirmar: `Juntar no ${cartao}`,
+      cancelar: 'Eram cartões diferentes',
+    })) {
+      await juntarCartoes(diariaId, outros, cartao);
+    }
   };
 
   /*
@@ -88,6 +104,10 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
         <div style={{ order: -1 }}>
           <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} primeiraVez />
         </div>
+      )}
+
+      {podeEditar && cartoes.length > 1 && (
+        <JuntarCartoes diariaId={diariaId} cartoes={cartoes} takes={takes} cartaoAtual={estado?.cartao} />
       )}
 
       <Cartoes
@@ -126,10 +146,6 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
         fecho={<>Com os três, o cartão fica <strong style={{ color: 'var(--color-success)' }}>Safe to Format</strong> e pode voltar para a câmera. Antes disso, não formate — nem que falte um HD só.</>}
       />
       </div>
-
-      {podeEditar && cartoes.length > 1 && (
-        <JuntarCartoes diariaId={diariaId} cartoes={cartoes} takes={takes} cartaoAtual={estado?.cartao} />
-      )}
 
       {emOrdem.length > 0 && (
         <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} />
