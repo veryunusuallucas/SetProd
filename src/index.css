@@ -1996,3 +1996,101 @@ input[type="radio"]:checked::before {
   color: var(--text-primary); cursor: pointer; transition: border-color 0.2s, transform 0.2s;
 }
 .apoio-outro:hover { border-color: var(--accent); transform: translateX(2px); }
+
+/* ============================================================
+   PRÉVIA DA OD (13/10/2026)
+
+   Uma terceira coluna, presa ao rolar, só em tela larga: abaixo de 1280px o
+   cronograma ficaria espremido. A folha tem a proporção do A4.
+   ============================================================ */
+@media (min-width: 1024px) {
+  .project-layout .screen-padding.diaria-com-previa { max-width: 1920px; }
+}
+.diaria-com-previa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  gap: 24px;
+  align-items: start;
+}
+.diaria-previa { position: sticky; top: 16px; }
+@media (max-width: 1279px) {
+  .diaria-com-previa { display: block; }
+  .diaria-previa, .so-telona { display: none !important; }
+}
+/* Com a prévia aberta, o dia empilha mais cedo: a coluna principal ficou menor. */
+@media (max-width: 1699px) {
+  .diaria-com-previa .diaria-grade { grid-template-columns: minmax(0, 1fr); }
+}
+
+.previa-od { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.previa-od-botao {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light); background: none;
+  color: var(--text-secondary); cursor: pointer;
+}
+.previa-od-botao:hover { color: var(--text-primary); border-color: var(--border-color); }
+.previa-od-papel {
+  position: relative;
+  aspect-ratio: 210 / 297;
+  max-height: calc(100vh - 220px);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #f4f4f2;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.previa-od-papel > iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #f4f4f2;
+}
+.previa-od-atualizando {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  background: color-mix(in srgb, var(--bg-surface) 38%, transparent);
+  backdrop-filter: blur(1.5px) saturate(0.7);
+}
+/* A lâmpada da copiadora: uma faixa de luz da cor do Set descendo pela folha. */
+.previa-od-luz {
+  position: absolute; left: -10%; right: -10%; height: 14%;
+  background: linear-gradient(to bottom,
+    transparent,
+    color-mix(in srgb, var(--cor-set) 22%, transparent) 40%,
+    color-mix(in srgb, var(--cor-set) 70%, white) 50%,
+    color-mix(in srgb, var(--cor-set) 22%, transparent) 60%,
+    transparent);
+  filter: blur(2px);
+}
+.previa-od-selo {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  padding: 6px 12px; border-radius: var(--radius-full);
+  background: rgba(10, 10, 10, 0.78); color: #fff;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.previa-od-erro {
+  position: absolute; left: 12px; right: 12px; top: 12px; margin: 0;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: rgba(10, 10, 10, 0.82); color: var(--color-warning);
+}
+
+/* O Exportar OD, sem o brilho de IA: o papel saindo, na cor do Set. */
+.botao-exportar-od {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 16px 0 14px;
+  border-radius: var(--radius-sm); border: none;
+  background: var(--cor-set); color: #0b0b0b;
+  font-weight: 800; font-size: 14px; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 6px 18px color-mix(in srgb, var(--cor-set) 28%, transparent);
+}
+.botao-exportar-od .papel { display: inline-flex; transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+.botao-exportar-od:hover .papel { transform: translateY(-2px) rotate(-4deg); }
+@media (prefers-reduced-motion: reduce) {
+  .botao-exportar-od:hover .papel { transform: none; }
+}
+.botao-previa-od {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-light); background: none;
+  color: var(--text-secondary); font-weight: 700; font-size: 13px; white-space: nowrap; cursor: pointer;
+}
+.botao-previa-od[aria-pressed="true"] {
+  color: var(--text-primary);
+  border-color: var(--cor-set);
+  background: color-mix(in srgb, var(--cor-set) 12%, transparent);
+}

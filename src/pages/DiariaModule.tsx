@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { naEquipe } from '../lib/vinculos';
 import { EmergenciaMedica } from '../components/EmergenciaMedica';
 import { SoQuemPode } from '../components/ui/SoQuemPode';
@@ -7,7 +7,7 @@ import { dinheiro } from '../lib/formato';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, FileDown, Wallet, Archive, Lock } from 'lucide-react';
+import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, FileDown, Wallet, Archive, Lock, FileText, Eye } from 'lucide-react';
 import type { DiariaTask, AnexoOD, Locacao, ItemDoDia, Cena } from '../types';
 import { logAction } from '../lib/audit';
 import { parseCoords, buscarClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
@@ -15,7 +15,7 @@ import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos'
 import { GeradorODModal } from '../components/GeradorODModal';
 import { DadosDaOD } from '../components/DadosDaOD';
 import { prepararOD } from '../lib/od/exportar';
-import { AIButton } from '../components/ui/AIButton';
+import { PreviaDaOD } from '../components/PreviaDaOD';
 import { imprimirHtml, baixarHtml, h } from '../lib/impressao';
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { planosPorCena } from '../lib/planos';
@@ -129,6 +129,23 @@ export function DiariaModule() {
   const [climaStatus, setClimaStatus] = useState<'idle' | 'carregando' | 'ok' | 'erro' | 'sem_coords'>('idle');
 
   const [geradorAberto, setGeradorAberto] = useState(false);
+  /*
+    A prévia da OD ao lado (Lucas, 13/10/2026): só em tela larga, ligada por
+    padrão e lembrada neste aparelho. Ver `PreviaDaOD`.
+  */
+  const [previaOD, setPreviaODEstado] = useState(() => {
+    try { return localStorage.getItem('setprod:od-previa') !== 'nao'; } catch { return true; }
+  });
+  // Abaixo de 1280px ela nem monta: escondida, ainda geraria PDF a cada mudança.
+  const telaLarga = useSyncExternalStore(
+    avisar => { const q = matchMedia('(min-width: 1280px)'); q.addEventListener('change', avisar); return () => q.removeEventListener('change', avisar); },
+    () => matchMedia('(min-width: 1280px)').matches,
+  );
+  const comPrevia = previaOD && telaLarga;
+  const setPreviaOD = (v: boolean) => {
+    setPreviaODEstado(v);
+    try { localStorage.setItem('setprod:od-previa', v ? 'sim' : 'nao'); } catch { /* aba privada */ }
+  };
 
 
   /*
@@ -1017,7 +1034,8 @@ export function DiariaModule() {
   };
 
   return (
-    <div className="screen-padding" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+    <div className={comPrevia ? 'screen-padding diaria-com-previa' : 'screen-padding'}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0 }}>
 
       {/*
         ---- NÍVEL 1: a faixa de contexto (spec §10) ----
@@ -1061,22 +1079,33 @@ export function DiariaModule() {
           </div>
         </div>
 
-        {/*
-          UM botão de exportar, e ele é o da IA.
+        {/* Liga e desliga a prévia ao lado. Some abaixo de 1280px, onde ela não cabe. */}
+        <button
+          type="button"
+          className="botao-previa-od so-telona"
+          aria-pressed={previaOD}
+          onClick={() => setPreviaOD(!previaOD)}
+          title={previaOD ? 'Esconder a prévia da OD' : 'Mostrar a prévia da OD ao lado'}
+        >
+          <Eye size={16} /> Prévia
+        </button>
 
-          Existiam dois: "Gerar OD com IA" e "Exportar e publicar", que montava o
-          documento por template. O template ficava sofrível ao lado do outro —
-          e dois caminhos para a mesma coisa obrigam a escolher sem ter como
-          saber qual escolher. O template continua no código, servindo o corpo do
-          e-mail e o DPR; o que saiu foi o botão.
+        {/*
+          O Exportar OD não tem mais o brilho de IA (Lucas, 13/10/2026): a OD é
+          montada pelo app, sem IA no caminho. O botão é o papel saindo, na cor
+          do Set — diferente do Fechar Diária, que é contorno.
+
+          Exportar sobe a versão da OD e fechar arquiva o dia: os dois gravam na
+          diária, e a diária é de quem administra.
         */}
-        {/* Exportar sobe a versão da OD e fechar arquiva o dia: os dois gravam
-            na diária, e a diária é de quem administra. */}
-        {podeAdministrar && <AIButton onClick={() => setGeradorAberto(true)}>
-          {estadoDa(diaria) === 'rascunho' || estadoDa(diaria) === 'travada'
-            ? 'Exportar OD'
-            : `Exportar OD (v${(diaria.versao_od || 1) + 1})`}
-        </AIButton>}
+        {podeAdministrar && (
+          <button type="button" className="botao-exportar-od" onClick={() => setGeradorAberto(true)}>
+            <span className="papel" aria-hidden><FileText size={17} strokeWidth={2.4} /></span>
+            {estadoDa(diaria) === 'rascunho' || estadoDa(diaria) === 'travada'
+              ? 'Exportar OD'
+              : `Exportar OD (v${(diaria.versao_od || 1) + 1})`}
+          </button>
+        )}
 
         {podeAdministrar && <button
           onClick={fecharDiaria}
@@ -1729,6 +1758,19 @@ export function DiariaModule() {
         />
       )}
 
+    </div>
+
+    {comPrevia && (
+      <aside className="diaria-previa">
+        <PreviaDaOD
+          diariaId={diariaId!}
+          projetoId={projetoId!}
+          versao={(diaria.versao_od || 0) + 1}
+          climas={climas}
+          aoFechar={() => setPreviaOD(false)}
+        />
+      </aside>
+    )}
     </div>
   );
 }

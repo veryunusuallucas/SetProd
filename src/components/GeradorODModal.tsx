@@ -12,19 +12,7 @@ import { agruparClimasIguais } from '../lib/clima';
 import { BLOCOS_OD, BLOCOS_PADRAO, TODOS_OS_BLOCOS, type BlocoOD, type FormatoOD } from '../lib/od/tipos';
 import { Segmentado } from './logagem/pecas';
 
-/** A última escolha (padrão ou detalhada, e os blocos da detalhada), por aparelho. */
-const CHAVE_FORMATO = 'setprod:od-formato';
-const CHAVE_BLOCOS = 'setprod:od-blocos';
-function formatoLembrado(): FormatoOD {
-  try { return localStorage.getItem(CHAVE_FORMATO) === 'detalhada' ? 'detalhada' : 'padrao'; } catch { return 'padrao'; }
-}
-function blocosLembrados(): BlocoOD[] {
-  try {
-    const salvos = JSON.parse(localStorage.getItem(CHAVE_BLOCOS) || 'null');
-    if (Array.isArray(salvos)) return TODOS_OS_BLOCOS.filter(b => salvos.includes(b));
-  } catch { /* sem preferência */ }
-  return TODOS_OS_BLOCOS;
-}
+import { blocosLembrados, formatoLembrado, lembrarBlocos, lembrarFormato } from '../lib/od/preferencia';
 
 /**
  * Exportar a Ordem do Dia.
@@ -82,12 +70,12 @@ export function GeradorODModal({
   const [escolhidos, setEscolhidos] = useState<BlocoOD[]>(blocosLembrados);
   const escolherFormato = (f: FormatoOD) => {
     setFormato(f);
-    try { localStorage.setItem(CHAVE_FORMATO, f); } catch { /* aba privada */ }
+    lembrarFormato(f);
   };
   const alternarBloco = (b: BlocoOD) => {
     const novos = escolhidos.includes(b) ? escolhidos.filter(x => x !== b) : TODOS_OS_BLOCOS.filter(x => x === b || escolhidos.includes(x));
     setEscolhidos(novos);
-    try { localStorage.setItem(CHAVE_BLOCOS, JSON.stringify(novos)); } catch { /* aba privada */ }
+    lembrarBlocos(novos);
   };
   const blocos = formato === 'padrao' ? BLOCOS_PADRAO : escolhidos;
 
