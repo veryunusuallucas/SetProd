@@ -229,6 +229,30 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.3',
+    resumo: <>O celular vibra nos momentos que importam — e você sabe o que aconteceu sem olhar a tela.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <Smartphone size={20} />,
+        titulo: 'Um padrão para cada coisa',
+        texto: 'Na Logagem e nas marcas do Som, cada status vibra de um jeito: OK é uma curta, NG são duas, HERO é uma longa e REC INV. são três. Cartão liberado e ingest aplicado têm o padrão de sucesso, e a pergunta que pode apagar algo vibra como aviso.',
+      },
+      {
+        tipo: 'novo',
+        icone: <PartyPopper size={20} />,
+        titulo: 'O fim do dia na mão',
+        texto: 'Fechar a diária e marcar a desprodução na linha do dia têm um padrão só deles, o mais longo do app.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <SlidersHorizontal size={20} />,
+        titulo: 'Um tique nos controles',
+        texto: 'O − e o + da claquete, as abas, as chaves e os seletores dão um toque leve. A vibração vem ligada e desliga em Configurações → Vibração. Só no Android: o iPhone não deixa app da web vibrar.',
+      },
+    ],
+  },
+  {
     versao: '0.22.2',
     resumo: <>Leva de telas da Logagem: o que se olha no set ficou grande, e o resto saiu do caminho.</>,
     itens: [
