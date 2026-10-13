@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Vazio } from '../components/ui/Vazio';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -8,6 +8,10 @@ import { logAction } from '../lib/audit';
 import { parseCoords } from '../lib/clima';
 import { buscarHospitaisProximos, formatarDistancia, linkRota, type HospitalOSM } from '../lib/osm';
 import { confirmar } from '../components/ui/Confirmacao';
+import { buscarEndereco, ehLinkCurtoDoGoogle, linkDoPonto } from '../lib/geocodificar';
+
+// O Leaflet só baixa quando a janela do mapa abre.
+const EscolherNoMapa = lazy(() => import('../components/EscolherNoMapa'));
 
 export interface LocacaoContato {
   id: string;
@@ -67,30 +71,24 @@ export function LocacoesModule() {
   const [obs, setObs] = useState('');
   const [buscandoOSM, setBuscandoOSM] = useState(false);
 
+  const [noMapa, setNoMapa] = useState(false);
+
+  /*
+    A busca tenta o endereço por partes (`lib/geocodificar`). Quando não acha,
+    ou acha só a rua, ABRE O MAPA em vez de um alerta: a pessoa toca no ponto
+    exato (Lucas, 13/10/2026). O alerta antigo mandava ir ao Google copiar
+    coordenadas — e o link curto que o Google entrega (maps.app.goo.gl) não
+    traz ponto nenhum.
+  */
   const buscarOSM = async () => {
     if (!endereco || endereco.length < 3) return alert('Digite um endereço para buscar.');
     setBuscandoOSM(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(endereco)}`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        const place = data[0];
-        setCoordenadas(`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`);
-        /*
-          O OpenStreetMap não tem o número de muitas casas no Brasil. Sem ele, a
-          busca devolve a RUA — e o ponto cai no começo dela, a quarteirões do
-          set. Os hospitais próximos e o clima saem desse ponto, então a pessoa
-          precisa saber que ele é aproximado.
-        */
-        const pediuNumero = /\d/.test(endereco.split(',').slice(0, 2).join(','));
-        if (pediuNumero && !place.address?.house_number) {
-          alert('O OpenStreetMap achou a rua, mas não o número — o ponto pode estar no começo da rua.\n\nPara o local exato: no Google Maps, clique com o botão direito em cima do lugar, clique nos números que aparecem (as coordenadas) e cole no campo do mapa.');
-        }
-      } else {
-        alert('Endereço não encontrado no OpenStreetMap.');
-      }
+      const [lugar] = await buscarEndereco(endereco);
+      if (lugar?.temNumero) setCoordenadas(linkDoPonto(lugar.lat, lugar.lng));
+      else setNoMapa(true);
     } catch (e) {
-      alert('Erro na busca OSM.');
+      alert(e instanceof Error ? e.message : 'Erro na busca OSM.');
     } finally {
       setBuscandoOSM(false);
     }
@@ -254,12 +252,34 @@ export function LocacoesModule() {
             <button onClick={buscarOSM} disabled={buscandoOSM} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
               {buscandoOSM ? 'Buscando...' : 'Buscar OSM'}
             </button>
+            <button type="button" onClick={() => setNoMapa(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <MapPin size={15} /> Escolher no mapa
+            </button>
           </div>
 
+          {noMapa && (
+            <Suspense fallback={null}>
+              <EscolherNoMapa
+                endereco={endereco}
+                inicial={parseCoords(coordenadas)}
+                aoFechar={() => setNoMapa(false)}
+                aoEscolher={p => { setCoordenadas(linkDoPonto(p.lat, p.lng)); setNoMapa(false); }}
+              />
+            </Suspense>
+          )}
+
           <div style={{ display: 'flex', gap: '16px' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <MapPin size={16} className="text-muted" />
-              <input placeholder="Link Maps / Coordenadas" value={coordenadas} onChange={e => setCoordenadas(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <MapPin size={16} className="text-muted" />
+                <input placeholder="Link Maps / Coordenadas" value={coordenadas} onChange={e => setCoordenadas(e.target.value)} style={{ border: 'none', padding: '16px 0', width: '100%', backgroundColor: 'transparent' }} />
+              </div>
+              {/* O link curto do Google não traz o ponto: o hospital e o clima não teriam de onde sair. */}
+              {ehLinkCurtoDoGoogle(coordenadas) && (
+                <p className="text-xs" style={{ margin: 0, color: 'var(--color-warning)' }}>
+                  Link curto do Google (maps.app.goo.gl) não traz o ponto. Use "Escolher no mapa" e toque no lugar.
+                </p>
+              )}
             </div>
             
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>

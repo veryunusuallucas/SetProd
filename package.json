@@ -21,6 +21,7 @@
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
     "framer-motion": "^12.42.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.26.0",
     "ogl": "^1.0.11",
     "pdfjs-dist": "5.4.296",
@@ -33,6 +34,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.12",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
