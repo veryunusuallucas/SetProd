@@ -1044,7 +1044,7 @@ input[type="radio"]:checked::before {
 .lousa > .hud-logagem > span {
   background: none;
   border: none;
-  padding: 2px 6px;
+  padding: 2px 4px;
 }
 /* Na aba Som a faixa é um botão (leva à aba Gravador). */
 .lousa > .hud-botao {
@@ -1059,7 +1059,19 @@ input[type="radio"]:checked::before {
   align-items: center;
   cursor: pointer;
 }
-.lousa > .hud-botao > .hud-cena { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
+/* Quebra em linhas em vez de rolar: rolando, a lente sumia na borda do celular. */
+.lousa > .hud-botao { flex-wrap: wrap; overflow: visible; row-gap: 2px; column-gap: 4px; position: relative; padding-right: 32px; }
+.lousa > .hud-botao:disabled { cursor: default; }
+/* O ícone preso no canto: no fluxo, ele caía sozinho numa terceira linha. */
+.lousa > .hud-botao > .hud-ajustar {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  padding: 0;
+  color: var(--cor-criativo);
+}
 .lousa > .hud-logagem > .hud-cena {
   color: var(--cor-criativo);
   letter-spacing: 0.06em;

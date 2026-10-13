@@ -38,7 +38,7 @@ const UMA_COLUNA = '(max-width: 1099px)';
  * mão e o set andando. Quem está logando não vai procurar um número de 14px no
  * meio de um formulário entre um "ação" e um "corta".
  */
-export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, quem, densidade, aoTrocarDensidade }: {
+export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, quem, densidade, aoTrocarDensidade, aoAbrirCamera }: {
   projetoId: string;
   diariaId: string;
   podeEditar: boolean;
@@ -48,6 +48,8 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
   /** A visão (Foco, Detalhada, Acompanhamento). Quem escolhe é o interruptor do topo da página. */
   densidade: Densidade;
   aoTrocarDensidade: (d: Densidade) => void;
+  /** Leva à aba Câmera: a faixa de cima da lousa é o atalho para o kit. */
+  aoAbrirCamera?: () => void;
 }) {
   const estadoSalvo = useLiveQuery(() => db.log_estado.get(idDoEstado(diariaId)), [diariaId]);
 
@@ -202,6 +204,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
           aoPassar={passo}
           aoDigitar={aoDigitar}
           mostrarAtalhos={detalhada}
+          aoAbrirCamera={aoAbrirCamera}
         />
       </div>
 

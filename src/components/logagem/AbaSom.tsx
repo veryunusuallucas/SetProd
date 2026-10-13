@@ -80,7 +80,7 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
             <span><i>Rolo</i>{estado.rolo_som || '—'}</span>
             <span><i>Trilhas</i>{trilhasDoSom(estado).length}</span>
             {estado.tc_som && <span><i>TC</i>{estado.tc_som}</span>}
-            <span className="hud-cena" aria-hidden><SlidersHorizontal size={14} /></span>
+            <span className="hud-ajustar" aria-hidden><SlidersHorizontal size={14} /></span>
           </button>
 
           <div className="lousa-arquivo">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minus, Plus, Clapperboard, Mic, MicOff, Users, Sparkles } from 'lucide-react';
+import { Minus, Plus, Clapperboard, Mic, MicOff, Users, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { ehExtra, entrarNoExtra, sairDoExtra } from '../../lib/logagem/claquete';
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
@@ -26,7 +26,7 @@ type Campo = 'cena' | 'plano' | 'take';
  * Em cima, uma linha com o que está na câmera (o HUD do Lumavi): conferir não
  * pode custar uma troca de aba.
  */
-export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar, mostrarAtalhos }: {
+export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar, mostrarAtalhos, aoAbrirCamera }: {
   estado: EstadoDaLogagem;
   registro: Registro;
   podeEditar: boolean;
@@ -34,6 +34,7 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
   aoDigitar: (campo: Campo, valor: string) => void;
   /** Só no computador: no celular não há teclado para os atalhos. */
   mostrarAtalhos: boolean;
+  aoAbrirCamera?: () => void;
 }) {
   const bloqueado = !podeEditar;
   const letras = estado.plano_letras !== false;
@@ -51,15 +52,19 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
   return (
     <section className="card painel-take" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(12px, 3vw, 22px)' }}>
       <div className="lousa">
-        <div className="hud-logagem" aria-label="O que está na câmera">
+        {/* Como na aba Som (Lucas, 12/10/2026): a faixa é um botão que leva ao kit,
+            e quebra em duas linhas no celular em vez de cortar a lente. */}
+        <button type="button" className="hud-logagem hud-botao" onClick={aoAbrirCamera} disabled={!aoAbrirCamera}
+          aria-label="O que está na câmera — tocar para ajustar na aba Câmera">
           {cabecalho && <span className="hud-cena">{cabecalho}</span>}
           <span><i>Câm</i>{estado.camera_id || '—'}</span>
           {/* O ~GB do cartão mora no Backup (Lucas, 12/10/2026): é conta de descarregar, não de gravar. */}
           <span><i>Cartão</i>{estado.cartao || '—'}</span>
           <span><i>Lente</i>{lente || '—'}</span>
           <span><i>ND</i>{estado.nd || '—'}</span>
-          <span><i>Takes</i>{registro.takes.length}</span>
-        </div>
+          {/* A contagem de takes saiu da faixa: está na lista, e aqui forçava uma terceira linha no celular. */}
+          <span className="hud-ajustar" aria-hidden><SlidersHorizontal size={14} /></span>
+        </button>
 
         <div className="lousa-arquivo">
           {/* O som numa linha com o rótulo: embaixo do nome, gastava 50px que faltavam para o OK no celular. */}

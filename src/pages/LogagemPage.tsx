@@ -481,7 +481,7 @@ function ConteudoDaAba({
     return <AbaBackup projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />;
   }
   if (aba === 'logagem' && diariaId) {
-    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} densidade={densidade} aoTrocarDensidade={aoTrocarDensidade} />;
+    return <AbaLogagem projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} densidade={densidade} aoTrocarDensidade={aoTrocarDensidade} aoAbrirCamera={() => aoTrocarAba('camera')} />;
   }
 
   if (aba === 'ingest') {
