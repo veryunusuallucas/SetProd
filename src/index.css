@@ -1109,6 +1109,14 @@ input[type="radio"]:checked::before {
   color: var(--cor-criativo);
 }
 .lousa > .claquete-grade { padding: 10px; }
+/* A casa do clipe, na lousa da aba Câmera. */
+.lousa-clipe {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+}
 .lousa .contador-valor { position: relative; }
 .contador-rotulo {
   position: absolute;
@@ -1132,6 +1140,21 @@ input[type="radio"]:checked::before {
 
 .contexto-da-cena > summary::-webkit-details-marker { display: none; }
 .contexto-da-cena[open] > summary > span:last-child { visibility: hidden; }
+
+/* Câmera e Backup (leva de UI, 12/10/2026): o mesmo esquema da aba Vídeo,
+   genérico. No celular, uma coluna; cada peça diz o seu lugar com `order`
+   (os embrulhos somem). No computador largo, duas colunas: à esquerda o que
+   se usa no dia, à direita o que é da produção. */
+.aba-grade { display: flex; flex-direction: column; gap: 16px; }
+.aba-coluna { display: contents; flex-direction: column; gap: 16px; }
+@media (min-width: 1100px) {
+  .aba-grade {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr);
+    align-items: start;
+  }
+  .aba-coluna { display: flex; }
+}
 
 /* A aba Vídeo: uma coluna na ordem do set no celular; duas no computador. */
 .video-grade { display: flex; flex-direction: column; gap: 16px; }

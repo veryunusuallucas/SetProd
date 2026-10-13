@@ -7,7 +7,7 @@ import type { CartaoDoKit, EstadoDaLogagem, NomenclaturaArquivo } from '../../ty
 import { kitsDoProjeto, salvarCartoes } from '../../lib/logagem/kits';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { CampoTexto } from '../ui/CampoTexto';
-import { BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
+import { Abre, BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
 import { Guia } from './Guia';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
@@ -51,7 +51,14 @@ export function AbaCamera({ projetoId, diariaId, podeEditar, departamentoId }: {
   const bloqueado = !podeEditar;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    /*
+      Leva de UI (12/10/2026): à esquerda o que se mexe no dia (o próximo
+      arquivo e o setup), à direita o que é da produção e se cadastra uma vez
+      (câmeras, lentes, cartões, formato do nome). No celular, uma coluna: o
+      guia primeiro, depois o do dia, depois o da produção.
+    */
+    <div className="aba-grade">
+     <div className="aba-coluna">
       {!estadoSalvo && !podeEditar && (
         <p className="text-sm text-secondary">
           A Fotografia ainda não configurou a câmera desta diária. Abaixo, o ponto de partida.
@@ -59,6 +66,7 @@ export function AbaCamera({ projetoId, diariaId, podeEditar, departamentoId }: {
       )}
 
       {podeEditar && (
+        <div style={{ order: -1 }}>
         <Guia
           id="camera"
           titulo="Preparar a câmera para a diária"
@@ -76,16 +84,20 @@ export function AbaCamera({ projetoId, diariaId, podeEditar, departamentoId }: {
               texto: 'O "próximo arquivo" aqui tem que ser igual ao que aparece no visor da câmera. Se não for, ajuste o clipe ou o formato antes do primeiro take.',
             },
           ]}
-          fecho="Depois disso, o dia acontece na aba Logagem. Aqui você volta para trocar de cartão."
+          fecho="Depois disso, o dia acontece na aba Vídeo. Aqui você volta para trocar de cartão."
         />
+        </div>
       )}
 
       <ProximoArquivo estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
+      <Setup estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
+     </div>
+     <div className="aba-coluna">
       <KitDeCameras projetoId={projetoId} estado={estado} bloqueado={bloqueado} aoMudar={mudar} departamentoId={departamentoId} />
       <KitDeLentes projetoId={projetoId} estado={estado} bloqueado={bloqueado} aoMudar={mudar} departamentoId={departamentoId} />
       <CartoesDaProducao projetoId={projetoId} departamentoId={departamentoId} bloqueado={bloqueado} />
       <Nomenclatura estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
-      <Setup estado={estado} bloqueado={bloqueado} aoMudar={mudar} />
+     </div>
     </div>
   );
 }
@@ -160,17 +172,21 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   };
 
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '22px' }}>
-      <Rotulo icone={<FileVideo size={14} />}>Próximo arquivo</Rotulo>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-        <ValorQueTroca texto={nome} rotuloDeLeitura="Próximo arquivo" tamanho="clamp(30px, 8vw, 44px)" />
+    <section className="card painel-take" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: 'clamp(12px, 3vw, 22px)' }}>
+      {/* A mesma lousa da aba Vídeo: é o nome que se confere com o visor da câmera. */}
+      <div className="lousa">
+        <div className="lousa-arquivo">
+          <span className="lousa-rotulo"><FileVideo size={12} aria-hidden /> Próximo arquivo</span>
+          <div className="arquivo-previsto" style={{ fontWeight: 800 }}>
+            <ValorQueTroca texto={nome} rotuloDeLeitura="Próximo arquivo" tamanho="inherit" />
+          </div>
+        </div>
 
         {/* O clipe é o contador que mais se corrige à mão: a câmera gravou um
             clipe de teste, alguém formatou fora de hora. Por isso ele tem botões
             grandes, e não só um campo. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="text-xs font-bold uppercase tracking-widest text-secondary" style={{ marginRight: '4px' }}>Clipe</span>
+        <div className="lousa-clipe">
+          <span className="lousa-rotulo" style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Clipe</span>
           <BotaoContador rotulo="Clipe anterior" disabled={bloqueado || clipe <= 0} onClick={() => passo(-1)}>
             <Minus size={18} />
           </BotaoContador>
@@ -307,9 +323,26 @@ function CartaoQueConfirma({ valor, bloqueado, aoConfirmar }: { valor: string; b
 
 function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   const reduzido = useMovimentoReduzido();
+  /*
+    Recolhido (leva de UI, 12/10/2026): o formato se escolhe uma vez por
+    produção. Fica a linha do escolhido; as seis opções abrem com um toque.
+  */
+  const [trocando, setTrocando] = useState(false);
+  const atual = NOMENCLATURAS.find(n => n.id === estado.nomenclatura);
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
-      <Rotulo icone={<Tag size={14} />}>Formato do nome</Rotulo>
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
+      <button
+        type="button"
+        onClick={() => setTrocando(v => !v)}
+        aria-expanded={trocando}
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '44px', padding: 0, border: 'none', background: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <Rotulo icone={<Tag size={14} />}>Formato do nome</Rotulo>
+        <span className="text-sm font-bold">{atual?.nome ?? '—'}</span>
+        <span className="text-xs text-secondary" style={{ fontFamily: MONO }}>{atual?.exemplo}</span>
+        <span className="text-xs" style={{ marginLeft: 'auto', color: 'var(--cor-criativo)', fontWeight: 700 }}>{trocando ? 'Fechar' : 'Trocar'}</span>
+      </button>
+      <Abre aberto={trocando}>
       <div
         role="radiogroup"
         aria-label="Formato do nome do arquivo"
@@ -354,6 +387,7 @@ function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
           );
         })}
       </div>
+      </Abre>
 
       {camposDaNomenclatura(estado.nomenclatura).usaCartao && (
         <Campo rotulo="O A00X do nome segue">
@@ -441,13 +475,13 @@ function Setup({ estado, bloqueado, aoMudar }: PropsDeSecao) {
           se mexe de plano em plano. Misturados, a pessoa procurava o ISO no meio
           do codec. */}
       <span className="text-xs font-bold uppercase tracking-widest text-muted">Imagem</span>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(160px, 100%), 1fr))', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '12px' }}>
         <Campo rotulo="FPS"><SeletorComOutro opcoes={OPCOES.fps} valor={estado.fps} bloqueado={bloqueado} aoMudar={v => aoMudar({ fps: v })} /></Campo>
         <Campo rotulo="Resolução"><SeletorComOutro opcoes={OPCOES.resolucao} valor={estado.resolucao} bloqueado={bloqueado} aoMudar={v => aoMudar({ resolucao: v })} /></Campo>
         <Campo rotulo="Codec"><SeletorComOutro opcoes={OPCOES.codec} valor={estado.codec} bloqueado={bloqueado} aoMudar={v => aoMudar({ codec: v })} /></Campo>
       </div>
       <span className="text-xs font-bold uppercase tracking-widest text-muted" style={{ marginTop: '6px' }}>Exposição e monitor</span>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(160px, 100%), 1fr))', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '12px' }}>
         <Campo rotulo="White balance"><SeletorComOutro opcoes={OPCOES.wb} valor={estado.wb} bloqueado={bloqueado} aoMudar={v => aoMudar({ wb: v })} /></Campo>
         <Campo rotulo="Shutter"><SeletorComOutro opcoes={OPCOES.shutter} valor={estado.shutter} bloqueado={bloqueado} aoMudar={v => aoMudar({ shutter: v })} /></Campo>
         <Campo rotulo="ISO"><SeletorComOutro opcoes={OPCOES.iso} valor={estado.iso} bloqueado={bloqueado} aoMudar={v => aoMudar({ iso: v })} /></Campo>

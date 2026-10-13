@@ -9,7 +9,7 @@ import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, Take } from '../../t
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
-import { Abre, Rotulo, estiloCampo } from './pecas';
+import { Abre, MONO, Rotulo, estiloCampo } from './pecas';
 import { Guia } from './Guia';
 import { idDoEstado } from '../../lib/logagem/estado';
 import { guardarArquivo, apagarArquivo } from '../../lib/arquivos';
@@ -72,10 +72,39 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
     });
   };
 
+  /*
+    Leva de UI (12/10/2026): à esquerda o veredito e os cartões — o trabalho do
+    dia —; à direita o guia, os HDs, o juntar e os relatórios. No celular, uma
+    coluna, com o `order` dizendo a sequência: veredito, guia, os HDs quando
+    ainda não há nenhum (os cartões dependem deles), os cartões, e o resto.
+  */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <Veredito cartoes={comMaterial} seguros={seguros} semHd={emOrdem.length === 0} />
+    <div className="aba-grade">
+     <div className="aba-coluna">
+      <div style={{ order: -3 }}><Veredito cartoes={comMaterial} seguros={seguros} semHd={emOrdem.length === 0} /></div>
 
+      {emOrdem.length === 0 && (
+        <div style={{ order: -1 }}>
+          <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} primeiraVez />
+        </div>
+      )}
+
+      <Cartoes
+        cartoes={cartoes}
+        hds={emOrdem}
+        takes={takes}
+        backups={backups}
+        checksums={checksums}
+        cartaoAtual={estado?.cartao}
+        podeEditar={podeEditar}
+        aoMarcar={(cartao, hdId) => void marcarBackup({ projetoId, diariaId, cartao, hdId, quem, departamentoId })}
+        aoDesmarcar={id => void desmarcarBackup(id)}
+        aoAnexar={anexar}
+      />
+     </div>
+
+     <div className="aba-coluna">
+      <div style={{ order: -2 }}>
       <Guia
         id="backup"
         titulo="Como funciona o backup"
@@ -95,33 +124,18 @@ export function AbaBackup({ projetoId, diariaId, podeEditar, departamentoId, que
         ]}
         fecho={<>Com os três, o cartão fica <strong style={{ color: 'var(--color-success)' }}>Safe to Format</strong> e pode voltar para a câmera. Antes disso, não formate — nem que falte um HD só.</>}
       />
-
-      {emOrdem.length === 0 && (
-        <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} primeiraVez />
-      )}
+      </div>
 
       {podeEditar && cartoes.length > 1 && (
         <JuntarCartoes diariaId={diariaId} cartoes={cartoes} takes={takes} cartaoAtual={estado?.cartao} />
       )}
-
-      <Cartoes
-        cartoes={cartoes}
-        hds={emOrdem}
-        takes={takes}
-        backups={backups}
-        checksums={checksums}
-        cartaoAtual={estado?.cartao}
-        podeEditar={podeEditar}
-        aoMarcar={(cartao, hdId) => void marcarBackup({ projetoId, diariaId, cartao, hdId, quem, departamentoId })}
-        aoDesmarcar={id => void desmarcarBackup(id)}
-        aoAnexar={anexar}
-      />
 
       {emOrdem.length > 0 && (
         <Hds hds={emOrdem} projetoId={projetoId} departamentoId={departamentoId} podeEditar={podeEditar} />
       )}
 
       <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
+     </div>
     </div>
   );
 }
@@ -563,10 +577,14 @@ function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, pod
     >
       {/* Quem é o cartão, e o veredito */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px 10px', flexWrap: 'wrap' }}>
-        <span className="font-bold" style={{ fontSize: '22px', fontVariantNumeric: 'tabular-nums' }}>{cartao}</span>
-        <span className="text-xs text-muted">
-          {nTakes} take{nTakes === 1 ? '' : 's'}{gb > 0 ? ` · ~${numero(gb, gb < 10 ? 1 : 0)} GB` : ''}
-        </span>
+        <span className="font-bold" style={{ fontSize: '24px', fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}>{cartao}</span>
+        {/* O ~GB mora aqui desde que saiu da lousa (Lucas, 12/10/2026): é a conta de quem vai copiar. */}
+        {gb > 0 && (
+          <span className="font-bold" style={{ fontSize: '15px', fontVariantNumeric: 'tabular-nums' }} title="Estimativa pelo codec e pela duração dos takes">
+            ~{numero(gb, gb < 10 ? 1 : 0)} GB
+          </span>
+        )}
+        <span className="text-xs text-muted">{nTakes} take{nTakes === 1 ? '' : 's'}</span>
         {naCamera && (
           <span className="text-xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
             <Camera size={12} /> na câmera
@@ -587,10 +605,26 @@ function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, pod
         </motion.span>
       </div>
 
+      {/*
+        Na câmera, os passos ficam recolhidos (leva de UI, 12/10/2026): só se
+        copia depois de tirar o cartão, e três passos por fazer no meio do dia
+        só empurravam os outros cartões para baixo.
+      */}
       {naCamera && !seguro && (
-        <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
-          Ainda está gravando. Copie depois de tirar o cartão da câmera.
-        </p>
+        <button
+          type="button"
+          onClick={() => setVerPassos(v => !v)}
+          aria-expanded={verPassos}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', margin: '-6px 0', padding: 0,
+            border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', textAlign: 'left',
+          }}
+        >
+          <span className="text-xs" style={{ flex: 1, minWidth: 0 }}>Ainda está gravando. Copie depois de tirar o cartão da câmera.</span>
+          <motion.span animate={{ rotate: verPassos ? 180 : 0 }} transition={reduzido ? { duration: 0 } : MOLA} style={{ display: 'flex', flexShrink: 0 }}>
+            <ChevronDown size={16} />
+          </motion.span>
+        </button>
       )}
 
       {seguro && (
@@ -612,7 +646,7 @@ function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, pod
         </button>
       )}
 
-      <Abre aberto={!seguro || verPassos}>
+      <Abre aberto={(!seguro && !naCamera) || verPassos}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Passo 1: os HDs */}
           <Passo numero={1} feito={hds.length > 0 && copiados === hds.length} titulo={
