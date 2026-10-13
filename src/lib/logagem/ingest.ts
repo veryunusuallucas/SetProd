@@ -1,6 +1,7 @@
 import { db } from '../../db/db';
 import type { StatusTake, Take } from '../../types';
 import type { ClipeDoXml } from './nrt';
+import { cameraECartaoDoNome } from './leitura';
 
 /**
  * Ingest: casar o que a câmera gravou com o que foi logado, e corrigir.
@@ -75,7 +76,65 @@ export function diferencasDoClipe(take: Take, clipe: ClipeDoXml): Diferenca[] {
 }
 
 /**
+ * O número do clipe dentro do nome: `A008C013` → 13, `C0148` → 148,
+ * `DJI_0007` → 7. É a última sequência de dígitos, tirando antes o sufixo da
+ * câmera (`A003C030_260912SL`) quando o que sobra ainda tem número.
+ */
+export function numeroDoClipe(nome: string): number | null {
+  const semSufixo = nome.replace(/_[^_]*$/, '');
+  const base = /\d/.test(semSufixo) ? semSufixo : nome;
+  const m = base.match(/(\d+)\D*$/);
+  return m ? Number(m[1]) : null;
+}
+
+/** "HH:MM:SS" (ou o ISO do XML) em segundos do dia. */
+function segundosDoDia(hora?: string): number | null {
+  const m = String(hora ?? '').match(/(\d{2}):(\d{2}):(\d{2})/);
+  return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : null;
+}
+
+/**
+ * Quando o take pode ter sido logado em relação ao começo do clipe. Nunca
+ * antes (fora 2 min de relógio desencontrado); depois, até 1 h: na Diária 1 da
+ * Canção, os C013–C015 foram logados de uma vez, 12 a 18 min depois de gravados.
+ */
+const ANTES = 2 * 60;
+const DEPOIS = 60 * 60;
+
+/**
+ * Segunda chance para o clipe que não achou take pelo nome: o MESMO número de
+ * clipe, da mesma câmera, logado perto da hora em que a câmera gravou.
+ *
+ * É o caso do A00X errado (o boletim diz A001C013, a câmera gravou A008C013):
+ * o reel mudou e o nome não bate, mas o contador de clipes e o relógio contam a
+ * mesma história. Só entra take que nenhum clipe achou pelo nome, e só quando
+ * a hora existe dos dois lados — o número sozinho repete de cartão em cartão.
+ */
+function acharPeloNumeroEHora(livres: Take[], clipe: ClipeDoXml): Take | undefined {
+  const numero = numeroDoClipe(clipe.nome);
+  const inicio = segundosDoDia(clipe.meta.criadoEm);
+  if (numero === null || inicio === null) return undefined;
+  const camera = cameraECartaoDoNome(clipe.nome).camera_id;
+
+  let melhor: { take: Take; distancia: number } | undefined;
+  for (const take of livres) {
+    if (numeroDoClipe(take.arquivo || '') !== numero) continue;
+    if (camera && take.camera_id && take.camera_id.toUpperCase() !== camera) continue;
+    const hora = segundosDoDia(take.hora);
+    if (hora === null) continue;
+    if (hora < inicio - ANTES || hora > inicio + DEPOIS) continue;
+    const distancia = Math.abs(hora - inicio);
+    if (!melhor || distancia < melhor.distancia) melhor = { take, distancia };
+  }
+  return melhor?.take;
+}
+
+/**
  * Cruza os clipes lidos com os takes da diária.
+ *
+ * Primeiro pelo nome; o que sobrar, pelo número do clipe e pela hora — e aí o
+ * nome do arquivo aparece como diferença, para o boletim passar a usar o que
+ * a câmera gravou.
  *
  * Dois clipes que casam com o MESMO take viram "repetido" em vez de os dois
  * corrigirem a mesma linha: acontece quando o boletim tem um nome curto demais,
@@ -84,23 +143,31 @@ export function diferencasDoClipe(take: Take, clipe: ClipeDoXml): Diferenca[] {
  */
 export function cruzar(takes: Take[], clipes: ClipeDoXml[]): Casamento[] {
   const usados = new Set<string>();
+  const peloNome = clipes.map(clipe => acharTake(takes, clipe.nome));
+  const achadosPeloNome = new Set(peloNome.filter(Boolean).map(t => t!.id));
 
-  return clipes.map(clipe => {
-    const take = acharTake(takes, clipe.nome);
+  return clipes.map((clipe, i) => {
+    const take = peloNome[i] ?? acharPeloNumeroEHora(
+      takes.filter(t => !achadosPeloNome.has(t.id) && !usados.has(t.id)), clipe,
+    );
     if (!take) return { tipo: 'sem-take', clipe } as const;
     if (usados.has(take.id)) return { tipo: 'repetido', clipe, take } as const;
     usados.add(take.id);
-    return { tipo: 'igual', clipe, take, diferencas: diferencasDoClipe(take, clipe) } as const;
+    const diferencas = diferencasDoClipe(take, clipe);
+    if (!peloNome[i]) diferencas.unshift({ campo: 'arquivo', rotulo: 'Arquivo', logado: take.arquivo, daCamera: clipe.nome });
+    return { tipo: 'igual', clipe, take, diferencas } as const;
   });
 }
 
 /** O que gravar no take quando o XML vence. */
-export function correcaoDoTake(clipe: ClipeDoXml, xmlAnterior?: Take['xml']): Partial<Take> {
+export function correcaoDoTake(clipe: ClipeDoXml, xmlAnterior?: Take['xml'], arquivoLogado?: string): Partial<Take> {
   const mudanca: Partial<Take> = {
     // O bloco `xml` guarda o que veio da câmera, separado do que foi digitado:
     // é assim que dá para saber, depois, de onde cada valor veio.
     xml: { ...xmlAnterior, ...clipe.meta },
   };
+  // Casou pelo número e pela hora: o nome do boletim estava errado.
+  if (arquivoLogado !== undefined && !acharTake([{ arquivo: arquivoLogado } as Take], clipe.nome)) mudanca.arquivo = clipe.nome;
   if (clipe.codec) mudanca.codec = clipe.codec;
   if (clipe.fps) mudanca.fps = clipe.fps;
   if (clipe.resolucao) mudanca.resolucao = clipe.resolucao;
@@ -156,7 +223,7 @@ export async function aplicarIngest(opcoes: {
   importar: { clipe: ClipeDoXml; camera_id: string; cartao: string }[];
 }): Promise<{ corrigidos: number; importados: number }> {
   for (const { take, clipe } of opcoes.corrigir) {
-    await db.log_takes.update(take.id, correcaoDoTake(clipe, take.xml));
+    await db.log_takes.update(take.id, correcaoDoTake(clipe, take.xml, take.arquivo));
   }
 
   const existentes = await db.log_takes.where('diaria_id').equals(opcoes.base.diaria_id).toArray();

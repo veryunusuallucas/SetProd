@@ -373,7 +373,7 @@ function Revisao({
         <Rotulo icone={<GitCompareArrows size={14} />}>Takes que a câmera corrige</Rotulo>
         {iguais.length === 0 ? (
           <p className="text-sm text-secondary" style={{ margin: 0 }}>
-            Nenhum clipe casou com um take desta diária pelo nome do arquivo.
+            Nenhum clipe casou com um take desta diária, nem pelo nome do arquivo, nem pelo número do clipe e a hora.
           </p>
         ) : (
           <p className="text-xs text-muted" style={{ margin: 0 }}>
