@@ -50,3 +50,13 @@ assert.equal(numeroDoClipe('A001_10311512_C007'), 7, 'o clipe é o C do fim');
 const bm = cruzar([take('b7', 'A001_10311514_C007', '15:14:00')], [clipe('A001_10311512_C007', '15:12:00')]);
 assert.equal(bm[0].tipo === 'igual' && bm[0].take.id, 'b7');
 console.log('câmeras novas: ok');
+
+// Sony com título (FX30): o número é o pedaço do fim, e não o "30" do título nem a data.
+const dia = new Date(2026, 9, 13, 10, 0);
+assert.equal(nomeArquivoPrevisto({ ...base, nomenclatura: 'sony_titulo', titulo: 'FX30', agora: dia }), 'FX30_0007');
+assert.equal(nomeArquivoPrevisto({ ...base, nomenclatura: 'sony_data_titulo', titulo: 'FX30', agora: dia }), '261013_FX30_0007');
+assert.equal(nomeArquivoPrevisto({ ...base, nomenclatura: 'sony_titulo_data', titulo: 'FX30', agora: dia }), 'FX30_261013_0007');
+assert.equal(numeroDoClipe('FX30_0007.MP4'), 7);
+assert.equal(numeroDoClipe('261013_FX30_0007'), 7);
+assert.equal(numeroDoClipe('FX30_261013_0007'), 7);
+console.log('sony com título: ok');

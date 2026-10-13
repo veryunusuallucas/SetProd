@@ -38,12 +38,15 @@ export const CAMERAS: ModeloDeCamera[] = [
     formatos: [
       { nomenclatura: 'camid', noMenu: 'Formato do nome: Cam ID + Reel#' },
       { nomenclatura: 'standard', noMenu: 'Formato do nome: Padrão' },
+      { nomenclatura: 'sony_titulo', noMenu: 'Formato do nome: Título' },
+      { nomenclatura: 'sony_data_titulo', noMenu: 'Formato do nome: Data + Título' },
+      { nomenclatura: 'sony_titulo_data', noMenu: 'Formato do nome: Título + Data' },
     ],
     codecs: ['XAVC S-I', 'XAVC HS', 'XAVC S'],
     fps: ['23.98', '24', '25', '29.97', '50', '59.94', '100', '119.88'],
     resolucoes: ['4K UHD (3840x2160)', 'Full HD (1920x1080)'],
     padrao: { codec: 'XAVC S-I', fps: '23.98', resolucao: '4K UHD (3840x2160)' },
-    observacao: 'Cam ID + Reel# exige firmware 2.0 ou mais novo (Menu → Arquivo → Config. de arquivo). 119,88 fps em 4K só em XAVC S ou XAVC HS; o S-I vai até 59,94.',
+    observacao: 'Cam ID + Reel# exige firmware 2.0 ou mais novo e cartão SDXC ou CFexpress A; com SDHC o nome fica no Padrão (Menu → Arquivo → Config. de arquivo). O título vai até 37 caracteres. 119,88 fps em 4K só em XAVC S ou XAVC HS; o S-I vai até 59,94.',
   },
   {
     id: 'canon-r50v',

@@ -20,6 +20,7 @@ export interface DadosDoNome {
   proximo_clipe: number;
   zeros_clipe: number;
   template?: string;
+  titulo?: string;
   codec?: string;
   /** Com `reel_da_cena`, o A00X vem da cena da claquete, e não do cartão. */
   reel_da_cena?: boolean;
@@ -32,6 +33,9 @@ export interface DadosDoNome {
 export const NOMENCLATURAS: { id: NomenclaturaArquivo; nome: string; exemplo: string; explicacao: string }[] = [
   { id: 'camid', nome: 'Cam ID + Reel', exemplo: 'A001C001', explicacao: 'Sony Cinema Line: câmera, reel, posição e clipe' },
   { id: 'standard', nome: 'Standard FX30', exemplo: 'C0148', explicacao: 'C e o número do clipe' },
+  { id: 'sony_titulo', nome: 'Título', exemplo: 'FX30_0001', explicacao: 'o título que você escolhe e o número do arquivo' },
+  { id: 'sony_data_titulo', nome: 'Data + Título', exemplo: '261013_FX30_0001', explicacao: 'a data, o título e o número do arquivo' },
+  { id: 'sony_titulo_data', nome: 'Título + Data', exemplo: 'FX30_261013_0001', explicacao: 'o título, a data e o número do arquivo' },
   { id: 'canon', nome: 'Canon Cinema', exemplo: 'A_0001C001A', explicacao: 'câmera, reel, clipe e codec (A ou H)' },
   { id: 'mvi', nome: 'Canon padrão', exemplo: 'MVI_0001', explicacao: 'MVI e o número do arquivo, o de fábrica das Canon' },
   { id: 'blackmagic', nome: 'Blackmagic', exemplo: 'A001_10311512_C001', explicacao: 'câmera, reel, data e hora do começo, e o clipe' },
@@ -48,6 +52,7 @@ export function camposDaNomenclatura(n: NomenclaturaArquivo) {
     usaPosicao: n === 'camid',
     usaZeros: n === 'standard' || n === 'dji' || n === 'custom',
     usaTemplate: n === 'custom',
+    usaTitulo: n === 'sony_titulo' || n === 'sony_data_titulo' || n === 'sony_titulo_data',
   };
 }
 
@@ -88,6 +93,22 @@ export function nomeArquivoPrevisto(d: DadosDoNome): string {
       const codec = String(d.codec || '').toUpperCase();
       const hevc = codec.includes('HS') || codec.includes('H.265') || codec.includes('HEVC');
       return `${indice}${pad(reel, 4)}C${pad(clipe, 3)}${hevc ? 'H' : 'A'}`;
+    }
+    /*
+      Sony com título (manual da FX30: "Data+Título+Número do arquivo"). O
+      manual não mostra o separador nem como a data sai: aqui vai AAMMDD, como
+      no Cam ID + Reel# (A001C001_230101AB), separado por "_". Se o cartão
+      mostrar outro jeito, o ingest ainda casa pelo número e pela hora.
+    */
+    case 'sony_titulo':
+    case 'sony_data_titulo':
+    case 'sony_titulo_data': {
+      const titulo = (d.titulo || '').trim() || 'TITULO';
+      const agora = d.agora ?? new Date();
+      const data = [agora.getFullYear() % 100, agora.getMonth() + 1, agora.getDate()].map(n => pad(n, 2)).join('');
+      const numero = pad(clipe, 4);
+      if (d.nomenclatura === 'sony_titulo') return `${titulo}_${numero}`;
+      return d.nomenclatura === 'sony_data_titulo' ? `${data}_${titulo}_${numero}` : `${titulo}_${data}_${numero}`;
     }
     case 'mvi': return `MVI_${pad(clipe, 4)}`;
     /*

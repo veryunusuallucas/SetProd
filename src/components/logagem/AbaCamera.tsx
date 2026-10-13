@@ -275,6 +275,18 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
         )}
       </div>
 
+      {campos.usaTitulo && (
+        <Campo rotulo="Título (o mesmo da câmera)">
+          <CampoTexto
+            value={estado.titulo || ''}
+            aoGravar={v => aoMudar({ titulo: v.replace(/[^A-Za-z0-9.\-_@!#$%+=^~(),;[\]]/g, '').slice(0, 37) })}
+            disabled={bloqueado}
+            placeholder="ex.: FX30"
+            style={{ ...estiloCampo, fontFamily: MONO }}
+          />
+        </Campo>
+      )}
+
       {campos.usaTemplate && (
         <Campo rotulo="Modelo do nome">
           <CampoTexto
@@ -339,7 +351,7 @@ function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   const formatos = modelo
     ? modelo.formatos.map(f => ({ ...NOMENCLATURAS.find(n => n.id === f.nomenclatura)!, noMenu: f.noMenu }))
     : NOMENCLATURAS.map(n => ({ ...n, noMenu: '' }));
-  const exemplo = estado.nomenclatura === 'blackmagic' ? nomeArquivoPrevisto(estado) : atual?.exemplo;
+  const exemplo = estado.nomenclatura === 'blackmagic' || camposDaNomenclatura(estado.nomenclatura).usaTitulo ? nomeArquivoPrevisto(estado) : atual?.exemplo;
 
   const escolherCamera = (id: string | null) => {
     if (!id) { aoMudar({ modelo_camera: undefined }); return; }

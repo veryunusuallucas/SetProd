@@ -90,6 +90,9 @@ export function numeroDoClipe(nome: string): number | null {
   // Blackmagic (A001_10311512_C001): o clipe é o C do fim, e não o carimbo de hora.
   const bm = chaveDoClipe(nome).match(/_C(\d{3,})$/);
   if (bm) return Number(bm[1]);
+  // Sony com título (FX30_261013_0001) e DJI_0007: o número é o pedaço do fim.
+  const fim = chaveDoClipe(nome).match(/_(\d{4,})$/);
+  if (fim) return Number(fim[1]);
   const semSufixo = nome.replace(/_[^_]*$/, '');
   const base = /\d/.test(semSufixo) ? semSufixo : nome;
   const m = base.match(/(\d+)\D*$/);

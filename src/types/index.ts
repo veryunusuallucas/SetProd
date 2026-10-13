@@ -1426,7 +1426,7 @@ export interface Take {
 }
 
 /** Os formatos de nome de arquivo que a Logagem sabe prever. */
-export type NomenclaturaArquivo = 'standard' | 'camid' | 'lumavi' | 'dji' | 'canon' | 'mvi' | 'blackmagic' | 'custom';
+export type NomenclaturaArquivo = 'standard' | 'camid' | 'lumavi' | 'dji' | 'canon' | 'mvi' | 'blackmagic' | 'sony_titulo' | 'sony_data_titulo' | 'sony_titulo_data' | 'custom';
 
 /**
  * O "agora" da Logagem numa diária: o que está na claquete e na câmera.
@@ -1472,6 +1472,8 @@ export interface EstadoDaLogagem {
   /** A câmera do catálogo (`lib/logagem/cameras.ts`): limita o setup ao que ela grava. Vazio = outra câmera. */
   modelo_camera?: string;
   template?: string;
+  /** O título dos formatos Sony com título (Título, Data + Título, Título + Data). */
+  titulo?: string;
   zeros_clipe: number;
   fps?: string;
   resolucao?: string;
