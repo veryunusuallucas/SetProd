@@ -229,6 +229,36 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.6',
+    resumo: <>Um catálogo de câmeras na Logagem e as listas de escolha em ordem alfabética.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <Camera size={20} />,
+        titulo: 'Catálogo de câmeras',
+        texto: 'Na aba Câmera, "Câmera e nome" começa pela câmera: Sony FX30, Canon EOS R50 V ou Blackmagic Pocket Cinema Camera 4K. Escolhida a câmera, aparecem só os formatos de nome que ela tem, com o nome do menu dela, e o Setup oferece só os codecs, FPS e resoluções que ela grava. A FX30 traz os cinco formatos do menu, com o título escrito no app igual ao da câmera. "Outra câmera" mostra tudo, como antes.',
+      },
+      {
+        tipo: 'novo',
+        icone: <Film size={20} />,
+        titulo: 'Blackmagic no Ingest e no Backup',
+        texto: 'O nome A001_MMDDhhmm_C001 aparece na lousa com a hora de agora. O Ingest e o Backup casam o arquivo pelo resto do nome, porque a hora do arquivo é a do começo da gravação. O ~GB do cartão conhece Blackmagic RAW, ProRes LT e Proxy, e o H.264/H.265 da Canon.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <ArrowDownAZ size={20} />,
+        titulo: 'Listas em ordem alfabética',
+        texto: 'As listas de escolha de pessoas, motoristas, veículos, locações, departamentos e kits vêm em ordem alfabética. Acento e maiúscula não atrapalham.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <IdCard size={20} />,
+        titulo: 'CNH com as categorias brasileiras',
+        texto: 'No Transporte, a CNH do motorista virou um seletor com as categorias A, AB, AC, ACC, AD, AE, B, C, D e E, cada uma dizendo o que dirige. A van da equipe pede D.',
+      },
+    ],
+  },
+  {
     versao: '0.22.5',
     resumo: <>A OD ao lado da diária, o ponto da locação escolhido no mapa e o backup conferido com o boletim.</>,
     itens: [
