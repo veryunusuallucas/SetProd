@@ -25,6 +25,7 @@ import { responsaveisDaTask, respondePor, gravarResponsaveis } from '../lib/resp
 import { SeletorDePessoas } from '../components/ui/SeletorDePessoas';
 import { CampoData } from '../components/ui/CampoData';
 import { CampoTexto } from '../components/ui/CampoTexto';
+import { emOrdem } from '../lib/ordem';
 
 /**
  * As tarefas da produção — três colunas, arrastáveis.
@@ -539,7 +540,7 @@ export function TasksModule() {
                       style={{ width: '100%' }}
                     >
                       <option value="">Geral (sem departamento)</option>
-                      {departamentos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                      {emOrdem(departamentos, d => d.nome).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                     </select>
                   </Campo>
                 </div>

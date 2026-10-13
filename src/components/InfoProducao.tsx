@@ -13,6 +13,7 @@ import { CreditosPorDepartamento } from './CreditosPorDepartamento';
 import { PesquisasPanel } from './PesquisasPanel';
 import type { Credito } from '../types';
 import { nomeDoCredito } from '../lib/creditos';
+import { emOrdem, nomeCompleto } from '../lib/ordem';
 
 type SubAba = 'creditos' | 'departamentos' | 'equipe' | 'pesquisas';
 
@@ -182,7 +183,7 @@ export function InfoProducao({ projetoId }: { projetoId: string }) {
                 style={{ flex: 1, minWidth: '200px', backgroundColor: 'var(--bg-primary)' }}
               >
                 <option value="">-- Vincular membro da Equipe (Opcional) --</option>
-                {perfis?.filter(naEquipe).map(p => (
+                {emOrdem(perfis?.filter(naEquipe), nomeCompleto).map(p => (
                   <option key={p.id} value={p.id}>{p.nome} {p.sobrenome || ''} ({p.funcao || 'Sem função'})</option>
                 ))}
               </select>

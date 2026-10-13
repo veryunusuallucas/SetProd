@@ -27,6 +27,7 @@ import { criarDiaria, dataSugerida } from '../lib/criarDiaria';
 import { CampoData } from '../components/ui/CampoData';
 import { numeroPrevisto } from '../lib/numeracao';
 import { CampoTexto } from '../components/ui/CampoTexto';
+import { emOrdem } from '../lib/ordem';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
@@ -675,7 +676,7 @@ export function DecupagemModule() {
                       {!cena.locacao_id && cena.descricao.trim() && (
                         <option value="__criar__">+ Cadastrar "{cena.descricao.trim()}"</option>
                       )}
-                      {locacoes.map(l => (
+                      {emOrdem(locacoes, l => l.nome).map(l => (
                         <option key={l.id} value={l.id}>{l.nome}</option>
                       ))}
                     </select>

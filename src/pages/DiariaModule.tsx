@@ -44,6 +44,7 @@ import { confirmar } from '../components/ui/Confirmacao';
 import { despesasDaDiaria } from '../lib/despesasDaDiaria';
 import { NavegacaoDeDiarias } from '../components/NavegacaoDeDiarias';
 import { vibrar } from '../lib/vibracao';
+import { emOrdem } from '../lib/ordem';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -1546,7 +1547,7 @@ export function DiariaModule() {
                       style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', marginBottom: '6px' }}
                     >
                       <option value="">-- Do cadastro de Transporte --</option>
-                      {veiculos.map(v => (
+                      {emOrdem(veiculos, v => v.nome).map(v => (
                         <option key={v.id} value={v.id}>{v.nome}{v.placa ? ` (${v.placa})` : ''}</option>
                       ))}
                     </select>
@@ -1568,7 +1569,7 @@ export function DiariaModule() {
                       style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', marginBottom: '6px' }}
                     >
                       <option value="">-- Do cadastro de Transporte --</option>
-                      {motoristas.map(m => (
+                      {emOrdem(motoristas, m => m.nome).map(m => (
                         <option key={m.id} value={m.id}>{m.nome}</option>
                       ))}
                     </select>

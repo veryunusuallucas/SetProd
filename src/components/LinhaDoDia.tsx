@@ -25,6 +25,7 @@ import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { CampoTexto } from './ui/CampoTexto';
 import { partirItemDeCena, juntarTrechos, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
 import { vibrar } from '../lib/vibracao';
+import { emOrdem } from '../lib/ordem';
 
 /**
  * A Timeline Única — o protagonista da tela da diária.
@@ -641,7 +642,7 @@ export function LinhaDoDia({
                           style={{ padding: '4px 6px', fontSize: '13px', maxWidth: '170px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }}
                         >
                           <option value="">para onde?</option>
-                          {locacoes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                          {emOrdem(locacoes, l => l.nome).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                         </select>
                       </label>
                     ) : (

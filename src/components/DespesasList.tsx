@@ -19,6 +19,7 @@ import { registrarDocumento, removerDocumentoDeOrigem, inspecionarLink } from '.
 import { guardarArquivo, LIMITE_BYTES } from '../lib/arquivos';
 import { useArquivo } from '../hooks/useArquivo';
 import { CampoData } from './ui/CampoData';
+import { emOrdem, nomeCompleto } from '../lib/ordem';
 
 const CATEGORIAS = CATEGORIAS_DESPESA;
 
@@ -562,7 +563,7 @@ export function DespesasList({ projetoId, soDoDepartamento, comEntradas = false 
               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <select value={pagadorId === CAIXA_CENTRAL ? '' : pagadorId} onChange={e => setPagadorId(e.target.value)}>
                   <option value="">Quem pagou?</option>
-                  {equipe.map(p => (<option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>))}
+                  {emOrdem(equipe, nomeCompleto).map(p => (<option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>))}
                 </select>
                 {/*
                   Sem ninguém cadastrado, a lista fica vazia — e sem dizer por
@@ -718,7 +719,7 @@ export function DespesasList({ projetoId, soDoDepartamento, comEntradas = false 
             <select value={filtroDepto} onChange={e => setFiltroDepto(e.target.value)} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}>
               <option value="">Todos os departamentos</option>
               <option value="__producao__">Da produção</option>
-              {(departamentos || []).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+              {emOrdem(departamentos, d => d.nome).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
             </select>
           )}
           {diariasExistentes.length > 0 && filtroTipo !== 'entradas' && (

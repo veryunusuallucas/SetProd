@@ -17,6 +17,7 @@ import { parseCoords } from '../lib/clima';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { useOrigemAncorada } from './ui/origemAncorada';
 import type { Diaria, Evento, Task } from '../types';
+import { emOrdem } from '../lib/ordem';
 
 interface WeatherData {
   time: string[];
@@ -267,7 +268,7 @@ export function CalendarioDashboard({ projetoId }: { projetoId: string }) {
                 onChange={e => setLocalDoClima(e.target.value)}
                 style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface)', maxWidth: '180px' }}
               >
-                {locaisComCoords.map(l => (
+                {emOrdem(locaisComCoords, l => l.nome).map(l => (
                   <option key={l.id} value={l.id}>{l.nome}</option>
                 ))}
               </select>

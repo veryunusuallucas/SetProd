@@ -25,6 +25,7 @@ import { CampoFuncao } from './ui/CampoFuncao';
 import { Janela } from './ui/Janela';
 import { funcoesPorHierarquia, ordemDaFuncao, ordemDoDepartamento } from '../lib/creditos';
 import { MOMENTOS } from '../lib/gifs';
+import { emOrdem } from '../lib/ordem';
 
 /** Tamanho único para todos os botões da barra de ações da Equipe. */
 const botaoBarra: React.CSSProperties = {
@@ -950,7 +951,7 @@ export function PessoasList({ projetoId, onSelectUsuario }: { projetoId: string,
                       style={{ padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}
                     >
                       <option value="">Nenhum Departamento</option>
-                      {departamentos?.map(d => (
+                      {emOrdem(departamentos, d => d.nome).map(d => (
                         <option key={d.id} value={d.id}>{d.nome}</option>
                       ))}
                     </select>

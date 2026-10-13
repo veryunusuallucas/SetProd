@@ -11,6 +11,7 @@ import { definirMeuPerfil, perfisJaVinculados } from '../lib/membros';
 import { notificar } from '../lib/notificacoes';
 import { MOLA } from './ui/ia';
 import type { Perfil, Departamento } from '../types';
+import { emOrdem } from '../lib/ordem';
 
 /**
  * "Quem é você nesta produção?"
@@ -219,7 +220,7 @@ export function EscolherMinhaFicha({ projetoId, meuEmail, aoResolver, aoPular }:
               <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Departamento</label>
               <select value={departamentoId} onChange={e => setDepartamentoId(e.target.value)} style={campo}>
                 <option value="">— escolher depois —</option>
-                {departamentos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                {emOrdem(departamentos, d => d.nome).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
               </select>
             </div>
             <div>

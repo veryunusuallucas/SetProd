@@ -8,6 +8,7 @@ import { AIRecommendation, AISuggestion, AISuggestionList } from './ui/ia';
 import { mesclarElementos, separarAlias, sugerirMerges, chaveNome } from '../lib/elementos';
 import { confirmar } from './ui/Confirmacao';
 import { CampoTexto } from './ui/CampoTexto';
+import { emOrdem } from '../lib/ordem';
 
 /**
  * Inventário do breakdown: tudo que foi marcado no roteiro, agrupado por
@@ -242,7 +243,7 @@ export function ElementosManager({ projetoId }: { projetoId: string }) {
                           style={{ padding: '7px 10px', fontSize: '13px', maxWidth: '320px' }}
                         >
                           <option value="">Ninguém ainda</option>
-                          {perfis.map(p => (
+                          {emOrdem(perfis, nomeDe).map(p => (
                             <option key={p.id} value={p.id}>{nomeDe(p)}{p.funcao ? ` — ${p.funcao}` : ''}</option>
                           ))}
                         </select>

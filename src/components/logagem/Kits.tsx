@@ -8,6 +8,7 @@ import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { Abre } from './pecas';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
+import { emOrdem } from '../../lib/ordem';
 import {
   aberturaQueCabe, aberturasDaLente, escalaDa, formatarF, criarKitDeCamera, criarKitDeLente, excluirKit,
   comEscala, faixaDaLente, importarKit, kitsDoProjeto, lerAbertura, renomearKit, salvarCameras, salvarLentes, trocarCamera,
@@ -467,7 +468,7 @@ function SecaoDeKit({ icone, titulo, explicacao, tipo, kits, kitAtivo, projetoId
               onChange={e => aoEscolherKit(e.target.value)}
               style={{ ...campo, width: 'auto', minWidth: '140px', cursor: bloqueado ? 'default' : 'pointer' }}
             >
-              {kits.map(k => <option key={k.id} value={k.id}>{k.nome}</option>)}
+              {emOrdem(kits, k => k.nome).map(k => <option key={k.id} value={k.id}>{k.nome}</option>)}
             </select>
           )}
           {!bloqueado && kitAtivo && (

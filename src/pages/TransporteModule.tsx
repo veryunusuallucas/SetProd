@@ -7,6 +7,7 @@ import { db } from '../db/db';
 import { Truck, UserRound, Plus, Trash2, Edit2, X, Phone } from 'lucide-react';
 import type { Veiculo, Motorista } from '../types';
 import { confirmar } from '../components/ui/Confirmacao';
+import { emOrdem, nomeCompleto } from '../lib/ordem';
 
 type Aba = 'veiculos' | 'motoristas';
 
@@ -14,6 +15,23 @@ type Aba = 'veiculos' | 'motoristas';
  * Logística → Transporte (v4 §4.1): cadastro geral de veículos e motoristas.
  * Mesma lógica de Locações — cadastra uma vez aqui, usa nos comboios de várias diárias.
  */
+/**
+ * As categorias da CNH (Código de Trânsito Brasileiro, art. 143). A que pesa
+ * no set é a D: van com mais de 8 passageiros — a van da equipe — pede D.
+ */
+const CATEGORIAS_CNH = [
+  { id: 'A', nome: 'moto' },
+  { id: 'AB', nome: 'moto e carro' },
+  { id: 'AC', nome: 'moto e caminhão' },
+  { id: 'ACC', nome: 'ciclomotor (cinquentinha)' },
+  { id: 'AD', nome: 'moto, van e ônibus' },
+  { id: 'AE', nome: 'moto e carreta' },
+  { id: 'B', nome: 'carro (até 8 passageiros)' },
+  { id: 'C', nome: 'caminhão' },
+  { id: 'D', nome: 'van e ônibus (mais de 8 passageiros)' },
+  { id: 'E', nome: 'carreta e reboque pesado' },
+] as const;
+
 export function TransporteModule() {
   const { id: projetoId } = useParams<{ id: string }>();
   const [aba, setAba] = useState<Aba>('veiculos');
@@ -223,7 +241,7 @@ export function TransporteModule() {
             <Campo label="Motorista padrão">
               <select value={editandoVeiculo.motorista_id || ''} onChange={e => setEditandoVeiculo({ ...editandoVeiculo, motorista_id: e.target.value })} style={inputStyle}>
                 <option value="">(Definir na diária)</option>
-                {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                {emOrdem(motoristas, m => m.nome).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
               </select>
             </Campo>
             <Campo label="Observações">
@@ -262,7 +280,7 @@ export function TransporteModule() {
                 style={inputStyle}
               >
                 <option value="">(Motorista externo)</option>
-                {perfis.filter(naEquipe).map(p => (
+                {emOrdem(perfis.filter(naEquipe), nomeCompleto).map(p => (
                   <option key={p.id} value={p.id}>{p.nome} {p.sobrenome || ''}</option>
                 ))}
               </select>
@@ -275,7 +293,14 @@ export function TransporteModule() {
                 <input value={editandoMotorista.telefone || ''} onChange={e => setEditandoMotorista({ ...editandoMotorista, telefone: e.target.value })} placeholder="(11) 99999-9999" style={inputStyle} />
               </Campo>
               <Campo label="CNH">
-                <input value={editandoMotorista.cnh || ''} onChange={e => setEditandoMotorista({ ...editandoMotorista, cnh: e.target.value })} style={inputStyle} />
+                {/* As categorias da CNH brasileira (Lucas, 13/10/2026). Um valor antigo, digitado à mão, continua aparecendo. */}
+                <select value={editandoMotorista.cnh || ''} onChange={e => setEditandoMotorista({ ...editandoMotorista, cnh: e.target.value })} style={inputStyle}>
+                  <option value="">Não informada</option>
+                  {editandoMotorista.cnh && !CATEGORIAS_CNH.some(c => c.id === editandoMotorista.cnh) && (
+                    <option value={editandoMotorista.cnh}>{editandoMotorista.cnh}</option>
+                  )}
+                  {CATEGORIAS_CNH.map(c => <option key={c.id} value={c.id}>{c.id} — {c.nome}</option>)}
+                </select>
               </Campo>
             </div>
             <Campo label="Observações">

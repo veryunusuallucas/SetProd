@@ -14,6 +14,7 @@ import { logAction } from '../lib/audit';
 import { confirmar } from './ui/Confirmacao';
 import { CampoData } from './ui/CampoData';
 import { CampoTexto } from './ui/CampoTexto';
+import { emOrdem } from '../lib/ordem';
 
 /**
  * Os compromissos da produção que não são diária.
@@ -163,7 +164,7 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
                   <label className="text-xs text-secondary font-bold uppercase tracking-widest mb-2 block">Locação</label>
                   <select name="locacao" style={{ width: '100%' }}>
                     <option value="">—</option>
-                    {locacoes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                    {emOrdem(locacoes, l => l.nome).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                   </select>
                 </div>
               </div>
@@ -298,7 +299,7 @@ export function EventosPanel({ projetoId }: { projetoId: string }) {
                     style={{ width: '100%' }}
                   >
                     <option value="">Sem locação</option>
-                    {locacoes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                    {emOrdem(locacoes, l => l.nome).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                   </select>
                   {/* O endereço vem junto: quem abre o evento na véspera quer
                       saber para onde ir, e não ter que pular para outra tela. */}

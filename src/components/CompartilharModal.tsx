@@ -19,6 +19,7 @@ import {
 import { listarMembros, mudarPapel, removerMembro, vincularPerfilDe, transferirPosse, type MembroDetalhado } from '../lib/painelMembros';
 import { MOLA } from './ui/ia';
 import { confirmar } from './ui/Confirmacao';
+import { emOrdem, nomeCompleto } from '../lib/ordem';
 
 interface Props {
   projetoId: string;
@@ -343,7 +344,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
               {!minhaParticipacao.perfil_id && !minhaParticipacao.perfil_pedido && (
                 <option value="">— escolha quem você é —</option>
               )}
-              {perfis.filter(naEquipe)
+              {emOrdem(perfis.filter(naEquipe), nomeCompleto)
                 .filter(p => p.id === minhaParticipacao.perfil_id || !membros.some(o => o.perfil_id === p.id))
                 .map(p => (
                   <option key={p.id} value={p.id}>
@@ -475,7 +476,7 @@ export function CompartilharModal({ projetoId, nomeProjeto, aoFechar }: Props) {
                           style={{ ...campoEstilo, width: 'auto', maxWidth: '150px', padding: '6px 8px', fontSize: '12px' }}
                         >
                           <option value="">Sem ficha</option>
-                          {perfis
+                          {emOrdem(perfis, nomeCompleto)
                             .filter(p => p.id === m.perfil_id || !membros.some(o => o.perfil_id === p.id))
                             .map(p => (
                               <option key={p.id} value={p.id}>

@@ -16,6 +16,7 @@ import {
   ordemDoDepartamento,
 } from '../lib/creditos';
 import { CampoTexto } from './ui/CampoTexto';
+import { emOrdem, nomeCompleto } from '../lib/ordem';
 
 const VALOR_LIVRE = '__livre__';
 
@@ -478,7 +479,7 @@ export function CreditosPorDepartamento({ projeto }: { projeto: Projeto }) {
                           style={selectStyle}
                         >
                           <option value="">— vazio —</option>
-                          {candidatos.map(p => (
+                          {emOrdem(candidatos, nomeCompleto).map(p => (
                             <option key={p.id} value={p.id}>
                               {p.nome} {p.sobrenome || ''}
                               {p.departamento_id === depto.id ? ' ✓' : ''}
