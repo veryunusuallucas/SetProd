@@ -229,6 +229,42 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.5',
+    resumo: <>A OD ao lado da diária, o ponto da locação escolhido no mapa e o backup conferido com o boletim.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <Eye size={20} />,
+        titulo: 'Prévia da OD ao lado da diária',
+        texto: 'No computador, a diária ganha uma coluna com a Ordem do Dia, que é o PDF de verdade, em Padrão ou Detalhada. Ela se refaz sozinha quando você mexe no dia, e enquanto isso uma luz desce pela folha, como numa copiadora. O botão "Prévia" liga e desliga.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <FileText size={20} />,
+        titulo: 'Exportar OD de cara nova',
+        texto: 'Sem o brilho de IA, porque a OD é montada pelo app. O botão agora é amarelo, com uma folha que se levanta quando o mouse passa. E a observação da locação sai em negrito na OD, numa linha só dela, para ninguém passar batido.',
+      },
+      {
+        tipo: 'novo',
+        icone: <MapPin size={20} />,
+        titulo: 'Escolher a locação no mapa',
+        texto: 'Um botão abre o mapa do OpenStreetMap: você busca, toca no lugar exato do set ou arrasta o alfinete. O hospital, o clima e a rota saem desse ponto. O Buscar OSM agora tenta o endereço por partes e acha o que antes falhava. Quando só acha a rua, abre o mapa sozinho.',
+      },
+      {
+        tipo: 'novo',
+        icone: <ShieldCheck size={20} />,
+        titulo: 'Backup conferido com o boletim',
+        texto: 'Cada cartão com comprovante mostra quantos vídeos ele tem, se algum take logado não está no cartão, se algum arquivo não tem take e quantos takes passaram pelo Ingest.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <HardDrive size={20} />,
+        titulo: 'O ~GB do cartão bate',
+        texto: 'O XAVC S-I era contado a 600 Mbps, e a FX30 grava a 240. Na Diária 1, a conta caiu de 270 GB para 116 GB, contra 107 GB reais. Depois do Ingest, vale o tamanho real de cada arquivo.',
+      },
+    ],
+  },
+  {
     versao: '0.22.4',
     resumo: <>Um cartão é um cartão: o comprovante agora ajuda a juntar o que era o mesmo cartão físico.</>,
     itens: [

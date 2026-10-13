@@ -266,8 +266,9 @@ function faixaDoLugar(e: EntradaOD, usadas: Locacao[]): Secao {
     detalhe: [
       l.endereco,
       l.contatos?.[0] && `${l.contatos[0].nome} · ${l.contatos[0].telefone}`,
-      l.obs,
     ].filter(Boolean).join(' · ') || undefined,
+    // A observação sai do meio do endereço e vai em negrito, numa linha só dela.
+    destaque: l.obs?.trim() || undefined,
   }));
 
   /* As bases por função (`bases`) mandam; `base` é das diárias antigas. */

@@ -67,6 +67,12 @@ export interface Campo {
   valor: string;
   /** Linha secundária — endereço embaixo do nome, telefone embaixo da pessoa. */
   detalhe?: string;
+  /**
+   * Uma linha em NEGRITO depois do detalhe: o aviso que não pode passar
+   * batido (a observação da locação — "solicitar estacionamento", "elétrica
+   * só das 8h às 11h50"). Lucas, 13/10/2026: misturada ao endereço, sumia.
+   */
+  destaque?: string;
 }
 
 export interface PessoaNaLista {

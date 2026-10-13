@@ -33,6 +33,7 @@ function listaDeCampos(itens: Campo[], colunas = 1): string {
       <span style="color:${CINZA}">${escapar(c.rotulo)}:</span>
       <b>${escapar(c.valor)}</b>
       ${c.detalhe ? `<div style="color:${CINZA};font-size:11px">${escapar(c.detalhe)}</div>` : ''}
+      ${c.destaque ? `<div style="font-weight:bold;font-size:12px;margin-top:2px">${escapar(c.destaque)}</div>` : ''}
     </td>`);
 
   const linhas: string[] = [];
@@ -159,7 +160,8 @@ export function paraTexto(doc: DocumentoOD): string {
     if (s.titulo) linhas.push(`*${s.titulo.toUpperCase()}*`);
     switch (s.tipo) {
       case 'campos':
-        s.itens.forEach(i => linhas.push(`• ${i.rotulo}: ${i.valor}`));
+        // O destaque (a observação da locação) vai em negrito do WhatsApp, na linha de baixo.
+        s.itens.forEach(i => { linhas.push(`• ${i.rotulo}: ${i.valor}`); if (i.destaque) linhas.push(`  *${i.destaque}*`); });
         break;
       case 'lista':
         s.itens.forEach(i => linhas.push(`• ${i}`));

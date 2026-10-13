@@ -66,6 +66,7 @@ const s = StyleSheet.create({
   campoRotulo: { fontSize: 6.5, color: CINZA },
   campoValor: { fontSize: 8, fontFamily: 'Helvetica-Bold' },
   campoDetalhe: { fontSize: 6.5, color: CINZA },
+  campoDestaque: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', marginTop: 1.5 },
 
   tabela: { borderWidth: 0.5, borderColor: GRADE, borderBottomWidth: 0 },
   cabecalhoTabela: { flexDirection: 'row', backgroundColor: CABECALHO, borderBottomWidth: 0.5, borderBottomColor: GRADE },
@@ -114,6 +115,7 @@ function Campos({ itens, colunas = 1 }: { itens: Campo[]; colunas?: number }) {
                   <Text style={s.campoRotulo}>{limpar(c.rotulo)}</Text>
                   <Text style={s.campoValor}>{limpar(c.valor)}</Text>
                   {c.detalhe ? <Text style={s.campoDetalhe}>{limpar(c.detalhe)}</Text> : null}
+                  {c.destaque ? <Text style={s.campoDestaque}>{limpar(c.destaque)}</Text> : null}
                 </>
               ) : null}
             </View>
