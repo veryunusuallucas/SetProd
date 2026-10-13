@@ -229,6 +229,24 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.4',
+    resumo: <>Um cartão é um cartão: o comprovante agora ajuda a juntar o que era o mesmo cartão físico.</>,
+    itens: [
+      {
+        tipo: 'novo',
+        icone: <ShieldCheck size={20} />,
+        titulo: 'O comprovante sabe de quem são os arquivos',
+        texto: 'Anexou um md5sums que traz arquivos que o boletim põe em outros cartões? O app pergunta se foi tudo o mesmo cartão físico e junta ali mesmo: takes, cópias marcadas e comprovantes passam para um só.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <HardDrive size={20} />,
+        titulo: '"Juntar cartões" à vista',
+        texto: 'O botão subiu para antes da lista de cartões. No celular, ele ficava escondido depois de todos eles.',
+      },
+    ],
+  },
+  {
     versao: '0.22.3',
     resumo: <>O celular vibra nos momentos que importam — e você sabe o que aconteceu sem olhar a tela.</>,
     itens: [
