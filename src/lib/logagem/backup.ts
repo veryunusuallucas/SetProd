@@ -1,5 +1,6 @@
 import { db } from '../../db/db';
 import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, Take } from '../../types';
+import { chaveDoClipe } from './nomenclatura';
 
 /**
  * Backup: o que protege o material de verdade.
@@ -32,6 +33,21 @@ export const BITRATES: { teste: RegExp; mbps: number; acimaDe30?: number }[] = [
   { teste: /xavc.*s-?i|h422ip|intra/i, mbps: 240, acimaDe30: 300 },
   { teste: /xavc.*hs/i, mbps: 280 },
   { teste: /xavc.*s\b|h420/i, mbps: 200 },
+  /*
+    Blackmagic RAW na Pocket 4K, 4K DCI a 30 fps (tabela de armazenamento da
+    Blackmagic). O Q0 e o Q5 variam com a imagem: o número é a média.
+  */
+  { teste: /raw.*3:1/i, mbps: 1080 },
+  { teste: /raw.*5:1/i, mbps: 650 },
+  { teste: /raw.*8:1/i, mbps: 405 },
+  { teste: /raw.*12:1/i, mbps: 270 },
+  { teste: /raw.*q0/i, mbps: 900 },
+  { teste: /raw.*q5/i, mbps: 400 },
+  { teste: /prores.*lt/i, mbps: 410 },
+  { teste: /prores.*proxy/i, mbps: 180 },
+  // Canon R50 V: H.265 10-bit e H.264 em 4K.
+  { teste: /h\.?265|hevc/i, mbps: 170 },
+  { teste: /h\.?264/i, mbps: 120 },
   { teste: /prores.*4444/i, mbps: 1650 },
   { teste: /prores.*422.*hq/i, mbps: 880 },
   { teste: /prores/i, mbps: 590 },
@@ -168,15 +184,31 @@ export function oQueFalta(dados: {
  * A00X do nome seguia a cena, e o ingest antigo leu isso como cartão).
  */
 export function outrosCartoesNoComprovante(texto: string, cartao: string, takes: Pick<Take, 'arquivo' | 'cartao'>[]): string[] {
-  const corpo = String(texto || '').toUpperCase();
+  const nomes = videosDoComprovante(texto);
   const achados = new Set<string>();
   for (const t of takes) {
     const dele = String(t.cartao ?? '').trim();
-    const nome = String(t.arquivo ?? '').trim().toUpperCase();
+    const nome = String(t.arquivo ?? '').trim();
     if (!dele || dele === cartao || nome.length < 4) continue;
-    if (corpo.includes(nome)) achados.add(dele);
+    if (nomes.some(n => mesmoClipe(nome, n))) achados.add(dele);
   }
   return [...achados].sort();
+}
+
+/** Os vídeos que um comprovante lista (.mp4, .mov, .braw…), pela chave do clipe. */
+function videosDoComprovante(texto: string): string[] {
+  return [...new Set(
+    [...String(texto || '').matchAll(/([A-Za-z0-9_-]+)\.(mp4|mov|mxf|braw|r3d|crm|mts)\b/gi)].map(m => chaveDoClipe(m[1])),
+  )];
+}
+
+/**
+ * O take e o arquivo são o mesmo clipe? O casamento do ingest: A003C030 acha
+ * A003C030_260912SL, e na Blackmagic o carimbo de hora não conta.
+ */
+function mesmoClipe(arquivoDoTake: string, chaveDoArquivo: string): boolean {
+  const a = chaveDoClipe(arquivoDoTake);
+  return Boolean(a) && (chaveDoArquivo === a || chaveDoArquivo.startsWith(a + '_') || a.startsWith(chaveDoArquivo));
 }
 
 export function detectarCartao(nomeArquivo: string, texto: string, cartoes: string[]): string | null {
@@ -386,14 +418,8 @@ export interface ConferenciaDoCartao {
  * comprovante (.mhl, md5sums).
  */
 export function conferirComprovante(texto: string, takes: Pick<Take, 'arquivo' | 'xml'>[]): ConferenciaDoCartao {
-  const nomes = [...new Set(
-    [...String(texto || '').matchAll(/([A-Za-z0-9_-]+)\.(mp4|mov|mxf|braw|r3d|crm|mts)\b/gi)].map(m => m[1].toUpperCase()),
-  )];
-  // O mesmo casamento do ingest: A003C030 acha A003C030_260912SL.
-  const casa = (arquivo: string, nome: string) => {
-    const a = arquivo.trim().toUpperCase();
-    return Boolean(a) && (nome === a || nome.startsWith(a + '_') || a.startsWith(nome));
-  };
+  const nomes = videosDoComprovante(texto);
+  const casa = mesmoClipe;
   const comArquivo = takes.filter(t => String(t.arquivo || '').trim());
   return {
     clipes: nomes.length,

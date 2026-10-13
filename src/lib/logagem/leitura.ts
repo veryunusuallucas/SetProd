@@ -178,6 +178,7 @@ export function comoClipeDoXml(c: ClipeLido): ClipeDoXml {
  * herdar a câmera que está no estado agora, que pode ser outra.
  */
 export function cameraECartaoDoNome(nome: string): { camera_id?: string; cartao?: string } {
-  const m = nome.match(/^([A-Z]{1,2})(\d{3})[CLR]\d{3}/i);
+  // Sony (A003C010) ou Blackmagic (A003_10311512_C010): câmera A, reel 003.
+  const m = nome.match(/^([A-Z]{1,2})(\d{3})[CLR]\d{3}/i) || nome.match(/^([A-Z])(\d{3})_\d{8}_C\d{3}/i);
   return m ? { camera_id: m[1].toUpperCase(), cartao: m[2] } : {};
 }

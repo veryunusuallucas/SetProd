@@ -10,7 +10,7 @@ const md5 = [
   'd41d8cd98f00b204e9800998ecf8427e  ./M4ROOT/CLIP/A001C001.MP4',
   '0cc175b9c0f1b6a831c399e269772661  ./M4ROOT/CLIP/A002C005.MP4',
   '92eb5ffee6ae2fec3ad71c777531578f  ./M4ROOT/CLIP/a004c010.mp4',
-  '4a8a08f09d37b73795649038408b5f33  ./M4ROOT/CLIP/A008C013.XML',
+  '4a8a08f09d37b73795649038408b5f33  ./M4ROOT/CLIP/A008C013.MP4',
 ].join('\n');
 
 assert.deepEqual(outrosCartoesNoComprovante(md5, '001', takes), ['002', '004', '008'], 'acha os outros, sem caixa');

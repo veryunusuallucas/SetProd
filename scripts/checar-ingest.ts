@@ -38,3 +38,15 @@ assert.equal(correcaoDoTake(clipe('A008C013', '15:01:10'), undefined, 'A001C013'
 assert.equal(correcaoDoTake(clipe('A003C030_260912SL', '15:01:10'), undefined, 'A003C030').arquivo, undefined, 'sufixo não renomeia');
 
 console.log('ingest: ok');
+
+// Câmeras novas (catálogo de 13/10/2026): Canon padrão e Blackmagic.
+import { nomeArquivoPrevisto, chaveDoClipe } from '../src/lib/logagem/nomenclatura.ts';
+const base = { camera_id: 'A', cartao: '001', posicao: 'C', proximo_clipe: 7, zeros_clipe: 4 };
+assert.equal(nomeArquivoPrevisto({ ...base, nomenclatura: 'mvi' }), 'MVI_0007');
+assert.equal(nomeArquivoPrevisto({ ...base, nomenclatura: 'blackmagic', agora: new Date(2026, 9, 31, 15, 12) }), 'A001_10311512_C007');
+assert.equal(chaveDoClipe('A001_10311512_C007.braw'), 'A001_C007', 'o carimbo de hora não conta');
+assert.equal(numeroDoClipe('A001_10311512_C007'), 7, 'o clipe é o C do fim');
+// Logado às 15:14, a câmera começou a gravar às 15:12: casa pelo nome mesmo assim.
+const bm = cruzar([take('b7', 'A001_10311514_C007', '15:14:00')], [clipe('A001_10311512_C007', '15:12:00')]);
+assert.equal(bm[0].tipo === 'igual' && bm[0].take.id, 'b7');
+console.log('câmeras novas: ok');

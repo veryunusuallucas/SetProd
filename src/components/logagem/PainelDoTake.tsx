@@ -4,7 +4,7 @@ import { ehExtra, entrarNoExtra, sairDoExtra } from '../../lib/logagem/claquete'
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
-import { MONO, ValorQueTroca } from './pecas';
+import { MONO, ValorQueTroca, useViradaDoMinuto } from './pecas';
 import { BotoesDeStatus, type Registro } from './RegistroDeTake';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
@@ -38,6 +38,8 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
   aoAbrirCamera?: () => void;
 }) {
   const bloqueado = !podeEditar;
+  // A Blackmagic põe a hora no nome: a lousa acompanha o relógio.
+  useViradaDoMinuto(estado.nomenclatura === 'blackmagic');
   const letras = estado.plano_letras !== false;
   const lente = [estado.lente, aberturaLegivel(estado.abertura)].filter(Boolean).join(' ');
 

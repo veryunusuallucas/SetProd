@@ -25,12 +25,16 @@ export interface DadosDoNome {
   reel_da_cena?: boolean;
   cena?: string;
   claquete_antes_do_extra?: EstadoDaLogagem['claquete_antes_do_extra'];
+  /** O relógio da prévia da Blackmagic. Só os testes passam: no app vale o de agora. */
+  agora?: Date;
 }
 
 export const NOMENCLATURAS: { id: NomenclaturaArquivo; nome: string; exemplo: string; explicacao: string }[] = [
   { id: 'camid', nome: 'Cam ID + Reel', exemplo: 'A001C001', explicacao: 'Sony Cinema Line: câmera, reel, posição e clipe' },
   { id: 'standard', nome: 'Standard FX30', exemplo: 'C0148', explicacao: 'C e o número do clipe' },
-  { id: 'canon', nome: 'Canon R50 V', exemplo: 'A_0001C001A', explicacao: 'câmera, reel, clipe e codec (A ou H)' },
+  { id: 'canon', nome: 'Canon Cinema', exemplo: 'A_0001C001A', explicacao: 'câmera, reel, clipe e codec (A ou H)' },
+  { id: 'mvi', nome: 'Canon padrão', exemplo: 'MVI_0001', explicacao: 'MVI e o número do arquivo, o de fábrica das Canon' },
+  { id: 'blackmagic', nome: 'Blackmagic', exemplo: 'A001_10311512_C001', explicacao: 'câmera, reel, data e hora do começo, e o clipe' },
   { id: 'dji', nome: 'DJI', exemplo: 'DJI_0001', explicacao: 'Osmo Pocket 3 e afins' },
   { id: 'lumavi', nome: 'Lumavi legado', exemplo: 'A_00010148', explicacao: 'o formato antigo do Lumavi' },
   { id: 'custom', nome: 'Personalizado', exemplo: '{CAM}_{CARD}_{CLIP}', explicacao: 'monte com {CAM}, {CARD} e {CLIP}' },
@@ -39,8 +43,8 @@ export const NOMENCLATURAS: { id: NomenclaturaArquivo; nome: string; exemplo: st
 /** Quais campos cada formato usa — o resto some da tela. */
 export function camposDaNomenclatura(n: NomenclaturaArquivo) {
   return {
-    usaCamera: n === 'camid' || n === 'lumavi' || n === 'canon' || n === 'custom',
-    usaCartao: n === 'camid' || n === 'lumavi' || n === 'canon' || n === 'custom',
+    usaCamera: n === 'camid' || n === 'lumavi' || n === 'canon' || n === 'blackmagic' || n === 'custom',
+    usaCartao: n === 'camid' || n === 'lumavi' || n === 'canon' || n === 'blackmagic' || n === 'custom',
     usaPosicao: n === 'camid',
     usaZeros: n === 'standard' || n === 'dji' || n === 'custom',
     usaTemplate: n === 'custom',
@@ -85,7 +89,32 @@ export function nomeArquivoPrevisto(d: DadosDoNome): string {
       const hevc = codec.includes('HS') || codec.includes('H.265') || codec.includes('HEVC');
       return `${indice}${pad(reel, 4)}C${pad(clipe, 3)}${hevc ? 'H' : 'A'}`;
     }
+    case 'mvi': return `MVI_${pad(clipe, 4)}`;
+    /*
+      Blackmagic: A001_MMDDhhmm_C001 (manual da Pocket 4K). A data e a hora são
+      as do COMEÇO da gravação — só a câmera sabe. A prévia usa o relógio de
+      agora; o ingest e o backup casam pelo resto do nome (`chaveDoClipe`).
+    */
+    case 'blackmagic': {
+      const agora = d.agora ?? new Date();
+      const carimbo = [agora.getMonth() + 1, agora.getDate(), agora.getHours(), agora.getMinutes()].map(n => pad(n, 2)).join('');
+      return `${id.slice(0, 1)}${pad(reel, 3)}_${carimbo}_C${pad(clipe, 3)}`;
+    }
     case 'custom': return aplicarTemplate(d);
     default: return `C${pad(clipe, zeros)}`;
   }
+}
+
+/**
+ * O nome do clipe sem o que só a câmera sabe na hora de gravar.
+ *
+ * Na Blackmagic, A001_10311512_C001 e A001_10311515_C001 são o MESMO clipe para
+ * o boletim: o take é logado minutos depois do começo da gravação, e o
+ * carimbo de hora nunca bate. Os outros formatos passam como estão (em
+ * maiúsculas, sem extensão).
+ */
+export function chaveDoClipe(nome: string): string {
+  const limpo = String(nome || '').trim().toUpperCase().replace(/\.[A-Z0-9]{2,4}$/, '');
+  const bm = limpo.match(/^([A-Z])(\d{3})_\d{8}_(C\d{3})/);
+  return bm ? `${bm[1]}${bm[2]}_${bm[3]}` : limpo;
 }

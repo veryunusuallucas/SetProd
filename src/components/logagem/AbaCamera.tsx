@@ -7,10 +7,11 @@ import type { CartaoDoKit, EstadoDaLogagem, NomenclaturaArquivo } from '../../ty
 import { kitsDoProjeto, salvarCartoes } from '../../lib/logagem/kits';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { CampoTexto } from '../ui/CampoTexto';
-import { Abre, BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
+import { Abre, BotaoContador, Campo, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo, useViradaDoMinuto } from './pecas';
 import { Guia } from './Guia';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
+import { CAMERAS, aoEscolherCamera, cameraPorId } from '../../lib/logagem/cameras';
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { KitDeCameras, KitDeLentes } from './Kits';
 import { confirmar } from '../ui/Confirmacao';
@@ -111,6 +112,7 @@ type PropsDeSecao = {
 /* ───────────────────────── Próximo arquivo ───────────────────────── */
 
 function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
+  useViradaDoMinuto(estado.nomenclatura === 'blackmagic');
   const nome = nomeArquivoPrevisto(estado);
   const campos = camposDaNomenclatura(estado.nomenclatura);
   const clipe = Number(estado.proximo_clipe) || 0;
@@ -324,11 +326,46 @@ function CartaoQueConfirma({ valor, bloqueado, aoConfirmar }: { valor: string; b
 function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
   const reduzido = useMovimentoReduzido();
   /*
-    Recolhido (leva de UI, 12/10/2026): o formato se escolhe uma vez por
-    produção. Fica a linha do escolhido; as seis opções abrem com um toque.
+    Recolhido (leva de UI, 12/10/2026): a câmera e o formato se escolhem uma
+    vez por produção. Fica a linha do escolhido; o resto abre com um toque.
+
+    O CATÁLOGO (Lucas, 13/10/2026): primeiro a câmera — FX30, R50 V, Pocket
+    4K —, e então só os formatos de nome que ELA tem, com o nome do menu dela.
+    "Outra câmera" mostra todos, como antes.
   */
   const [trocando, setTrocando] = useState(false);
+  const modelo = cameraPorId(estado.modelo_camera);
   const atual = NOMENCLATURAS.find(n => n.id === estado.nomenclatura);
+  const formatos = modelo
+    ? modelo.formatos.map(f => ({ ...NOMENCLATURAS.find(n => n.id === f.nomenclatura)!, noMenu: f.noMenu }))
+    : NOMENCLATURAS.map(n => ({ ...n, noMenu: '' }));
+  const exemplo = estado.nomenclatura === 'blackmagic' ? nomeArquivoPrevisto(estado) : atual?.exemplo;
+
+  const escolherCamera = (id: string | null) => {
+    if (!id) { aoMudar({ modelo_camera: undefined }); return; }
+    const m = cameraPorId(id);
+    if (m) aoMudar(aoEscolherCamera(m, estado));
+  };
+
+  const cartaoDaCamera = (id: string | null, titulo: string, subtitulo: string) => {
+    const ativa = (estado.modelo_camera ?? null) === id;
+    return (
+      <button
+        key={id ?? 'outra'}
+        type="button"
+        role="radio"
+        aria-checked={ativa}
+        disabled={bloqueado}
+        onClick={() => escolherCamera(id)}
+        className="camera-do-catalogo"
+        data-ativa={ativa || undefined}
+      >
+        <span className="text-xs text-muted">{subtitulo}</span>
+        <span className="text-sm font-bold">{titulo}</span>
+      </button>
+    );
+  };
+
   return (
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
       <button
@@ -337,18 +374,32 @@ function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
         aria-expanded={trocando}
         style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '44px', padding: 0, border: 'none', background: 'none', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
       >
-        <Rotulo icone={<Tag size={14} />}>Formato do nome</Rotulo>
-        <span className="text-sm font-bold">{atual?.nome ?? '—'}</span>
-        <span className="text-xs text-secondary" style={{ fontFamily: MONO }}>{atual?.exemplo}</span>
+        <Rotulo icone={<Tag size={14} />}>Câmera e nome</Rotulo>
+        <span className="text-sm font-bold">{modelo ? `${modelo.marca} ${modelo.nome}` : 'Outra câmera'}</span>
+        <span className="text-xs text-secondary">{atual?.nome}</span>
+        <span className="text-xs text-secondary" style={{ fontFamily: MONO }}>{exemplo}</span>
         <span className="text-xs" style={{ marginLeft: 'auto', color: 'var(--cor-criativo)', fontWeight: 700 }}>{trocando ? 'Fechar' : 'Trocar'}</span>
       </button>
       <Abre aberto={trocando}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div role="radiogroup" aria-label="Câmera" className="catalogo-de-cameras">
+          {CAMERAS.map(c => cartaoDaCamera(c.id, c.nome, c.marca))}
+          {cartaoDaCamera(null, 'Outra câmera', 'qualquer marca')}
+        </div>
+
+        {modelo && (
+          <p className="text-xs text-secondary" style={{ margin: 0, lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>{modelo.marca} {modelo.nome}:</strong> {modelo.codecs.length} codecs,
+            {' '}{modelo.fps.join(' · ')} fps, {modelo.resolucoes.map(r => r.split(' (')[0]).join(' · ')}. {modelo.observacao}
+          </p>
+        )}
+
       <div
         role="radiogroup"
         aria-label="Formato do nome do arquivo"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap: '8px' }}
       >
-        {NOMENCLATURAS.map(n => {
+        {formatos.map(n => {
           const ativa = estado.nomenclatura === n.id;
           return (
             <button
@@ -381,11 +432,12 @@ function Nomenclatura({ estado, bloqueado, aoMudar }: PropsDeSecao) {
                 <span style={{ fontFamily: MONO, fontSize: '13px', color: ativa ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                   {n.exemplo}
                 </span>
-                <span className="text-xs text-muted">{n.explicacao}</span>
+                <span className="text-xs text-muted">{n.noMenu ? `No menu: ${n.noMenu}` : n.explicacao}</span>
               </span>
             </button>
           );
         })}
+      </div>
       </div>
       </Abre>
 
@@ -467,6 +519,8 @@ function CartoesDaProducao({ projetoId, departamentoId, bloqueado }: { projetoId
 /* ───────────────────────── Setup ───────────────────────── */
 
 function Setup({ estado, bloqueado, aoMudar }: PropsDeSecao) {
+  // Com a câmera do catálogo, só o que ela grava (o "Outro valor…" continua lá para o que faltar).
+  const modelo = cameraPorId(estado.modelo_camera);
   return (
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
       <Rotulo icone={<SlidersHorizontal size={14} />}>Setup da câmera</Rotulo>
@@ -476,9 +530,9 @@ function Setup({ estado, bloqueado, aoMudar }: PropsDeSecao) {
           do codec. */}
       <span className="text-xs font-bold uppercase tracking-widest text-muted">Imagem</span>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '12px' }}>
-        <Campo rotulo="FPS"><SeletorComOutro opcoes={OPCOES.fps} valor={estado.fps} bloqueado={bloqueado} aoMudar={v => aoMudar({ fps: v })} /></Campo>
-        <Campo rotulo="Resolução"><SeletorComOutro opcoes={OPCOES.resolucao} valor={estado.resolucao} bloqueado={bloqueado} aoMudar={v => aoMudar({ resolucao: v })} /></Campo>
-        <Campo rotulo="Codec"><SeletorComOutro opcoes={OPCOES.codec} valor={estado.codec} bloqueado={bloqueado} aoMudar={v => aoMudar({ codec: v })} /></Campo>
+        <Campo rotulo="FPS"><SeletorComOutro opcoes={modelo?.fps ?? OPCOES.fps} valor={estado.fps} bloqueado={bloqueado} aoMudar={v => aoMudar({ fps: v })} /></Campo>
+        <Campo rotulo="Resolução"><SeletorComOutro opcoes={modelo?.resolucoes ?? OPCOES.resolucao} valor={estado.resolucao} bloqueado={bloqueado} aoMudar={v => aoMudar({ resolucao: v })} /></Campo>
+        <Campo rotulo="Codec"><SeletorComOutro opcoes={modelo?.codecs ?? OPCOES.codec} valor={estado.codec} bloqueado={bloqueado} aoMudar={v => aoMudar({ codec: v })} /></Campo>
       </div>
       <span className="text-xs font-bold uppercase tracking-widest text-muted" style={{ marginTop: '6px' }}>Exposição e monitor</span>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '12px' }}>

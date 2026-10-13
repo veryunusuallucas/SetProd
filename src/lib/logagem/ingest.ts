@@ -2,6 +2,7 @@ import { db } from '../../db/db';
 import type { StatusTake, Take } from '../../types';
 import type { ClipeDoXml } from './nrt';
 import { cameraECartaoDoNome } from './leitura';
+import { chaveDoClipe } from './nomenclatura';
 import { numero } from '../formato';
 
 /**
@@ -39,13 +40,15 @@ const normalizar = (v?: string) => String(v ?? '').trim().toLowerCase();
  * clipe (o boletim usou um nome mais longo).
  */
 export function acharTake(takes: Take[], nome: string): Take | undefined {
-  const alvo = normalizar(nome);
+  // Pela chave: na Blackmagic, o carimbo de hora do nome nunca bate com o do boletim.
+  const alvo = chaveDoClipe(nome);
   if (!alvo) return undefined;
+  const dele = (t: Take) => chaveDoClipe(t.arquivo);
 
   return (
-    takes.find(t => normalizar(t.arquivo) === alvo) ??
-    takes.find(t => alvo.startsWith(normalizar(t.arquivo) + '_')) ??
-    takes.find(t => normalizar(t.arquivo).startsWith(alvo))
+    takes.find(t => dele(t) === alvo) ??
+    takes.find(t => Boolean(dele(t)) && alvo.startsWith(dele(t) + '_')) ??
+    takes.find(t => Boolean(dele(t)) && dele(t).startsWith(alvo))
   );
 }
 
@@ -84,6 +87,9 @@ export function diferencasDoClipe(take: Take, clipe: ClipeDoXml): Diferenca[] {
  * câmera (`A003C030_260912SL`) quando o que sobra ainda tem número.
  */
 export function numeroDoClipe(nome: string): number | null {
+  // Blackmagic (A001_10311512_C001): o clipe é o C do fim, e não o carimbo de hora.
+  const bm = chaveDoClipe(nome).match(/_C(\d{3,})$/);
+  if (bm) return Number(bm[1]);
   const semSufixo = nome.replace(/_[^_]*$/, '');
   const base = /\d/.test(semSufixo) ? semSufixo : nome;
   const m = base.match(/(\d+)\D*$/);

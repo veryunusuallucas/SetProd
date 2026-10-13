@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
@@ -299,4 +299,21 @@ export function Abre({ aberto, children }: { aberto: boolean; children: React.Re
       )}
     </AnimatePresence>
   );
+}
+
+/**
+ * Redesenha a cada virada de minuto, enquanto `ligado`. É o que mantém o nome
+ * previsto da Blackmagic (A001_MMDDhhmm_C001) com a hora de agora na lousa.
+ */
+export function useViradaDoMinuto(ligado: boolean) {
+  const [, setTique] = useState(0);
+  useEffect(() => {
+    if (!ligado) return;
+    let relogio: ReturnType<typeof setTimeout>;
+    const agendar = () => {
+      relogio = setTimeout(() => { setTique(n => n + 1); agendar(); }, 60_000 - (Date.now() % 60_000) + 50);
+    };
+    agendar();
+    return () => clearTimeout(relogio);
+  }, [ligado]);
 }
