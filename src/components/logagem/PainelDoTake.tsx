@@ -8,9 +8,7 @@ import { MONO, ValorQueTroca } from './pecas';
 import { BotoesDeStatus, type Registro } from './RegistroDeTake';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
-import { estimativaDoCartaoGB } from '../../lib/logagem/backup';
 import { aberturaLegivel } from '../../lib/logagem/relatorio';
-import { numero } from '../../lib/formato';
 import { arquivoDoSom, somJunto, takeLevaSom } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
 
@@ -39,7 +37,6 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
 }) {
   const bloqueado = !podeEditar;
   const letras = estado.plano_letras !== false;
-  const gb = estimativaDoCartaoGB(registro.takes, estado.cartao);
   const lente = [estado.lente, aberturaLegivel(estado.abertura)].filter(Boolean).join(' ');
 
   /*
@@ -57,7 +54,8 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
         <div className="hud-logagem" aria-label="O que está na câmera">
           {cabecalho && <span className="hud-cena">{cabecalho}</span>}
           <span><i>Câm</i>{estado.camera_id || '—'}</span>
-          <span><i>Cartão</i>{estado.cartao || '—'}{gb > 0 ? ` · ~${numero(gb, gb < 10 ? 1 : 0)} GB` : ''}</span>
+          {/* O ~GB do cartão mora no Backup (Lucas, 12/10/2026): é conta de descarregar, não de gravar. */}
+          <span><i>Cartão</i>{estado.cartao || '—'}</span>
           <span><i>Lente</i>{lente || '—'}</span>
           <span><i>ND</i>{estado.nd || '—'}</span>
           <span><i>Takes</i>{registro.takes.length}</span>

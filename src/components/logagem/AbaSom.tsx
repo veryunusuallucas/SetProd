@@ -7,11 +7,11 @@ import type { EstadoDaLogagem, Som } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
 import { confirmar } from '../ui/Confirmacao';
-import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, estiloCampo } from './pecas';
+import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
-  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, kitLegivel, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
-  registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom, claqueteDoSom,
+  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
+  registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom,
 } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
 
@@ -57,33 +57,50 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
     })();
   };
 
+  /*
+    A LOUSA DO SOM (leva de UI, 12/10/2026): a mesma peça da aba Vídeo. No meio,
+    grande, o ÚLTIMO arquivo — é nele que OK, NG e HERO marcam, então é ele que
+    se confere antes de apertar. O próximo fica na linha do rótulo, e o kit do
+    gravador vira a faixa de cima (tocar nela leva à aba Gravador).
+  */
+  const alvo = ultimo;
+  const casas: [string, string][] = alvo
+    ? alvo.tipo === 'take'
+      ? [['Cena', String(alvo.cena ?? '')], ['Plano', String(alvo.plano ?? '')], ['Take', String(alvo.take ?? '')]]
+      : [['Cena', String(alvo.cena ?? '')], ['Tipo', ROTULO_DO_TIPO[alvo.tipo]]]
+    : [['Cena', String(estado.cena)], ['Plano', String(estado.plano)], ['Take', String(estado.take)]];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)', containerType: 'inline-size' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-          <Rotulo icone={<Mic size={14} />}>Som</Rotulo>
-          <span className="text-xs text-muted">
-            Próximo: <b style={{ fontFamily: MONO, color: 'var(--text-primary)' }}>{arquivoDoSom(estado)}</b> · Cena {estado.cena}
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
-          {([['wild', Wind], ['room_tone', Volume2]] as const).map(([tipo, Icone]) => (
-            <BotaoTatil
-              key={tipo}
-              onClick={() => avulso(tipo)}
-              disabled={bloqueado}
-              escala={0.97}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minHeight: '64px',
-                borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontWeight: 800, fontSize: '16px',
-                cursor: bloqueado ? 'default' : 'pointer', opacity: bloqueado ? 0.5 : 1,
-              }}
-            >
-              <Icone size={20} /> {ROTULO_DO_TIPO[tipo]}
-            </BotaoTatil>
-          ))}
-          <BotaoDaMarca marca="fs" ultimo={ultimo} bloqueado={bloqueado} grande={false} />
+      <section className="card painel-take" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(12px, 3vw, 22px)' }}>
+        <div className="lousa">
+          <button type="button" className="hud-logagem hud-botao" onClick={aoAbrirGravador} aria-label="O gravador — tocar para ajustar na aba Gravador">
+            <span><i>Gravador</i>{estado.gravador_som || '—'}</span>
+            {(estado.taxa_som || estado.bits_som) && <span>{[estado.taxa_som, estado.bits_som].filter(Boolean).join(' · ')}</span>}
+            <span><i>Rolo</i>{estado.rolo_som || '—'}</span>
+            <span><i>Trilhas</i>{trilhasDoSom(estado).length}</span>
+            {estado.tc_som && <span><i>TC</i>{estado.tc_som}</span>}
+            <span className="hud-cena" aria-hidden><SlidersHorizontal size={14} /></span>
+          </button>
+
+          <div className="lousa-arquivo">
+            <div className="lousa-arquivo-topo">
+              <span className="lousa-rotulo"><Mic size={12} aria-hidden /> {alvo ? 'Último arquivo' : 'Próximo arquivo'}</span>
+              {alvo && <span className="text-xs text-muted">próximo <b style={{ fontFamily: MONO, color: 'var(--text-secondary)' }}>{arquivoDoSom(estado)}</b></span>}
+            </div>
+            <div className="arquivo-previsto" style={{ fontWeight: 800, opacity: alvo?.marca === 'ng' || alvo?.marca === 'fs' ? 0.55 : 1 }}>
+              <ValorQueTroca texto={alvo?.arquivo || arquivoDoSom(estado)} rotuloDeLeitura={alvo ? 'Último arquivo' : 'Próximo arquivo'} tamanho="inherit" />
+            </div>
+          </div>
+
+          <div className="claquete-grade" style={{ gridTemplateColumns: `repeat(${casas.length}, minmax(0, 1fr))` }}>
+            {casas.map(([rotulo, valor]) => (
+              <div key={rotulo} className="contador-valor" style={{ fontFamily: MONO, fontWeight: 700, color: rotulo === 'Take' ? 'var(--cor-criativo)' : undefined }}>
+                <span className="contador-rotulo" aria-hidden>{rotulo}</span>
+                <ValorQueTroca texto={valor || '—'} rotuloDeLeitura={rotulo} tamanho={rotulo === 'Tipo' ? '0.5em' : 'inherit'} cor={rotulo === 'Take' ? 'var(--cor-criativo)' : undefined} />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/*
@@ -94,11 +111,28 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
         <div className="status-grade" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           {(['ok', 'ng', 'hero'] as const).map(m => <BotaoDaMarca key={m} marca={m} ultimo={ultimo} bloqueado={bloqueado} grande />)}
         </div>
-        <p className="text-xs text-muted" style={{ margin: '-4px 0 0' }}>
-          {ultimo
-            ? <>Marcam o último arquivo: <b style={{ fontFamily: MONO, color: 'var(--text-primary)' }}>{ultimo.arquivo}</b> · {claqueteDoSom(ultimo)}</>
-            : 'Os botões marcam o último arquivo gravado — ainda não há nenhum.'}
-        </p>
+
+        {/* O que é só som: menor, embaixo — acontece algumas vezes por dia, não a cada take. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+          {([['wild', Wind], ['room_tone', Volume2]] as const).map(([tipo, Icone]) => (
+            <BotaoTatil
+              key={tipo}
+              onClick={() => avulso(tipo)}
+              disabled={bloqueado}
+              escala={0.97}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '52px', padding: '0 6px',
+                borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontWeight: 800, fontSize: '14px',
+                cursor: bloqueado ? 'default' : 'pointer', opacity: bloqueado ? 0.5 : 1,
+              }}
+            >
+              <Icone size={17} /> {ROTULO_DO_TIPO[tipo]}
+            </BotaoTatil>
+          ))}
+          <BotaoDaMarca marca="fs" ultimo={ultimo} bloqueado={bloqueado} grande={false} />
+        </div>
+
         <Segmentado
           nome="logagem-som-junto"
           opcoes={[{ id: 'junto', nome: 'Take leva som' }, { id: 'sem', nome: 'Câmera sem som' }]}
@@ -109,20 +143,6 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
       </section>
 
       <GradeDoSom sons={sons} podeEditar={podeEditar} />
-
-      {/* O kit em uma linha, para conferir sem sair daqui; mexer nele é na aba Gravador. */}
-      <button
-        type="button"
-        onClick={aoAbrirGravador}
-        className="card"
-        style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '56px', padding: '12px 18px', textAlign: 'left', cursor: 'pointer', color: 'var(--text-secondary)' }}
-      >
-        <SlidersHorizontal size={16} style={{ color: 'var(--cor-criativo)', flexShrink: 0 }} />
-        <span className="text-sm" style={{ flex: 1, minWidth: 0 }}>
-          {[kitLegivel(estado) || 'Gravador não informado', estado.rolo_som && `Rolo ${estado.rolo_som}`, trilhasDoSom(estado).join(' · ')].filter(Boolean).join('  ·  ')}
-        </span>
-        <span className="text-xs text-muted">ajustar em Gravador</span>
-      </button>
     </div>
   );
 }
@@ -166,14 +186,14 @@ function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable
       escala={0.97}
       aria-pressed={ativa}
       style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minHeight: '64px',
-        borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '16px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '52px', padding: '0 6px',
+        borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '14px',
         border: `1px solid ${ativa ? COR_DO_STATUS[m.status] : 'var(--border-color)'}`,
         backgroundColor: ativa ? `color-mix(in srgb, ${COR_DO_STATUS[m.status]} 18%, transparent)` : 'var(--bg-primary)',
         color: 'var(--text-primary)', cursor: desligado ? 'default' : 'pointer', opacity: desligado ? 0.5 : 1,
       }}
     >
-      <Scissors size={18} /> {m.nome}
+      <Scissors size={17} /> {m.nome}
     </BotaoTatil>
   );
 }

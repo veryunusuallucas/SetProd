@@ -1046,6 +1046,20 @@ input[type="radio"]:checked::before {
   border: none;
   padding: 2px 6px;
 }
+/* Na aba Som a faixa é um botão (leva à aba Gravador). */
+.lousa > .hud-botao {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border-light);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  min-height: 44px;
+  align-items: center;
+  cursor: pointer;
+}
+.lousa > .hud-botao > .hud-cena { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
 .lousa > .hud-logagem > .hud-cena {
   color: var(--cor-criativo);
   letter-spacing: 0.06em;
