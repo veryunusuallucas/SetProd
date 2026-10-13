@@ -2,6 +2,7 @@ import { db } from '../../db/db';
 import type { StatusTake, Take } from '../../types';
 import type { ClipeDoXml } from './nrt';
 import { cameraECartaoDoNome } from './leitura';
+import { numero } from '../formato';
 
 /**
  * Ingest: casar o que a câmera gravou com o que foi logado, e corrigir.
@@ -21,7 +22,7 @@ export type Casamento =
   | { tipo: 'repetido'; clipe: ClipeDoXml; take: Take };
 
 export interface Diferenca {
-  campo: keyof Take | 'duracao' | 'tcIn' | 'tcOut' | 'modeloCamera';
+  campo: keyof Take | 'duracao' | 'tcIn' | 'tcOut' | 'modeloCamera' | 'bytes';
   rotulo: string;
   logado?: string;
   daCamera?: string;
@@ -71,6 +72,8 @@ export function diferencasDoClipe(take: Take, clipe: ClipeDoXml): Diferenca[] {
   comparar('tcOut', 'TC out', take.xml?.tcOut, clipe.meta.tcOut);
   comparar('modeloCamera', 'Câmera', take.xml?.modeloCamera, clipe.meta.modeloCamera);
   comparar('lente', 'Lente', take.lente, clipe.meta.modeloLente);
+  // O tamanho real entra quando o take ainda não tem: é o que conserta o ~GB do Backup.
+  if (clipe.meta.bytes && !take.xml?.bytes) comparar('bytes', 'Tamanho', undefined, `${numero(clipe.meta.bytes / 2 ** 30, 1)} GB`);
 
   return lista;
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
-  HardDrive, ShieldCheck, ShieldAlert, FileCheck2, Plus, Trash2, X, Check, Files, Camera, ChevronDown, Merge,
+  HardDrive, ShieldCheck, ShieldAlert, FileCheck2, Plus, Trash2, X, Check, Files, Camera, ChevronDown, Merge, ListChecks,
 } from 'lucide-react';
 import { db } from '../../db/db';
 import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, Take } from '../../types';
@@ -12,11 +12,12 @@ import { confirmar } from '../ui/Confirmacao';
 import { Abre, MONO, Rotulo, estiloCampo } from './pecas';
 import { Guia } from './Guia';
 import { idDoEstado } from '../../lib/logagem/estado';
-import { guardarArquivo, apagarArquivo } from '../../lib/arquivos';
+import { guardarArquivo, apagarArquivo, resolverArquivo } from '../../lib/arquivos';
 import { dataHora, numero } from '../../lib/formato';
 import {
   anexarChecksum, apagarChecksum, apagarHd, cartaoSeguro, cartoesConhecidos, juntarCartoes, outrosCartoesNoComprovante,
-  criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta,
+  criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta, conferirComprovante,
+  type ConferenciaDoCartao,
 } from '../../lib/logagem/backup';
 import { ExportarRelatorios } from './ExportarRelatorios';
 import { vibrar } from '../../lib/vibracao';
@@ -632,6 +633,13 @@ function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, pod
         copia depois de tirar o cartão, e três passos por fazer no meio do dia
         só empurravam os outros cartões para baixo.
       */}
+      {comprovantes[0] && (
+        <ConferenciaDoComprovante
+          comprovante={comprovantes[0]}
+          takes={takes.filter(t => String(t.cartao).trim() === cartao)}
+        />
+      )}
+
       {naCamera && !seguro && (
         <button
           type="button"
@@ -798,6 +806,66 @@ function Passo({ numero: n, feito, titulo, children }: {
         </span>
         {children}
       </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── Conferência ───────────────────────── */
+
+/**
+ * O comprovante contra o boletim e o ingest (Lucas, 13/10/2026). Fica à vista
+ * mesmo com o cartão liberado e recolhido: é a resposta a "comprovou
+ * certinho?". Lê o comprovante guardado (no aparelho ou no Storage).
+ */
+function ConferenciaDoComprovante({ comprovante, takes }: { comprovante: ChecksumDeCartao; takes: Take[] }) {
+  const [texto, setTexto] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      try {
+        const url = await resolverArquivo(comprovante.arquivo);
+        const lido = url ? await (await fetch(url)).text() : null;
+        if (vivo) setTexto(lido);
+      } catch {
+        if (vivo) setTexto(null);
+      }
+    })();
+    return () => { vivo = false; };
+  }, [comprovante.arquivo]);
+
+  if (texto === undefined) return null;
+  if (texto === null) {
+    return <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>Não consegui abrir o comprovante aqui para conferir com o boletim (sem sinal?).</p>;
+  }
+
+  const c: ConferenciaDoCartao = conferirComprovante(texto, takes);
+  const tudoCerto = !c.faltam.length && !c.sobram.length && !c.semIngest.length;
+  const comIngest = takes.filter(t => String(t.arquivo || '').trim()).length - c.semIngest.length;
+  const linha = (ok: boolean, texto: React.ReactNode) => (
+    <span className="text-xs" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', color: ok ? 'var(--text-secondary)' : 'var(--color-warning)' }}>
+      {ok ? <Check size={13} style={{ color: 'var(--color-success)', flexShrink: 0, marginTop: '1px' }} /> : <ShieldAlert size={13} style={{ flexShrink: 0, marginTop: '1px' }} />}
+      <span>{texto}</span>
+    </span>
+  );
+  const lista = (nomes: string[]) => <span style={{ fontFamily: MONO }}>{nomes.join(', ')}</span>;
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+      border: `1px solid ${tudoCerto ? 'color-mix(in srgb, var(--color-success) 35%, transparent)' : 'color-mix(in srgb, var(--color-warning) 45%, transparent)'}`,
+    }}>
+      <span className="text-xs font-bold uppercase tracking-widest" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+        <ListChecks size={13} aria-hidden /> Conferência com o boletim
+      </span>
+      {linha(!c.sobram.length, c.sobram.length
+        ? <>{c.clipes} vídeos no comprovante; {c.sobram.length} sem take no boletim: {lista(c.sobram)}</>
+        : <>{c.clipes} vídeos no comprovante, todos com take no boletim</>)}
+      {linha(!c.faltam.length, c.faltam.length
+        ? <>{c.faltam.length} take{c.faltam.length === 1 ? '' : 's'} do boletim sem arquivo no cartão: {lista(c.faltam)}. Foram logados e não existem no comprovante: confira se são repetidos e apague.</>
+        : <>Todo take do boletim está no comprovante</>)}
+      {linha(!c.semIngest.length, c.semIngest.length
+        ? <>{comIngest} de {comIngest + c.semIngest.length} takes conferidos pelo Ingest; faltam {lista(c.semIngest)}</>
+        : <>Todos os {comIngest} takes passaram pelo Ingest</>)}
     </div>
   );
 }

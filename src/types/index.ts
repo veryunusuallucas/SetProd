@@ -1363,6 +1363,8 @@ export interface MetadadosDoClipe {
   duracao?: string;
   /** Segundos de conteúdo, para somar horas gravadas e estimar GB. */
   segundos?: number;
+  /** Tamanho real do vídeo no cartão, quando o ingest leu o arquivo ou o manifesto. Vence a estimativa. */
+  bytes?: number;
   /** Quando a câmera criou o clipe (ISO, como veio do XML). */
   criadoEm?: string;
   codecAudio?: string;

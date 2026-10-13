@@ -17,3 +17,18 @@ assert.deepEqual(outrosCartoesNoComprovante(md5, '001', takes), ['002', '004', '
 assert.deepEqual(outrosCartoesNoComprovante(md5, '002', takes), ['001', '004', '008'], 'nunca devolve o próprio');
 assert.deepEqual(outrosCartoesNoComprovante('nada aqui', '001', takes), [], 'comprovante sem clipe dos outros');
 console.log('backup: ok');
+
+// Conferência do comprovante com o boletim (Diária 1: A001C013–015 logados sem arquivo).
+import { conferirComprovante } from '../src/lib/logagem/backup.ts';
+const mhl = String.raw`<file>M4ROOT\CLIP\A001C001_261010CF.MP4</file>
+<file>M4ROOT\CLIP\A001C001_261010CFM01.XML</file>
+<file>M4ROOT\CLIP\A008C013_261010CF.MP4</file>
+<file>M4ROOT\CLIP\A009C099_261010CF.MP4</file>`;
+const c = conferirComprovante(mhl, [
+  { arquivo: 'A001C001', xml: { segundos: 37 } }, { arquivo: 'A008C013', xml: { criadoEm: 'x' } }, { arquivo: 'A001C013' },
+]);
+assert.equal(c.clipes, 3, 'só os vídeos contam, o XML não');
+assert.deepEqual(c.faltam, ['A001C013'], 'take logado sem arquivo');
+assert.deepEqual(c.sobram, ['A009C099_261010CF'], 'arquivo sem take');
+assert.deepEqual(c.semIngest, ['A001C013'], 'take sem ingest');
+console.log('conferência: ok');

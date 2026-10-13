@@ -145,7 +145,9 @@ export function diaDoClipe(c: ClipeLido): string | undefined {
  * manifesto sabem: nome, e a duração que o próprio MP4 declara.
  */
 export function comoClipeDoXml(c: ClipeLido): ClipeDoXml {
-  if (c.xml) return c.xml;
+  // O tamanho vem do arquivo (ou do manifesto), nunca do XML: é ele que faz a conta de GB do Backup ser a real.
+  const bytes = c.video?.bytes || c.manifesto?.bytes || undefined;
+  if (c.xml) return bytes ? { ...c.xml, meta: { ...c.xml.meta, bytes } } : c.xml;
   const segundos = c.video?.exame.segundos;
 
   /*
@@ -163,6 +165,7 @@ export function comoClipeDoXml(c: ClipeLido): ClipeDoXml {
       criadoEm: Number.isFinite(quando) ? isoLocal(quando) : undefined,
       segundos,
       duracao: segundos ? duracaoLegivel(segundos) : undefined,
+      bytes,
     },
   };
 }

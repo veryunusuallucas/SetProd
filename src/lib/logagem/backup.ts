@@ -22,8 +22,14 @@ import type { BackupDeCartao, ChecksumDeCartao, HdDeBackup, Take } from '../../t
  * É estimativa, e a tela diz isso com o "~". Serve para saber se o cartão tem
  * 30 GB ou 300 GB — ou seja, se cabe no HD que está na mesa.
  */
-export const BITRATES: { teste: RegExp; mbps: number }[] = [
-  { teste: /xavc.*s-?i|h422ip|intra/i, mbps: 600 },
+/*
+  XAVC S-I medido na Diária 1 da Canção (13/10/2026, tamanhos do .mhl): 240 Mbps
+  a 23,98 e ~295 a 59,94. Os 600 de antes eram o 4K 60p da tabela da Sony e
+  davam 270 GB para um cartão de 107. Quando o ingest leu o arquivo, nem se
+  estima: vale o tamanho real (`xml.bytes`).
+*/
+export const BITRATES: { teste: RegExp; mbps: number; acimaDe30?: number }[] = [
+  { teste: /xavc.*s-?i|h422ip|intra/i, mbps: 240, acimaDe30: 300 },
   { teste: /xavc.*hs/i, mbps: 280 },
   { teste: /xavc.*s\b|h420/i, mbps: 200 },
   { teste: /prores.*4444/i, mbps: 1650 },
@@ -51,8 +57,11 @@ export function segundosDoTake(take: Take): number {
 }
 
 export function tamanhoDoTakeMB(take: Take): number {
+  if (take.xml?.bytes) return take.xml.bytes / 2 ** 20;
   const codec = take.codec || '';
-  const mbps = (BITRATES.find(b => b.teste.test(codec)) || { mbps: 300 }).mbps;
+  // A última linha da tabela casa com tudo: sempre há faixa.
+  const faixa = BITRATES.find(b => b.teste.test(codec)) ?? BITRATES[BITRATES.length - 1];
+  const mbps = faixa.acimaDe30 && (parseFloat(take.fps || '') || 24) > 30 ? faixa.acimaDe30 : faixa.mbps;
   return (mbps * segundosDoTake(take)) / 8;
 }
 
@@ -351,4 +360,45 @@ export async function juntarCartoes(diariaId: string, de: string[], para: string
     }
     for (const c of checksums) if (sai.has(c.cartao.trim())) await db.log_checksums.update(c.id, { cartao: para });
   });
+}
+
+/* ───────────────────────── Conferência ───────────────────────── */
+
+export interface ConferenciaDoCartao {
+  /** Quantos vídeos o comprovante lista. */
+  clipes: number;
+  /** Takes do boletim que o comprovante NÃO tem: logados sem arquivo no cartão. */
+  faltam: string[];
+  /** Vídeos do comprovante sem take no boletim: gravados e nunca logados. */
+  sobram: string[];
+  /** Takes que o ingest ainda não conferiu com o arquivo da câmera. */
+  semIngest: string[];
+}
+
+/**
+ * Cruza o comprovante com o boletim e com o ingest (Lucas, 13/10/2026: "ele
+ * comprovou certinho?").
+ *
+ * O comprovante prova que a CÓPIA bate com o cartão. Esta conta prova a outra
+ * metade: que o que está no cartão é o que o boletim diz — nenhum take logado
+ * sem arquivo, nenhum arquivo sem take, e cada take já visto pelo ingest.
+ * Lê só os nomes dos vídeos (.mp4, .mov, .mxf…), em qualquer formato de
+ * comprovante (.mhl, md5sums).
+ */
+export function conferirComprovante(texto: string, takes: Pick<Take, 'arquivo' | 'xml'>[]): ConferenciaDoCartao {
+  const nomes = [...new Set(
+    [...String(texto || '').matchAll(/([A-Za-z0-9_-]+)\.(mp4|mov|mxf|braw|r3d|crm|mts)\b/gi)].map(m => m[1].toUpperCase()),
+  )];
+  // O mesmo casamento do ingest: A003C030 acha A003C030_260912SL.
+  const casa = (arquivo: string, nome: string) => {
+    const a = arquivo.trim().toUpperCase();
+    return Boolean(a) && (nome === a || nome.startsWith(a + '_') || a.startsWith(nome));
+  };
+  const comArquivo = takes.filter(t => String(t.arquivo || '').trim());
+  return {
+    clipes: nomes.length,
+    faltam: comArquivo.filter(t => !nomes.some(n => casa(t.arquivo, n))).map(t => t.arquivo).sort(),
+    sobram: nomes.filter(n => !comArquivo.some(t => casa(t.arquivo, n))).sort(),
+    semIngest: comArquivo.filter(t => !t.xml?.criadoEm && !t.xml?.segundos).map(t => t.arquivo).sort(),
+  };
 }
