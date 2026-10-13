@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from './movimento';
 import { GifDoMomento } from './GifDoMomento';
 import { MOMENTOS, type Humor } from '../../lib/gifs';
+import { vibrar } from '../../lib/vibracao';
 
 /**
  * A pergunta de "tem certeza?", feita pelo app e não pelo navegador.
@@ -80,7 +81,7 @@ export function Confirmacoes() {
   const reduzido = useMovimentoReduzido();
 
   useEffect(() => {
-    abrir = p => setPedido(p);
+    abrir = p => { if (p.perigo) vibrar('aviso'); setPedido(p); };
     return () => { abrir = null; };
   }, []);
 

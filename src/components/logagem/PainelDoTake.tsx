@@ -11,6 +11,7 @@ import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { aberturaLegivel } from '../../lib/logagem/relatorio';
 import { arquivoDoSom, somJunto, takeLevaSom } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
+import { vibrar } from '../../lib/vibracao';
 
 type Campo = 'cena' | 'plano' | 'take';
 
@@ -129,7 +130,7 @@ function FichaDoSom({ estado, bloqueado }: { estado: EstadoDaLogagem; bloqueado:
       type="button"
       disabled={bloqueado || mos}
       aria-pressed={vai}
-      onClick={() => void mudarEstado(estado.diaria_id, { som_junto: !somJunto(estado) })}
+      onClick={() => { vibrar('toque'); void mudarEstado(estado.diaria_id, { som_junto: !somJunto(estado) }); }}
       title={mos ? 'O áudio da cena está em MOS' : vai ? 'Tocar para gravar este take sem som' : 'Tocar para o som ir junto'}
       className="ficha-do-som"
       style={{
@@ -159,6 +160,7 @@ function BotaoDoExtra({ estado, registro, bloqueado }: { estado: EstadoDaLogagem
   const antes = estado.claquete_antes_do_extra;
   const alternar = () => {
     const m = ativo ? sairDoExtra(estado) : entrarNoExtra(registro.takes, estado);
+    vibrar('toque');
     void mudarEstado(estado.diaria_id, m);
   };
   return (
@@ -247,7 +249,7 @@ function Contador({ campo, rotulo, valor, bloqueado, destaque, maiuscula, aoPass
       title={direcao === 1 ? `Próximo ${rotulo.toLowerCase()}` : `${rotulo} anterior`}
       disabled={bloqueado}
       escala={0.9}
-      onClick={() => aoPassar(campo, direcao)}
+      onClick={() => { vibrar('toque'); aoPassar(campo, direcao); }}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)',

@@ -18,6 +18,7 @@ import { AvaliacaoDoApp } from './AvaliacaoDoApp';
 import { PaginaDeApoio } from './PaginaDeApoio';
 import { Interruptor } from './ui/Interruptor';
 import { mudarPreferencia, usePreferencia } from '../lib/preferencias';
+import { vibraNesteAparelho, vibrar } from '../lib/vibracao';
 
 export function Configuracoes({ projetoId }: { projetoId: string }) {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
   const mensagensDivertidas = usePreferencia('mensagensDivertidas');
   const wrapFestivo = usePreferencia('wrapFestivo');
   const gifsLigados = usePreferencia('gifs');
+  const vibracaoLigada = usePreferencia('vibracao');
 
   // Edição dos dados do projeto (movidos da aba Créditos)
   const [editandoProjeto, setEditandoProjeto] = useState(false);
@@ -189,6 +191,26 @@ export function Configuracoes({ projetoId }: { projetoId: string }) {
           aoMudar={v => mudarPreferencia('gifs', v)}
         />
       </div>
+
+      {/*
+        Vibração (Lucas, 12/10/2026): ligada por padrão, desligável aqui. Só
+        aparece onde o aparelho vibra — no iPhone e no computador o interruptor
+        não mudaria nada, e um controle que não faz nada é pior que nenhum.
+      */}
+      {vibraNesteAparelho() && (
+        <div className="card" style={{ flexDirection: 'column', gap: '10px' }}>
+          <div>
+            <h3 className="text-lg font-bold" style={{ marginBottom: '4px' }}>Vibração</h3>
+            <p className="text-xs text-secondary" style={{ margin: 0 }}>Vale só para este aparelho.</p>
+          </div>
+          <Interruptor
+            titulo="Vibrar nos momentos-chave"
+            ajuda="Um padrão para cada coisa: OK, NG, HERO e REC INV. na Logagem, cartão liberado, diária fechada. E um tique leve nos botões e chaves. Num case duro, a vibração faz barulho — desligue se o boom pegar."
+            ligado={vibracaoLigada}
+            aoMudar={v => { mudarPreferencia('vibracao', v); if (v) vibrar('ok'); }}
+          />
+        </div>
+      )}
 
       {/* Só no celular: é o único lugar onde a barra de baixo existe. O mesmo
           editor abre segurando um item da barra ou no lápis do "Mais". */}

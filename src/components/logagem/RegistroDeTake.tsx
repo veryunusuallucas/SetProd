@@ -17,6 +17,10 @@ import {
 import { mudarEstado } from '../../lib/logagem/estado';
 import { EditarTake } from './EditarTake';
 import { comecarCenaPelaLogagem } from '../../lib/logagem/linhaDoDia';
+import { vibrar } from '../../lib/vibracao';
+
+/** Cada status vibra diferente: dá para saber o que registrou sem olhar a tela. */
+const vibrarStatus = (status: StatusTake) => vibrar(status === 'NG' ? 'ng' : status === 'HERO' ? 'hero' : status === 'RECINV' ? 'recinv' : 'ok');
 
 const cenaDaClaquete = (e: EstadoDaLogagem) => e.cena_id || '';
 
@@ -70,6 +74,7 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
   const gravar = async (status: StatusTake, comEstado = estado) => {
     const primeiroDaCena = Boolean(cenaDaClaquete(comEstado)) && !takes.some(t => t.cena_id === cenaDaClaquete(comEstado));
     const take = await registrarTake(comEstado, status, quem);
+    vibrarStatus(status);
     setUltimo(take.id);
     setRepetido(null);
     setRevisando(null);
@@ -170,6 +175,7 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
                 rotulo: 'Substituir o que está lá',
                 aoClicar: () => {
                   void substituirTake(repetido.take.id, estado, repetido.status).then(() => {
+                    vibrarStatus(repetido.status);
                     void mudarEstado(estado.diaria_id, { obs: '' });
                     setUltimo(repetido.take.id);
                     setRepetido(null);

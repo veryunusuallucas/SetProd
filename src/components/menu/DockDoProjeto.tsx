@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { Menu, type LucideIcon } from 'lucide-react';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
+import { vibrar } from '../../lib/vibracao';
 
 /**
  * A barra de baixo do celular, agora uma dock.
@@ -64,7 +65,7 @@ export function DockDoProjeto({ itens, indiceAtivo, fluido, aoAbrirMais, aberta,
     clearTimeout(relogio.current);
     relogio.current = setTimeout(() => {
       segurou.current = true;
-      navigator.vibrate?.(12);
+      vibrar('segurar');
       aoSegurar(n);
     }, SEGURAR_MS);
   };

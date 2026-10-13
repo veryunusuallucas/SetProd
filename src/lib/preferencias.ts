@@ -21,9 +21,11 @@ export interface Preferencias {
   wrapFestivo: boolean;
   /** Gifs pelo app: o choro ao apagar, a festa ao concluir (lib/gifs.ts). */
   gifs: boolean;
+  /** Vibrar nos momentos-chave (lib/vibracao.ts). Só o Android obedece. */
+  vibracao: boolean;
 }
 
-const PADRAO: Preferencias = { tema: 'escuro', mensagensDivertidas: true, wrapFestivo: true, gifs: true };
+const PADRAO: Preferencias = { tema: 'escuro', mensagensDivertidas: true, wrapFestivo: true, gifs: true, vibracao: true };
 const CHAVE = 'setprod:preferencias';
 
 function ler(): Preferencias {

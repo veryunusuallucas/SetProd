@@ -18,6 +18,7 @@ import { claqueteLegivel } from '../../lib/logagem/takes';
 import { EXPLICACAO } from '../../lib/logagem/saude';
 import { emGB } from '../../lib/logagem/manifesto';
 import { dataCurta } from '../../lib/formato';
+import { vibrar } from '../../lib/vibracao';
 
 /**
  * Aba Ingest: o que a câmera gravou, contra o que foi logado.
@@ -149,6 +150,7 @@ export function AbaIngest({ projetoId, diariaId, diaDaDiaria, podeEditar, depart
               });
             })(),
           });
+          vibrar('sucesso');
           setResultado(r);
         } finally {
           setAplicando(false);

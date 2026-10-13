@@ -1,3 +1,5 @@
+import { vibrar } from '../../lib/vibracao';
+
 /**
  * Liga/desliga. Uma linha inteira clicável — título, explicação e a chave.
  *
@@ -15,7 +17,7 @@ export function Interruptor({ titulo, ajuda, ligado, aoMudar }: {
       type="button"
       role="switch"
       aria-checked={ligado}
-      onClick={() => aoMudar(!ligado)}
+      onClick={() => { vibrar('toque'); aoMudar(!ligado); }}
       style={{
         display: 'flex', alignItems: 'center', gap: '14px', width: '100%', textAlign: 'left',
         padding: '12px 14px', borderRadius: 'var(--radius-md)', cursor: 'pointer',

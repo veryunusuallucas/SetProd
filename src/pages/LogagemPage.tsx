@@ -25,6 +25,7 @@ import type { Departamento, Perfil } from '../types';
 import { diariaDeAgora, estaAcontecendo } from '../lib/logagem/diariaPadrao';
 import { confirmar } from '../components/ui/Confirmacao';
 import { diaDaSemana } from '../lib/formato';
+import { vibrar } from '../lib/vibracao';
 
 /**
  * Logagem — o boletim de câmera da diária.
@@ -73,6 +74,7 @@ function BotaoDeAba({ aba, ativa, grande, reduzido, aoEscolher }: {
       role="tab"
       aria-selected={ativa}
       onClick={e => {
+        if (!ativa) vibrar('toque');
         aoEscolher();
         // No celular a faixa rola: a aba escolhida não pode ficar meio escondida na borda.
         e.currentTarget.scrollIntoView({ behavior: reduzido ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });

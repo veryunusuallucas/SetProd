@@ -24,6 +24,7 @@ import { usePreferencia } from '../lib/preferencias';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { CampoTexto } from './ui/CampoTexto';
 import { partirItemDeCena, juntarTrechos, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
+import { vibrar } from '../lib/vibracao';
 
 /**
  * A Timeline Única — o protagonista da tela da diária.
@@ -342,6 +343,7 @@ export function LinhaDoDia({
       Só ao MARCAR. Desmarcar por engano e receber fogos seria o app
       comemorando o próprio erro.
     */
+    if (marcando && item.tipo === 'wrap') vibrar('wrap');
     if (marcando && item.tipo === 'wrap' && festivo) {
       setFestejando(true);
       setTimeout(() => setFestejando(false), 3200);

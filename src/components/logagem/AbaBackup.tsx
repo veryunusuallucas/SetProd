@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import {
@@ -19,6 +19,7 @@ import {
   criarHd, desmarcarBackup, detectarCartao, estimativaDoCartaoGB, marcarBackup, oQueFalta,
 } from '../../lib/logagem/backup';
 import { ExportarRelatorios } from './ExportarRelatorios';
+import { vibrar } from '../../lib/vibracao';
 
 /**
  * Aba Backup: o cartão pode ser formatado?
@@ -502,6 +503,11 @@ function Cartao({ cartao, cartoes, hds, takes, backups, checksums, naCamera, pod
   const [verPassos, setVerPassos] = useState(false);
 
   const seguro = cartaoSeguro({ hds, backups, checksums, cartao });
+  const eraSeguro = useRef(seguro);
+  useEffect(() => {
+    if (seguro && !eraSeguro.current) vibrar('sucesso');
+    eraSeguro.current = seguro;
+  }, [seguro]);
   const falta = oQueFalta({ hds, backups, checksums, cartao });
   const gb = estimativaDoCartaoGB(takes, cartao);
   const nTakes = takes.filter(t => String(t.cartao).trim() === cartao).length;

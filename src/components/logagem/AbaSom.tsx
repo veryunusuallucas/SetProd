@@ -14,6 +14,7 @@ import {
   registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom,
 } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
+import { vibrar } from '../../lib/vibracao';
 
 /**
  * Aba Som: o sound report sendo preenchido (11/10/2026).
@@ -54,6 +55,7 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
       // Do banco: o arquivo pode ter acabado de andar com um take.
       const atual = (await db.log_estado.get(idDoEstado(diariaId))) ?? estado;
       await registrarSom(atual, tipo, quem);
+      vibrar('ok');
     })();
   };
 
@@ -163,7 +165,11 @@ function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable
   const m = MARCAS.find(x => x.id === marca)!;
   const ativa = ultimo?.marca === marca;
   const desligado = bloqueado || !ultimo;
-  const marcar = () => { if (ultimo && !bloqueado) void mudarSom(ultimo.id, { marca: ativa ? undefined : marca }); };
+  const marcar = () => {
+    if (!ultimo || bloqueado) return;
+    vibrar(ativa ? 'toque' : marca === 'fs' ? 'recinv' : marca);
+    void mudarSom(ultimo.id, { marca: ativa ? undefined : marca });
+  };
   if (grande) {
     return (
       <button

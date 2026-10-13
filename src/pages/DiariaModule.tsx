@@ -43,6 +43,7 @@ import { useArquivo } from '../hooks/useArquivo';
 import { confirmar } from '../components/ui/Confirmacao';
 import { despesasDaDiaria } from '../lib/despesasDaDiaria';
 import { NavegacaoDeDiarias } from '../components/NavegacaoDeDiarias';
+import { vibrar } from '../lib/vibracao';
 
 export function DiariaModule() {
   const { id: projetoId, diariaId } = useParams();
@@ -617,6 +618,8 @@ export function DiariaModule() {
 
     if (projetoId) await logAction(projetoId, 'editar', 'diaria', diariaId!, `Fechou a Diária ${diaria.numero}`);
     setFechamentoAberto(false);
+    // O padrão do fim do dia: o mais longo do app, e o único com a nota final comprida.
+    vibrar('wrap');
     setCarta(await montarCarta());
   };
 

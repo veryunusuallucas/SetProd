@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
+import { vibrar } from '../../lib/vibracao';
 
 /**
  * As peças que as abas da Logagem dividem entre si.
@@ -89,7 +90,7 @@ export function Segmentado({ nome, opcoes, valor, bloqueado, aoMudar }: {
             role="radio"
             aria-checked={ativa}
             disabled={bloqueado}
-            onClick={() => aoMudar(o.id)}
+            onClick={() => { if (o.id !== valor) vibrar('toque'); aoMudar(o.id); }}
             style={{
               position: 'relative', flex: 1, minWidth: 0, minHeight: '38px', border: 'none', borderRadius: 'var(--radius-sm)', background: 'none',
               color: ativa ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: '14px',

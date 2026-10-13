@@ -13,6 +13,7 @@ import {
 } from '../../lib/logagem/sincronia';
 import { claqueteLegivel } from '../../lib/logagem/takes';
 import { duracaoLegivel } from '../../lib/logagem/nrt';
+import { vibrar } from '../../lib/vibracao';
 
 const ROTULO: Record<AcaoDaSincronia, { texto: string; cor: string }> = {
   conferido: { texto: 'boletim confere', cor: 'var(--color-success)' },
@@ -99,6 +100,7 @@ export function IngestDoSom({ projetoId, diariaId, podeEditar, departamentoId, q
       const estado = await db.log_estado.get(idDoEstado(diariaId));
       if (!estado) return;
       const r = await aplicarSincronia(estado, linhas, { desvio, incluirSemVideo, quem });
+      vibrar('sucesso');
       setFeito(`Pronto: ${r.novos} arquivo${r.novos === 1 ? '' : 's'} novo${r.novos === 1 ? '' : 's'} ligado${r.novos === 1 ? '' : 's'} ao take, ${r.ligados} do boletim ligado${r.ligados === 1 ? '' : 's'}${r.semVideo ? `, ${r.semVideo} sem vídeo como wild` : ''}. O camera report já sai com a coluna Áudio.`);
       setLidos(null);
     } finally {
