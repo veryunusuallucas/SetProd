@@ -490,7 +490,9 @@ function ConteudoDaAba({
         <div className="mobile-only">
           <AvisoComputador />
         </div>
-        <div className="desktop-only" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Leva de UI (12/10/2026): câmera e som lado a lado — os dois passos do ingest, na ordem. */}
+        <div className="desktop-only aba-grade">
+         <div className="aba-coluna">
           <AbaIngest
             projetoId={projetoId}
             diariaId={diariaId}
@@ -498,8 +500,11 @@ function ConteudoDaAba({
             podeEditar={podeEditar}
             departamentoId={departamentoId}
           />
+         </div>
+         <div className="aba-coluna">
           {/* O som vem depois da câmera: é do ingest dela que sai a hora de cada clipe. */}
           {diariaId && <IngestDoSom projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />}
+         </div>
         </div>
       </>
     );

@@ -206,6 +206,9 @@ export function SeletorComOutro({ opcoes, valor, bloqueado, aoMudar }: {
       }}
       style={{ ...estiloCampo, cursor: bloqueado ? 'default' : 'pointer' }}
     >
+      {/* Vazio: sem esta opção, o navegador mostrava a primeira da lista como se
+          estivesse escolhida, e escolher justo ela não gravava nada. */}
+      {!valor && <option value="" disabled>Escolher…</option>}
       {foraDaLista && <option value={valor}>{valor}</option>}
       {opcoes.map(o => <option key={o} value={o}>{o}</option>)}
       <option value={OUTRO}>Outro valor…</option>

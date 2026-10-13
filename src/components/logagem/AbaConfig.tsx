@@ -38,12 +38,17 @@ export function AbaConfig({ projetoId, diariaId, podeEditar, administra, liberad
   eu?: string;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    // Duas colunas no computador (leva de UI, 12/10/2026): este aparelho e a claquete | as anotações e quem registra.
+    <div className="aba-grade">
+     <div className="aba-coluna">
       {/* O aparelho primeiro: é o único bloco que pode estar pedindo atenção agora. */}
       <EsteAparelho projetoId={projetoId} />
       {diariaId && <Claquete projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} />}
+     </div>
+     <div className="aba-coluna">
       {podeEditar && <AnotacoesRapidas />}
       <QuemRegistra projetoId={projetoId} podeEditar={podeEditar} administra={administra} liberados={liberados} perfis={perfis} departamentos={departamentos} eu={eu} />
+     </div>
     </div>
   );
 }

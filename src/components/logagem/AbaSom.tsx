@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Mic, Wind, Volume2, Trash2, Plus, X, SlidersHorizontal, Users, Check, Scissors } from 'lucide-react';
+import { Mic, Wind, Volume2, Trash2, Plus, X, SlidersHorizontal, Users, Check, Scissors, AudioLines } from 'lucide-react';
 import { COR_DO_STATUS } from '../../lib/logagem/takes';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, Som } from '../../types';
@@ -473,8 +473,39 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
     trocar(livre === -1 ? [...trilhas, nome] : trilhas.map((t, i) => (i === livre ? nome : t)));
   };
 
+  /*
+    Leva de UI (12/10/2026): o mesmo esquema da aba Câmera. À esquerda, a lousa
+    do próximo arquivo (o que se confere com o visor do gravador) e o formato;
+    à direita, as trilhas e o elenco.
+  */
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
+    <div className="aba-grade">
+     <div className="aba-coluna">
+      <section className="card painel-take" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(12px, 3vw, 22px)' }}>
+        <div className="lousa">
+          <div className="lousa-arquivo">
+            <span className="lousa-rotulo"><Mic size={12} aria-hidden /> Próximo arquivo</span>
+            <div className="arquivo-previsto" style={{ fontWeight: 800 }}>
+              <ValorQueTroca texto={arquivoDoSom(estado)} rotuloDeLeitura="Próximo arquivo do gravador" tamanho="inherit" />
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+          <Campo rotulo="Rolo (pasta)">
+            <CampoTexto value={estado.rolo_som || ''} aoGravar={v => mudar({ rolo_som: v.trim() })} disabled={bloqueado} placeholder="02" style={{ ...estiloCampo, fontFamily: MONO }} />
+          </Campo>
+          <Campo rotulo="Próximo arquivo">
+            <CampoTexto value={arquivoDoSom(estado)} aoGravar={v => mudar({ arquivo_som: v.trim() })} disabled={bloqueado} style={{ ...estiloCampo, fontFamily: MONO }} />
+          </Campo>
+        </div>
+        {estado.gravador_som && !primeiroArquivoDo(estado.gravador_som, '2000-01-01') && (
+          <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
+            Não sei como o {estado.gravador_som} nomeia os arquivos: confira o nome do primeiro no visor e escreva acima. Daí para frente, o número anda sozinho.
+          </p>
+        )}
+      </section>
+
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
       <Rotulo icone={<SlidersHorizontal size={14} />}>Gravador</Rotulo>
       <Campo rotulo="Aparelho">
         <SeletorComOutro opcoes={OPCOES_DO_GRAVADOR.aparelho} valor={estado.gravador_som} bloqueado={bloqueado} aoMudar={v => void trocarAparelho(v)} />
@@ -491,21 +522,13 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
       <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
         Sem timecode, o gravador grava a hora do relógio dele — o ingest usa isso para casar o som com o vídeo.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-        <Campo rotulo="Rolo (pasta)">
-          <CampoTexto value={estado.rolo_som || ''} aoGravar={v => mudar({ rolo_som: v.trim() })} disabled={bloqueado} placeholder="02" style={{ ...estiloCampo, fontFamily: MONO }} />
-        </Campo>
-        <Campo rotulo="Próximo arquivo">
-          <CampoTexto value={arquivoDoSom(estado)} aoGravar={v => mudar({ arquivo_som: v.trim() })} disabled={bloqueado} style={{ ...estiloCampo, fontFamily: MONO }} />
-        </Campo>
-      </div>
-      {estado.gravador_som && !primeiroArquivoDo(estado.gravador_som, '2000-01-01') && (
-        <p className="text-xs text-muted" style={{ margin: '-6px 0 0' }}>
-          Não sei como o {estado.gravador_som} nomeia os arquivos: confira o nome do primeiro no visor e escreva acima. Daí para frente, o número anda sozinho.
-        </p>
-      )}
+      </section>
+     </div>
 
-      <Campo rotulo="Trilhas">
+     <div className="aba-coluna">
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: 'clamp(14px, 3vw, 22px)' }}>
+      <Rotulo icone={<AudioLines size={14} />}>Trilhas</Rotulo>
+      <Campo rotulo="Do gravador">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {trilhas.map((t, i) => (
             <div key={`${i}-${trilhas.length}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -567,6 +590,8 @@ function KitDoSom({ estado, bloqueado, mudar, projetoId }: {
       <p className="text-xs text-muted" style={{ margin: 0 }}>
         O kit passa para a próxima diária, e o arquivo continua de onde parou. Os arquivos já logados guardam as trilhas que tinham na hora.
       </p>
-    </section>
+      </section>
+     </div>
+    </div>
   );
 }
