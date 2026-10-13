@@ -1018,11 +1018,117 @@ input[type="radio"]:checked::before {
 }
 
 .arquivo-previsto {
-  font-size: clamp(28px, 9cqi, 60px);
+  /* 14cqi: oito caracteres mono (A001C001) cabem com folga a 320px; nomes de
+     onze (A_0001C001A) ainda cabem numa linha a partir de ~360px. */
+  font-size: clamp(30px, 14cqi, 84px);
   line-height: 1;
   letter-spacing: 0.01em;
   overflow-wrap: anywhere;
 }
+
+/* A lousa (leva de UI, 12/10/2026): faixa do equipamento em cima, o arquivo no
+   meio e a claquete embaixo, num quadro só — como uma claquete digital. As
+   linhas finas entre as partes são as da claquete de giz. */
+.lousa {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg, 16px);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+.lousa > .hud-logagem {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+.lousa > .hud-logagem > span {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+}
+.lousa > .hud-logagem > .hud-cena {
+  color: var(--cor-criativo);
+  letter-spacing: 0.06em;
+}
+.lousa-arquivo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-light);
+  background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--cor-criativo) 12%, transparent), transparent 70%);
+}
+.lousa-arquivo .arquivo-previsto > div { justify-content: center; }
+.lousa-arquivo-topo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* A pílula do som é pequena para caber na linha do rótulo, mas o toque
+   continua com 44px: a área invisível em volta completa o alvo. */
+.ficha-do-som { position: relative; }
+.ficha-do-som::after { content: ''; position: absolute; inset: -7px -2px; }
+.lousa-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cor-criativo);
+}
+.lousa > .claquete-grade { padding: 10px; }
+.lousa .contador-valor { position: relative; }
+.contador-rotulo {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+/* O número desce um pouco para dar lugar ao rótulo da casa. */
+.lousa .contador-valor { padding-top: 12px !important; min-height: 84px; font-size: clamp(40px, 12cqi, 72px); }
+@container (min-width: 560px) {
+  .lousa .contador-valor { min-height: 100px; }
+}
+
+.contexto-da-cena > summary::-webkit-details-marker { display: none; }
+.contexto-da-cena[open] > summary > span:last-child { visibility: hidden; }
+
+/* A aba Vídeo: uma coluna na ordem do set no celular; duas no computador. */
+.video-grade { display: flex; flex-direction: column; gap: 16px; }
+.video-principal,
+.video-lado { display: contents; flex-direction: column; gap: 16px; }
+.video-grade > * > :empty { display: none; }
+.video-dia { order: 1; }
+.video-painel { order: 2; }
+.video-obs { order: 3; }
+.video-foto { order: 4; }
+.video-decupagem { order: 5; }
+.video-lista { order: 6; }
+.video-relatorios { order: 7; }
+@media (min-width: 1100px) {
+  .video-grade {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+    align-items: start;
+  }
+  .video-principal,
+  .video-lado { display: flex; }
+}
+.lousa .contador-valor { background-color: var(--bg-surface); }
 
 .status-grade {
   display: grid;
@@ -1058,7 +1164,6 @@ input[type="radio"]:checked::before {
 .botao-status:focus-visible { outline: 3px solid var(--text-primary); outline-offset: 2px; }
 @container (min-width: 560px) {
   .botao-status { min-height: 88px; }
-  .botao-status[data-status="NEUTRO"] { min-height: 52px; }
 }
 
 /* Uma linha só, que rola de lado: em três linhas, o HUD empurrava a claquete. */

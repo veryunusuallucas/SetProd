@@ -80,7 +80,7 @@ function BotaoDeAba({ aba, ativa, grande, reduzido, aoEscolher }: {
       style={{
         position: 'relative', flex: '1 0 auto',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-        padding: grande ? '16px' : '10px 14px', minHeight: '44px', border: grande ? 'none' : '1px solid var(--border-light)',
+        padding: grande ? '12px 16px' : '10px 14px', minHeight: '44px', border: grande ? 'none' : '1px solid var(--border-light)',
         borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer',
         fontWeight: 700, fontSize: grande ? '15px' : '13px',
         color: ativa ? 'var(--text-primary)' : 'var(--text-muted)',

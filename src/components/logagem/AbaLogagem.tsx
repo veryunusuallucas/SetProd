@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Sun, MessageSquare } from 'lucide-react';
 import { db } from '../../db/db';
@@ -19,6 +19,9 @@ import { Acompanhamento } from './Acompanhamento';
 import { NotasRapidas } from './NotasRapidas';
 import { acrescentarNota } from '../../lib/logagem/notas';
 import type { Densidade } from '../../lib/logagem/densidade';
+
+/** O mesmo limite do `.video-grade` em `index.css`. */
+const UMA_COLUNA = '(max-width: 1099px)';
 
 /**
  * Aba Logagem: a claquete do momento.
@@ -69,6 +72,15 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
   // Antes de qualquer retorno, porque é hook. No Acompanhamento não há botões,
   // então o Espaço também não registra nada ali.
   const registro = useRegistroDeTake(estado, podeEditar && densidade !== 'acompanhamento', quem);
+
+  /*
+    Em uma coluna (abaixo de 1100px), o dia fica sempre na linha curta, que abre
+    com um toque: aberto, ele empurrava o OK para fora da primeira tela.
+  */
+  const umaColuna = useSyncExternalStore(
+    avisar => { const q = matchMedia(UMA_COLUNA); q.addEventListener('change', avisar); return () => q.removeEventListener('change', avisar); },
+    () => matchMedia(UMA_COLUNA).matches,
+  );
 
   /*
     Enter leva o cursor à observação (§6.4). Mesmas regras do Espaço: não vale
@@ -172,20 +184,28 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
     3. a observação e a foto, que são do take que vem;
     4. o resto: a decupagem inteira, o contexto da cena, a lista, os relatórios.
   */
+  /*
+    Leva de UI (12/10/2026): no computador largo, DUAS COLUNAS — a lousa e o
+    que é do take à esquerda, fixa; o dia, a decupagem e o resto à direita.
+    Numa coluna só, o bloco do dia empurrava o OK para fora da primeira tela.
+    No celular continua uma coluna, na ordem do set: os dois embrulhos somem
+    (`display: contents`) e cada peça diz o seu lugar com `order`.
+  */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <ODiaNaLogagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} compacto={!detalhada} />
+    <div className="video-grade">
+     <div className="video-principal">
+      <div className="video-painel">
+        <PainelDoTake
+          estado={estado}
+          registro={registro}
+          podeEditar={podeEditar}
+          aoPassar={passo}
+          aoDigitar={aoDigitar}
+          mostrarAtalhos={detalhada}
+        />
+      </div>
 
-      <PainelDoTake
-        estado={estado}
-        registro={registro}
-        podeEditar={podeEditar}
-        aoPassar={passo}
-        aoDigitar={aoDigitar}
-        mostrarAtalhos={detalhada}
-      />
-
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
+      <section className="card video-obs" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
         <Rotulo icone={<MessageSquare size={14} />}>Observação deste take</Rotulo>
         <div data-logagem-obs>
           <CampoTexto
@@ -203,9 +223,19 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
         </p>
       </section>
 
-      <FotoDeReferencia estado={estado} podeEditar={podeEditar} />
+      <div className="video-lista">
+        <ListaDeTakes takes={registro.takes} ultimo={registro.ultimo} podeEditar={podeEditar} limite={detalhada ? undefined : 3} />
+      </div>
+     </div>
 
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
+     <div className="video-lado">
+      <div className="video-dia">
+        <ODiaNaLogagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} compacto={!detalhada || umaColuna} />
+      </div>
+
+      <div className="video-foto"><FotoDeReferencia estado={estado} podeEditar={podeEditar} /></div>
+
+      <section className="card video-decupagem" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 'clamp(14px, 3vw, 22px)' }}>
         <PlanosDaDecupagem estado={estado} bloqueado={bloqueado} aoEscolher={mudar} />
         {detalhada ? (
           <ContextoDaCena estado={estado} bloqueado={bloqueado} mudar={mudar} />
@@ -233,11 +263,13 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
         )}
       </section>
 
-      <ListaDeTakes takes={registro.takes} ultimo={registro.ultimo} podeEditar={podeEditar} limite={detalhada ? undefined : 3} />
-
       {/* No Foco, o set não exporta nada: o relatório é trabalho do fim do dia. */}
-      {detalhada && <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />}
-
+      {detalhada && (
+        <div className="video-relatorios">
+          <ExportarRelatorios projetoId={projetoId} diariaId={diariaId} podeEditar={podeEditar} departamentoId={departamentoId} quem={quem} />
+        </div>
+      )}
+     </div>
     </div>
   );
 }
@@ -251,9 +283,21 @@ function ContextoDaCena({ estado, bloqueado, mudar }: {
   bloqueado: boolean;
   mudar: (m: Partial<EstadoDaLogagem>) => void;
 }) {
+  /*
+    Recolhido (leva de UI, 12/10/2026): o Lucas quase nunca mexe aqui — a
+    decupagem já preenche INT/EXT e DIA/NOITE. Fica a linha do que vale, e o
+    toque nela abre os campos para o dia em que a decupagem não diz.
+  */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
-      <Rotulo icone={<Sun size={14} />}>Como está a cena</Rotulo>
+    <details className="contexto-da-cena" style={{ paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
+      <summary style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '44px', cursor: 'pointer', listStyle: 'none' }}>
+        <Rotulo icone={<Sun size={14} />}>Como está a cena</Rotulo>
+        <span className="text-sm text-secondary">
+          {[estado.ambiente, estado.luz, estado.audio, estado.nd].filter(Boolean).join(' · ') || '—'}
+        </span>
+        <span className="text-xs" style={{ marginLeft: 'auto', color: 'var(--cor-criativo)', fontWeight: 700 }}>Ajustar</span>
+      </summary>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
       <Campo rotulo="Ambiente">
         <Escolha nome="logagem-ambiente" opcoes={OPCOES.ambiente} valor={estado.ambiente} bloqueado={bloqueado} aoMudar={v => mudar({ ambiente: v })} />
       </Campo>
@@ -267,6 +311,7 @@ function ContextoDaCena({ estado, bloqueado, mudar }: {
         <Escolha nome="logagem-nd" opcoes={OPCOES.nd} valor={estado.nd} bloqueado={bloqueado} aoMudar={v => mudar({ nd: v })} />
       </Campo>
       {/* Planos em letras ou números mudou para a aba Config (Lucas, 12/10/2026): é ajuste de produção, não do take. */}
-    </div>
+      </div>
+    </details>
   );
 }
