@@ -64,7 +64,9 @@ const TIPOS_OCORRENCIA: { valor: TipoOcorrencia; rotulo: string }[] = [
  */
 const EXEMPLO = 'Ex: company move levou 90min a mais por estacionamento e carga na garagem';
 
-export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, chamada, linha }: {
+export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, chamada, linha, rolosDaLogagem }: {
+  /** Os rolos que a Logagem conhece (`rolosDoDia`): o campo vazio mostra estes. */
+  rolosDaLogagem?: { camera: string; som: string };
   diaria: Diaria;
   escalados: Perfil[];
   meuPerfilId?: string;
@@ -384,22 +386,22 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, cham
         </h2>
 
         <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-          <Campo rotulo="Rolos de câmera" largura="150px">
-            <input
-              defaultValue={diaria.rolos?.camera || ''}
-              onBlur={e => podeMarcar && (diaria.rolos?.camera || '') !== e.target.value && mudarRolo('camera', e.target.value)}
-              disabled={!podeMarcar}
+          <Campo rotulo="Rolos de câmera" largura="190px">
+            <CampoDoRolo
+              salvo={diaria.rolos?.camera}
+              daLogagem={rolosDaLogagem?.camera}
               placeholder="A001–A004"
-              style={entrada}
+              podeMarcar={podeMarcar}
+              aoGravar={v => mudarRolo('camera', v)}
             />
           </Campo>
-          <Campo rotulo="Rolos de som" largura="150px">
-            <input
-              defaultValue={diaria.rolos?.som || ''}
-              onBlur={e => podeMarcar && (diaria.rolos?.som || '') !== e.target.value && mudarRolo('som', e.target.value)}
-              disabled={!podeMarcar}
+          <Campo rotulo="Rolos de som" largura="190px">
+            <CampoDoRolo
+              salvo={diaria.rolos?.som}
+              daLogagem={rolosDaLogagem?.som}
               placeholder="S01–S03"
-              style={entrada}
+              podeMarcar={podeMarcar}
+              aoGravar={v => mudarRolo('som', v)}
             />
           </Campo>
         </div>
@@ -566,6 +568,53 @@ export function RegistroDoSet({ diaria, escalados, meuPerfilId, podeMarcar, cham
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * O rolo vem da Logagem enquanto ninguém digita outro (Lucas, 14/10/2026).
+ * Em cinza, o que veio de lá — como o horário herdado da linha do dia. Digitar
+ * fixa o valor à mão; apagar devolve à Logagem.
+ */
+function CampoDoRolo({ salvo, daLogagem, placeholder, podeMarcar, aoGravar }: {
+  salvo?: string;
+  daLogagem?: string;
+  placeholder: string;
+  podeMarcar: boolean;
+  aoGravar: (valor: string) => void;
+}) {
+  const herdado = !salvo && Boolean(daLogagem);
+  const mostrado = salvo || daLogagem || '';
+  const diferente = Boolean(salvo && daLogagem && salvo !== daLogagem);
+  return (
+    <>
+      <input
+        key={mostrado}
+        defaultValue={mostrado}
+        onBlur={e => {
+          const v = e.target.value.trim();
+          if (!podeMarcar || v === mostrado) return;
+          // Digitou o mesmo que a Logagem diz: continua seguindo a Logagem.
+          aoGravar(v === daLogagem ? '' : v);
+        }}
+        disabled={!podeMarcar}
+        placeholder={placeholder}
+        title={herdado ? 'Vem da Logagem. Digite para fixar outro.' : undefined}
+        style={{ ...entrada, color: herdado ? 'var(--text-muted)' : 'var(--text-primary)' }}
+      />
+      {herdado && <span className="text-xs text-muted">da Logagem</span>}
+      {diferente && podeMarcar && (
+        <button
+          type="button"
+          onClick={() => aoGravar('')}
+          className="text-xs"
+          title="Apagar o que foi digitado e seguir a Logagem"
+          style={{ alignSelf: 'flex-start', padding: 0, border: 'none', background: 'none', color: 'var(--cor-criativo)', cursor: 'pointer', textAlign: 'left' }}
+        >
+          Logagem diz {daLogagem} · usar
+        </button>
+      )}
+    </>
   );
 }
 

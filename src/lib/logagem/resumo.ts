@@ -92,3 +92,41 @@ export async function resumoDaLogagem(projetoId: string, diariaId: string): Prom
   ]);
   return resumirLogagem({ takes, hds, backups, checksums });
 }
+
+/**
+ * Os rolos do dia para a Cobertura do Registro do Set (Lucas, 14/10/2026: "isso
+ * pode alterar de acordo com a logagem"). Câmera: a letra da câmera e o
+ * cartão FÍSICO de cada take (A + 002 = A002), e não o reel do nome, que pode
+ * seguir a cena. Som: o rolo de cada arquivo do gravador.
+ */
+export function rolosDoDia(takes: Pick<Take, 'camera_id' | 'cartao'>[], sons: { rolo?: string }[]): { camera: string; som: string } {
+  const camera = takes
+    .map(t => {
+      const n = String(t.cartao || '').replace(/\D/g, '');
+      return n ? `${(t.camera_id || 'A').toUpperCase()}${n.padStart(3, '0')}` : '';
+    });
+  return { camera: emFaixas(camera), som: emFaixas(sons.map(s => s.rolo?.trim().toUpperCase() || '')) };
+}
+
+/** "A001, A002, A003, B001" → "A001–A003, B001": seguidos viram faixa. */
+export function emFaixas(nomes: string[]): string {
+  const unicos = [...new Set(nomes.filter(Boolean))]
+    .sort(new Intl.Collator('pt-BR', { numeric: true }).compare);
+  const partes = (s: string) => {
+    const m = s.match(/^(.*?)(\d+)$/);
+    return m ? { prefixo: m[1], numero: Number(m[2]) } : null;
+  };
+  const saida: string[] = [];
+  for (let i = 0; i < unicos.length; i++) {
+    let fim = i;
+    const p = partes(unicos[i]);
+    while (p && fim + 1 < unicos.length) {
+      const q = partes(unicos[fim + 1]);
+      if (!q || q.prefixo !== p.prefixo || q.numero !== partes(unicos[fim])!.numero + 1) break;
+      fim++;
+    }
+    saida.push(fim > i ? `${unicos[i]}–${unicos[fim]}` : unicos[i]);
+    i = fim;
+  }
+  return saida.join(', ');
+}

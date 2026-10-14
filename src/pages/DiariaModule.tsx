@@ -6,6 +6,7 @@ import { useAcesso } from '../hooks/useAcesso';
 import { dinheiro } from '../lib/formato';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { rolosDoDia } from '../lib/logagem/resumo';
 import { db } from '../db/db';
 import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, FileDown, Wallet, Archive, Lock, FileText, Eye } from 'lucide-react';
 import type { DiariaTask, AnexoOD, Locacao, ItemDoDia, Cena } from '../types';
@@ -54,6 +55,11 @@ export function DiariaModule() {
   const diaria = useLiveQuery(() => db.diarias.get(diariaId!), [diariaId]);
   const tasks = useLiveQuery(() => db.diaria_tasks.where('diaria_id').equals(diariaId!).toArray(), [diariaId]) || [];
   const locacoes = useLiveQuery(() => db.locacoes.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  // Os rolos que a Logagem conhece: valem onde ninguém digitou outro.
+  const rolosDaLogagem = useLiveQuery(async () => rolosDoDia(
+    await db.log_takes.where('diaria_id').equals(diariaId!).toArray(),
+    await db.log_som.where('diaria_id').equals(diariaId!).toArray(),
+  ), [diariaId]);
   const perfis = useLiveQuery(() => db.perfis.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const departamentos = useLiveQuery(() => db.departamentos.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
   const despesasDiaria = useLiveQuery(async () => {
@@ -733,6 +739,8 @@ export function DiariaModule() {
    * incômoda, e é justamente a que decide o que acontece amanhã.
    */
   const gerarDPR = () => {
+    const rolosCamera = diaria.rolos?.camera || rolosDaLogagem?.camera;
+    const rolosSom = diaria.rolos?.som || rolosDaLogagem?.som;
     const tarefasFeitas = tasks.filter(t => t.status === 'concluido').length;
     const confirmados = (diaria.confirmacoes || []).filter(cid => (diaria.equipe_escalada || []).includes(cid)).length;
     const relatorio = relatorioDoDia(cenasDaDiaria, registrosDoDia);
@@ -931,8 +939,8 @@ export function DiariaModule() {
       ${relatorio.naoGravadas.length ? `<h2>Cenas agendadas e NÃO filmadas</h2><ul>${relatorio.naoGravadas.map(linhaCena).join('')}</ul>
         <p class="muted" style="font-size:12px">Voltam ao stripboard como pendentes, prontas para reagendar.</p>` : ''}
 
-      ${(diaria.rolos?.camera || diaria.rolos?.som) ? `<h2>Rolos</h2>
-        <p>${diaria.rolos?.camera ? `<b>Câmera:</b> ${h(diaria.rolos.camera)}` : ''}${diaria.rolos?.camera && diaria.rolos?.som ? ' &nbsp;·&nbsp; ' : ''}${diaria.rolos?.som ? `<b>Som:</b> ${h(diaria.rolos.som)}` : ''}</p>` : ''}
+      ${(rolosCamera || rolosSom) ? `<h2>Rolos</h2>
+        <p>${rolosCamera ? `<b>Câmera:</b> ${h(rolosCamera)}` : ''}${rolosCamera && rolosSom ? ' &nbsp;·&nbsp; ' : ''}${rolosSom ? `<b>Som:</b> ${h(rolosSom)}` : ''}</p>` : ''}
 
       <h2>Equipe — presença e jornada</h2>
       <table>
@@ -1291,6 +1299,7 @@ export function DiariaModule() {
               podeMarcar={podeMarcarODia}
               chamada={chamadaDaVisao}
               linha={dia}
+              rolosDaLogagem={rolosDaLogagem}
             />
           )}
         </div>
