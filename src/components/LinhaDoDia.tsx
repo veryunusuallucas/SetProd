@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
   Flag, StickyNote, CircleDot, Timer, ClipboardList, Lightbulb, Drama, Brush,
-  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard, Scissors, Merge,
+  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard, Scissors, Merge, Undo2,
 } from 'lucide-react';
 import { db } from '../db/db';
 import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao, Plano } from '../types';
@@ -23,7 +23,7 @@ import { Fogos } from './ui/Fogos';
 import { usePreferencia } from '../lib/preferencias';
 import { MOLA, useMovimentoReduzido } from './ui/movimento';
 import { CampoTexto } from './ui/CampoTexto';
-import { partirItemDeCena, juntarTrechos, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
+import { partirItemDeCena, juntarComVizinho, planosDoTrecho, rotuloDoTrecho, trechosDaCena, duracaoInicial } from '../lib/partirCena';
 import { vibrar } from '../lib/vibracao';
 import { emOrdem } from '../lib/ordem';
 
@@ -211,7 +211,39 @@ export function LinhaDoDia({
    * mexer num item muda o horário mostrado de todos os seguintes. Gravar em
    * pedaços deixaria a linha meio recalculada em qualquer interrupção.
    */
-  const gravar = (nova: ItemDoDia[]) => aoGravar(nova);
+  const gravar = (nova: ItemDoDia[], oQue = 'a última mudança') => { guardarParaDesfazer(oQue); aoGravar(nova); };
+
+  /*
+    DESFAZER (Lucas, 14/10/2026: "fico com medo de alguém apagar algo e não
+    poder voltar"). Antes de cada gravação, a linha de antes vai para uma pilha;
+    o botão (ou Ctrl+Z fora de um campo) grava a de antes de volta.
+
+    ponytail: a pilha vive na tela — trocar de diária ou recarregar a página
+    zera. Guardar no banco só se pedirem desfazer entre sessões.
+  */
+  const [desfazeres, setDesfazeres] = useState<{ linha: ItemDoDia[]; oQue: string }[]>([]);
+  const guardarParaDesfazer = (oQue: string) => setDesfazeres(p => [...p.slice(-29), { linha, oQue }]);
+  const desfazer = () => {
+    const ultimo = desfazeres[desfazeres.length - 1];
+    if (!ultimo) return;
+    setDesfazeres(p => p.slice(0, -1));
+    vibrar('toque');
+    aoGravar(ultimo.linha);
+  };
+  const desfazerAgora = useRef(desfazer);
+  desfazerAgora.current = desfazer;
+  useEffect(() => { setDesfazeres([]); }, [diaria.id]);
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+      // Num campo, o Ctrl+Z é do campo.
+      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault();
+      desfazerAgora.current();
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, []);
 
   /*
     Mexer aqui num item que veio do stripboard faz o stripboard soltar ele.
@@ -226,16 +258,25 @@ export function LinhaDoDia({
 
   const porLocacao = new Map(locacoes.map(l => [l.id, l]));
 
+  /** O que aparece no botão Desfazer. */
+  const O_QUE_MUDOU: [keyof ItemDoDia, string][] = [
+    ['duracao_min', 'mudar a duração'], ['titulo', 'mudar o nome'], ['locacao_id', 'mudar o lugar'],
+    ['local', 'mudar o lugar'], ['hora_travada', 'travar o horário'], ['hora_real', 'marcar a hora'],
+  ];
+
   const mudarItem = (id: string, campos: Partial<ItemDoDia>) => {
     const desgruda = MUDA_O_QUE_VEM_DE_LA.some(c => c in campos);
     gravar(linha.map(i => (
       i.id === id
         ? { ...i, ...campos, ...(desgruda && i.origem_stripboard ? { editado_na_diaria: true } : {}) }
         : i
-    )));
+    )), O_QUE_MUDOU.find(([c]) => c in campos)?.[1]);
   };
 
-  const remover = (id: string) => gravar(linha.filter(i => i.id !== id));
+  const remover = (id: string) => {
+    const item = linha.find(i => i.id === id);
+    gravar(linha.filter(i => i.id !== id), `tirar ${item?.titulo || 'o item'}`);
+  };
 
   /**
    * Parte a cena em dois trechos, no plano escolhido.
@@ -246,15 +287,17 @@ export function LinhaDoDia({
    */
   const partir = (item: ItemDoDia, cena: Cena | undefined, corteApos: number) => {
     setPartindo(null);
-    const planos = cena ? (planosPorCena.get(cena.id) || []) : [];
+    // Os planos DESTE trecho: um trecho já partido se parte de novo.
+    const planos = cena ? planosDoTrecho(item, planosPorCena.get(cena.id) || []) : [];
     const [a, b] = partirItemDeCena(item, planos, corteApos, duracaoInicial(item, cena?.estimativa));
     const i = linha.findIndex(x => x.id === item.id);
     const nova = [...linha];
     nova.splice(i, 1, a, b);
-    gravar(nova);
+    gravar(nova, `partir a cena ${cena?.numero ?? ''}`);
   };
 
-  const juntar = (cenaId: string) => gravar(juntarTrechos(linha, cenaId));
+  const juntar = (item: ItemDoDia, cena: Cena) =>
+    gravar(juntarComVizinho(linha, item.id, planosPorCena.get(cena.id) || []), `juntar a cena ${cena.numero}`);
 
   const adicionar = (tipo: Exclude<TipoItemDia, 'cena'>, titulo: string) => {
     setAdicionando(false);
@@ -268,7 +311,7 @@ export function LinhaDoDia({
     const [movido] = nova.splice(arrastando, 1);
     nova.splice(destino, 0, movido);
     setArrastando(null);
-    gravar(nova);
+    gravar(nova, 'mudar a ordem');
   };
 
   /**
@@ -325,7 +368,8 @@ export function LinhaDoDia({
       });
       if (trocar) {
         const nova = trocarDeLugar(linha, item.id, pulada.id).map(i => (i.id === item.id ? { ...i, hora_real: hora } : i));
-        (aoMudarOrdemDoSet ?? gravar)(nova);
+        guardarParaDesfazer('trocar a ordem');
+        (aoMudarOrdemDoSet ?? aoGravar)(nova);
         setAjustandoHora(item.id);
         return;
       }
@@ -402,6 +446,32 @@ export function LinhaDoDia({
         >
           <Clock size={16} /> Linha do Dia
         </h2>
+
+        <AnimatePresence initial={false}>
+          {desfazeres.length > 0 && (
+            <motion.button
+              key="desfazer"
+              type="button"
+              onClick={desfazer}
+              initial={reduzido ? undefined : { opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reduzido ? undefined : { opacity: 0, scale: 0.9 }}
+              transition={MOLA}
+              className="text-xs font-bold"
+              title={`Desfazer: ${desfazeres[desfazeres.length - 1].oQue} (Ctrl+Z)`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px', minHeight: '32px', padding: '4px 12px',
+                borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)',
+                background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer',
+              }}
+            >
+              <Undo2 size={14} /> Desfazer
+              <span className="text-muted" style={{ fontWeight: 400, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {desfazeres[desfazeres.length - 1].oQue}
+              </span>
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Um rótulo, não um botão: a fase é consequência da exportação. */}
         <span
@@ -496,6 +566,7 @@ export function LinhaDoDia({
             const planos = c.item.planos_ids ? c.item.planos_ids.length : planosDaCena.length;
             const rotulo = c.cena ? rotuloDoTrecho(c.item, planosDaCena) : null;
             const trechos = trechosDaCena(linha, c.cena?.id);
+            const planosDoTrechoAqui = planosDoTrecho(c.item, planosDaCena);
             const ehProximo = modo === 'interativo' && c.item.id === proximoId;
 
             return (
@@ -921,16 +992,21 @@ export function LinhaDoDia({
                   */}
                   {modo === 'criacao' && c.cena && !travada && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-                      {trechos > 1 ? (
+                      {/* Juntar desfaz UM corte: este trecho com o vizinho. */}
+                      {trechos > 1 && (
                         <button
-                          onClick={() => juntar(c.cena!.id)}
+                          onClick={() => juntar(c.item, c.cena!)}
                           className="btn-icon text-muted"
                           style={{ padding: '6px', border: 'none', background: 'transparent' }}
-                          title={`Juntar os ${trechos} trechos da cena ${c.cena.numero} de volta num só`}
+                          title={trechosDaCena(linha.slice(linha.findIndex(x => x.id === c.item.id) + 1), c.cena.id) > 0
+                            ? 'Juntar com o próximo trecho desta cena'
+                            : 'Juntar com o trecho anterior desta cena'}
                         >
                           <Merge size={14} />
                         </button>
-                      ) : (
+                      )}
+                      {/* Partir de novo: o trecho "planos 2–6" ainda se parte, plano a plano. */}
+                      {(planosDoTrechoAqui.length > 1 || (planosDaCena.length === 0 && trechos === 1)) && (
                         <button
                           onClick={() => setPartindo(a => (a === c.item.id ? null : c.item.id))}
                           className="btn-icon text-muted"
@@ -970,7 +1046,7 @@ export function LinhaDoDia({
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                           {/* O último plano não aparece: cortar depois dele
                               deixaria o segundo trecho vazio. */}
-                          {planosDaCena.slice(0, -1).map((pl, iPlano) => (
+                          {planosDoTrechoAqui.slice(0, -1).map((pl, iPlano) => (
                             <button
                               key={pl.id}
                               onClick={() => partir(c.item, c.cena, iPlano)}

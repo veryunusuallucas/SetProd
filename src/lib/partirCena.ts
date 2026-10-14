@@ -110,27 +110,45 @@ export function partirItemDeCena(
 }
 
 /**
- * Junta de volta todos os trechos de uma cena, no lugar do primeiro.
- *
- * A duração volta a ser a soma do que os trechos tinham — e não a estimativa da
- * cena. Quem partiu pode ter ajustado o tempo de cada metade, e devolver a
- * estimativa original apagaria esse ajuste sem avisar.
+ * Os planos que ESTE trecho grava: os dele, ou a cena toda se ele é a cena
+ * inteira. É por eles que um trecho se parte de novo — "planos 2–6" vira
+ * "planos 2–3" e "planos 4–6" (Lucas, 14/10/2026).
  */
-export function juntarTrechos(linha: ItemDoDia[], cenaId: string): ItemDoDia[] {
-  const trechos = linha.filter(i => i.tipo === 'cena' && i.cena_id === cenaId);
-  if (trechos.length < 2) return linha;
+export function planosDoTrecho(item: ItemDoDia, planosDaCena: Plano[]): Plano[] {
+  return item.planos_ids ? planosDaCena.filter(p => item.planos_ids!.includes(p.id)) : planosDaCena;
+}
 
-  const soma = trechos.reduce((s, i) => s + (i.duracao_min ?? 0), 0);
-  let jaPos = false;
+/**
+ * Junta um trecho com o vizinho da mesma cena — o seguinte, ou o anterior
+ * quando ele é o último. Desfaz UM corte, e não todos: quem partiu em três e
+ * errou um corte não perde o outro.
+ *
+ * O trecho junto fica no lugar do que vem primeiro no dia, com a soma das
+ * durações (quem ajustou o tempo de cada parte não perde o ajuste). Se os
+ * planos voltam a ser a cena toda, ele volta a ser a cena inteira.
+ */
+export function juntarComVizinho(linha: ItemDoDia[], itemId: string, planosDaCena: Plano[]): ItemDoDia[] {
+  const item = linha.find(i => i.id === itemId);
+  if (!item || item.tipo !== 'cena') return linha;
+  const daCena = linha.filter(i => i.tipo === 'cena' && i.cena_id === item.cena_id);
+  const pos = daCena.indexOf(item);
+  const vizinho = daCena[pos + 1] ?? daCena[pos - 1];
+  if (!vizinho) return linha;
 
-  return linha.flatMap(i => {
-    if (i.tipo !== 'cena' || i.cena_id !== cenaId) return [i];
-    if (jaPos) return [];
-    jaPos = true;
-    const { planos_ids, parte, ...resto } = i;
-    void planos_ids; void parte;
-    return [{ ...resto, duracao_min: soma || undefined }];
-  });
+  const [primeiro, outro] = linha.indexOf(item) < linha.indexOf(vizinho) ? [item, vizinho] : [vizinho, item];
+  const ids = new Set([...(primeiro.planos_ids ?? []), ...(outro.planos_ids ?? [])]);
+  const planos_ids = planosDaCena.filter(p => ids.has(p.id)).map(p => p.id);
+  const duracao = (primeiro.duracao_min ?? 0) + (outro.duracao_min ?? 0);
+
+  const { planos_ids: _p, parte: _a, ...resto } = primeiro;
+  void _p; void _a;
+  const junto: ItemDoDia = {
+    ...resto,
+    // Os planos todos de volta (ou A + B, sem decupagem) = a cena inteira.
+    ...(planos_ids.length && planos_ids.length < planosDaCena.length ? { planos_ids } : {}),
+    duracao_min: duracao || undefined,
+  };
+  return linha.filter(i => i !== outro).map(i => (i === primeiro ? junto : i));
 }
 
 /** Quantos trechos desta cena existem no dia. 1 = cena inteira, como sempre. */
