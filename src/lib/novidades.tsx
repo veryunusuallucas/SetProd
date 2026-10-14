@@ -229,6 +229,30 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.7',
+    resumo: <>A cena se parte plano a plano na linha do dia, tudo se desfaz, e os rolos vêm da Logagem.</>,
+    itens: [
+      {
+        tipo: 'melhor',
+        icone: <Scissors size={20} />,
+        titulo: 'Partir a cena plano a plano',
+        texto: 'Um trecho já partido ("planos 2–6") se parte de novo, quantas vezes precisar, e o tempo se reparte junto. O botão de juntar desfaz um corte só, o trecho com o vizinho, e não a cena toda.',
+      },
+      {
+        tipo: 'novo',
+        icone: <Undo2 size={20} />,
+        titulo: 'Desfazer na linha do dia',
+        texto: 'Apagou, partiu ou mudou a ordem sem querer? O botão Desfazer no topo da linha (ou Ctrl+Z no computador) volta a última mudança, e diz qual é. Vale enquanto a diária está aberta.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Film size={20} />,
+        titulo: 'Rolos da Logagem no Registro do Set',
+        texto: 'Os rolos de câmera e de som da Cobertura do dia se preenchem sozinhos com os cartões e rolos logados (A001–A004, B001). Digitar fixa outro valor; se ele não bater com a Logagem, o app avisa. O relatório do dia usa o mesmo.',
+      },
+    ],
+  },
+  {
     versao: '0.22.6',
     resumo: <>Um catálogo de câmeras na Logagem e as listas de escolha em ordem alfabética.</>,
     itens: [
