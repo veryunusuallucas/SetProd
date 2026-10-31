@@ -229,6 +229,30 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.22.8',
+    resumo: <>Na Logagem, apagar um take volta a claquete, e o nome do arquivo se corrige depois de logado.</>,
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <Undo2 size={20} />,
+        titulo: 'Apagar o último take volta a claquete',
+        texto: 'Apagou o take 1 que foi marcado errado? A claquete volta para o take 1, e o próximo arquivo da câmera e do gravador também. Antes, o próximo OK ou NG ainda saía como take 2. Apagar só o último arquivo na aba Som volta o gravador para ele.',
+      },
+      {
+        tipo: 'novo',
+        icone: <Film size={20} />,
+        titulo: 'Corrigir o nome do arquivo depois de logado',
+        texto: 'Câmera ou gravador numerou diferente? No "corrigir take", mude o arquivo do último take e o próximo acompanha sozinho. No sound report, toque no nome do arquivo para corrigir, com a opção de renumerar os seguintes.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <Film size={20} />,
+        titulo: 'Vídeo e som com a mesma claquete',
+        texto: 'Corrigir a cena, o plano ou o take de um take leva a correção para o som casado com ele.',
+      },
+    ],
+  },
+  {
     versao: '0.22.7',
     resumo: <>A cena se parte plano a plano na linha do dia, tudo se desfaz, e os rolos vêm da Logagem.</>,
     itens: [
