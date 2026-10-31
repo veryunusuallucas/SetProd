@@ -10,7 +10,7 @@ import { confirmar } from '../ui/Confirmacao';
 import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
-  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons,
+  MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons, renomearSom, renumerarSeguintes,
   registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom,
 } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
@@ -206,7 +206,7 @@ function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable
 
 /* ───────────────────────── A grade ───────────────────────── */
 
-type Celula = { id: string; trilha: number } | null; // trilha -1 = observação
+type Celula = { id: string; trilha: number } | null; // trilha -1 = observação, -2 = nome do arquivo
 
 function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) {
   const [aberta, setAberta] = useState<Celula>(null);
@@ -270,7 +270,15 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                     <Fragment key={s.id}>
                       <tr style={{ opacity: s.marca === 'ng' || s.marca === 'fs' ? 0.6 : 1 }}>
                         <td style={{ ...td, ...preso, padding: '6px 8px' }}>
-                          <div style={{ fontFamily: MONO, fontWeight: 800, fontSize: '15px' }}>{s.arquivo}</div>
+                          <button
+                            type="button"
+                            aria-label={`Corrigir o nome de ${s.arquivo}`}
+                            aria-expanded={editando === -2}
+                            onClick={() => setAberta(editando === -2 ? null : { id: s.id, trilha: -2 })}
+                            style={{ fontFamily: MONO, fontWeight: 800, fontSize: '15px', padding: 0, border: 'none', background: 'none', color: editando === -2 ? 'var(--cor-criativo)' : 'var(--text-primary)', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: '3px' }}
+                          >
+                            {s.arquivo}
+                          </button>
                           <div className="text-xs text-muted" style={{ whiteSpace: 'nowrap' }}>
                             {s.tipo === 'take' ? `${s.cena}-${s.plano} / Tk${s.take ?? ''}` : `${ROTULO_DO_TIPO[s.tipo]} · ${s.cena}`} · {s.hora.slice(0, 5)}
                             {s.take_id && statusDoTake.get(s.take_id) ? ` · câmera ${statusDoTake.get(s.take_id)}` : ''}
@@ -327,7 +335,9 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                       {editando !== null && (
                         <tr>
                           <td colSpan={maxTrilhas + 3} style={{ ...td, padding: '10px 8px', backgroundColor: 'var(--bg-primary)' }}>
-                            <EditorDaCelula som={s} trilha={editando} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />
+                            {editando === -2
+                              ? <EditorDoArquivo som={s} sons={sons} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />
+                              : <EditorDaCelula som={s} trilha={editando} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />}
                           </td>
                         </tr>
                       )}
@@ -370,6 +380,48 @@ function CelulaDaGrade({ texto, vazio, ativa, rotulo, aoTocar }: {
   );
 }
 
+/** Corrigir o nome de um arquivo já logado: o gravador numerou diferente. */
+function EditorDoArquivo({ som, sons, podeEditar, aoFechar }: { som: Som; sons: Som[]; podeEditar: boolean; aoFechar: () => void }) {
+  const [nome, setNome] = useState(som.arquivo);
+  const salvar = async () => {
+    const novo = nome.trim();
+    if (!podeEditar || !novo || novo === som.arquivo) { aoFechar(); return; }
+    let seguintes = renumerarSeguintes(sons, som, novo);
+    if (seguintes.length) {
+      const n = seguintes.length;
+      const levar = await confirmar({
+        titulo: `Renumerar ${n === 1 ? 'o arquivo seguinte' : `os ${n} arquivos seguintes`}?`,
+        detalhe: `Em sequência: o próximo vira ${seguintes[0].arquivo}${n > 1 ? `, até o último virar ${seguintes[n - 1].arquivo}` : ''}.`,
+        confirmar: n === 1 ? 'Renumerar ele' : `Renumerar os ${n}`,
+        cancelar: 'Só este',
+      });
+      if (!levar) seguintes = [];
+    }
+    await renomearSom(som, novo, seguintes);
+    vibrar('ok');
+    aoFechar();
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '640px' }}>
+      <span className="text-xs font-bold text-secondary">Nome do arquivo</span>
+      <input
+        value={nome}
+        onChange={e => setNome(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') void salvar(); }}
+        disabled={!podeEditar}
+        autoFocus
+        spellCheck={false}
+        style={{ ...estiloCampo, fontFamily: MONO }}
+      />
+      <p className="text-xs text-muted" style={{ margin: 0 }}>Se for o último arquivo, o próximo acompanha a correção.</p>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <BotaoTatil onClick={() => void salvar()} disabled={!podeEditar} className="btn-primary" style={{ minHeight: '44px' }}>Salvar</BotaoTatil>
+        <BotaoTatil onClick={aoFechar} className="btn-secondary" style={{ minHeight: '44px' }}>Cancelar</BotaoTatil>
+      </div>
+    </div>
+  );
+}
+
 /** A nota de uma trilha (ou a observação do arquivo), com as notas rápidas. */
 function EditorDaCelula({ som, trilha, podeEditar, aoFechar }: {
   som: Som;
@@ -389,7 +441,7 @@ function EditorDaCelula({ som, trilha, podeEditar, aoFechar }: {
   const apagar = async () => {
     if (!(await confirmar({
       titulo: `Apagar o registro de ${som.arquivo}?`,
-      detalhe: 'O arquivo continua no gravador; o que some é a linha dele aqui.',
+      detalhe: 'Some a linha dele aqui. Se era o último, o próximo arquivo volta a ser ele.',
       confirmar: 'Apagar',
       perigo: true,
     }))) return;

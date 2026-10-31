@@ -1,9 +1,10 @@
 import { db } from '../../db/db';
-import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
+import type { EstadoDaLogagem, Som, StatusTake, Take } from '../../types';
 import { nomeArquivoPrevisto } from './nomenclatura';
 import { ehExtra, mesmaClaquete, proximoPlanoLivre } from './claquete';
 import { idDoEstado } from './estado';
-import { registrarSom, somAcompanhaHero, takeLevaSom } from './som';
+import { numeroDoClipe } from './ingest';
+import { registrarSom, somAcompanhaHero, takeLevaSom, voltaDoSom } from './som';
 
 /**
  * Registrar o take: o ato que a Logagem existe para fazer.
@@ -179,12 +180,76 @@ export function claqueteDoAcrescimo(takes: Take[], estado: EstadoDaLogagem) {
   };
 }
 
+const mesmo = (a: unknown, b: unknown) => String(a ?? '').trim().toUpperCase() === String(b ?? '').trim().toUpperCase();
+const ehOUltimo = <T extends { id: string; ordem?: number }>(lista: T[], item: T) =>
+  !lista.some(x => x.id !== item.id && (x.ordem ?? 0) > (item.ordem ?? 0));
+
+/**
+ * O que volta na claquete quando o take apagado era o ÚLTIMO (relato de
+ * 31/10/2026, no set): apagou o take 1 e o próximo OK ainda saía take 2.
+ *
+ * Só volta o que ainda está "logo depois" dele — se alguém já mudou de plano
+ * ou corrigiu o clipe à mão, o que está na tela é escolha de alguém e fica.
+ */
+export function voltaDoApagado(estado: EstadoDaLogagem, take: Take, takes: Take[], casados: Som[], sons: Som[]): Partial<EstadoDaLogagem> {
+  const volta: Partial<EstadoDaLogagem> = {};
+  if (ehOUltimo(takes, take)) {
+    if (mesmo(estado.cena, take.cena) && mesmo(estado.plano, take.plano) && Number(estado.take) === take.take + 1) volta.take = take.take;
+    const clipe = Number(estado.proximo_clipe) - 1;
+    if (mesmo(estado.camera_id, take.camera_id) && clipe >= 0 && mesmo(nomeArquivoPrevisto({ ...estado, proximo_clipe: clipe }), take.arquivo)) {
+      volta.proximo_clipe = clipe;
+    }
+  }
+  for (const s of casados) Object.assign(volta, voltaDoSom(estado, s, sons));
+  return volta;
+}
+
 /** Apaga o take e o som casado com ele: foi o mesmo momento, registrado por engano. */
-export const apagarTake = (id: string) =>
-  db.transaction('rw', db.log_takes, db.log_som, async () => {
+export async function apagarTake(id: string) {
+  let estadoAntes: EstadoDaLogagem | undefined;
+  let volta: Partial<EstadoDaLogagem> = {};
+  await db.transaction('rw', db.log_takes, db.log_som, db.log_estado, async () => {
+    const take = await db.log_takes.get(id);
+    if (!take) return;
+    const [takes, sons, casados, estado] = await Promise.all([
+      db.log_takes.where('diaria_id').equals(take.diaria_id).toArray(),
+      db.log_som.where('diaria_id').equals(take.diaria_id).toArray(),
+      db.log_som.where('take_id').equals(id).toArray(),
+      db.log_estado.get(idDoEstado(take.diaria_id)),
+    ]);
     await db.log_takes.delete(id);
     await db.log_som.where('take_id').equals(id).delete();
+    if (!estado) return;
+    volta = voltaDoApagado(estado, take, takes, casados, sons);
+    if (Object.keys(volta).length) await db.log_estado.update(estado.id, volta);
+    estadoAntes = estado;
   });
+  if (estadoAntes && volta.proximo_clipe !== undefined) await sincronizarKit(estadoAntes, volta.proximo_clipe);
+  return volta;
+}
+
+/**
+ * Corrigiu o ÚLTIMO take (número ou arquivo): a claquete e o próximo arquivo
+ * andam junto, se ainda estavam logo depois dele. Ex.: o último era C005 e a
+ * câmera gravou C007 — o próximo vira C008 sozinho.
+ */
+export async function seguirOUltimo(antes: Take, depois: Take) {
+  const estado = await db.log_estado.get(idDoEstado(depois.diaria_id));
+  if (!estado) return;
+  const m: Partial<EstadoDaLogagem> = {};
+  if (antes.take !== depois.take && mesmo(estado.cena, depois.cena) && mesmo(estado.plano, depois.plano)
+    && Number(estado.take) === antes.take + 1) m.take = depois.take + 1;
+  const clipe = numeroDoClipe(depois.arquivo || '');
+  if (antes.arquivo !== depois.arquivo && clipe !== null && mesmo(estado.camera_id, depois.camera_id)
+    && mesmo(nomeArquivoPrevisto({ ...estado, proximo_clipe: Number(estado.proximo_clipe) - 1 }), antes.arquivo)
+    && mesmo(nomeArquivoPrevisto({ ...estado, proximo_clipe: clipe }), depois.arquivo)) m.proximo_clipe = clipe + 1;
+  if (!Object.keys(m).length) return;
+  await db.log_estado.update(estado.id, m);
+  if (m.proximo_clipe !== undefined) await sincronizarKit(estado, m.proximo_clipe);
+}
+
+/** O último take registrado na diária (o que a claquete acompanha). */
+export const ultimoTake = (takes: Take[]) => takes.reduce<Take | undefined>((u, t) => (!u || (t.ordem ?? 0) > (u.ordem ?? 0) ? t : u), undefined);
 
 /**
  * A claquete do take, para mostrar.
@@ -260,13 +325,26 @@ export function mudancasDaCascata(campo: CampoComCascata, alvos: Take[], novo: s
   });
 }
 
+/** O som casado mostra a claquete do take: corrigiu um, corrige o outro. */
+async function claqueteAoSom(id: string, mudanca: EdicaoDoTake) {
+  const m: Partial<Som> = {};
+  if (mudanca.cena !== undefined) m.cena = mudanca.cena;
+  if (mudanca.plano !== undefined) m.plano = mudanca.plano;
+  if (mudanca.take !== undefined) m.take = mudanca.take;
+  if (Object.keys(m).length) await db.log_som.where('take_id').equals(id).modify(m);
+}
+
 export async function editarTake(id: string, mudanca: EdicaoDoTake) {
   await somAcompanhaHero(id, mudanca.status);
+  await claqueteAoSom(id, mudanca);
   return db.log_takes.update(id, mudanca);
 }
 
 export async function aplicarMudancas(lista: { id: string; mudanca: EdicaoDoTake }[]) {
-  await db.transaction('rw', db.log_takes, async () => {
-    for (const { id, mudanca } of lista) await db.log_takes.update(id, mudanca);
+  await db.transaction('rw', db.log_takes, db.log_som, async () => {
+    for (const { id, mudanca } of lista) {
+      await db.log_takes.update(id, mudanca);
+      await claqueteAoSom(id, mudanca);
+    }
   });
 }

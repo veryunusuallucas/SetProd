@@ -138,7 +138,57 @@ export async function somAcompanhaHero(takeId: string, status?: string) {
 }
 
 export const mudarSom = (id: string, m: Partial<Pick<Som, 'marca' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);
-export const apagarSom = (id: string) => db.log_som.delete(id);
+
+const ehOUltimoSom = (sons: Som[], som: Som) => !sons.some(s => s.id !== som.id && (s.ordem ?? 0) > (som.ordem ?? 0));
+
+/** Apagou o ÚLTIMO arquivo e o gravador ainda apontava para o seguinte: o próximo volta a ser ele. */
+export function voltaDoSom(estado: EstadoDaLogagem, som: Som, sons: Som[]): Partial<EstadoDaLogagem> {
+  return ehOUltimoSom(sons, som) && proximoArquivo(som.arquivo) === arquivoDoSom(estado) ? { arquivo_som: som.arquivo } : {};
+}
+
+export async function apagarSom(id: string) {
+  await db.transaction('rw', db.log_som, db.log_estado, async () => {
+    const som = await db.log_som.get(id);
+    if (!som) return;
+    const [sons, estado] = await Promise.all([
+      db.log_som.where('diaria_id').equals(som.diaria_id).toArray(),
+      db.log_estado.get(idDoEstado(som.diaria_id)),
+    ]);
+    await db.log_som.delete(id);
+    const volta = estado ? voltaDoSom(estado, som, sons) : {};
+    if (estado && volta.arquivo_som) await db.log_estado.update(estado.id, volta);
+  });
+}
+
+/** Os arquivos DEPOIS deste, renumerados em sequência a partir do nome novo. */
+export function renumerarSeguintes(sons: Som[], som: Som, novo: string): { id: string; arquivo: string }[] {
+  let anterior = novo;
+  return ordenarSons(sons)
+    .filter(s => (s.ordem ?? 0) > (som.ordem ?? 0))
+    .map(s => ({ id: s.id, arquivo: (anterior = proximoArquivo(anterior)) }));
+}
+
+/**
+ * Corrige o nome de um arquivo já logado (o gravador numerou diferente).
+ * Com `seguintes`, os de depois andam junto. Se o último arquivo mudou e o
+ * próximo ainda apontava para depois dele, o próximo acompanha.
+ */
+export async function renomearSom(som: Som, novo: string, seguintes: { id: string; arquivo: string }[] = []) {
+  await db.transaction('rw', db.log_som, db.log_estado, async () => {
+    const [sons, estado] = await Promise.all([
+      db.log_som.where('diaria_id').equals(som.diaria_id).toArray(),
+      db.log_estado.get(idDoEstado(som.diaria_id)),
+    ]);
+    const ultimo = ultimoSom(sons);
+    await db.log_som.update(som.id, { arquivo: novo });
+    for (const s of seguintes) await db.log_som.update(s.id, { arquivo: s.arquivo });
+    if (!estado || !ultimo) return;
+    const novoDoUltimo = ultimo.id === som.id ? novo : seguintes.find(s => s.id === ultimo.id)?.arquivo;
+    if (novoDoUltimo && proximoArquivo(ultimo.arquivo) === arquivoDoSom(estado)) {
+      await db.log_estado.update(estado.id, { arquivo_som: proximoArquivo(novoDoUltimo) });
+    }
+  });
+}
 
 export const ordenarSons = (sons: Som[]) => [...sons].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 

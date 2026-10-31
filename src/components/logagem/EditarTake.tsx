@@ -5,7 +5,7 @@ import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar } from '../ui/Confirmacao';
 import { Campo, MONO, Segmentado, estiloCampo } from './pecas';
 import {
-  ROTULO_DO_STATUS, alvosDaCascata, aplicarMudancas, editarTake, mudancasDaCascata,
+  ROTULO_DO_STATUS, alvosDaCascata, aplicarMudancas, editarTake, mudancasDaCascata, seguirOUltimo, ultimoTake,
   type CampoComCascata, type EdicaoDoTake,
 } from '../../lib/logagem/takes';
 
@@ -52,6 +52,8 @@ export function EditarTake({ take, aoFechar }: { take: Take; aoFechar: () => voi
 
     setGravando(true);
     try {
+      // O último take ANTES da correção: se ele mudar, a claquete acompanha.
+      const ultimoAntes = ultimoTake(await db.log_takes.where('diaria_id').equals(take.diaria_id).toArray());
       await editarTake(take.id, mudanca);
       const editado: Take = { ...take, ...mudanca };
 
@@ -79,6 +81,8 @@ export function EditarTake({ take, aoFechar }: { take: Take; aoFechar: () => voi
         });
         if (levar) await aplicarMudancas(lista);
       }
+      const ultimoDepois = ultimoAntes && await db.log_takes.get(ultimoAntes.id);
+      if (ultimoAntes && ultimoDepois) await seguirOUltimo(ultimoAntes, ultimoDepois);
       aoFechar();
     } finally {
       setGravando(false);
@@ -123,7 +127,7 @@ export function EditarTake({ take, aoFechar }: { take: Take; aoFechar: () => voi
       </label>
 
       <p className="text-xs text-muted" style={{ margin: 0 }}>
-        Mudar a cena, o plano ou o arquivo pergunta se a mudança vale para os takes seguintes.
+        Mudar a cena, o plano ou o arquivo pergunta se a mudança vale para os takes seguintes. No último take, o próximo arquivo e o número do take acompanham a correção, e o som casado recebe a mesma claquete.
       </p>
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
