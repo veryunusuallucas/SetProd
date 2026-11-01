@@ -1,6 +1,6 @@
 // Apagar o último take volta a claquete e os contadores (relato do set, 31/10/2026).
 import assert from 'node:assert/strict';
-import { takeSemSom, voltaDoApagado } from '../src/lib/logagem/takes';
+import { clipeDoDigitado, takeSemSom, voltaDoApagado } from '../src/lib/logagem/takes';
 import { voltaDoSom, renumerarSeguintes } from '../src/lib/logagem/som';
 import { PADRAO } from '../src/lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../src/lib/logagem/nomenclatura';
@@ -30,4 +30,10 @@ assert.equal(takeSemSom([take, t2], [som], estado)?.id, 't2');
 assert.equal(takeSemSom([take], [som], estado), undefined);
 assert.equal(takeSemSom([take, t2], [som], { ...estado, som_junto: false }), undefined);
 assert.equal(takeSemSom([take, { ...t2, audio: 'MOS' } as Take], [som], estado), undefined);
-console.log('ok: apagar, renomear e par desalinhado');
+// A câmera pulou um número: digita o nome do visor, ou só o número.
+assert.deepEqual(clipeDoDigitado(estado, '5'), { clipe: 5, nome: nomeArquivoPrevisto({ ...estado, proximo_clipe: 5 }), bate: true });
+assert.equal(clipeDoDigitado(estado, nomeArquivoPrevisto({ ...estado, proximo_clipe: 7 }))?.clipe, 7);
+assert.equal(clipeDoDigitado(estado, nomeArquivoPrevisto({ ...estado, proximo_clipe: 7 }).toLowerCase())?.bate, true);
+assert.equal(clipeDoDigitado({ ...estado, cartao: '001' }, nomeArquivoPrevisto({ ...estado, cartao: '002', proximo_clipe: 7 }))?.bate, false);
+assert.equal(clipeDoDigitado(estado, 'abc'), null);
+console.log('ok: apagar, renomear, par desalinhado e nome digitado');

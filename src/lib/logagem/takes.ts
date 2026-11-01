@@ -253,6 +253,20 @@ export async function seguirOUltimo(antes: Take, depois: Take) {
   if (m.proximo_clipe !== undefined) await sincronizarKit(estado, m.proximo_clipe);
 }
 
+/**
+ * O próximo clipe a partir do que alguém digitou olhando o visor: o nome
+ * inteiro (A001C005) ou só o número (5). `bate` diz se o nome que o app monta
+ * com esse número é o digitado — se não bate, o resto do nome (cartão,
+ * câmera) também mudou, e isso se acerta na aba Câmera.
+ */
+export function clipeDoDigitado(estado: EstadoDaLogagem, digitado: string): { clipe: number; nome: string; bate: boolean } | null {
+  const limpo = digitado.trim();
+  const clipe = /^\d+$/.test(limpo) ? Number(limpo) : numeroDoClipe(limpo);
+  if (clipe === null || !Number.isFinite(clipe)) return null;
+  const nome = nomeArquivoPrevisto({ ...estado, proximo_clipe: clipe });
+  return { clipe, nome, bate: /^\d+$/.test(limpo) || mesmo(nome, limpo) };
+}
+
 /** O último take registrado na diária (o que a claquete acompanha). */
 export const ultimoTake = (takes: Take[]) => takes.reduce<Take | undefined>((u, t) => (!u || (t.ordem ?? 0) > (u.ordem ?? 0) ? t : u), undefined);
 

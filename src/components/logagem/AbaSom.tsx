@@ -10,7 +10,7 @@ import { confirmar, escolher } from '../ui/Confirmacao';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
 import { apagarArquivo } from '../../lib/arquivos';
 import { AvisoDoPar } from './RegistroDeTake';
-import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
+import { Campo, Escolha, MONO, NomeQueCorrige, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
   MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons, renomearSom, renumerarSeguintes,
@@ -93,10 +93,25 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
           <div className="lousa-arquivo">
             <div className="lousa-arquivo-topo">
               <span className="lousa-rotulo"><Mic size={12} aria-hidden /> {alvo ? 'Último arquivo' : 'Próximo arquivo'}</span>
-              {alvo && <span className="text-xs text-muted">próximo <b style={{ fontFamily: MONO, color: 'var(--text-secondary)' }}>{arquivoDoSom(estado)}</b></span>}
+              {/* Os dois nomes se corrigem com um toque, olhando o visor do gravador. */}
+              {alvo && (
+                <span className="text-xs text-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  próximo
+                  <span style={{ minWidth: '10ch', color: 'var(--text-secondary)' }}>
+                    <NomeQueCorrige nome={arquivoDoSom(estado)} rotulo="Próximo arquivo" tamanho="12px" bloqueado={bloqueado} aoCorrigir={v => mudar({ arquivo_som: v })} />
+                  </span>
+                </span>
+              )}
             </div>
             <div className="arquivo-previsto" style={{ fontWeight: 800, opacity: alvo?.marca === 'ng' || alvo?.marca === 'fs' ? 0.55 : 1 }}>
-              <ValorQueTroca texto={alvo?.arquivo || arquivoDoSom(estado)} rotuloDeLeitura={alvo ? 'Último arquivo' : 'Próximo arquivo'} tamanho="inherit" />
+              <NomeQueCorrige
+                nome={alvo?.arquivo || arquivoDoSom(estado)}
+                rotulo={alvo ? 'Último arquivo' : 'Próximo arquivo'}
+                tamanho="inherit"
+                bloqueado={bloqueado}
+                // O último: corrige o registro e o próximo acompanha. Sem nenhum ainda: é o próximo.
+                aoCorrigir={v => { if (alvo) void renomearSom(alvo, v); else mudar({ arquivo_som: v }); }}
+              />
             </div>
             {/* O próximo PAR, como a aba Vídeo vai registrar: no set, cada aba mostrava um número e ninguém sabia qual valia. */}
             {somJunto(estado) && (

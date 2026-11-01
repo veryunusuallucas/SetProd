@@ -14,7 +14,7 @@ import { NOMENCLATURAS, camposDaNomenclatura, nomeArquivoPrevisto } from '../../
 import { CAMERAS, aoEscolherCamera, cameraPorId } from '../../lib/logagem/cameras';
 import { OPCOES } from '../../lib/logagem/opcoes';
 import { KitDeCameras, KitDeLentes } from './Kits';
-import { confirmar } from '../ui/Confirmacao';
+import { confirmar, escolher } from '../ui/Confirmacao';
 import { cartaoSeguro, cartaoTemTakes, oQueFalta } from '../../lib/logagem/backup';
 
 /**
@@ -154,6 +154,28 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
         perigo: true,
       });
       if (!seguir) return;
+    }
+
+    /*
+      O clipe no cartão novo (relato do set, 01/11/2026): cada câmera faz de um
+      jeito — umas continuam a contagem, outras recomeçam do 1. Quem sabe é o
+      visor; a pergunta mostra os dois nomes para conferir com ele.
+    */
+    if (clipe > 1) {
+      const continua = nomeArquivoPrevisto({ ...estado, cartao: novo });
+      const recomeca = nomeArquivoPrevisto({ ...estado, cartao: novo, proximo_clipe: 1 });
+      if (continua !== recomeca) {
+        const r = await escolher({
+          titulo: `Cartão ${novo}: o clipe continua ou recomeça?`,
+          detalhe: `Cada câmera faz de um jeito. Na dúvida, grave um teste e confira o nome no visor — depois dá para corrigir tocando no nome, na aba Vídeo.`,
+          confirmar: `Continua: ${continua}`,
+          alternativa: `Recomeça: ${recomeca}`,
+          cancelar: 'Cancelar',
+        });
+        if (!r) return;
+        aoMudar(r === 'alternativa' ? { cartao: novo, proximo_clipe: 1 } : { cartao: novo });
+        return;
+      }
     }
 
     aoMudar({ cartao: novo });

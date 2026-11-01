@@ -4,7 +4,9 @@ import { ehExtra, entrarNoExtra, sairDoExtra } from '../../lib/logagem/claquete'
 import type { EstadoDaLogagem } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
-import { MONO, ValorQueTroca, useViradaDoMinuto } from './pecas';
+import { MONO, NomeQueCorrige, ValorQueTroca, useViradaDoMinuto } from './pecas';
+import { clipeDoDigitado } from '../../lib/logagem/takes';
+import { confirmar } from '../ui/Confirmacao';
 import { BotoesDeStatus, type Registro } from './RegistroDeTake';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
@@ -76,7 +78,13 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
             <FichaDoSom estado={estado} bloqueado={bloqueado} />
           </div>
           <div className="arquivo-previsto" style={{ fontWeight: 800 }}>
-            <ValorQueTroca texto={nomeArquivoPrevisto(estado) || '—'} rotuloDeLeitura="Arquivo deste take" tamanho="inherit" />
+            <NomeQueCorrige
+              nome={nomeArquivoPrevisto(estado)}
+              rotulo="Arquivo deste take"
+              tamanho="inherit"
+              bloqueado={bloqueado}
+              aoCorrigir={digitado => void corrigirArquivo(estado, digitado, aoAbrirCamera)}
+            />
           </div>
         </div>
 
@@ -123,6 +131,26 @@ export function PainelDoTake({ estado, registro, podeEditar, aoPassar, aoDigitar
  * O arquivo do gravador que vai junto com este take — o mesmo lugar do arquivo
  * da câmera, porque é o mesmo momento. Tocar liga e desliga o som junto.
  */
+/**
+ * A câmera pulou um número (gravou um clipe que ninguém logou): quem loga
+ * digita o que o visor mostra, e o próximo take sai com esse nome.
+ */
+async function corrigirArquivo(estado: EstadoDaLogagem, digitado: string, aoAbrirCamera?: () => void) {
+  const r = clipeDoDigitado(estado, digitado);
+  if (!r) {
+    await confirmar({ titulo: `Não achei o número do clipe em "${digitado}".`, detalhe: 'Digite o nome como aparece no visor (A001C005) ou só o número (5).', confirmar: 'Ok', cancelar: 'Fechar' });
+    return;
+  }
+  await mudarEstado(estado.diaria_id, { proximo_clipe: r.clipe });
+  vibrar('ok');
+  if (!r.bate && await confirmar({
+    titulo: `O próximo ficou ${r.nome}, não ${digitado}.`,
+    detalhe: 'O número do clipe foi corrigido. O resto do nome (cartão, câmera) muda na aba Câmera.',
+    confirmar: 'Abrir a aba Câmera',
+    cancelar: 'Deixar assim',
+  })) aoAbrirCamera?.();
+}
+
 function FichaDoSom({ estado, bloqueado }: { estado: EstadoDaLogagem; bloqueado: boolean }) {
   const vai = takeLevaSom(estado);
   const mos = somJunto(estado) && !vai;

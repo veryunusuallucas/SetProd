@@ -317,3 +317,57 @@ export function useViradaDoMinuto(ligado: boolean) {
     return () => clearTimeout(relogio);
   }, [ligado]);
 }
+
+/**
+ * O nome do arquivo que se corrige com um toque (relato do set, 01/11/2026):
+ * "tá em qual arquivo?" se responde olhando o visor e digitando ali mesmo, sem
+ * trocar de aba. O campo ocupa o lugar do nome, do mesmo tamanho — os botões
+ * de registro não podem andar. Enter (ou sair do campo) grava, Esc desiste.
+ */
+export function NomeQueCorrige({ nome, rotulo, tamanho, bloqueado, aoCorrigir }: {
+  nome: string;
+  rotulo: string;
+  tamanho: string;
+  bloqueado: boolean;
+  aoCorrigir: (digitado: string) => void;
+}) {
+  const [texto, setTexto] = useState<string | null>(null);
+  const gravar = () => {
+    const limpo = texto?.trim();
+    setTexto(null);
+    if (limpo && limpo !== nome) aoCorrigir(limpo);
+  };
+  if (texto !== null) {
+    return (
+      <input
+        autoFocus
+        value={texto}
+        aria-label={`${rotulo}: digite o nome que a câmera ou o gravador mostra`}
+        spellCheck={false}
+        onFocus={e => e.target.select()}
+        onChange={e => setTexto(e.target.value)}
+        onBlur={gravar}
+        onKeyDown={e => {
+          if (e.key === 'Enter') gravar();
+          if (e.key === 'Escape') setTexto(null);
+        }}
+        style={{
+          width: '100%', fontFamily: MONO, fontSize: tamanho, fontWeight: 700, lineHeight: 1.1, textAlign: 'center',
+          color: 'var(--text-primary)', background: 'transparent', border: 'none',
+          borderBottom: '2px solid var(--cor-criativo)', outline: 'none', padding: 0,
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={bloqueado}
+      onClick={() => setTexto(nome)}
+      title="Tocar para corrigir: digite o que a câmera ou o gravador mostra"
+      style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: 0, border: 'none', background: 'none', color: 'inherit', font: 'inherit', cursor: bloqueado ? 'default' : 'text' }}
+    >
+      <ValorQueTroca texto={nome || '—'} rotuloDeLeitura={rotulo} tamanho={tamanho} />
+    </button>
+  );
+}
