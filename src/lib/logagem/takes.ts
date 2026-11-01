@@ -204,8 +204,12 @@ export function voltaDoApagado(estado: EstadoDaLogagem, take: Take, takes: Take[
   return volta;
 }
 
-/** Apaga o take e o som casado com ele: foi o mesmo momento, registrado por engano. */
-export async function apagarTake(id: string) {
+/**
+ * Apaga o take e o som casado com ele: foi o mesmo momento, registrado por engano.
+ * Com `comSom = false` só o vídeo sai, e o som fica solto (a câmera falhou, o
+ * gravador não) — o próximo arquivo do gravador não volta.
+ */
+export async function apagarTake(id: string, comSom = true) {
   let estadoAntes: EstadoDaLogagem | undefined;
   let volta: Partial<EstadoDaLogagem> = {};
   await db.transaction('rw', db.log_takes, db.log_som, db.log_estado, async () => {
@@ -218,9 +222,10 @@ export async function apagarTake(id: string) {
       db.log_estado.get(idDoEstado(take.diaria_id)),
     ]);
     await db.log_takes.delete(id);
-    await db.log_som.where('take_id').equals(id).delete();
+    if (comSom) await db.log_som.where('take_id').equals(id).delete();
+    else await db.log_som.where('take_id').equals(id).modify({ take_id: undefined });
     if (!estado) return;
-    volta = voltaDoApagado(estado, take, takes, casados, sons);
+    volta = voltaDoApagado(estado, take, takes, comSom ? casados : [], sons);
     if (Object.keys(volta).length) await db.log_estado.update(estado.id, volta);
     estadoAntes = estado;
   });
@@ -250,6 +255,24 @@ export async function seguirOUltimo(antes: Take, depois: Take) {
 
 /** O último take registrado na diária (o que a claquete acompanha). */
 export const ultimoTake = (takes: Take[]) => takes.reduce<Take | undefined>((u, t) => (!u || (t.ordem ?? 0) > (u.ordem ?? 0) ? t : u), undefined);
+
+/**
+ * O par desalinhado (relato do set, 01/11/2026): o último take devia ter som e
+ * ficou sem — alguém apagou só o áudio dele. É daí que o vídeo andava na frente
+ * do som. Só o último: um do meio sem som é história, não o que vem agora.
+ */
+export function takeSemSom(takes: Take[], sons: Som[], estado: EstadoDaLogagem): Take | undefined {
+  const t = ultimoTake(takes);
+  if (!t || t.status === 'IMPORT' || t.audio === 'MOS' || !takeLevaSom(estado)) return undefined;
+  return sons.some(s => s.take_id === t.id) ? undefined : t;
+}
+
+/** Cria o som que faltou no take, com o próximo arquivo do gravador. */
+export async function somParaOTake(take: Take, quem?: string) {
+  const estado = await db.log_estado.get(idDoEstado(take.diaria_id));
+  if (!estado) return;
+  await registrarSom({ ...estado, cena: take.cena, plano: take.plano, cena_id: take.cena_id ?? '', plano_id: take.plano_id ?? '' }, 'take', quem, take);
+}
 
 /**
  * A claquete do take, para mostrar.

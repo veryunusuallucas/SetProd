@@ -1,12 +1,15 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Mic, Wind, Volume2, Trash2, Plus, X, SlidersHorizontal, Users, Check, Scissors, AudioLines } from 'lucide-react';
-import { COR_DO_STATUS } from '../../lib/logagem/takes';
+import { COR_DO_STATUS, apagarTake, takeSemSom } from '../../lib/logagem/takes';
 import { db } from '../../db/db';
 import type { EstadoDaLogagem, Som } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
-import { confirmar } from '../ui/Confirmacao';
+import { confirmar, escolher } from '../ui/Confirmacao';
+import { nomeArquivoPrevisto } from '../../lib/logagem/nomenclatura';
+import { apagarArquivo } from '../../lib/arquivos';
+import { AvisoDoPar } from './RegistroDeTake';
 import { Campo, Escolha, MONO, Rotulo, Segmentado, SeletorComOutro, ValorQueTroca, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
@@ -46,8 +49,11 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
 }) {
   const { estado, mudar } = useEstado(projetoId, diariaId, podeEditar, departamentoId);
   const sons = useLiveQuery(() => db.log_som.where('diaria_id').equals(diariaId).toArray(), [diariaId]) ?? [];
+  const takes = useLiveQuery(() => db.log_takes.where('diaria_id').equals(diariaId).toArray(), [diariaId]) ?? [];
   const bloqueado = !podeEditar;
   const ultimo = ultimoSom(sons);
+  const semSom = podeEditar ? takeSemSom(takes, sons, estado) : undefined;
+  const [deixar, setDeixar] = useState('');
 
   const avulso = (tipo: Som['tipo']) => {
     if (!podeEditar) return;
@@ -93,6 +99,13 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
             <div className="arquivo-previsto" style={{ fontWeight: 800, opacity: alvo?.marca === 'ng' || alvo?.marca === 'fs' ? 0.55 : 1 }}>
               <ValorQueTroca texto={alvo?.arquivo || arquivoDoSom(estado)} rotuloDeLeitura={alvo ? 'Último arquivo' : 'Próximo arquivo'} tamanho="inherit" />
             </div>
+            {/* O próximo PAR, como a aba Vídeo vai registrar: no set, cada aba mostrava um número e ninguém sabia qual valia. */}
+            {somJunto(estado) && (
+              <span className="text-xs text-muted">
+                próximo take {estado.cena}/{estado.plano}/{estado.take}: vídeo <b style={{ fontFamily: MONO, color: 'var(--text-secondary)' }}>{nomeArquivoPrevisto(estado) || '—'}</b>
+                {' + '}áudio <b style={{ fontFamily: MONO, color: 'var(--text-secondary)' }}>{arquivoDoSom(estado)}</b>
+              </span>
+            )}
           </div>
 
           <div className="claquete-grade" style={{ gridTemplateColumns: `repeat(${casas.length}, minmax(0, 1fr))` }}>
@@ -142,6 +155,11 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
           bloqueado={bloqueado}
           aoMudar={v => mudar({ som_junto: v === 'junto' })}
         />
+
+        {/* No fim: os botões não podem mudar de lugar quando o aviso aparece. */}
+        {semSom && deixar !== semSom.id && (
+          <AvisoDoPar take={semSom} proximoSom={arquivoDoSom(estado)} quem={quem} aoDeixar={() => setDeixar(semSom.id)} />
+        )}
       </section>
 
       <GradeDoSom sons={sons} podeEditar={podeEditar} />
@@ -439,14 +457,27 @@ function EditorDaCelula({ som, trilha, podeEditar, aoFechar }: {
   };
 
   const apagar = async () => {
-    if (!(await confirmar({
-      titulo: `Apagar o registro de ${som.arquivo}?`,
-      detalhe: 'Some a linha dele aqui. Se era o último, o próximo arquivo volta a ser ele.',
-      confirmar: 'Apagar',
-      perigo: true,
-    }))) return;
+    const take = som.take_id ? await db.log_takes.get(som.take_id) : undefined;
+    const volta = 'Se era o último, o próximo arquivo volta a ser ele.';
+    /*
+      O áudio de um par (relato do set, 01/11/2026): apagar só ele deixava o
+      vídeo do mesmo toque para trás, e o vídeo seguia um passo à frente.
+    */
+    const resposta = take
+      ? await escolher({
+        titulo: `Apagar ${som.arquivo}? Ele foi gravado junto com o vídeo ${take.arquivo} (take ${take.cena}/${take.plano}/${take.take}).`,
+        detalhe: `Foi um registro a mais? "Apagar os dois" tira o áudio e o vídeo, e a claquete e os dois próximos arquivos voltam juntos. "Só o áudio" deixa o vídeo sem som. ${volta}`,
+        confirmar: 'Apagar os dois',
+        alternativa: 'Só o áudio',
+        perigo: true,
+      })
+      : await confirmar({ titulo: `Apagar o registro de ${som.arquivo}?`, detalhe: `Some a linha dele aqui. ${volta}`, confirmar: 'Apagar', perigo: true });
+    if (!resposta) return;
     aoFechar();
-    await apagarSom(som.id);
+    if (take && resposta === true) {
+      await apagarTake(take.id);
+      if (take.foto) void apagarArquivo(take.foto);
+    } else await apagarSom(som.id);
   };
 
   return (

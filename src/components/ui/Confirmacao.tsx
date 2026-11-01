@@ -45,10 +45,14 @@ export interface OpcoesConfirmacao {
    * Pasta vazia ou inexistente cai no padrão: triste no perigo, dúvida no resto.
    */
   humor?: Humor | readonly Humor[];
+  /** Uma terceira saída, entre o cancelar e o confirmar ("Só o áudio"). Só pelo `escolher`. */
+  alternativa?: string;
 }
 
+type Resposta = boolean | 'alternativa';
+
 interface Pedido extends OpcoesConfirmacao {
-  resolver: (resposta: boolean) => void;
+  resolver: (resposta: Resposta) => void;
 }
 
 /*
@@ -73,7 +77,16 @@ export function confirmar(opcoes: string | OpcoesConfirmacao): Promise<boolean> 
   */
   if (!abrir) return Promise.resolve(true);
 
-  return new Promise<boolean>(resolver => abrir!({ ...o, resolver }));
+  return new Promise<boolean>(resolver => abrir!({ ...o, alternativa: undefined, resolver: r => resolver(r === true) }));
+}
+
+/**
+ * A mesma pergunta com três saídas: `true` (confirmar), `'alternativa'` ou
+ * `false` (cancelar). Sem o host, vira o confirmar, como no `confirmar`.
+ */
+export function escolher(opcoes: OpcoesConfirmacao & { alternativa: string }): Promise<Resposta> {
+  if (!abrir) return Promise.resolve(true);
+  return new Promise<Resposta>(resolver => abrir!({ ...opcoes, resolver }));
 }
 
 export function Confirmacoes() {
@@ -85,7 +98,7 @@ export function Confirmacoes() {
     return () => { abrir = null; };
   }, []);
 
-  const responder = (resposta: boolean) => {
+  const responder = (resposta: Resposta) => {
     pedido?.resolver(resposta);
     setPedido(null);
   };
@@ -161,10 +174,15 @@ export function Confirmacoes() {
               altura={130}
             />
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button onClick={() => responder(false)} className="btn-secondary" style={{ flex: 1 }}>
                 {pedido.cancelar || 'Cancelar'}
               </button>
+              {pedido.alternativa && (
+                <button onClick={() => responder('alternativa')} className="btn-secondary" style={{ flex: 1, whiteSpace: 'nowrap' }}>
+                  {pedido.alternativa}
+                </button>
+              )}
               <button
                 onClick={() => responder(true)}
                 className="btn-primary"

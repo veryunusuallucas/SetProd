@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
@@ -6,14 +6,15 @@ import { db } from '../../db/db';
 import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
-import { confirmar } from '../ui/Confirmacao';
+import { confirmar, escolher } from '../ui/Confirmacao';
 import { ImagemAnexo } from '../ImagemAnexo';
 import { apagarArquivo } from '../../lib/arquivos';
 import { Abre, MONO, Rotulo } from './pecas';
 import {
   COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo, claqueteLegivel,
-  registrarTake, substituirTake,
+  registrarTake, somParaOTake, substituirTake, takeSemSom,
 } from '../../lib/logagem/takes';
+import { arquivoDoSom, takeLevaSom } from '../../lib/logagem/som';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { EditarTake } from './EditarTake';
 import { comecarCenaPelaLogagem } from '../../lib/logagem/linhaDoDia';
@@ -70,16 +71,39 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
   /** O "revisar antes de enviar" ligado, esperando o sim. */
   const [revisando, setRevisando] = useState<StatusTake | null>(null);
   const [ultimo, setUltimo] = useState<string>('');
+  /** O recibo do último registro, com o Desfazer: o clique a mais se desfaz ali mesmo. */
+  const [recibo, setRecibo] = useState<{ take: Take; som?: string } | null>(null);
+  useEffect(() => {
+    if (!recibo) return;
+    const t = setTimeout(() => setRecibo(null), 10000);
+    return () => clearTimeout(t);
+  }, [recibo]);
+  /** Quando foi o último toque: um segundo OK colado no primeiro é dedo, não take. */
+  const ultimoToque = useRef(0);
 
   const gravar = async (status: StatusTake, comEstado = estado) => {
     const primeiroDaCena = Boolean(cenaDaClaquete(comEstado)) && !takes.some(t => t.cena_id === cenaDaClaquete(comEstado));
+    const som = takeLevaSom(comEstado) ? arquivoDoSom(comEstado) : undefined;
     const take = await registrarTake(comEstado, status, quem);
     vibrarStatus(status);
     setUltimo(take.id);
+    setRecibo({ take, som });
     setRepetido(null);
     setRevisando(null);
     if (primeiroDaCena && take.cena_id) void avisarLinhaDoDia(take);
   };
+
+  /** Desfaz o registro: some o take e o som, a claquete e os arquivos voltam, e a observação também. */
+  const desfazer = async (take: Take) => {
+    setRecibo(null);
+    await apagarTake(take.id);
+    await mudarEstado(take.diaria_id, { obs: take.obs || '', foto: take.foto || '' });
+    vibrar('toque');
+  };
+
+  const sons = useLiveQuery(() => db.log_som.where('diaria_id').equals(estado.diaria_id).toArray(), [estado.diaria_id]) ?? [];
+  const [deixar, setDeixar] = useState('');
+  const semSom = takeSemSom(takes, sons, estado);
 
   /*
     O primeiro take da cena é o "começou" dela na linha do dia. Fora de ordem,
@@ -105,6 +129,9 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
 
   const tentar = (status: StatusTake) => {
     if (!podeEditar) return;
+    // Nenhum take dura 1,5 s: o segundo toque é o dedo repetindo (relato do set, 01/11/2026).
+    if (Date.now() - ultimoToque.current < 1500) return;
+    ultimoToque.current = Date.now();
     if (estado.revisar_antes) { setRevisando(status); return; }
     seguir(status);
   };
@@ -187,10 +214,51 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
           />
         )}
       </Abre>
+
+      <Abre aberto={Boolean(recibo)}>
+        {recibo && (
+          <Caixa
+            titulo={`Take ${recibo.take.cena}/${recibo.take.plano}/${recibo.take.take} registrado como ${ROTULO_DO_STATUS[recibo.take.status]}.`}
+            detalhe={recibo.som ? `Vídeo ${recibo.take.arquivo} + áudio ${recibo.som}.` : `Vídeo ${recibo.take.arquivo}, sem áudio.`}
+            acoes={[
+              { rotulo: 'Desfazer', aoClicar: () => void desfazer(recibo.take) },
+              { rotulo: 'Ok', aoClicar: () => setRecibo(null) },
+            ]}
+          />
+        )}
+      </Abre>
+
+      <Abre aberto={Boolean(semSom && !recibo && deixar !== semSom.id)}>
+        {semSom && <AvisoDoPar take={semSom} proximoSom={arquivoDoSom(estado)} quem={quem} aoDeixar={() => setDeixar(semSom.id)} />}
+      </Abre>
     </>
   );
 
   return { takes, ultimo, tentar, decisoes, decidindo: Boolean(repetido || revisando) };
+}
+
+/**
+ * O último take ficou sem som (apagaram só o áudio dele): vídeo e gravador
+ * desalinhados. Diz qual, e acerta com um toque — criar o áudio dele ou apagar
+ * o vídeo também. "Está certo assim" é para quando a câmera rodou mesmo sem som.
+ */
+export function AvisoDoPar({ take, proximoSom, quem, aoDeixar }: { take: Take; proximoSom: string; quem?: string; aoDeixar: () => void }) {
+  return (
+    <Caixa
+      alerta
+      titulo={`O take ${take.cena}/${take.plano}/${take.take} (vídeo ${take.arquivo}) está sem áudio.`}
+      detalhe={`Por isso o próximo áudio é ${proximoSom} e o vídeo está um passo à frente. Se o áudio dele foi apagado por engano, crie de novo; se o take inteiro não existiu, apague o vídeo também.`}
+      acoes={[
+        { rotulo: `Criar o áudio (${proximoSom})`, principal: true, aoClicar: () => void somParaOTake(take, quem) },
+        {
+          rotulo: 'Apagar o vídeo também',
+          aoClicar: () => void confirmar({ titulo: `Apagar o vídeo ${take.arquivo}?`, detalhe: `O take ${take.cena}/${take.plano}/${take.take} some, e a claquete e o próximo vídeo voltam para ele.`, confirmar: 'Apagar', perigo: true })
+            .then(sim => { if (sim) void apagarTake(take.id); }),
+        },
+        { rotulo: 'Está certo assim', aoClicar: aoDeixar },
+      ]}
+    />
+  );
 }
 
 /**
@@ -295,13 +363,20 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
   const [editando, setEditando] = useState(false);
 
   const apagar = async () => {
-    if (!(await confirmar({
-      titulo: `Apagar o take ${take.cena}/${take.plano}/${take.take}?`,
-      detalhe: `Some o registro dele aqui, e o do som casado com ele. Se era o último, a claquete volta para o take ${take.take} e o próximo arquivo volta para ${take.arquivo}. Se a câmera chegou a gravar esse arquivo, corrija o próximo na aba Câmera.`,
-      confirmar: 'Apagar',
-      perigo: true,
-    }))) return;
-    await apagarTake(take.id);
+    const casados = await db.log_som.where('take_id').equals(take.id).toArray();
+    const audio = casados.map(s => s.arquivo).join(', ');
+    const volta = `Se era o último, a claquete volta para o take ${take.take} e o próximo vídeo para ${take.arquivo}.`;
+    const resposta = casados.length
+      ? await escolher({
+        titulo: `Apagar o take ${take.cena}/${take.plano}/${take.take}? Ele foi gravado junto com o áudio ${audio}.`,
+        detalhe: `"Apagar os dois" tira o vídeo e o áudio, e o próximo áudio volta junto. "Só o vídeo" deixa o áudio ${audio} solto no boletim de som. ${volta}`,
+        confirmar: 'Apagar os dois',
+        alternativa: 'Só o vídeo',
+        perigo: true,
+      })
+      : await confirmar({ titulo: `Apagar o take ${take.cena}/${take.plano}/${take.take}?`, detalhe: volta, confirmar: 'Apagar', perigo: true });
+    if (!resposta) return;
+    await apagarTake(take.id, resposta === true);
     // A foto era daquele take e de mais ninguém; deixá-la ocuparia o aparelho
     // e o Storage para sempre, sem nada apontando para ela.
     if (take.foto) void apagarArquivo(take.foto);

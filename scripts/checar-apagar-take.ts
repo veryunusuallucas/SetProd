@@ -1,6 +1,6 @@
 // Apagar o último take volta a claquete e os contadores (relato do set, 31/10/2026).
 import assert from 'node:assert/strict';
-import { voltaDoApagado } from '../src/lib/logagem/takes';
+import { takeSemSom, voltaDoApagado } from '../src/lib/logagem/takes';
 import { voltaDoSom, renumerarSeguintes } from '../src/lib/logagem/som';
 import { PADRAO } from '../src/lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../src/lib/logagem/nomenclatura';
@@ -25,4 +25,9 @@ assert.deepEqual(voltaDoSom({ ...estado, arquivo_som: 'ZOOM0009' }, som, [som]),
 // Renomear: os seguintes em sequência.
 const s2 = { ...som, id: 's2', arquivo: 'ZOOM0002', ordem: 2 } as Som;
 assert.deepEqual(renumerarSeguintes([som, s2], som, 'ZOOM0005'), [{ id: 's2', arquivo: 'ZOOM0006' }]);
-console.log('ok: apagar e renomear');
+// O par desalinhado (set, 01/11/2026): o último take sem o som dele.
+assert.equal(takeSemSom([take, t2], [som], estado)?.id, 't2');
+assert.equal(takeSemSom([take], [som], estado), undefined);
+assert.equal(takeSemSom([take, t2], [som], { ...estado, som_junto: false }), undefined);
+assert.equal(takeSemSom([take, { ...t2, audio: 'MOS' } as Take], [som], estado), undefined);
+console.log('ok: apagar, renomear e par desalinhado');
