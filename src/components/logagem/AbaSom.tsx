@@ -53,7 +53,6 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
   const bloqueado = !podeEditar;
   const ultimo = ultimoSom(sons);
   const semSom = podeEditar ? takeSemSom(takes, sons, estado) : undefined;
-  const [deixar, setDeixar] = useState('');
 
   const avulso = (tipo: Som['tipo']) => {
     if (!podeEditar) return;
@@ -157,8 +156,8 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
         />
 
         {/* No fim: os botões não podem mudar de lugar quando o aviso aparece. */}
-        {semSom && deixar !== semSom.id && (
-          <AvisoDoPar take={semSom} proximoSom={arquivoDoSom(estado)} quem={quem} aoDeixar={() => setDeixar(semSom.id)} />
+        {semSom && (
+          <AvisoDoPar take={semSom} proximoSom={arquivoDoSom(estado)} quem={quem} />
         )}
       </section>
 

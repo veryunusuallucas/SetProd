@@ -102,7 +102,6 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
   };
 
   const sons = useLiveQuery(() => db.log_som.where('diaria_id').equals(estado.diaria_id).toArray(), [estado.diaria_id]) ?? [];
-  const [deixar, setDeixar] = useState('');
   const semSom = takeSemSom(takes, sons, estado);
 
   /*
@@ -228,8 +227,8 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
         )}
       </Abre>
 
-      <Abre aberto={Boolean(semSom && !recibo && deixar !== semSom.id)}>
-        {semSom && <AvisoDoPar take={semSom} proximoSom={arquivoDoSom(estado)} quem={quem} aoDeixar={() => setDeixar(semSom.id)} />}
+      <Abre aberto={Boolean(semSom && !recibo)}>
+        {semSom && <AvisoDoPar take={semSom} proximoSom={arquivoDoSom(estado)} quem={quem} />}
       </Abre>
     </>
   );
@@ -240,9 +239,10 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
 /**
  * O último take ficou sem som (apagaram só o áudio dele): vídeo e gravador
  * desalinhados. Diz qual, e acerta com um toque — criar o áudio dele ou apagar
- * o vídeo também. "Está certo assim" é para quando a câmera rodou mesmo sem som.
+ * o vídeo também — ou dizer que rodou sem som (MOS): fica gravado no take, e
+ * o aviso some em todas as abas e aparelhos.
  */
-export function AvisoDoPar({ take, proximoSom, quem, aoDeixar }: { take: Take; proximoSom: string; quem?: string; aoDeixar: () => void }) {
+export function AvisoDoPar({ take, proximoSom, quem }: { take: Take; proximoSom: string; quem?: string }) {
   return (
     <Caixa
       alerta
@@ -255,7 +255,7 @@ export function AvisoDoPar({ take, proximoSom, quem, aoDeixar }: { take: Take; p
           aoClicar: () => void confirmar({ titulo: `Apagar o vídeo ${take.arquivo}?`, detalhe: `O take ${take.cena}/${take.plano}/${take.take} some, e a claquete e o próximo vídeo voltam para ele.`, confirmar: 'Apagar', perigo: true })
             .then(sim => { if (sim) void apagarTake(take.id); }),
         },
-        { rotulo: 'Está certo assim', aoClicar: aoDeixar },
+        { rotulo: 'Rodou sem som (MOS)', aoClicar: () => void db.log_takes.update(take.id, { audio: 'MOS' }) },
       ]}
     />
   );
