@@ -227,6 +227,49 @@ export function acharDesvio(clipes: ClipeComHora[], arquivos: ArquivoDoGravador[
 }
 
 /**
+ * Onde o relógio do gravador VOLTOU (Diária 2, 31/10/2026): o Zoom H6 zera a
+ * hora quando fica sem energia — trocaram a pilha depois do ZOOM0020 e o
+ * ZOOM0021 nasceu às 00:01. Um desvio só para o dia inteiro não casava mais
+ * nada dali em diante. Pela ordem do número do arquivo, cada vez que a hora
+ * anda para trás abre um trecho novo; também cobre a diária que passa da
+ * meia-noite.
+ */
+export function trechosDoRelogio(arquivos: ArquivoDoGravador[]): ArquivoDoGravador[][] {
+  const emOrdem = [...arquivos].sort((a, b) => a.nome.localeCompare(b.nome, 'en', { numeric: true }));
+  const trechos: ArquivoDoGravador[][] = [[]];
+  let anterior: number | undefined;
+  for (const a of emOrdem) {
+    // Um minuto de margem: dois arquivos quase juntos podem vir com a hora fora de ordem.
+    if (anterior !== undefined && a.inicio !== undefined && a.inicio < anterior - 60) trechos.push([]);
+    trechos[trechos.length - 1].push(a);
+    if (a.inicio !== undefined) anterior = a.inicio;
+  }
+  return trechos.filter(t => t.length);
+}
+
+/**
+ * O casamento trecho a trecho, cada um com o desvio dele. O `desvio` dado
+ * (digitado, do boletim) vale para o primeiro; os outros acham o próprio.
+ * Devolve o mesmo formato do `casar`, mais o desvio de cada trecho.
+ */
+export function casarPorTrechos(clipes: ClipeComHora[], arquivos: ArquivoDoGravador[], desvio: number | null) {
+  let livres = clipes;
+  const pares: Par[] = [];
+  const semVideo: ArquivoDoGravador[] = [];
+  const desvios: { primeiro: string; desvio: number | null }[] = [];
+  trechosDoRelogio(arquivos).forEach((trecho, i) => {
+    const d = i === 0 && desvio !== null ? desvio : acharDesvio(livres, trecho);
+    desvios.push({ primeiro: trecho[0].nome, desvio: d });
+    if (d === null) { semVideo.push(...trecho); return; }
+    const r = casar(livres, trecho, d);
+    pares.push(...r.pares);
+    semVideo.push(...r.semVideo);
+    livres = r.semSom;
+  });
+  return { pares: pares.sort((a, b) => a.clipe.inicio - b.clipe.inicio), semVideo, semSom: livres, desvios };
+}
+
+/**
  * O desvio que o próprio boletim já prova: um arquivo logado com a câmera
  * ("Som junto") cujo take passou pelo ingest. É o par que alguém viu no set.
  */

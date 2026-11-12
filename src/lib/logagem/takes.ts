@@ -4,7 +4,7 @@ import { nomeArquivoPrevisto } from './nomenclatura';
 import { ehExtra, mesmaClaquete, proximoPlanoLivre } from './claquete';
 import { idDoEstado } from './estado';
 import { numeroDoClipe } from './ingest';
-import { registrarSom, somAcompanhaHero, takeLevaSom, voltaDoSom } from './som';
+import { registrarSom, takeLevaSom, voltaDoSom } from './som';
 
 /**
  * Registrar o take: o ato que a Logagem existe para fazer.
@@ -161,7 +161,6 @@ async function sincronizarKit(estado: EstadoDaLogagem, clipe: number) {
  * arquivo aqui seria dizer que a câmera regravou por cima, o que não aconteceu.
  */
 export async function substituirTake(id: string, estado: EstadoDaLogagem, status: StatusTake, agora = new Date()) {
-  await somAcompanhaHero(id, status);
   return db.log_takes.update(id, {
     status,
     hora: horaDeAgora(agora),
@@ -389,7 +388,6 @@ async function claqueteAoSom(id: string, mudanca: EdicaoDoTake) {
 }
 
 export async function editarTake(id: string, mudanca: EdicaoDoTake) {
-  await somAcompanhaHero(id, mudanca.status);
   await claqueteAoSom(id, mudanca);
   return db.log_takes.update(id, mudanca);
 }

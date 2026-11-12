@@ -1,5 +1,5 @@
 import { db } from '../../db/db';
-import type { EstadoDaLogagem, Som, Take } from '../../types';
+import type { EstadoDaLogagem, Som, StatusTake, Take } from '../../types';
 import { horaDeAgora, proximoArquivo } from './takes';
 import { idDoEstado } from './estado';
 import { horaDoDia, type LinhaDaSincronia } from './sincronia';
@@ -106,8 +106,7 @@ export function montarSom(
     arquivo: arquivoDoSom(estado),
     rolo: estado.rolo_som?.trim() || undefined,
     trilhas: trilhasDoSom(estado).map(nome => ({ nome })),
-    // O HERO da câmera é o take escolhido: o som dele nasce HERO também.
-    marca: take?.status === 'HERO' ? 'hero' : undefined,
+    // Sem marca própria: o som grudado segue a do vídeo (`marcaQueVale`).
     take_id: take?.id,
     hora: horaDeAgora(agora),
     ordem,
@@ -135,16 +134,42 @@ export async function registrarSom(estado: EstadoDaLogagem, tipo: Som['tipo'], q
   });
 }
 
+/* ───────────────────────── Marca geral e marca do áudio (Logagem v2, passo 3) ───────────────────────── */
+
+/** A marca que o status do vídeo dá ao áudio grudado nele. */
+export const MARCA_DO_STATUS: Partial<Record<StatusTake, NonNullable<Som['marca']>>> = { OK: 'ok', NG: 'ng', HERO: 'hero', RECINV: 'fs' };
+
 /**
- * O take de câmera virou HERO depois (substituído ou editado): o som casado
- * sem marca vira HERO. Marca que alguém já pôs à mão (FS, NG) fica — o som
- * pode ter estragado justo no take que a câmera adorou.
+ * A marca que VALE para o som (Lucas, 01/11/2026): "se eu coloco que não foi
+ * bom, ele já exclui o áudio e o vídeo; mas se o áudio for bom, ele pode ainda
+ * mexer, e continuam linkados".
+ *
+ * - sem marca própria, o som grudado SEGUE o vídeo — o OK geral marca os dois,
+ *   e mudar o vídeo depois (NG → HERO) muda o som junto;
+ * - com marca própria, vale a dele (vídeo OK, áudio NG por causa do avião), e
+ *   ele continua grudado;
+ * - tirar a marca própria volta a seguir o vídeo.
  */
-export async function somAcompanhaHero(takeId: string, status?: string) {
-  if (status !== 'HERO') return;
-  const casados = await db.log_som.where('take_id').equals(takeId).toArray();
-  for (const s of casados) if (!s.marca) await db.log_som.update(s.id, { marca: 'hero' });
+export function marcaQueVale(som: Pick<Som, 'marca'>, take?: Pick<Take, 'status'>): Som['marca'] {
+  return som.marca ?? (take ? MARCA_DO_STATUS[take.status] : undefined);
 }
+
+/** O som está só seguindo o vídeo (não tem marca dele)? */
+export const segueOVideo = (som: Pick<Som, 'marca'>, take?: Pick<Take, 'status'>) =>
+  !som.marca && Boolean(take && MARCA_DO_STATUS[take.status]);
+
+/** Os sons com a marca que vale, para relatório e contagem: o papel não sabe de "segue". */
+export function comMarcaQueVale(sons: Som[], takes: Pick<Take, 'id' | 'status'>[]): Som[] {
+  const porId = new Map(takes.map(t => [t.id, t]));
+  return sons.map(s => ({ ...s, marca: marcaQueVale(s, s.take_id ? porId.get(s.take_id) : undefined) }));
+}
+
+/**
+ * Tocar numa marca do som: vira a marca DELE. Tocar na que já é dele tira — e
+ * ele volta a seguir o vídeo (ou fica sem marca, se está solto).
+ */
+export const tocarNaMarca = (som: Pick<Som, 'id' | 'marca'>, marca: NonNullable<Som['marca']>) =>
+  mudarSom(som.id, { marca: som.marca === marca ? undefined : marca });
 
 export const mudarSom = (id: string, m: Partial<Pick<Som, 'marca' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);
 
@@ -160,11 +185,40 @@ export async function grudarSom(somId: string, take: Take) {
     take_id: take.id, tipo: 'take',
     cena: take.cena, plano: take.plano, take: take.take, cena_id: take.cena_id, plano_id: take.plano_id,
   });
-  await somAcompanhaHero(take.id, take.status);
 }
 
 /** Desgruda: o som fica solto no boletim, com a claquete que tinha. O vídeo fica sem esse áudio. */
 export const desgrudarSom = (somId: string) => db.log_som.update(somId, { take_id: undefined });
+
+/* ───────────────────────── Só áudio (Logagem v2, passo 4) ───────────────────────── */
+
+/**
+ * Take só de áudio: a claquete bateu, o gravador rodou, a câmera não. Vira um
+ * take de som com a claquete atual, sem vídeo — e o take da claquete anda,
+ * porque esse número foi usado. O clipe da câmera não anda: ela não gravou.
+ */
+export async function registrarSoAudio(estado: EstadoDaLogagem, quem?: string) {
+  return db.transaction('rw', db.log_som, db.log_estado, async () => {
+    const noBanco = await db.log_estado.get(idDoEstado(estado.diaria_id));
+    const take = Number(noBanco?.take ?? estado.take) || 1;
+    const som = await registrarSom({ ...estado, take }, 'take', quem);
+    await db.log_estado.update(idDoEstado(estado.diaria_id), { take: take + 1 });
+    return som;
+  });
+}
+
+/**
+ * A claquete própria de um som SOLTO (desgrudou e era de outro plano, ou um
+ * wild que na verdade foi o take 3). O grudado não muda por aqui: a claquete
+ * dele é a do vídeo.
+ */
+export async function claqueteDoSomSolto(som: Pick<Som, 'id' | 'take_id'>, claquete: { cena: string; plano: string; take?: number }) {
+  if (som.take_id) return;
+  await db.log_som.update(som.id, {
+    tipo: 'take', cena: claquete.cena.trim(), plano: claquete.plano.trim(), take: claquete.take,
+    cena_id: undefined, plano_id: undefined,
+  });
+}
 
 /** "18:12:05" → segundos, para achar o que foi logado perto. */
 const segundos = (hora?: string) => {
@@ -352,7 +406,6 @@ export async function aplicarSincronia(
         take: t?.take,
         arquivo: l.arquivo.nome,
         rolo: estado.rolo_som?.trim() || undefined,
-        marca: t?.status === 'HERO' ? 'hero' : undefined,
         trilhas: trilhasDasFaixas(l.arquivo.faixas, kit),
         obs: t ? undefined : 'sem vídeo no mesmo horário (ingest)',
         take_id: t?.id,

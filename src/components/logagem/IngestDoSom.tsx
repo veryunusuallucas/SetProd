@@ -8,7 +8,7 @@ import { MONO, Rotulo, estiloCampo } from './pecas';
 import { garantirEstado, idDoEstado } from '../../lib/logagem/estado';
 import { aplicarSincronia } from '../../lib/logagem/som';
 import {
-  acharDesvio, casar, clipesDosTakes, desvioDoBoletim, desvioLegivel, horaDoDia, juntarFaixas, lerCabecalhoWav,
+  acharDesvio, casarPorTrechos, trechosDoRelogio, clipesDosTakes, desvioDoBoletim, desvioLegivel, horaDoDia, juntarFaixas, lerCabecalhoWav,
   lerDesvio, planejarSincronia, type AcaoDaSincronia, type ArquivoDoGravador,
 } from '../../lib/logagem/sincronia';
 import { claqueteLegivel } from '../../lib/logagem/takes';
@@ -77,7 +77,8 @@ export function IngestDoSom({ projetoId, diariaId, podeEditar, departamentoId, q
   const clipes = clipesDosTakes(dados.takes);
   const arquivos = lidos ?? [];
   const doBoletim = lidos ? desvioDoBoletim(dados.sons, clipes, arquivos) : null;
-  const achado = lidos ? acharDesvio(clipes, arquivos) : null;
+  // O desvio do campo é o do PRIMEIRO trecho do relógio; se a hora do gravador voltou, os outros acham o seu.
+  const achado = lidos ? acharDesvio(clipes, trechosDoRelogio(arquivos)[0] ?? []) : null;
   /*
     O horário vem antes do boletim: ele usa TODOS os pares, e o par do boletim
     carrega o atraso de quem apertou REC (3 s, às vezes). O boletim entra
@@ -88,8 +89,10 @@ export function IngestDoSom({ projetoId, diariaId, podeEditar, departamentoId, q
     : achado !== null ? 'achado pelo horário de todos os arquivos'
     : doBoletim !== null ? 'pelo boletim (um arquivo logado com a câmera)'
     : dados.estado?.desvio_som !== undefined ? 'o da última vez' : '';
-  const linhas = lidos && desvio !== null ? planejarSincronia(casar(clipes, arquivos, desvio), dados.takes, dados.sons) : [];
-  const semSom = lidos && desvio !== null ? casar(clipes, arquivos, desvio).semSom : [];
+  const resultado = lidos && desvio !== null ? casarPorTrechos(clipes, arquivos, desvio) : null;
+  const linhas = resultado ? planejarSincronia(resultado, dados.takes, dados.sons) : [];
+  const semSom = resultado?.semSom ?? [];
+  const voltas = resultado?.desvios.slice(1) ?? [];
 
   const aplicar = async () => {
     if (desvio === null) return;
@@ -170,6 +173,16 @@ export function IngestDoSom({ projetoId, diariaId, podeEditar, departamentoId, q
                 : `${desvio >= 0 ? 'O gravador está adiantado' : 'O gravador está atrasado'} ${desvioLegivel(Math.abs(desvio)).slice(1)} em relação à câmera — ${origem}.`}
             </span>
           </div>
+
+          {voltas.length > 0 && (
+            <p className="text-xs" style={{ margin: 0, display: 'flex', gap: '8px', color: 'var(--color-warning)' }}>
+              <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span>
+                O relógio do gravador voltou {voltas.map(v => `no ${v.primeiro}${v.desvio === null ? ' (não achei a diferença desse trecho)' : ` (dali em diante, ${desvioLegivel(v.desvio)})`}`).join(' e ')}.
+                Costuma ser pilha trocada: o gravador zera a hora. Cada trecho casou com a diferença dele.
+              </span>
+            </p>
+          )}
 
           {linhas.length > 0 && (
             <div style={{ overflowX: 'auto' }}>

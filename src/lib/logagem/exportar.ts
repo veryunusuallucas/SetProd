@@ -6,7 +6,7 @@ import { membrosDoProjeto } from '../membros';
 import { criarHd, marcarBackup } from './backup';
 import { blobDoDataUrl, montarCopia, type CopiaLida, type PlanoDeRestauracao } from './copia';
 import { garantirEstado, idDoEstado, mudarEstado } from './estado';
-import { kitLegivel, ordenarSons } from './som';
+import { comMarcaQueVale, kitLegivel, ordenarSons } from './som';
 import type { BackupDeCartao, ChecksumDeCartao, Diaria, HdDeBackup, Projeto, Som, Take } from '../../types';
 import {
   TITULO_DO_RELATORIO, equipeDoReport, linhasDoComprovante, nomeDeQuemLogou, nomeDoArquivo, ordenarTakes, paraCsv,
@@ -101,7 +101,8 @@ export async function coletarRelatorio(
     projeto,
     diaria,
     takes: ordenarTakes(takes),
-    sons: ordenarSons(sons),
+    // A marca que vale (a do áudio, ou a do vídeo que ele segue): o papel não sabe de "segue".
+    sons: ordenarSons(comMarcaQueVale(sons, takes)),
     kitDoSom: estado ? kitLegivel(estado) : '',
     hds: [...hds].sort((a, b) => a.ordem - b.ordem),
     backups,
@@ -217,7 +218,8 @@ export async function copiaDaLogagem(dados: DadosDoRelatorio, versaoDoApp: strin
     diaria: { id: dados.diaria.id, numero: dados.diaria.numero, data: dados.diaria.data },
     estado,
     takes: dados.takes,
-    sons: dados.sons,
+    // Crus, do banco: a cópia guarda se o som tinha marca própria ou seguia o vídeo.
+    sons: ordenarSons(await db.log_som.where('diaria_id').equals(dados.diaria.id).toArray()),
     kits,
     hds: dados.hds,
     backups: dados.backups,

@@ -57,28 +57,50 @@ try {
   const { trilhasDasFaixas } = await vite.ssrLoadModule('/src/lib/logagem/som.ts');
   assert.deepEqual(trilhasDasFaixas(['Tr1', 'Tr3', 'Tr4'], ['Boom', 'Lapela 1', 'Lapela 2']).map(t => t.nome), ['Boom', 'Lapela 1', 'Lapela 2', 'Tr4']);
 
+  // O relógio do gravador zerou (pilha trocada, Diária 2): cada trecho com o seu desvio.
+  const antes = [
+    { nome: 'ZOOM0001', faixas: [], inicio: 10 * 3600, duracao: 60 },
+    { nome: 'ZOOM0002', faixas: [], inicio: 10 * 3600 + 600, duracao: 60 },
+    { nome: 'ZOOM0003', faixas: [], inicio: 100, duracao: 60 },
+    { nome: 'ZOOM0004', faixas: [], inicio: 700, duracao: 60 },
+  ];
+  assert.deepEqual(s.trechosDoRelogio(antes).map(t => t.map(a => a.nome)), [['ZOOM0001', 'ZOOM0002'], ['ZOOM0003', 'ZOOM0004']]);
+  const vids = [
+    { takeId: 'v1', arquivo: 'C1', inicio: 10 * 3600 - 300, duracao: 60 },
+    { takeId: 'v2', arquivo: 'C2', inicio: 10 * 3600 + 300, duracao: 60 },
+    { takeId: 'v3', arquivo: 'C3', inicio: 14 * 3600, duracao: 60 },
+    { takeId: 'v4', arquivo: 'C4', inicio: 14 * 3600 + 600, duracao: 60 },
+  ];
+  const zerou = s.casarPorTrechos(vids, antes, null);
+  assert.deepEqual(zerou.pares.map(p => [p.clipe.arquivo, p.arquivo.nome]), [['C1', 'ZOOM0001'], ['C2', 'ZOOM0002'], ['C3', 'ZOOM0003'], ['C4', 'ZOOM0004']]);
+  assert.equal(zerou.desvios.length, 2);
+
   const [pastaClip, pastaSom] = process.argv.slice(2);
   if (pastaClip && pastaSom) {
     // Só o que a sincronia usa do XML (o `lerNRT` do app precisa de DOMParser, que o Node não tem).
-    const reais = readdirSync(pastaClip).filter(n => /M01.XML$/i.test(n)).map(n => {
-      const t = readFileSync(join(pastaClip, n), 'utf8');
+    // Vários cartões da câmera: pastas CLIP separadas por "|".
+    const reais = pastaClip.split('|').flatMap(pasta => readdirSync(pasta).filter(n => /M01.XML$/i.test(n)).map(n => {
+      const t = readFileSync(join(pasta, n), 'utf8');
       const nome = n.slice(0, 8);
       return { id: nome, arquivo: nome, xml: { criadoEm: /CreationDate value="([^"]+)"/.exec(t)?.[1], segundos: Number(/Duration value="(\d+)"/.exec(t)?.[1]) / 23.976 } };
-    });
+    }));
     const wavs = [];
     for (const pasta of [pastaSom, ...readdirSync(pastaSom).map(d => join(pastaSom, d)).filter(d => statSync(d).isDirectory())]) {
       for (const n of readdirSync(pasta).filter(n => /\.wav$/i.test(n))) wavs.push({ arquivo: n, cab: await s.lerCabecalhoWav(await openAsBlob(join(pasta, n))) });
     }
     const doGravador = s.juntarFaixas(wavs);
     const cl = s.clipesDosTakes(reais);
-    const desvio = s.acharDesvio(cl, doGravador);
-    console.log('desvio achado:', desvio === null ? '—' : s.desvioLegivel(desvio));
-    const real = s.casar(cl, doGravador, desvio ?? 0);
+    const real = s.casarPorTrechos(cl, doGravador, null);
+    for (const d of real.desvios) console.log(`trecho do relógio a partir do ${d.primeiro}: desvio ${d.desvio === null ? '—' : s.desvioLegivel(d.desvio)}`);
     for (const p of real.pares) console.log(`  ${p.clipe.arquivo} ↔ ${p.arquivo.nome} (${p.arquivo.faixas.join(',')}) folga ${p.folga}s`);
     console.log('  só som:', real.semVideo.map(a => `${a.nome}@${s.horaDoDia(a.inicio)}`).join(' '));
     console.log('  só vídeo:', real.semSom.map(c => c.arquivo).join(' '));
-    assert.ok(real.pares.some(p => p.clipe.arquivo === 'A001C003' && p.arquivo.nome === 'ZOOM0007'), 'o par do Lucas');
-    assert.ok(real.pares.some(p => p.clipe.arquivo === 'A001C009' && p.arquivo.nome === 'ZOOM0016'), 'o som que entrou depois da câmera (boletim do continuísta)');
+    console.log(`  ${real.pares.length} pares, ${real.semVideo.length} só som, ${real.semSom.length} só vídeo`);
+    // Os pares conhecidos da Diária 1 (só quando é ela).
+    if (cl.some(c => c.arquivo === 'A001C003')) {
+      assert.ok(real.pares.some(p => p.clipe.arquivo === 'A001C003' && p.arquivo.nome === 'ZOOM0007'), 'o par do Lucas');
+      assert.ok(real.pares.some(p => p.clipe.arquivo === 'A001C009' && p.arquivo.nome === 'ZOOM0016'), 'o som que entrou depois da câmera (boletim do continuísta)');
+    }
   }
   console.log('sincronia: ok');
 } finally {

@@ -1,7 +1,7 @@
 // Apagar o último take volta a claquete e os contadores (relato do set, 31/10/2026).
 import assert from 'node:assert/strict';
 import { clipeDoDigitado, takeSemSom, voltaDoApagado } from '../src/lib/logagem/takes';
-import { voltaDoSom, renumerarSeguintes, sonsParaGrudar, takesParaGrudar } from '../src/lib/logagem/som';
+import { voltaDoSom, renumerarSeguintes, sonsParaGrudar, takesParaGrudar, marcaQueVale, segueOVideo, comMarcaQueVale } from '../src/lib/logagem/som';
 import { PADRAO } from '../src/lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../src/lib/logagem/nomenclatura';
 import type { EstadoDaLogagem, Som, Take } from '../src/types';
@@ -41,4 +41,12 @@ const ta = { id: 'ta', hora: '10:00:00' } as Take, tb = { id: 'tb', hora: '10:05
 const sx = { id: 'sx', arquivo: 'ZOOM0009', hora: '10:04:30', ordem: 9 } as Som;
 assert.deepEqual(takesParaGrudar(sx, [ta, tb, tc], [{ ...som, take_id: 'tb' } as Som]).map(o => o.take.id), ['tc', 'ta', 'tb']);
 assert.deepEqual(sonsParaGrudar(ta, [{ ...sx, take_id: 'tb' } as Som, { ...s2, take_id: undefined, hora: '11:00:00' } as Som]).map(s => s.id), ['s2', 'sx']);
-console.log('ok: apagar, renomear, par desalinhado, nome digitado e grudar');
+// Marca geral e marca do áudio (passo 3).
+assert.equal(marcaQueVale({}, { status: 'OK' }), 'ok', 'OK geral marca os dois');
+assert.equal(marcaQueVale({}, { status: 'NG' }), 'ng', 'NG geral marca os dois');
+assert.equal(marcaQueVale({ marca: 'ng' }, { status: 'OK' }), 'ng', 'vídeo OK, áudio NG (avião)');
+assert.equal(marcaQueVale({ marca: 'ok' }, { status: 'NG' }), 'ok', 'NG geral com áudio bom');
+assert.equal(marcaQueVale({}, undefined), undefined, 'solto sem marca');
+assert.ok(segueOVideo({}, { status: 'HERO' }) && !segueOVideo({ marca: 'ok' }, { status: 'HERO' }));
+assert.deepEqual(comMarcaQueVale([{ ...som, marca: undefined }], [{ id: 't1', status: 'HERO' }]).map(s => s.marca), ['hero'], 'vídeo virou HERO depois: o áudio vai junto');
+console.log('ok: apagar, renomear, par desalinhado, nome digitado, grudar e marca');

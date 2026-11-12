@@ -15,7 +15,7 @@ import { Campo, Escolha, MONO, NomeQueCorrige, Rotulo, Segmentado, SeletorComOut
 import { garantirEstado, idDoEstado, mudarEstado, PADRAO } from '../../lib/logagem/estado';
 import {
   MARCAS, NOTAS_DE_TRILHA, OPCOES_DO_GRAVADOR, primeiroArquivoDo, ROTULO_DO_TIPO, alternarNota, apagarSom, arquivoDoSom, mudarSom, ordenarSons, renomearSom, renumerarSeguintes,
-  registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom,
+  registrarSom, resumoDoSom, somJunto, trechosDoSom, trilhasDoSom, ultimoSom, MARCA_DO_STATUS, comMarcaQueVale, marcaQueVale, segueOVideo, tocarNaMarca, registrarSoAudio,
 } from '../../lib/logagem/som';
 import { useElencoDaCena } from './useElencoDaCena';
 import { vibrar } from '../../lib/vibracao';
@@ -53,6 +53,7 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
   const takes = useLiveQuery(() => db.log_takes.where('diaria_id').equals(diariaId).toArray(), [diariaId]) ?? [];
   const bloqueado = !podeEditar;
   const ultimo = ultimoSom(sons);
+  const takeDoUltimo = ultimo?.take_id ? takes.find(t => t.id === ultimo.take_id) : undefined;
   const semSom = podeEditar ? takeSemSom(takes, sons, estado) : undefined;
 
   const avulso = (tipo: Som['tipo']) => {
@@ -63,6 +64,12 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
       await registrarSom(atual, tipo, quem);
       vibrar('ok');
     })();
+  };
+
+  /** Take só de áudio (Logagem v2, passo 4): a câmera não rodou, o som sim. */
+  const soAudio = () => {
+    if (!podeEditar) return;
+    void registrarSoAudio(estado, quem).then(() => vibrar('ok'));
   };
 
   /*
@@ -104,7 +111,7 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
                 </span>
               )}
             </div>
-            <div className="arquivo-previsto" style={{ fontWeight: 800, opacity: alvo?.marca === 'ng' || alvo?.marca === 'fs' ? 0.55 : 1 }}>
+            <div className="arquivo-previsto" style={{ fontWeight: 800, opacity: alvo && ['ng', 'fs'].includes(marcaQueVale(alvo, takeDoUltimo) ?? '') ? 0.55 : 1 }}>
               <NomeQueCorrige
                 nome={alvo?.arquivo || arquivoDoSom(estado)}
                 rotulo={alvo ? 'Último arquivo' : 'Próximo arquivo'}
@@ -139,15 +146,17 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
           grade abaixo corrige qualquer um depois.
         */}
         <div className="status-grade" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-          {(['ok', 'ng', 'hero'] as const).map(m => <BotaoDaMarca key={m} marca={m} ultimo={ultimo} bloqueado={bloqueado} grande />)}
+          {(['ok', 'ng', 'hero'] as const).map(m => <BotaoDaMarca key={m} marca={m} ultimo={ultimo} take={takeDoUltimo} bloqueado={bloqueado} grande />)}
         </div>
+        <ContaDaMarca ultimo={ultimo} take={takeDoUltimo} />
 
         {/* O que é só som: menor, embaixo — acontece algumas vezes por dia, não a cada take. */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
-          {([['wild', Wind], ['room_tone', Volume2]] as const).map(([tipo, Icone]) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+          {([['wild', Wind, ROTULO_DO_TIPO.wild], ['room_tone', Volume2, ROTULO_DO_TIPO.room_tone], ['so_audio', Mic, `Só áudio · take ${estado.take}`]] as const).map(([tipo, Icone, rotulo]) => (
             <BotaoTatil
               key={tipo}
-              onClick={() => avulso(tipo)}
+              onClick={() => (tipo === 'so_audio' ? soAudio() : avulso(tipo))}
+              title={tipo === 'so_audio' ? 'A câmera não rodou: loga o áudio com a claquete atual, e o take anda' : undefined}
               disabled={bloqueado}
               escala={0.97}
               style={{
@@ -157,10 +166,10 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
                 cursor: bloqueado ? 'default' : 'pointer', opacity: bloqueado ? 0.5 : 1,
               }}
             >
-              <Icone size={17} /> {ROTULO_DO_TIPO[tipo]}
+              <Icone size={17} /> {rotulo}
             </BotaoTatil>
           ))}
-          <BotaoDaMarca marca="fs" ultimo={ultimo} bloqueado={bloqueado} grande={false} />
+          <BotaoDaMarca marca="fs" ultimo={ultimo} take={takeDoUltimo} bloqueado={bloqueado} grande={false} />
         </div>
 
         <Segmentado
@@ -193,15 +202,34 @@ export function AbaGravador({ projetoId, diariaId, podeEditar, departamentoId }:
   return <KitDoSom estado={estado} bloqueado={!podeEditar} mudar={mudar} projetoId={projetoId} />;
 }
 
+/**
+ * A frase embaixo dos botões: de quem é a marca do último arquivo. É o que
+ * deixa claro, no set, se o som está seguindo o vídeo ou marcado à parte.
+ */
+function ContaDaMarca({ ultimo, take }: { ultimo?: Som; take?: Take }) {
+  const rotulo = (x?: Som['marca']) => MARCAS.find(m => m.id === x)?.nome ?? '';
+  let texto = ' ';
+  if (ultimo && take) {
+    const doVideo = MARCA_DO_STATUS[take.status];
+    if (!doVideo) texto = `O vídeo ${take.arquivo} não tem marca: a do áudio é só dele.`;
+    else if (segueOVideo(ultimo, take)) texto = `Segue o vídeo ${take.arquivo} (${rotulo(doVideo)}). Toque noutra marca para marcar só o áudio.`;
+    else if (ultimo.marca === doVideo) texto = `Áudio ${rotulo(ultimo.marca)}, igual ao vídeo. Toque de novo para voltar a seguir o vídeo.`;
+    else texto = `Só o áudio está ${rotulo(ultimo.marca)} — o vídeo ${take.arquivo} está ${rotulo(doVideo)}. Toque de novo em ${rotulo(ultimo.marca)} para voltar a seguir o vídeo.`;
+  } else if (ultimo) texto = 'Áudio solto: a marca é só dele.';
+  return <p className="text-xs text-secondary" style={{ margin: 0, minHeight: '2.6em' }}>{texto}</p>;
+}
+
 /** Um botão de marca para o último arquivo. Grande, com a cor cheia da câmera; pequeno, como os do "Só som". */
-function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable<Som['marca']>; ultimo?: Som; bloqueado: boolean; grande: boolean }) {
+function BotaoDaMarca({ marca, ultimo, take, bloqueado, grande }: { marca: NonNullable<Som['marca']>; ultimo?: Som; take?: Take; bloqueado: boolean; grande: boolean }) {
   const m = MARCAS.find(x => x.id === marca)!;
-  const ativa = ultimo?.marca === marca;
+  // Ativa = é a marca que vale. Própria = foi posta no áudio; senão ele só está seguindo o vídeo.
+  const ativa = Boolean(ultimo) && marcaQueVale(ultimo!, take) === marca;
+  const propria = ultimo?.marca === marca;
   const desligado = bloqueado || !ultimo;
   const marcar = () => {
     if (!ultimo || bloqueado) return;
-    vibrar(ativa ? 'toque' : marca === 'fs' ? 'recinv' : marca);
-    void mudarSom(ultimo.id, { marca: ativa ? undefined : marca });
+    vibrar(propria ? 'toque' : marca === 'fs' ? 'recinv' : marca);
+    void tocarNaMarca(ultimo, marca);
   };
   if (grande) {
     return (
@@ -212,9 +240,17 @@ function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable
         aria-pressed={ativa}
         disabled={desligado}
         onClick={marcar}
-        style={{ minHeight: '64px', boxShadow: ativa ? 'inset 0 0 0 3px #0b0b0b' : undefined }}
+        title={ativa && !propria ? 'Seguindo o vídeo' : undefined}
+        style={{
+          minHeight: '64px',
+          // Própria: contorno cheio. Seguindo o vídeo: tracejado — a mesma marca, de outra fonte.
+          boxShadow: propria ? 'inset 0 0 0 3px #0b0b0b' : undefined,
+          outline: ativa && !propria ? '3px dashed #0b0b0b' : undefined,
+          outlineOffset: '-7px',
+        }}
       >
         {ativa ? <Check size={20} /> : null}{m.nome}
+        {ativa && !propria && <span style={{ fontSize: '11px', fontWeight: 700, marginLeft: '4px' }}>(vídeo)</span>}
       </button>
     );
   }
@@ -257,8 +293,8 @@ function GradeDoSom({ sons, takes, podeEditar }: { sons: Som[]; takes: Take[]; p
     );
   }
 
-  const marcar = (s: Som, marca: Som['marca']) => {
-    if (podeEditar) void mudarSom(s.id, { marca: s.marca === marca ? undefined : marca });
+  const marcar = (s: Som, marca: NonNullable<Som['marca']>) => {
+    if (podeEditar) void tocarNaMarca(s, marca);
   };
 
   const th: React.CSSProperties = {
@@ -273,7 +309,7 @@ function GradeDoSom({ sons, takes, podeEditar }: { sons: Som[]; takes: Take[]; p
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: 'clamp(14px, 3vw, 22px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
         <Rotulo icone={<SlidersHorizontal size={14} />}>Sound report</Rotulo>
-        <span className="text-xs text-muted">{resumoDoSom(sons)}</span>
+        <span className="text-xs text-muted">{resumoDoSom(comMarcaQueVale(sons, takes))}</span>
       </div>
       <p className="text-xs text-muted" style={{ margin: 0 }}>
         Toque numa trilha para anotar o que ela teve. Trilha sem nota é trilha limpa.
@@ -297,7 +333,7 @@ function GradeDoSom({ sons, takes, podeEditar }: { sons: Som[]; takes: Take[]; p
                   const editando = aberta?.id === s.id ? aberta.trilha : null;
                   return (
                     <Fragment key={s.id}>
-                      <tr style={{ opacity: s.marca === 'ng' || s.marca === 'fs' ? 0.6 : 1 }}>
+                      <tr style={{ opacity: ['ng', 'fs'].includes(marcaQueVale(s, s.take_id ? takePorId.get(s.take_id) : undefined) ?? '') ? 0.6 : 1 }}>
                         <td style={{ ...td, ...preso, padding: '6px 8px' }}>
                           <button
                             type="button"
@@ -343,19 +379,22 @@ function GradeDoSom({ sons, takes, podeEditar }: { sons: Som[]; takes: Take[]; p
                         <td style={td}>
                           <div role="group" aria-label={`Marca de ${s.arquivo}`} style={{ display: 'flex', gap: '4px' }}>
                             {MARCAS.map(m => {
-                              const ativa = s.marca === m.id;
+                              // A que vale: a do áudio, ou a do vídeo que ele segue (tracejada).
+                              const video = s.take_id ? takePorId.get(s.take_id) : undefined;
+                              const ativa = marcaQueVale(s, video) === m.id;
+                              const propria = s.marca === m.id;
                               const cor = COR_DO_STATUS[m.status];
                               return (
                                 <button
                                   key={m.id}
                                   type="button"
                                   aria-pressed={ativa}
-                                  title={m.nome}
+                                  title={ativa && !propria ? `${m.nome} — seguindo o vídeo` : propria ? `${m.nome} — só o áudio (tocar de novo volta a seguir o vídeo)` : m.nome}
                                   disabled={!podeEditar}
                                   onClick={() => marcar(s, m.id)}
                                   style={{
                                     minWidth: '44px', minHeight: '44px', padding: '0 8px', borderRadius: 'var(--radius-sm)', fontSize: '13px', fontWeight: 800,
-                                    border: `1px solid ${ativa ? cor : 'var(--border-light)'}`,
+                                    border: `1px ${ativa && !propria ? 'dashed' : 'solid'} ${ativa ? cor : 'var(--border-light)'}`,
                                     backgroundColor: ativa ? `color-mix(in srgb, ${cor} 18%, transparent)` : 'transparent',
                                     color: ativa ? 'var(--text-primary)' : 'var(--text-muted)', cursor: podeEditar ? 'pointer' : 'default',
                                   }}

@@ -272,6 +272,7 @@ function Revisao({
 
   const iguais = casamentos.filter((c): c is Extract<Casamento, { tipo: 'igual' }> => c.tipo === 'igual');
   const comDiferenca = iguais.filter(c => c.diferencas.length > 0);
+  const nomesTrocados = comDiferenca.filter(c => c.diferencas.some(d => d.campo === 'arquivo')).length;
   const semTake = casamentos.filter((c): c is Extract<Casamento, { tipo: 'sem-take' }> => c.tipo === 'sem-take');
   const repetidos = casamentos.filter((c): c is Extract<Casamento, { tipo: 'repetido' }> => c.tipo === 'repetido');
 
@@ -367,6 +368,19 @@ function Revisao({
             />
             <span className="text-sm">São desta diária mesmo — incluir</span>
           </label>
+        </Aviso>
+      )}
+
+      {/* O boletim deslizou (o caso do set, 31/10/2026): os nomes não batem com a hora. Antes do trabalho normal, para conferir. */}
+      {nomesTrocados >= 3 && (
+        <Aviso cor="var(--color-warning)" icone={<GitCompareArrows size={18} />}
+          titulo={`O boletim estava deslocado: ${nomesTrocados} takes tinham o nome de outro clipe`}>
+          <p className="text-sm" style={{ margin: 0 }}>
+            Casei cada clipe com o take pela <strong>ordem em que foram logados</strong> e pela <strong>hora</strong>, não pelo
+            nome anotado — é o que acontece quando um clique a mais empurra os nomes para a frente. Confira na lista abaixo:
+            cada clipe aparece com a claquete do take que ficou com ele. Onde houver take esquecido junto com clique a mais,
+            o app pode errar um ou outro; corrija o take depois, na Logagem.
+          </p>
         </Aviso>
       )}
 

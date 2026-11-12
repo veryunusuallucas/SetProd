@@ -60,3 +60,17 @@ assert.equal(numeroDoClipe('FX30_0007.MP4'), 7);
 assert.equal(numeroDoClipe('261013_FX30_0007'), 7);
 assert.equal(numeroDoClipe('FX30_261013_0007'), 7);
 console.log('sony com título: ok');
+
+// O boletim deslocado (Diária 2, 31/10/2026): nomes 3 à frente, e depois crescendo. Vale a ordem e a hora.
+{
+  const hh = (s: number) => [s / 3600 | 0, (s % 3600) / 60 | 0, s % 60].map(v => String(v).padStart(2, '0')).join(':');
+  const t0 = 10 * 3600;
+  const cl = Array.from({ length: 12 }, (_, i) => ({ nome: `A003C${String(i + 1).padStart(3, '0')}`, meta: { criadoEm: `2026-10-31T${hh(t0 + i * 180)}-03:00`, segundos: 60 } })) as never[];
+  const boletim = (desl: (i: number) => number) => cl.map((_, i) => ({ id: `t${i}`, ordem: i, camera_id: 'A', hora: hh(t0 + i * 180 + 80), arquivo: `A003C${String(i + 1 + desl(i)).padStart(3, '0')}` })) as never[];
+  for (const [nome, desl] of [['3 à frente', () => 3], ['2 atrás', () => -2], ['crescendo', (i: number) => Math.floor(i / 4)]] as const) {
+    const r = cruzar(boletim(desl), cl);
+    assert.ok(r.every((x, i) => x.tipo === 'igual' && x.take.id === `t${i}`), `boletim ${nome}: cada clipe com o take certo`);
+    assert.ok(desl(5) === 0 || r.some(x => x.tipo === 'igual' && x.diferencas.some(d => d.campo === 'arquivo')), `boletim ${nome}: o nome aparece para corrigir`);
+  }
+}
+console.log('boletim deslocado: ok');

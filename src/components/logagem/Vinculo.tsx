@@ -4,7 +4,7 @@ import { Film, Mic, Unlink, Link2, Plus } from 'lucide-react';
 import type { Som, Take } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { MONO, estiloCampo } from './pecas';
-import { desgrudarSom, grudarSom, sonsParaGrudar, takesParaGrudar, arquivoDoSom } from '../../lib/logagem/som';
+import { claqueteDoSomSolto, desgrudarSom, grudarSom, sonsParaGrudar, takesParaGrudar, arquivoDoSom } from '../../lib/logagem/som';
 import { ROTULO_DO_STATUS, somParaOTake } from '../../lib/logagem/takes';
 import { db } from '../../db/db';
 import { idDoEstado } from '../../lib/logagem/estado';
@@ -110,6 +110,42 @@ export function EditorDoVideo({ som, takes, sons, podeEditar, aoFechar }: {
           </BotaoTatil>
         )}
         <BotaoTatil onClick={aoFechar} className="btn-secondary" style={botao}>Fechar</BotaoTatil>
+      </div>
+      {!atual && <ClaqueteDoSolto som={som} podeEditar={podeEditar} aoFechar={aoFechar} />}
+    </div>
+  );
+}
+
+/**
+ * O som solto ganha claquete própria (Logagem v2, passo 4): desgrudou e era do
+ * plano B, ou o wild era na verdade o take 3. O nome do arquivo se corrige
+ * tocando nele, no boletim.
+ */
+function ClaqueteDoSolto({ som, podeEditar, aoFechar }: { som: Som; podeEditar: boolean; aoFechar: () => void }) {
+  const [cena, setCena] = useState(String(som.cena ?? ''));
+  const [plano, setPlano] = useState(String(som.plano ?? ''));
+  const [take, setTake] = useState(som.take ? String(som.take) : '');
+  const campo = (rotulo: string, valor: string, mudar: (v: string) => void, largura: string) => (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: largura }}>
+      <span className="text-xs text-muted">{rotulo}</span>
+      <input value={valor} onChange={e => mudar(e.target.value)} disabled={!podeEditar} style={{ ...estiloCampo, fontFamily: MONO }} />
+    </label>
+  );
+  const salvar = async () => {
+    await claqueteDoSomSolto(som, { cena, plano, take: Number(take) || undefined });
+    vibrar('ok');
+    aoFechar();
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
+      <span className="text-xs font-bold text-secondary">Ou dê a claquete dele, sem vídeo</span>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        {campo('Cena', cena, setCena, '80px')}
+        {campo('Plano', plano, setPlano, '80px')}
+        {campo('Take', take, v => setTake(v.replace(/\D/g, '')), '80px')}
+        <BotaoTatil onClick={() => void salvar()} disabled={!podeEditar || !cena.trim()} className="btn-secondary" style={botao}>
+          Salvar a claquete
+        </BotaoTatil>
       </div>
     </div>
   );

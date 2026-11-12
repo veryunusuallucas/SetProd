@@ -13,7 +13,7 @@ import { limpar } from '../pdfTexto';
 import { data as dataLegivel, dataHora, numero } from '../formato';
 import { ROTULO_DO_STATUS } from './takes';
 import { resumirLogagem } from './resumo';
-import { ROTULO_DO_TIPO, claqueteDoSom, resumoDoSom, trechosDoSom } from './som';
+import { MARCA_DO_STATUS, ROTULO_DO_TIPO, claqueteDoSom, resumoDoSom, trechosDoSom } from './som';
 import {
   COLUNAS_DO_REPORT, TETO_DE_LINHAS, TITULO_DO_RELATORIO, agruparTakes, celulaDoTake, linhasDaIntegridade,
   type OpcoesDoReport, type TipoDeRelatorio,
@@ -169,7 +169,7 @@ function CameraReport({ dados, opcoes }: { dados: DadosDoRelatorio; opcoes: Opco
   const colunas = COLUNAS_DO_REPORT.filter(c => opcoes.colunas.includes(c.id));
   const grupos = agruparTakes(dados.takes, opcoes.agrupar);
   // A coluna Áudio só existe quando há som casado: sem ele, seria uma coluna de traços.
-  const audio = audioDosTakes(dados.sons);
+  const audio = audioDosTakes(dados.sons, dados.takes);
   const pesoDoAudio = audio.size ? 11 : 0;
 
   return (
@@ -374,12 +374,19 @@ function Integridade({ dados }: { dados: DadosDoRelatorio }) {
   );
 }
 
-/** id do take → arquivos de som casados com ele ("ZOOM0012"). */
-function audioDosTakes(sons: Som[]): Map<string, string> {
+/**
+ * id do take → arquivos de som casados com ele ("ZOOM0012"). Quando o áudio
+ * tem marca diferente da do vídeo (vídeo OK, áudio NG), ela vai junto — é o
+ * que a montagem precisa saber antes de escolher o take.
+ */
+function audioDosTakes(sons: Som[], takes: Take[]): Map<string, string> {
+  const status = new Map(takes.map(t => [t.id, t.status]));
   const m = new Map<string, string>();
   for (const som of sons) {
     if (!som.take_id) continue;
-    m.set(som.take_id, m.has(som.take_id) ? `${m.get(som.take_id)}, ${som.arquivo}` : som.arquivo);
+    const doVideo = MARCA_DO_STATUS[status.get(som.take_id) ?? 'NEUTRO'];
+    const nome = som.marca && som.marca !== doVideo ? `${som.arquivo} (${ROTULO_DA_MARCA[som.marca]})` : som.arquivo;
+    m.set(som.take_id, m.has(som.take_id) ? `${m.get(som.take_id)}, ${nome}` : nome);
   }
   return m;
 }

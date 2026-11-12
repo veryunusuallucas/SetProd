@@ -12,7 +12,7 @@ import { createServer } from 'vite';
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 try {
   const {
-    montarSom, claqueteDoSom, resumoDoSom, arquivoDoSom, trilhasDoSom, takeLevaSom, alternarNota, trechosDoSom,
+    montarSom, claqueteDoSom, resumoDoSom, arquivoDoSom, trilhasDoSom, takeLevaSom, alternarNota, trechosDoSom, marcaQueVale,
   } = await vite.ssrLoadModule('/src/lib/logagem/som.ts');
   const { proximoArquivo } = await vite.ssrLoadModule('/src/lib/logagem/takes.ts');
 
@@ -49,7 +49,10 @@ try {
   assert.equal(alternarNota('vento, roupa', 'Vento'), 'roupa', 'tocar de novo tira');
 
   // O HERO da câmera nasce HERO no som.
-  assert.equal(montarSom(kit, 'take', 4, { take: { id: 't9', take: 1, status: 'HERO' } }).marca, 'hero');
+  // O som do take HERO nasce sem marca própria e VALE hero, seguindo o vídeo (Logagem v2, passo 3).
+  const doHero = montarSom(kit, 'take', 4, { take: { id: 't9', take: 1, status: 'HERO' } });
+  assert.equal(doHero.marca, undefined);
+  assert.equal(marcaQueVale(doHero, { status: 'HERO' }), 'hero');
   assert.equal(montarSom(kit, 'take', 5, { take: { id: 't9', take: 1, status: 'OK' } }).marca, undefined);
 
   // O nome do primeiro arquivo pelo gravador, e a data do F3 trocando com o dia.

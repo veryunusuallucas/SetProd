@@ -122,7 +122,7 @@ const DEPOIS = 60 * 60;
  * mesma história. Só entra take que nenhum clipe achou pelo nome, e só quando
  * a hora existe dos dois lados — o número sozinho repete de cartão em cartão.
  */
-function acharPeloNumeroEHora(livres: Take[], clipe: ClipeDoXml): Take | undefined {
+function acharPeloNumeroEHora(livres: Take[], clipe: ClipeDoXml, desvio = 0): Take | undefined {
   const numero = numeroDoClipe(clipe.nome);
   const inicio = segundosDoDia(clipe.meta.criadoEm);
   if (numero === null || inicio === null) return undefined;
@@ -134,11 +134,106 @@ function acharPeloNumeroEHora(livres: Take[], clipe: ClipeDoXml): Take | undefin
     if (camera && take.camera_id && take.camera_id.toUpperCase() !== camera) continue;
     const hora = segundosDoDia(take.hora);
     if (hora === null) continue;
-    if (hora < inicio - ANTES || hora > inicio + DEPOIS) continue;
-    const distancia = Math.abs(hora - inicio);
+    if (hora - desvio < inicio - ANTES || hora - desvio > inicio + DEPOIS) continue;
+    const distancia = Math.abs(hora - desvio - inicio);
     if (!melhor || distancia < melhor.distancia) melhor = { take, distancia };
   }
   return melhor?.take;
+}
+
+/**
+ * A diferença entre o relógio de quem loga e o da câmera: a que põe MAIS takes
+ * cada um no intervalo de um clipe (do começo dele ao começo do seguinte), um
+ * por clipe. Só a hora conta — o nome é justamente o que pode estar errado.
+ * Abaixo de dois takes encaixados não prova nada: 0.
+ */
+export function desvioDoLog(takes: Pick<Take, 'hora'>[], clipes: Pick<ClipeDoXml, 'meta'>[]): number {
+  const inicios = [...new Set(clipes.map(c => segundosDoDia(c.meta.criadoEm)).filter((x): x is number => x !== null))].sort((a, b) => a - b);
+  const horas = takes.map(t => segundosDoDia(t.hora)).filter((x): x is number => x !== null).sort((a, b) => a - b);
+  if (inicios.length < 2 || horas.length < 2) return 0;
+  const janela = (x: number) => {
+    // O último clipe com começo ≤ x (busca binária): os dias têm centenas de clipes.
+    let lo = 0, hi = inicios.length - 1, achou = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (inicios[m] <= x) { achou = m; lo = m + 1; } else hi = m - 1; }
+    return achou >= 0 && x - inicios[achou] <= DEPOIS ? achou : -1;
+  };
+  let melhor = { desvio: 0, cabem: 0 };
+  const tentados = new Set<number>();
+  for (const i of inicios) for (const h of horas) {
+    const desvio = h - i;
+    if (tentados.has(desvio) || Math.abs(desvio) > 12 * 3600) continue;
+    tentados.add(desvio);
+    const ocupadas = new Set<number>();
+    for (const x of horas) { const w = janela(x - desvio); if (w >= 0) ocupadas.add(w); }
+    if (ocupadas.size > melhor.cabem || (ocupadas.size === melhor.cabem && Math.abs(desvio) < Math.abs(melhor.desvio))) melhor = { desvio, cabem: ocupadas.size };
+  }
+  return melhor.cabem >= 2 ? melhor.desvio : 0;
+}
+
+/**
+ * Alinha as duas filas — os takes na ORDEM em que foram logados, os clipes na
+ * ordem em que a câmera gravou —, como quem confere duas listas lado a lado.
+ * O continuísta loga na ordem do set: o 5º take logado é o 5º clipe gravado,
+ * fora takes a mais (clique duplo) ou a menos (esqueceu de logar). O nome não
+ * entra: é justamente o que pode estar errado, e errado de um jeito que cresce
+ * ao longo do dia. A hora só descarta o impossível (logado antes de o clipe
+ * começar) e pesa o improvável (muito depois de ele acabar).
+ *
+ * Programação dinâmica, uma câmera de cada vez: centenas de clipes, nada.
+ */
+function alinharPelaOrdem(takes: Take[], clipes: ClipeDoXml[], desvio: number): Map<number, Take> {
+  const par = new Map<number, Take>();
+  const PULAR = 6;
+  const cameras = new Set(clipes.map(c => cameraECartaoDoNome(c.nome).camera_id ?? ''));
+  for (const cam of cameras) {
+    const cs = clipes.map((c, i) => ({ i, ini: segundosDoDia(c.meta.criadoEm), dur: c.meta.segundos ?? 0 }))
+      .filter((x): x is { i: number; ini: number; dur: number } => x.ini !== null && (cameraECartaoDoNome(clipes[x.i].nome).camera_id ?? '') === cam)
+      .sort((a, b) => a.ini - b.ini);
+    const ts = takes.map(t => ({ t, h: segundosDoDia(t.hora) }))
+      .filter((x): x is { t: Take; h: number } => x.h !== null && !(cam && x.t.camera_id && x.t.camera_id.toUpperCase() !== cam))
+      .sort((a, b) => (a.t.ordem ?? 0) - (b.t.ordem ?? 0) || a.h - b.h);
+    const n = cs.length, m = ts.length;
+    if (!n || !m) continue;
+    const custo = (a: number, b: number) => {
+      const x = ts[b].h - desvio - cs[a].ini;
+      if (x < -ANTES || x > DEPOIS) return Infinity;
+      // Logado até 3 min depois do fim do clipe é o normal; depois disso pesa um pouco por minuto.
+      // Logado já com o PRÓXIMO clipe rodando pesa mais: o OK vem antes da próxima "ação". É o que
+      // separa o take esquecido do seguinte (que senão caberia nos dois), sem barrar o lote atrasado.
+      const proximoIni = a + 1 < n ? cs[a + 1].ini : Infinity;
+      const depoisDoProximo = Math.max(0, ts[b].h - desvio - proximoIni);
+      return Math.max(0, x - cs[a].dur - 180) / 60 * 0.2 + Math.max(0, -x) / 60 + Math.min(2, depoisDoProximo / 60 * 0.3);
+    };
+    const dp = Array.from({ length: n + 1 }, () => new Float64Array(m + 1));
+    const de = Array.from({ length: n + 1 }, () => new Uint8Array(m + 1)); // 1 par · 2 pula clipe · 3 pula take
+    for (let a = 1; a <= n; a++) { dp[a][0] = a * PULAR; de[a][0] = 2; }
+    for (let b = 1; b <= m; b++) { dp[0][b] = b * PULAR; de[0][b] = 3; }
+    for (let a = 1; a <= n; a++) for (let b = 1; b <= m; b++) {
+      const casa = dp[a - 1][b - 1] + custo(a - 1, b - 1);
+      const semTake = dp[a - 1][b] + PULAR, semClipe = dp[a][b - 1] + PULAR;
+      if (casa <= semTake && casa <= semClipe) { dp[a][b] = casa; de[a][b] = 1; }
+      else if (semTake <= semClipe) { dp[a][b] = semTake; de[a][b] = 2; }
+      else { dp[a][b] = semClipe; de[a][b] = 3; }
+    }
+    for (let a = n, b = m; a > 0 && b > 0;) {
+      if (de[a][b] === 1) { par.set(cs[a - 1].i, ts[b - 1].t); a--; b--; }
+      else if (de[a][b] === 2) a--;
+      else b--;
+    }
+  }
+  return par;
+}
+
+/** O take logado no intervalo do clipe (do começo dele ao do próximo), o primeiro. */
+function acharPelaHora(livres: Take[], clipe: ClipeDoXml, proximo: number | undefined, desvio: number): Take | undefined {
+  const inicio = segundosDoDia(clipe.meta.criadoEm);
+  if (inicio === null) return undefined;
+  const camera = cameraECartaoDoNome(clipe.nome).camera_id;
+  return livres
+    .filter(t => !(camera && t.camera_id && t.camera_id.toUpperCase() !== camera))
+    .map(t => ({ t, h: segundosDoDia(t.hora) }))
+    .filter((x): x is { t: Take; h: number } => x.h !== null && x.h - desvio >= inicio && x.h - desvio < (proximo ?? inicio + DEPOIS))
+    .sort((a, b) => a.h - b.h)[0]?.t;
 }
 
 /**
@@ -155,18 +250,95 @@ function acharPeloNumeroEHora(livres: Take[], clipe: ClipeDoXml): Take | undefin
  */
 export function cruzar(takes: Take[], clipes: ClipeDoXml[]): Casamento[] {
   const usados = new Set<string>();
-  const peloNome = clipes.map(clipe => acharTake(takes, clipe.nome));
+  /*
+    ⚠️ O NOME NÃO BASTA (achado com os cartões reais da Diária 2, 11/11/2026).
+    No set, o boletim ficou 3 arquivos à frente: o take anotado como "C004" foi
+    gravado no C001. Pelo nome, 30 de 36 clipes casavam com o take ERRADO — o
+    OK de um iria para o arquivo de outro. O que desmente o nome é a hora: um
+    take não pode ter sido logado ANTES de o clipe dele começar. Logar DEPOIS
+    vale (a Diária 1 logou três de uma vez, 18 min depois).
+  */
+  const desvio = desvioDoLog(takes, clipes);
+  const possivel = (t: Take, c: ClipeDoXml) => {
+    const h = segundosDoDia(t.hora), i = segundosDoDia(c.meta.criadoEm);
+    return h === null || i === null || h - desvio >= i - ANTES;
+  };
+  // O começo do próximo clipe da mesma câmera: o fim do intervalo em que o take deste foi logado.
+  const camera = (c: ClipeDoXml) => cameraECartaoDoNome(c.nome).camera_id ?? '';
+  const proximo = (c: ClipeDoXml) => {
+    const i = segundosDoDia(c.meta.criadoEm);
+    if (i === null) return undefined;
+    const depois = clipes.map(x => (camera(x) === camera(c) ? segundosDoDia(x.meta.criadoEm) : null)).filter((x): x is number => x !== null && x > i);
+    return depois.length ? Math.min(...depois) : undefined;
+  };
+  /*
+    O dia inteiro decide: pela hora, cada clipe tem o take logado no seu
+    intervalo. Se a hora explica a maior parte do dia e os nomes discordam dela
+    na maioria, o boletim está DESLOCADO (para a frente ou para trás) e a hora
+    manda. Se os nomes concordam na maioria, eles mandam — e um ou outro take
+    logado em lote, atrasado, continua com o seu nome.
+  */
+  const nomeCru = clipes.map(clipe => acharTake(takes, clipe.nome));
+  const pelaHora = clipes.map(clipe => acharPelaHora(takes, clipe, proximo(clipe), desvio));
+  const comHora = pelaHora.filter(Boolean).length;
+  const ambos = clipes.filter((_, i) => nomeCru[i] && pelaHora[i]).length;
+  const concordam = clipes.filter((_, i) => nomeCru[i] && nomeCru[i] === pelaHora[i]).length;
+  // Boletim certo concorda com a hora quase sempre (fora um lote logado atrasado). Abaixo de 90%, ele deslizou.
+  const horaManda = comHora >= Math.max(2, 0.6 * clipes.length) && ambos > 0 && concordam < 0.9 * ambos;
+
+  /*
+    Deslocado, o boletim costuma estar deslocado POR IGUAL ("3 pra frente" o
+    dia todo). O deslocamento que mais aparece entre os pares da hora vira a
+    régua: o clipe C004 é o take anotado como C007. Clipe curto e colado, em que
+    a hora sozinha fica em dúvida, se acerta pela régua.
+  */
+  /*
+    A régua é LOCAL: no set o deslocamento cresceu ao longo do dia (a cada
+    clique a mais, um a mais). Cada clipe usa o deslocamento que mais aparece
+    entre os vizinhos dele (quatro de cada lado, na ordem da gravação).
+  */
+  const ordem = clipes.map((c, i) => ({ i, t: segundosDoDia(c.meta.criadoEm) ?? 0 })).sort((a, b) => a.t - b.t).map(x => x.i);
+  const deslocDe = clipes.map((c, i) => {
+    const a = numeroDoClipe(pelaHora[i]?.arquivo || ''), b = numeroDoClipe(c.nome);
+    return a !== null && b !== null ? a - b : null;
+  });
+  const reguaDe = (i: number): number | null => {
+    if (!horaManda) return null;
+    const p = ordem.indexOf(i);
+    const conta = new Map<number, number>();
+    for (const j of ordem.slice(Math.max(0, p - 4), p + 5)) {
+      const d = deslocDe[j];
+      if (d !== null) conta.set(d, (conta.get(d) ?? 0) + 1);
+    }
+    const [k, n] = [...conta.entries()].sort((x, y) => y[1] - x[1] || Math.abs(x[0]) - Math.abs(y[0]))[0] ?? [0, 0];
+    return n >= 2 ? k : null;
+  };
+  const pelaRegua = (clipe: ClipeDoXml, i: number) => {
+    const n = numeroDoClipe(clipe.nome);
+    const regua = reguaDe(i);
+    if (regua === null || n === null) return undefined;
+    const cam = camera(clipe);
+    return takes.find(t => numeroDoClipe(t.arquivo || '') === n + regua
+      && !(cam && t.camera_id && t.camera_id.toUpperCase() !== cam) && possivel(t, clipe));
+  };
+
+  const alinhado = horaManda ? alinharPelaOrdem(takes, clipes, desvio) : new Map<number, Take>();
+  const peloNome = clipes.map((clipe, i) => {
+    if (horaManda) return alinhado.get(i) ?? pelaRegua(clipe, i) ?? pelaHora[i];
+    const t = nomeCru[i];
+    return t && possivel(t, clipe) ? t : undefined;
+  });
   const achadosPeloNome = new Set(peloNome.filter(Boolean).map(t => t!.id));
 
   return clipes.map((clipe, i) => {
-    const take = peloNome[i] ?? acharPeloNumeroEHora(
-      takes.filter(t => !achadosPeloNome.has(t.id) && !usados.has(t.id)), clipe,
-    );
+    const livres = takes.filter(t => !achadosPeloNome.has(t.id) && !usados.has(t.id));
+    const take = peloNome[i] ?? acharPeloNumeroEHora(livres, clipe, desvio) ?? acharPelaHora(livres, clipe, proximo(clipe), desvio);
     if (!take) return { tipo: 'sem-take', clipe } as const;
     if (usados.has(take.id)) return { tipo: 'repetido', clipe, take } as const;
     usados.add(take.id);
     const diferencas = diferencasDoClipe(take, clipe);
-    if (!peloNome[i]) diferencas.unshift({ campo: 'arquivo', rotulo: 'Arquivo', logado: take.arquivo, daCamera: clipe.nome });
+    // O nome logado não é o do clipe (casou pela ordem, pela hora ou pelo número): aparece para corrigir.
+    if (!acharTake([take], clipe.nome)) diferencas.unshift({ campo: 'arquivo', rotulo: 'Arquivo', logado: take.arquivo, daCamera: clipe.nome });
     return { tipo: 'igual', clipe, take, diferencas } as const;
   });
 }

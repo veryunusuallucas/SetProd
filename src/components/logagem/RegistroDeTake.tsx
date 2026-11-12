@@ -15,7 +15,7 @@ import {
   COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo, claqueteLegivel,
   registrarTake, somParaOTake, substituirTake, takeSemSom,
 } from '../../lib/logagem/takes';
-import { arquivoDoSom } from '../../lib/logagem/som';
+import { MARCA_DO_STATUS, arquivoDoSom } from '../../lib/logagem/som';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { EditarTake } from './EditarTake';
 import { comecarCenaPelaLogagem } from '../../lib/logagem/linhaDoDia';
@@ -368,7 +368,9 @@ function LinhaDoTake({ take, novo, podeEditar, sons, quem }: { take: Take; novo:
   const cor = COR_DO_STATUS[take.status];
   const [editando, setEditando] = useState(false);
   const [vinculando, setVinculando] = useState(false);
-  const audios = sons.filter(s => s.take_id === take.id).map(s => s.arquivo);
+  // O áudio com marca própria diferente da do vídeo (vídeo OK, áudio NG) diz isso na ficha.
+  const audios = sons.filter(s => s.take_id === take.id).map(s =>
+    s.marca && s.marca !== MARCA_DO_STATUS[take.status] ? `${s.arquivo} · ${s.marca.toUpperCase()}` : s.arquivo);
 
   const apagar = async () => {
     const casados = await db.log_som.where('take_id').equals(take.id).toArray();
