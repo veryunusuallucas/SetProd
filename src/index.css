@@ -1203,8 +1203,15 @@ input[type="radio"]:checked::before {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  line-height: 1.05;
   cursor: pointer;
 }
+/* O rótulo nunca quebra no meio ("REC" numa linha, "INV." na outra, com o ícone sobrando ao lado). */
+.botao-status-rotulo { white-space: nowrap; }
+/* "REC INV." tem o dobro de letras dos outros: um pouco menor para caber na mesma coluna. */
+.botao-status[data-status="RECINV"] .botao-status-rotulo { font-size: 0.82em; }
 .botao-status[data-status="OK"] { background-color: var(--color-success); }
 .botao-status[data-status="NG"] { background-color: var(--color-danger); }
 .botao-status[data-status="HERO"] { background-color: var(--accent); }
@@ -1213,6 +1220,14 @@ input[type="radio"]:checked::before {
 .botao-status:focus-visible { outline: 3px solid var(--text-primary); outline-offset: 2px; }
 @container (min-width: 560px) {
   .botao-status { min-height: 88px; }
+}
+/*
+  Quatro colunas estreitas (Lucas, 11/11/2026): o ícone vai para CIMA do texto,
+  nos quatro botões igual — centralizados, sem um quebrando diferente do outro.
+  Só os quatro do registro (o grupo); os do Som têm o "(vídeo)" na mesma linha.
+*/
+@container (min-width: 560px) and (max-width: 860px) {
+  .status-grade[role="group"] .botao-status { flex-direction: column; gap: 4px; }
 }
 
 /* Uma linha só, que rola de lado: em três linhas, o HUD empurrava a claquete. */

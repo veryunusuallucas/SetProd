@@ -283,7 +283,7 @@ export function BotoesDeStatus({ registro, podeEditar }: { registro: Registro; p
           title={atalho ? `${ROTULO_DO_STATUS[status]} · ${atalho}` : ROTULO_DO_STATUS[status]}
         >
           <Icone size={20} strokeWidth={2.6} aria-hidden />
-          {status === 'RECINV' ? 'REC INV.' : ROTULO_DO_STATUS[status]}
+          <span className="botao-status-rotulo">{status === 'RECINV' ? 'REC INV.' : ROTULO_DO_STATUS[status]}</span>
         </BotaoTatil>
       ))}
     </div>
