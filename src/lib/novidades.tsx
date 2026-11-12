@@ -229,6 +229,48 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.23.0',
+    resumo: <>A Logagem refeita depois do set: vídeo e áudio à vista, cada um com a sua marca, e o boletim que escorregou volta para o lugar. E a regravação entra na Ordem do Dia.</>,
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <Undo2 size={20} />,
+        titulo: 'O clique a mais não bagunça mais o boletim',
+        texto: 'Depois de cada OK ou NG aparece o que foi criado ("Vídeo A001C003 + áudio ZOOM0003") com um botão Desfazer. Apagar o áudio de um take pergunta se apaga o vídeo junto. Um segundo toque colado no primeiro é ignorado, e dois registros ao mesmo tempo saem com números diferentes. Se o último vídeo ficar sem áudio, as duas abas avisam e acertam com um toque.',
+      },
+      {
+        tipo: 'novo',
+        icone: <Link2 size={20} />,
+        titulo: 'Vídeo e áudio grudados, à vista',
+        texto: 'Cada take mostra o áudio dele e cada áudio mostra o vídeo, ou "solto". Toque para desgrudar, grudar em outro ou criar o áudio que faltou. Um take pode ter dois arquivos de som.',
+      },
+      {
+        tipo: 'novo',
+        icone: <Mic size={20} />,
+        titulo: 'A marca do áudio, à parte',
+        texto: 'O áudio segue o OK ou o NG do vídeo até você marcar diferente: vídeo OK, áudio NG por causa do avião. A tela diz se ele "segue o vídeo" ou é "só o áudio", e o camera report mostra a diferença para a montagem. Novo botão "Só áudio" para quando a câmera não rodou.',
+      },
+      {
+        tipo: 'novo',
+        icone: <Film size={20} />,
+        titulo: 'Tá em qual arquivo? Toque no nome',
+        texto: 'Toque no nome do arquivo e digite o que o visor mostra (ou só o número): o próximo take sai com ele. Vale para o gravador também. Ao trocar de cartão, o app pergunta se o clipe continua ou recomeça, mostrando os dois nomes.',
+      },
+      {
+        tipo: 'corrigido',
+        icone: <GitCompare size={20} />,
+        titulo: 'Ingest acerta o boletim que escorregou',
+        texto: 'Se o boletim ficou "3 pra frente", o ingest não casa mais cada clipe com o take errado: casa pela ordem e pela hora em que foram logados e mostra os nomes para corrigir. Na sincronia do som, quando o gravador zera o relógio no meio do dia (pilha trocada), cada trecho acha a sua diferença.',
+      },
+      {
+        tipo: 'novo',
+        icone: <RotateCcw size={20} />,
+        titulo: 'Regravar cena na Ordem do Dia',
+        texto: 'No "Acrescentar ao dia", a linha Regravar traz as cenas que já rodaram e de qual diária vieram. Escolha regravação, complemento ou continuação e escreva o porquê. A cena sai marcada por escrito na OD, no PDF e no DPR, e a diária original não muda.',
+      },
+    ],
+  },
+  {
     versao: '0.22.8',
     resumo: <>Na Logagem, apagar um take volta a claquete, e o nome do arquivo se corrige depois de logado.</>,
     itens: [
