@@ -28,6 +28,11 @@ export interface ModeloDeCamera {
   padrao: { codec: string; fps: string; resolucao: string };
   /** O que vale saber antes do primeiro take. */
   observacao: string;
+  /**
+   * Cartão novo (formatado) recomeça o clipe em 001? Só onde foi conferido em
+   * cartão de verdade; sem saber, a troca de cartão pergunta sem sugerir.
+   */
+  cartaoNovoRecomeca?: boolean;
 }
 
 export const CAMERAS: ModeloDeCamera[] = [
@@ -46,7 +51,10 @@ export const CAMERAS: ModeloDeCamera[] = [
     fps: ['23.98', '24', '25', '29.97', '50', '59.94', '100', '119.88'],
     resolucoes: ['4K UHD (3840x2160)', 'Full HD (1920x1080)'],
     padrao: { codec: 'XAVC S-I', fps: '23.98', resolucao: '4K UHD (3840x2160)' },
-    observacao: 'Cam ID + Reel# exige firmware 2.0 ou mais novo e cartão SDXC ou CFexpress A; com SDHC o nome fica no Padrão (Menu → Arquivo → Config. de arquivo). O título vai até 37 caracteres. 119,88 fps em 4K só em XAVC S ou XAVC HS; o S-I vai até 59,94.',
+    observacao: 'Cam ID + Reel# exige firmware 2.0 ou mais novo e cartão SDXC ou CFexpress A; com SDHC o nome fica no Padrão (Menu → Arquivo → Config. de arquivo). O título vai até 37 caracteres. 119,88 fps em 4K só em XAVC S ou XAVC HS; o S-I vai até 59,94. No mesmo cartão o clipe segue contando; cartão novo volta para C001.',
+    // Conferido nos cartões da Canção de Outono (11/11/2026): no mesmo cartão o
+    // clipe seguiu (A003C026 → A010C027); o cartão novo abriu em A011C001.
+    cartaoNovoRecomeca: true,
   },
   {
     id: 'canon-r50v',

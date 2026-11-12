@@ -165,15 +165,21 @@ function ProximoArquivo({ estado, bloqueado, aoMudar }: PropsDeSecao) {
       const continua = nomeArquivoPrevisto({ ...estado, cartao: novo });
       const recomeca = nomeArquivoPrevisto({ ...estado, cartao: novo, proximo_clipe: 1 });
       if (continua !== recomeca) {
+        // A câmera que já se sabe que recomeça (FX30) tem "Recomeça" como resposta principal (o Enter).
+        const modelo = cameraPorId(estado.modelo_camera);
+        const sabeQueRecomeca = modelo?.cartaoNovoRecomeca === true;
         const r = await escolher({
           titulo: `Cartão ${novo}: o clipe continua ou recomeça?`,
-          detalhe: `Cada câmera faz de um jeito. Na dúvida, grave um teste e confira o nome no visor — depois dá para corrigir tocando no nome, na aba Vídeo.`,
-          confirmar: `Continua: ${continua}`,
-          alternativa: `Recomeça: ${recomeca}`,
+          detalhe: sabeQueRecomeca
+            ? `Na ${modelo!.nome}, cartão novo volta para C001. Se o visor mostrar outro número, toque no nome na aba Vídeo para corrigir.`
+            : `Cada câmera faz de um jeito. Na dúvida, grave um teste e confira o nome no visor — depois dá para corrigir tocando no nome, na aba Vídeo.`,
+          confirmar: sabeQueRecomeca ? `Recomeça: ${recomeca}` : `Continua: ${continua}`,
+          alternativa: sabeQueRecomeca ? `Continua: ${continua}` : `Recomeça: ${recomeca}`,
           cancelar: 'Cancelar',
         });
         if (!r) return;
-        aoMudar(r === 'alternativa' ? { cartao: novo, proximo_clipe: 1 } : { cartao: novo });
+        const recomecou = sabeQueRecomeca ? r === true : r === 'alternativa';
+        aoMudar(recomecou ? { cartao: novo, proximo_clipe: 1 } : { cartao: novo });
         return;
       }
     }
