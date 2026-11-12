@@ -81,6 +81,8 @@ export async function duplicarDiaria(origemId: string, data: string): Promise<Re
     // Diária antiga, de antes da linha do tempo, guarda o dia aqui.
     horarios: origem.horarios?.map(h => ({ ...h })),
     cena_ids: origem.cena_ids ? [...origem.cena_ids] : undefined,
+    // O porquê de cada cena vai junto: a cópia de um dia de regravação continua sendo regravação.
+    cenas_no_dia: origem.cenas_no_dia ? { ...origem.cenas_no_dia } : undefined,
     equipe_escalada: [...(origem.equipe_escalada || [])],
     locacoes_ids: [...(origem.locacoes_ids || [])],
     frentes,

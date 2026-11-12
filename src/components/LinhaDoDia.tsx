@@ -4,10 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, GripVertical, Trash2, Plus, Lock, Unlock, Utensils, Truck,
   Flag, StickyNote, CircleDot, Timer, ClipboardList, Lightbulb, Drama, Brush,
-  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard, Scissors, Merge, Undo2,
+  Coffee, PackageOpen, MapPin, ExternalLink, Clapperboard, Scissors, Merge, Undo2, RotateCcw,
 } from 'lucide-react';
 import { db } from '../db/db';
-import type { Cena, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao, Plano } from '../types';
+import type { Cena, CenaNaDiaria, Diaria, ItemDoDia, TipoItemDia, RegistroCena, Locacao, Plano } from '../types';
+import type { CandidataARegravar } from '../lib/regravacao';
+import { RegravarCena } from './RegravarCena';
 import {
   montarLinhaDoDia, calcularDia, calcularAtraso, descreverAtraso,
   duracaoDoItem, COR_TIPO, emHora, emMinutos, cenaPulada, trocarDeLugar, type VisaoDoDia,
@@ -92,7 +94,7 @@ const GRUPOS_NOVOS: { grupo: string; itens: { tipo: Exclude<TipoItemDia, 'cena'>
 export function LinhaDoDia({
   diaria, visao, cenas, registros, meuPerfilId, podeMarcar, planosPorCena,
   chamada, aoGravar, aoMudarChamada, aoMudarOrdemDoSet, modo, travada = false, locacoes = [],
-  cenasDisponiveis = [], aoAcrescentarCena, proximoId,
+  cenasDisponiveis = [], aoAcrescentarCena, proximoId, aRegravar, aoRegravarCena, marcaDaCena,
 }: {
   /**
    * Qual item é o próximo a acontecer — o mesmo que o relógio do set conta.
@@ -155,6 +157,11 @@ export function LinhaDoDia({
    * Ausente = a tela não oferece acrescentar cena.
    */
   aoAcrescentarCena?: (cena: Cena) => void;
+  /** Regravar (PLANO-reshoot): as candidatas, e quem escala a volta. Ausente = sem a opção. */
+  aRegravar?: { gravadas: CandidataARegravar[]; outras: Cena[] };
+  aoRegravarCena?: (cena: Cena, volta: CenaNaDiaria) => void;
+  /** "REGRAVAÇÃO (da Diária 03) — …" da cena neste dia, ou nada se é a primeira vez. */
+  marcaDaCena?: (cenaId: string) => string | undefined;
   registros: RegistroCena[];
   meuPerfilId?: string;
   podeMarcar: boolean;
@@ -669,6 +676,12 @@ export function LinhaDoDia({
                           {c.cena.descricao}
                           {planos > 0 && <span className="text-xs text-muted"> · {planos} plano{planos > 1 ? 's' : ''}</span>}
                         </div>
+                        {/* A volta, em texto e não só em cor: no set se lê rápido. */}
+                        {marcaDaCena?.(c.cena.id) && (
+                          <div className="text-xs font-bold" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--color-warning)', marginTop: '2px' }}>
+                            <RotateCcw size={12} aria-hidden /> {marcaDaCena(c.cena.id)}
+                          </div>
+                        )}
                       </>
                     ) : modo === 'criacao' ? (
                       /*
@@ -1194,6 +1207,10 @@ export function LinhaDoDia({
                       <Clapperboard size={13} /> Escalar
                     </button>
                   </div>
+                )}
+
+                {aoRegravarCena && aRegravar && (
+                  <RegravarCena aRegravar={aRegravar} aoRegravar={(c, v) => { setAdicionando(false); aoRegravarCena(c, v); }} />
                 )}
 
                 {GRUPOS_NOVOS.map(g => (

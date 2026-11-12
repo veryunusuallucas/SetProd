@@ -403,6 +403,24 @@ export interface Locacao {
   obs?: string;
 }
 
+/**
+ * Por que uma cena entra numa diária. Os quatro casos têm conversas diferentes
+ * na produção, e separá-los evita que tudo vire "regravação" no relatório.
+ */
+export type MotivoNaDiaria =
+  | 'primeira'      // programada normalmente
+  | 'regravacao'    // gravou, não gostou, faz de novo
+  | 'pickup'        // faltou cobertura: um plano, um inserte
+  | 'continuacao';  // não coube no dia e continua neste
+
+export interface CenaNaDiaria {
+  motivo: MotivoNaDiaria;
+  /** A diária de onde a cena veio, quando não é a primeira vez. */
+  diaria_origem_id?: string;
+  /** "Não gostamos da atuação", "foco errado". É o que a direção lê meses depois. */
+  observacao?: string;
+}
+
 export interface Diaria {
   id: string;
   projeto_id: string;
@@ -461,6 +479,22 @@ export interface Diaria {
    * plano inteiro continua no PDF guardado em Documentos.
    */
   ordem_planejada?: string[];
+
+  /**
+   * POR QUE cada cena está neste dia (PLANO-reshoot, 11/11/2026): cena id →
+   * motivo. Sem entrada = primeira vez, e é por isso que nenhuma diária antiga
+   * precisa de migração.
+   *
+   * Mora na diária, e não numa tabela à parte (como o plano sugeria), porque já
+   * herda tudo o que a diária tem: sincronia, escopo restrito (só produção e
+   * direção), e some junto quando a diária vai para a lixeira.
+   *
+   * ⚠️ A DIÁRIA DE ORIGEM NUNCA É TOCADA. A cena regravada continua nela
+   * exatamente como estava: diária fechada é prestação de contas, e o dia 03
+   * gastou equipe e dinheiro naquela cena mesmo que o material tenha ido fora.
+   * O vínculo é de mão única: só a diária nova aponta para a antiga.
+   */
+  cenas_no_dia?: Record<string, CenaNaDiaria>;
 
   /** Chamada geral — o horário de onde todo o resto é encadeado. */
   chamada?: string;

@@ -94,6 +94,7 @@ export async function coletarOD(diariaId: string, opcoes: OpcoesColeta = {}): Pr
     tasks,
     proximo: proximoDia(diarias, diaria.data, cenas),
     totalDiarias: diarias.length,
+    diarias,
     logo: (await resolverArquivo(projeto.logo_od)) || undefined,
     versao: opcoes.versao,
   };

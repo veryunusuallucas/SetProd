@@ -180,7 +180,7 @@ export function paraTexto(doc: DocumentoOD): string {
           if (l.faixa) { linhas.push(`— ${l.faixa.hora ? `${l.faixa.hora} ` : ''}${l.faixa.texto}`); return; }
           linhas.push('• ' + s.tabela.colunas
             .map(c => textoDaCelula(l.celulas[c.chave]))
-            .filter(v => v && v !== '—').join(' · '));
+            .filter(v => v && v !== '—').join(' · ') + (l.aviso ? ` — ${l.aviso}` : ''));
         });
         break;
     }

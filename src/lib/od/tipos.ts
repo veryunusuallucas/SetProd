@@ -53,6 +53,12 @@ export interface LinhaTabela {
    * grade continuar legível quando o dia tem seis paradas.
    */
   faixa?: { texto: string; hora?: string };
+  /**
+   * O que não pode se perder nem na versão curta: o porquê de uma regravação.
+   * No papel ele já vai na célula; o texto do celular, que só lê a primeira
+   * linha de cada célula, imprime este no fim da linha.
+   */
+  aviso?: string;
 }
 
 export interface Tabela {

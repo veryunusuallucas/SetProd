@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useParams } from 'react-router-dom';
-import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp, GripVertical, FileDown, CalendarPlus, X } from 'lucide-react';
+import { Camera, Clapperboard, Plus, Trash2, ChevronDown, ChevronUp, GripVertical, FileDown, CalendarPlus, X, RotateCcw } from 'lucide-react';
 import type { Cena, Plano } from '../types';
 
 import { AnexoInput } from '../components/AnexoInput';
@@ -28,6 +28,7 @@ import { CampoData } from '../components/ui/CampoData';
 import { numeroPrevisto } from '../lib/numeracao';
 import { CampoTexto } from '../components/ui/CampoTexto';
 import { emOrdem } from '../lib/ordem';
+import { historicoDaCena, ROTULO_DO_MOTIVO } from '../lib/regravacao';
 
 export function DecupagemModule() {
   const { id: projetoId } = useParams<{ id: string }>();
@@ -685,7 +686,20 @@ export function DecupagemModule() {
                       <option value="noite">NOITE</option>
                     </select>
                   </div>
-                  
+
+                  {/* A vida inteira da cena (PLANO-reshoot): só aqui, fora das diárias — a diária
+                      de origem não sabe que foi regravada, e não precisa. */}
+                  {(() => {
+                    const vida = historicoDaCena(cena.id, diarias);
+                    if (vida.length < 2) return null;
+                    return (
+                      <div className="text-xs text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <RotateCcw size={12} aria-hidden />
+                        {vida.map(({ diaria: d, motivo }) => `Diária ${String(d.numero).padStart(2, '0')} · ${ROTULO_DO_MOTIVO[motivo].toLowerCase()}`).join('  →  ')}
+                      </div>
+                    );
+                  })()}
+
                   {/* Storyboard Anexos */}
                   {cena.anexos && cena.anexos.length > 0 && (
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>

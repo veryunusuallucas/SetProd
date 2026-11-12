@@ -1,6 +1,7 @@
 import { db } from '../db/db';
 import { montarLinha, cenasDaQuebra, blocoDaQuebra, ROTULOS, type ItemLinha } from './stripboard';
 import type { Cena, Diaria, StripboardItem, ItemDoDia, TipoItemDia } from '../types';
+import { cenasForaDoStripboard } from './regravacao';
 
 /**
  * A ponte entre o stripboard e a Ordem do Dia — a Opção C do plano.
@@ -90,7 +91,8 @@ export function diferencaDeCenas(
   if (doStripboard === null) return { entram: [], saem: [], orfa: true };
 
   const naOD = new Set(diaria.cena_ids || []);
-  const naLinha = new Set(doStripboard.map(c => c.id));
+  // A cena que voltou (regravação, complemento) não está no bloco, e não é para estar.
+  const naLinha = new Set([...doStripboard.map(c => c.id), ...cenasForaDoStripboard(diaria)]);
 
   return {
     entram: doStripboard.filter(c => !naOD.has(c.id)),
@@ -116,7 +118,13 @@ export async function aplicarDoStripboard(
   const bloco = blocoDaQuebra(linha, diaria.stripboard_item_id);
   if (bloco === null) return false;
 
-  const novos = bloco.flatMap(i => (i.tipo === 'SCENE' ? [i.cena.id] : []));
+  const doBloco = bloco.flatMap(i => (i.tipo === 'SCENE' ? [i.cena.id] : []));
+  /*
+    A cena que voltou (regravação, complemento, continuação) vive FORA do
+    stripboard — lá ela só tem um lugar, o da diária original. O espelho a
+    mantém no fim; sem isso, ela sumiria da diária nova na próxima abertura.
+  */
+  const novos = [...doBloco, ...cenasForaDoStripboard(diaria).filter(id => !doBloco.includes(id))];
   const atuais = diaria.cena_ids || [];
   const mesmasCenas = novos.length === atuais.length && novos.every((id, i) => id === atuais[i]);
 

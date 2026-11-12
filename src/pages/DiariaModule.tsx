@@ -9,7 +9,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { rolosDoDia } from '../lib/logagem/resumo';
 import { db } from '../db/db';
 import { ArrowLeft, Users, MapPin, CheckSquare, Plus, Trash2, Bus, Paperclip, FileDown, Wallet, Archive, Lock, FileText, Eye } from 'lucide-react';
-import type { DiariaTask, AnexoOD, Locacao, ItemDoDia, Cena } from '../types';
+import type { DiariaTask, AnexoOD, Locacao, ItemDoDia, Cena, CenaNaDiaria } from '../types';
+import { candidatasARegravar, marcaDaCena } from '../lib/regravacao';
+import { hojeISO } from '../lib/urgencia';
 import { logAction } from '../lib/audit';
 import { parseCoords, buscarClima, agruparClimasIguais, type ClimaPorLocal } from '../lib/clima';
 import { registrarDocumento, removerDocumentoDeOrigem } from '../lib/documentos';
@@ -109,6 +111,18 @@ export function DiariaModule() {
     () => db.registros_cena.where('diaria_id').equals(diariaId!).toArray(),
     [diariaId]
   ) || [];
+
+  /*
+    REGRAVAR (PLANO-reshoot): as cenas que já rodaram em outra diária. Precisa
+    das diárias e das marcações do projeto inteiro — é de lá que sai "gravada
+    na Diária 03".
+  */
+  const diariasDoProjeto = useLiveQuery(() => db.diarias.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const registrosDoProjeto = useLiveQuery(() => db.registros_cena.where('projeto_id').equals(projetoId!).toArray(), [projetoId]) || [];
+  const aRegravar = diaria
+    ? candidatasARegravar(cenasGlobais, diariasDoProjeto, registrosDoProjeto, diaria, hojeISO())
+    : { gravadas: [], outras: [] };
+  const marcaNoDia = (cenaId: string) => (diaria ? marcaDaCena(diaria, cenaId, diariasDoProjeto) : undefined);
 
   const [fechamentoAberto, setFechamentoAberto] = useState(false);
   /**
@@ -369,12 +383,15 @@ export function DiariaModule() {
    * aberta: sem o primeiro ela não é do dia, sem o segundo ela fica órfã, na
    * lista de "ainda não foram para nenhuma frente".
    */
-  const acrescentarCena = async (cena: Cena) => {
-    // 1. Escalada no dia.
+  const acrescentarCena = async (cena: Cena, volta?: CenaNaDiaria) => {
+    // 1. Escalada no dia — e por quê. A volta (regravação…) guarda o motivo; a
+    //    primeira vez limpa uma marca velha de quando a cena saiu e voltou.
     const noDia = diaria.cena_ids || [];
-    if (!noDia.includes(cena.id)) {
-      await db.diarias.update(diariaId!, { cena_ids: [...noDia, cena.id] });
-    }
+    const { [cena.id]: marcaVelha, ...outras } = diaria.cenas_no_dia || {};
+    await db.diarias.update(diariaId!, {
+      ...(noDia.includes(cena.id) ? {} : { cena_ids: [...noDia, cena.id] }),
+      ...(volta || marcaVelha ? { cenas_no_dia: volta ? { ...outras, [cena.id]: volta } : outras } : {}),
+    });
 
     // 2. Na linha do tempo — da visão aberta, que pode ser uma frente.
     const item: ItemDoDia = { id: `cena-${cena.id}`, tipo: 'cena', cena_id: cena.id };
@@ -392,7 +409,9 @@ export function DiariaModule() {
 
     // 3. De volta ao stripboard, para o espelho não desfazer o que acabou de
     //    ser feito. Só quando a diária de fato espelha um bloco.
-    if (!diaria.stripboard_item_id) return;
+    //    A VOLTA NÃO VAI: no stripboard a cena tem um lugar só, o da diária
+    //    original, que fica intocada. O espelho já sabe mantê-la aqui.
+    if (volta || !diaria.stripboard_item_id) return;
 
     const itensStrip = await db.stripboard_itens.where('projeto_id').equals(projetoId!).toArray();
     const linhaStrip = montarLinha(cenasGlobais, itensStrip);
@@ -794,7 +813,8 @@ export function DiariaModule() {
     const linhasTempo = dia.itens.map(c => {
       const mov = c.cena ? movimento(c.item.id) : '';
       const rotulo = c.cena
-        ? `<b>Cena ${h(c.cena.numero)}</b> — ${h(c.cena.descricao)}${mov ? ` <b class="alerta" style="white-space:nowrap">${mov}</b>` : ''}`
+        ? `<b>Cena ${h(c.cena.numero)}</b> — ${h(c.cena.descricao)}${mov ? ` <b class="alerta" style="white-space:nowrap">${mov}</b>` : ''}${
+          marcaNoDia(c.cena.id) ? `<br><b>${h(marcaNoDia(c.cena.id)!)}</b>` : ''}`
         : h(c.item.titulo || '—');
       const real = c.item.hora_real;
       const diff = real ? emMinutos(real)! - c.inicio : null;
@@ -814,7 +834,11 @@ export function DiariaModule() {
         reg?.som_wild ? 'som wild' : '',
       ].filter(Boolean).join(' · ');
 
+      // A volta (regravação…) entra no resumo: é aqui que a informação vira histórico.
+      const marca = marcaNoDia(c.id);
       return `<li><b>Cena ${h(c.numero)}</b> — ${h(c.descricao)} <span class="muted">(${h((c.ambiente || 'ext').toUpperCase())} / ${h(c.periodo || 'dia')})</span>${
+        marca ? `<br><b>${h(marca)}</b>` : ''
+      }${
         detalhes ? ` <span class="muted">[${h(detalhes)}]</span>` : ''
       }${reg?.motivo ? ` — <b class="alerta">${h(reg.motivo)}</b>` : ''
       }${reg?.cobertura ? `<br><span class="muted">${h(reg.cobertura)}</span>` : ''
@@ -1283,6 +1307,9 @@ export function DiariaModule() {
             locacoes={locacoes}
             cenasDisponiveis={cenasForaDoDia}
             aoAcrescentarCena={planejando && !congelada ? acrescentarCena : undefined}
+            aRegravar={aRegravar}
+            aoRegravarCena={planejando && !congelada ? acrescentarCena : undefined}
+            marcaDaCena={marcaNoDia}
             proximoId={proximoId}
           />
 

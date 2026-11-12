@@ -27,6 +27,7 @@ import { descreverClima } from '../clima';
 import { calcularDia, emMinutos, type ItemCalculado } from '../linhaDoDia';
 import { oitavosParaPaginas, paginasParaOitavos } from '../decupagem';
 import { rotuloDoTrecho } from '../partirCena';
+import { voltaDaCena } from '../regravacao';
 import { data as formataData, diaPorExtenso, horaDoSet } from '../formato';
 import {
   campo, campos, podar, textoDaCelula,
@@ -61,6 +62,8 @@ export interface EntradaOD {
   proximo?: DiaVizinho;
   /** Quantas diárias a produção tem — o "de 12" de "Diária 3 de 12". */
   totalDiarias?: number;
+  /** As diárias do projeto: o "(da Diária 03)" da cena que volta. */
+  diarias?: Pick<Diaria, 'id' | 'numero'>[];
   /** Logo já resolvido para algo que o renderizador consegue abrir. */
   logo?: string;
   /** Sobrepõe `diaria.versao_od` quando o banco ainda não devolveu a nova. */
@@ -376,8 +379,10 @@ function secaoGrade(e: EntradaOD, itens: ItemCalculado[]): Secao {
     const elenco = elencoDaCena(cena.id);
     if (elenco) algumElenco = true;
     const locacao = e.locacoes.find(l => l.id === cena.locacao_id)?.nome;
+    const volta = voltaDaCena(e.diaria, cena.id, e.diarias || []);
 
     linhas.push({
+      aviso: volta?.porque,
       celulas: {
         rodando: {
           texto: `Roda ${hora(c.inicio)} - ${hora(c.fim)}`,
@@ -393,8 +398,14 @@ function secaoGrade(e: EntradaOD, itens: ItemCalculado[]): Secao {
           texto: (cena.ambiente || 'ext').toUpperCase() === 'INT' ? 'INT' : 'EXT',
           detalhe: (cena.periodo || 'dia') === 'noite' ? 'NOITE' : 'DIA',
         },
-        // A sinopse embaixo do set, como no modelo; sem ela, a locação.
-        set: { texto: cena.descricao || '—', enfase: 'forte', detalhe: cena.sinopse?.trim() || locacao },
+        // A sinopse embaixo do set, como no modelo; sem ela, a locação. A cena
+        // que volta (regravação…) diz isso na linha em negrito, em texto e não
+        // em cor: a OD é fotocopiada e lida no sol. O porquê vai embaixo.
+        set: {
+          texto: volta ? `${cena.descricao || '—'} · ${volta.titulo}` : cena.descricao || '—',
+          enfase: 'forte',
+          detalhe: [volta?.porque, cena.sinopse?.trim() || locacao].filter(Boolean).join(' · ') || undefined,
+        },
         planos: quantos
           ? { texto: String(quantos), detalhe: trecho || undefined }
           : '—',

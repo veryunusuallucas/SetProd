@@ -299,6 +299,8 @@ export const MANUAL: SecaoManual[] = [
       // a medida do que falta escrever aqui.
       'CRIAR UMA CENA: vá em Decupagem e clique no botão "+ Cena", no topo. Ela nasce com o próximo número, EXT e DIA, e você troca o que precisar. ' +
       'A cena existe no projeto inteiro, não dentro de uma diária: por isso o "Adicionar Cena" da Ordem do Dia só mostra cenas que já existem, e é lá na Decupagem que elas nascem. ' +
+      'REGRAVAR UMA CENA: na diária, "Acrescentar ao dia" → linha "Regravar". Aparecem primeiro as cenas que já rodaram, com a diária de onde vieram; escolha o motivo (regravação, complemento ou continuação) e, se quiser, por que está voltando. ' +
+      'A diária original não muda — o que se gravou lá continua sendo daquele dia. A OD, o DPR e a cena na Decupagem mostram a volta por escrito. ' +
       'Suba o roteiro em PDF e a IA lê cena por cena, marcando elenco, objetos, figurino, som e veículos direto no texto. ' +
       'As cenas são separadas pelo padrão de cabeçalho — inclusive 7A e 7B, que são cenas diferentes — e a locação vem sozinha do cabeçalho. ' +
       'Você também marca à mão, selecionando no PDF. Subir uma revisão não apaga o trabalho da versão anterior — dá para voltar. ' +
