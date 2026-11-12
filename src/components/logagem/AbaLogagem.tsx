@@ -227,7 +227,7 @@ export function AbaLogagem({ projetoId, diariaId, podeEditar, departamentoId, qu
       </section>
 
       <div className="video-lista">
-        <ListaDeTakes takes={registro.takes} ultimo={registro.ultimo} podeEditar={podeEditar} limite={detalhada ? undefined : 3} />
+        <ListaDeTakes takes={registro.takes} ultimo={registro.ultimo} podeEditar={podeEditar} limite={detalhada ? undefined : 3} quem={quem} />
       </div>
      </div>
 

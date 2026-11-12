@@ -116,14 +116,23 @@ export function montarSom(
   };
 }
 
-/** Grava o arquivo de som e anda o contador do gravador. */
+/**
+ * Grava o arquivo de som e anda o contador do gravador.
+ *
+ * Indivisível, como o `registrarTake`: o próximo arquivo é lido do banco dentro
+ * da transação, para dois toques juntos não darem dois ZOOM0005.
+ */
 export async function registrarSom(estado: EstadoDaLogagem, tipo: Som['tipo'], quem?: string, take?: Take) {
-  const sons = await db.log_som.where('diaria_id').equals(estado.diaria_id).toArray();
-  const ordem = sons.reduce((maior, s) => Math.max(maior, s.ordem || 0), 0) + 1;
-  const som = montarSom(estado, tipo, ordem, { quem, take });
-  await db.log_som.add(som);
-  await db.log_estado.update(idDoEstado(estado.diaria_id), { arquivo_som: proximoArquivo(som.arquivo) });
-  return som;
+  return db.transaction('rw', db.log_som, db.log_estado, async () => {
+    const noBanco = await db.log_estado.get(idDoEstado(estado.diaria_id));
+    const atual = noBanco ? { ...estado, arquivo_som: noBanco.arquivo_som } : estado;
+    const sons = await db.log_som.where('diaria_id').equals(estado.diaria_id).toArray();
+    const ordem = sons.reduce((maior, s) => Math.max(maior, s.ordem || 0), 0) + 1;
+    const som = montarSom(atual, tipo, ordem, { quem, take });
+    await db.log_som.add(som);
+    await db.log_estado.update(idDoEstado(estado.diaria_id), { arquivo_som: proximoArquivo(som.arquivo) });
+    return som;
+  });
 }
 
 /**
@@ -138,6 +147,50 @@ export async function somAcompanhaHero(takeId: string, status?: string) {
 }
 
 export const mudarSom = (id: string, m: Partial<Pick<Som, 'marca' | 'trilhas' | 'arquivo' | 'obs'>>) => db.log_som.update(id, m);
+
+/* ───────────────────────── Grudar e desgrudar (Logagem v2, passo 2) ───────────────────────── */
+
+/**
+ * Gruda o som no take: passa a ser o áudio daquele momento, com a claquete
+ * dele. Um take pode ter dois arquivos (o gravador partiu o som em dois).
+ * Não mexe em nenhum contador: o arquivo já existe, só a ligação muda.
+ */
+export async function grudarSom(somId: string, take: Take) {
+  await db.log_som.update(somId, {
+    take_id: take.id, tipo: 'take',
+    cena: take.cena, plano: take.plano, take: take.take, cena_id: take.cena_id, plano_id: take.plano_id,
+  });
+  await somAcompanhaHero(take.id, take.status);
+}
+
+/** Desgruda: o som fica solto no boletim, com a claquete que tinha. O vídeo fica sem esse áudio. */
+export const desgrudarSom = (somId: string) => db.log_som.update(somId, { take_id: undefined });
+
+/** "18:12:05" → segundos, para achar o que foi logado perto. */
+const segundos = (hora?: string) => {
+  const [h, m, s] = String(hora || '').split(':').map(Number);
+  return (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
+};
+
+/**
+ * Para que take grudar este som: os sem áudio primeiro, e entre eles o logado
+ * mais perto na hora — é quase sempre o certo.
+ */
+export function takesParaGrudar(som: Pick<Som, 'hora' | 'take_id'>, takes: Take[], sons: Som[]): { take: Take; audios: string[] }[] {
+  return takes
+    .filter(t => t.id !== som.take_id)
+    .map(take => ({ take, audios: sons.filter(s => s.take_id === take.id).map(s => s.arquivo) }))
+    .sort((a, b) => (a.audios.length ? 1 : 0) - (b.audios.length ? 1 : 0)
+      || Math.abs(segundos(a.take.hora) - segundos(som.hora)) - Math.abs(segundos(b.take.hora) - segundos(som.hora)));
+}
+
+/** O inverso: que som grudar neste take. Os soltos primeiro, o mais perto na hora antes. */
+export function sonsParaGrudar(take: Pick<Take, 'id' | 'hora'>, sons: Som[]): Som[] {
+  return sons
+    .filter(s => s.take_id !== take.id)
+    .sort((a, b) => (a.take_id ? 1 : 0) - (b.take_id ? 1 : 0)
+      || Math.abs(segundos(a.hora) - segundos(take.hora)) - Math.abs(segundos(b.hora) - segundos(take.hora)));
+}
 
 const ehOUltimoSom = (sons: Som[], som: Som) => !sons.some(s => s.id !== som.id && (s.ordem ?? 0) > (som.ordem ?? 0));
 

@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
 import { Check, X, Star, RefreshCw, Trash2, ListVideo, AlertTriangle, Pencil } from 'lucide-react';
 import { db } from '../../db/db';
-import type { EstadoDaLogagem, StatusTake, Take } from '../../types';
+import type { EstadoDaLogagem, Som, StatusTake, Take } from '../../types';
+import { EditorDoAudio, FichaDoVinculo } from './Vinculo';
 import { MOLA, useMovimentoReduzido } from '../ui/movimento';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { confirmar, escolher } from '../ui/Confirmacao';
@@ -14,7 +15,7 @@ import {
   COR_DO_STATUS, ROTULO_DO_STATUS, acharDuplicado, apagarTake, claqueteDoAcrescimo, claqueteLegivel,
   registrarTake, somParaOTake, substituirTake, takeSemSom,
 } from '../../lib/logagem/takes';
-import { arquivoDoSom, takeLevaSom } from '../../lib/logagem/som';
+import { arquivoDoSom } from '../../lib/logagem/som';
 import { mudarEstado } from '../../lib/logagem/estado';
 import { EditarTake } from './EditarTake';
 import { comecarCenaPelaLogagem } from '../../lib/logagem/linhaDoDia';
@@ -83,8 +84,9 @@ export function useRegistroDeTake(estado: EstadoDaLogagem, podeEditar: boolean, 
 
   const gravar = async (status: StatusTake, comEstado = estado) => {
     const primeiroDaCena = Boolean(cenaDaClaquete(comEstado)) && !takes.some(t => t.cena_id === cenaDaClaquete(comEstado));
-    const som = takeLevaSom(comEstado) ? arquivoDoSom(comEstado) : undefined;
     const take = await registrarTake(comEstado, status, quem);
+    // O áudio que de fato nasceu com ele — é o que o recibo mostra.
+    const som = (await db.log_som.where('take_id').equals(take.id).first())?.arquivo;
     vibrarStatus(status);
     setUltimo(take.id);
     setRecibo({ take, som });
@@ -295,8 +297,9 @@ export function BotoesDeStatus({ registro, podeEditar }: { registro: Registro; p
  * registrar e não para conferir, e uma lista de quarenta takes empurraria os
  * botões para fora do alcance do polegar.
  */
-export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Takes desta diária' }: {
+export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Takes desta diária', quem }: {
   takes: Take[];
+  quem?: string;
   ultimo?: string;
   podeEditar: boolean;
   limite?: number;
@@ -304,6 +307,9 @@ export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Take
 }) {
   const emOrdem = [...takes].sort((a, b) => (b.ordem || 0) - (a.ordem || 0));
   const mostrados = limite ? emOrdem.slice(0, limite) : emOrdem;
+  // Os sons da diária, uma consulta só: cada linha mostra o áudio dela.
+  const diariaId = takes[0]?.diaria_id ?? '';
+  const sons = useLiveQuery(() => db.log_som.where('diaria_id').equals(diariaId).toArray(), [diariaId]) ?? [];
   const escondidos = emOrdem.length - mostrados.length;
 
   return (
@@ -322,7 +328,7 @@ export function ListaDeTakes({ takes, ultimo, podeEditar, limite, titulo = 'Take
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {mostrados.map(t => (
-            <LinhaDoTake key={t.id} take={t} novo={t.id === ultimo} podeEditar={podeEditar} />
+            <LinhaDoTake key={t.id} take={t} novo={t.id === ultimo} podeEditar={podeEditar} sons={sons} quem={quem} />
           ))}
         </div>
       )}
@@ -357,10 +363,12 @@ function contar(takes: Take[]) {
  * recibo de que o toque virou registro, sem tirar ninguém da tela nem pedir
  * para fechar nada.
  */
-function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; podeEditar: boolean }) {
+function LinhaDoTake({ take, novo, podeEditar, sons, quem }: { take: Take; novo: boolean; podeEditar: boolean; sons: Som[]; quem?: string }) {
   const reduzido = useMovimentoReduzido();
   const cor = COR_DO_STATUS[take.status];
   const [editando, setEditando] = useState(false);
+  const [vinculando, setVinculando] = useState(false);
+  const audios = sons.filter(s => s.take_id === take.id).map(s => s.arquivo);
 
   const apagar = async () => {
     const casados = await db.log_som.where('take_id').equals(take.id).toArray();
@@ -427,7 +435,19 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
       <span className="text-xs text-secondary" style={{ fontFamily: MONO }}>{take.arquivo}</span>
       <span className="text-xs text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{take.hora}</span>
 
-      {take.lente && <span className="text-xs text-muted">{take.lente}{take.abertura ? ` · ${take.abertura}` : ''}</span>}
+      {/* O áudio deste vídeo, à vista (Logagem v2, passo 2). Importado não tem claquete nem som do set. */}
+      {take.status !== 'IMPORT' && (
+        <FichaDoVinculo
+          lado="audio"
+          ligado={audios.length > 0}
+          rotulo={audios.length ? audios.join(' + ') : take.audio === 'MOS' ? 'MOS · sem som' : 'sem áudio'}
+          aberta={vinculando}
+          desligada={!podeEditar}
+          aoTocar={() => { setVinculando(v => !v); setEditando(false); }}
+        />
+      )}
+
+      {take.lente &&<span className="text-xs text-muted">{take.lente}{take.abertura ? ` · ${take.abertura}` : ''}</span>}
 
       {take.obs && (
         <span className="text-xs text-secondary" style={{ flex: '1 1 100%', minWidth: 0 }}>{take.obs}</span>
@@ -439,7 +459,7 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
           title="Corrigir este take"
           aria-label="Corrigir este take"
           aria-expanded={editando}
-          onClick={() => setEditando(v => !v)}
+          onClick={() => { setEditando(v => !v); setVinculando(false); }}
           style={{
             marginLeft: 'auto', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: 'none', borderRadius: 'var(--radius-sm)', background: editando ? 'var(--bg-active)' : 'none',
@@ -469,6 +489,9 @@ function LinhaDoTake({ take, novo, podeEditar }: { take: Take; novo: boolean; po
         <div style={{ flex: '1 1 100%', minWidth: 0 }}>
           <Abre aberto={editando}>
             {editando && <EditarTake take={take} aoFechar={() => setEditando(false)} />}
+          </Abre>
+          <Abre aberto={vinculando}>
+            {vinculando && <EditorDoAudio take={take} sons={sons} quem={quem} podeEditar={podeEditar} aoFechar={() => setVinculando(false)} />}
           </Abre>
         </div>
       )}

@@ -103,26 +103,43 @@ export const acharDuplicado = (takes: Take[], estado: EstadoDaLogagem) =>
  *
  * O contador da câmera ativa do kit anda junto: sem isso, o chip do kit
  * mostraria o clipe de meia hora atrás até alguém trocar de câmera.
+ *
+ * ⚠️ INDIVISÍVEL (achado da força bruta, 11/11/2026). Dois registros ao mesmo
+ * tempo — Espaço e toque juntos, dois cliques antes da tela atualizar — liam o
+ * MESMO estado e gravavam dois takes iguais (take 1, A001C001, ZOOM0001 duas
+ * vezes), com os contadores andando uma vez só. Agora os contadores são lidos
+ * do banco DENTRO da transação: o segundo espera o primeiro e sai take 2, C002.
  */
 export async function registrarTake(estado: EstadoDaLogagem, status: StatusTake, quem?: string) {
-  const takes = await db.log_takes.where('diaria_id').equals(estado.diaria_id).toArray();
-  const ordem = takes.reduce((maior, t) => Math.max(maior, t.ordem || 0), 0) + 1;
-  const take = montarTake(estado, status, ordem, quem);
+  const { take, atual } = await db.transaction('rw', db.log_takes, db.log_estado, db.log_som, async () => {
+    const atual = { ...estado, ...contadoresDoBanco(await db.log_estado.get(idDoEstado(estado.diaria_id))) };
+    const takes = await db.log_takes.where('diaria_id').equals(estado.diaria_id).toArray();
+    const ordem = takes.reduce((maior, t) => Math.max(maior, t.ordem || 0), 0) + 1;
+    const take = montarTake(atual, status, ordem, quem);
 
-  await db.log_takes.add(take);
-  await db.log_estado.update(idDoEstado(estado.diaria_id), {
-    take: (Number(estado.take) || 0) + 1,
-    proximo_clipe: (Number(estado.proximo_clipe) || 0) + 1,
-    obs: '',
-    foto: '',
+    await db.log_takes.add(take);
+    await db.log_estado.update(idDoEstado(estado.diaria_id), {
+      take: (Number(atual.take) || 0) + 1,
+      proximo_clipe: (Number(atual.proximo_clipe) || 0) + 1,
+      obs: '',
+      foto: '',
+    });
+    // Som junto: o mesmo toque loga o arquivo do gravador, casado com este take.
+    // MOS é "rodou sem som": não há arquivo de gravador para casar.
+    if (takeLevaSom(atual)) await registrarSom(atual, 'take', quem, take);
+    return { take, atual };
   });
-  await sincronizarKit(estado, (Number(estado.proximo_clipe) || 0) + 1);
-  // Som junto: o mesmo toque loga o arquivo do gravador, casado com este take.
-  // MOS é "rodou sem som": não há arquivo de gravador para casar.
-  if (takeLevaSom(estado)) await registrarSom(estado, 'take', quem, take);
-
+  await sincronizarKit(atual, (Number(atual.proximo_clipe) || 0) + 1);
   return take;
 }
+
+/**
+ * Só os contadores vêm do banco: take, clipe e o próximo do gravador. O resto
+ * (cena, plano, setup) é o que quem chamou quis registrar — o "criar áudio" de
+ * um take antigo, por exemplo, passa a claquete DELE.
+ */
+export const contadoresDoBanco = (e?: EstadoDaLogagem): Partial<EstadoDaLogagem> =>
+  e ? { take: e.take, proximo_clipe: e.proximo_clipe, arquivo_som: e.arquivo_som } : {};
 
 async function sincronizarKit(estado: EstadoDaLogagem, clipe: number) {
   if (!estado.kit_camera_id) return;

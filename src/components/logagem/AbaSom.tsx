@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Mic, Wind, Volume2, Trash2, Plus, X, SlidersHorizontal, Users, Check, Scissors, AudioLines } from 'lucide-react';
-import { COR_DO_STATUS, apagarTake, takeSemSom } from '../../lib/logagem/takes';
+import { COR_DO_STATUS, ROTULO_DO_STATUS, apagarTake, takeSemSom } from '../../lib/logagem/takes';
+import { EditorDoVideo, FichaDoVinculo } from './Vinculo';
 import { db } from '../../db/db';
-import type { EstadoDaLogagem, Som } from '../../types';
+import type { EstadoDaLogagem, Som, Take } from '../../types';
 import { BotaoTatil } from '../ui/BotaoTatil';
 import { CampoTexto } from '../ui/CampoTexto';
 import { confirmar, escolher } from '../ui/Confirmacao';
@@ -176,7 +177,7 @@ export function AbaSom({ projetoId, diariaId, podeEditar, departamentoId, quem, 
         )}
       </section>
 
-      <GradeDoSom sons={sons} podeEditar={podeEditar} />
+      <GradeDoSom sons={sons} takes={takes} podeEditar={podeEditar} />
     </div>
   );
 }
@@ -238,16 +239,12 @@ function BotaoDaMarca({ marca, ultimo, bloqueado, grande }: { marca: NonNullable
 
 /* ───────────────────────── A grade ───────────────────────── */
 
-type Celula = { id: string; trilha: number } | null; // trilha -1 = observação, -2 = nome do arquivo
+type Celula = { id: string; trilha: number } | null; // trilha -1 = observação, -2 = nome do arquivo, -3 = o vídeo
 
-function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) {
+function GradeDoSom({ sons, takes, podeEditar }: { sons: Som[]; takes: Take[]; podeEditar: boolean }) {
   const [aberta, setAberta] = useState<Celula>(null);
-  // O status do take de câmera casado, para o som ver o HERO e o NG da câmera.
-  const diariaId = sons[0]?.diaria_id ?? '';
-  const statusDoTake = useLiveQuery(
-    async () => new Map((await db.log_takes.where('diaria_id').equals(diariaId).toArray()).map(t => [t.id, t.status])),
-    [diariaId],
-  ) ?? new Map<string, string>();
+  // O take de câmera casado: o som vê com que vídeo está, e o HERO e o NG dele.
+  const takePorId = new Map(takes.map(t => [t.id, t]));
   // No set, o que acabou de rodar fica em cima.
   const trechos = trechosDoSom(ordenarSons(sons)).reverse().map(t => ({ ...t, sons: [...t.sons].reverse() }));
   const maxTrilhas = Math.max(1, ...sons.map(s => s.trilhas.length));
@@ -313,8 +310,23 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                           </button>
                           <div className="text-xs text-muted" style={{ whiteSpace: 'nowrap' }}>
                             {s.tipo === 'take' ? `${s.cena}-${s.plano} / Tk${s.take ?? ''}` : `${ROTULO_DO_TIPO[s.tipo]} · ${s.cena}`} · {s.hora.slice(0, 5)}
-                            {s.take_id && statusDoTake.get(s.take_id) ? ` · câmera ${statusDoTake.get(s.take_id)}` : ''}
                           </div>
+                          {/* A ligação com o vídeo, à vista (Logagem v2, passo 2): tocar desgruda ou troca. */}
+                          {(() => {
+                            const video = s.take_id ? takePorId.get(s.take_id) : undefined;
+                            return (
+                              <div style={{ marginTop: '4px' }}>
+                                <FichaDoVinculo
+                                  lado="video"
+                                  ligado={Boolean(video)}
+                                  rotulo={video ? `${video.arquivo} · ${ROTULO_DO_STATUS[video.status]}` : 'solto'}
+                                  aberta={editando === -3}
+                                  desligada={!podeEditar}
+                                  aoTocar={() => setAberta(editando === -3 ? null : { id: s.id, trilha: -3 })}
+                                />
+                              </div>
+                            );
+                          })()}
                         </td>
                         {s.trilhas.map((t, k) => (
                           <td key={k} style={td}>
@@ -369,7 +381,9 @@ function GradeDoSom({ sons, podeEditar }: { sons: Som[]; podeEditar: boolean }) 
                           <td colSpan={maxTrilhas + 3} style={{ ...td, padding: '10px 8px', backgroundColor: 'var(--bg-primary)' }}>
                             {editando === -2
                               ? <EditorDoArquivo som={s} sons={sons} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />
-                              : <EditorDaCelula som={s} trilha={editando} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />}
+                              : editando === -3
+                                ? <EditorDoVideo som={s} takes={takes} sons={sons} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />
+                                : <EditorDaCelula som={s} trilha={editando} podeEditar={podeEditar} aoFechar={() => setAberta(null)} />}
                           </td>
                         </tr>
                       )}

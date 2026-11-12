@@ -1,7 +1,7 @@
 // Apagar o último take volta a claquete e os contadores (relato do set, 31/10/2026).
 import assert from 'node:assert/strict';
 import { clipeDoDigitado, takeSemSom, voltaDoApagado } from '../src/lib/logagem/takes';
-import { voltaDoSom, renumerarSeguintes } from '../src/lib/logagem/som';
+import { voltaDoSom, renumerarSeguintes, sonsParaGrudar, takesParaGrudar } from '../src/lib/logagem/som';
 import { PADRAO } from '../src/lib/logagem/estado';
 import { nomeArquivoPrevisto } from '../src/lib/logagem/nomenclatura';
 import type { EstadoDaLogagem, Som, Take } from '../src/types';
@@ -36,4 +36,9 @@ assert.equal(clipeDoDigitado(estado, nomeArquivoPrevisto({ ...estado, proximo_cl
 assert.equal(clipeDoDigitado(estado, nomeArquivoPrevisto({ ...estado, proximo_clipe: 7 }).toLowerCase())?.bate, true);
 assert.equal(clipeDoDigitado({ ...estado, cartao: '001' }, nomeArquivoPrevisto({ ...estado, cartao: '002', proximo_clipe: 7 }))?.bate, false);
 assert.equal(clipeDoDigitado(estado, 'abc'), null);
-console.log('ok: apagar, renomear, par desalinhado e nome digitado');
+// Grudar (passo 2): o sem áudio e o mais perto na hora primeiro; o solto antes do grudado.
+const ta = { id: 'ta', hora: '10:00:00' } as Take, tb = { id: 'tb', hora: '10:05:00' } as Take, tc = { id: 'tc', hora: '10:01:00' } as Take;
+const sx = { id: 'sx', arquivo: 'ZOOM0009', hora: '10:04:30', ordem: 9 } as Som;
+assert.deepEqual(takesParaGrudar(sx, [ta, tb, tc], [{ ...som, take_id: 'tb' } as Som]).map(o => o.take.id), ['tc', 'ta', 'tb']);
+assert.deepEqual(sonsParaGrudar(ta, [{ ...sx, take_id: 'tb' } as Som, { ...s2, take_id: undefined, hora: '11:00:00' } as Som]).map(s => s.id), ['s2', 'sx']);
+console.log('ok: apagar, renomear, par desalinhado, nome digitado e grudar');
