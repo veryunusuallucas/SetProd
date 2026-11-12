@@ -229,6 +229,24 @@ const GRUPOS_4_4: Grupo[] = [
  */
 export const VERSOES: Versao[] = [
   {
+    versao: '0.23.1',
+    resumo: <>Os botões do take alinhados, e a FX30 já sabe o que acontece ao trocar de cartão.</>,
+    itens: [
+      {
+        tipo: 'corrigido',
+        icone: <LayoutGrid size={20} />,
+        titulo: 'OK, NG, HERO e REC INV. iguais',
+        texto: 'Os quatro botões ficam centralizados e do mesmo jeito. O "REC INV." não quebra mais em duas linhas com o ícone sobrando ao lado: nas colunas estreitas, o ícone vai para cima nos quatro.',
+      },
+      {
+        tipo: 'melhor',
+        icone: <Camera size={20} />,
+        titulo: 'FX30: cartão novo volta para C001',
+        texto: 'Com a FX30 escolhida na aba Câmera, trocar de cartão já sugere recomeçar o clipe (A002C001), como os cartões de verdade mostraram: no mesmo cartão o clipe segue contando, no cartão novo volta para 001.',
+      },
+    ],
+  },
+  {
     versao: '0.23.0',
     resumo: <>A Logagem refeita depois do set: vídeo e áudio à vista, cada um com a sua marca, e o boletim que escorregou volta para o lugar. E a regravação entra na Ordem do Dia.</>,
     itens: [
